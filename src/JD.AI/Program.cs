@@ -153,13 +153,28 @@ session.History.AddSystemMessage("""
 // 9. Set up slash commands
 var commandRouter = new SlashCommandRouter(session, registry);
 
-// 10. Render welcome banner
+// 10. Build interactive input with command completions
+var completionProvider = new CompletionProvider();
+completionProvider.Register("/help", "Show available commands");
+completionProvider.Register("/models", "List available models");
+completionProvider.Register("/model", "Switch to a model");
+completionProvider.Register("/providers", "List detected providers");
+completionProvider.Register("/provider", "Show current provider");
+completionProvider.Register("/clear", "Clear chat history");
+completionProvider.Register("/compact", "Force context compaction");
+completionProvider.Register("/cost", "Show token usage");
+completionProvider.Register("/autorun", "Toggle auto-approve for tools");
+completionProvider.Register("/quit", "Exit jdai");
+completionProvider.Register("/exit", "Exit jdai");
+var interactiveInput = new InteractiveInput(completionProvider);
+
+// 11. Render welcome banner
 ChatRenderer.RenderBanner(
     selectedModel.DisplayName,
     selectedModel.ProviderName,
     allModels.Count);
 
-// 11. Main interaction loop
+// 12. Main interaction loop
 var agentLoop = new AgentLoop(session);
 using var cts = new CancellationTokenSource();
 
@@ -171,7 +186,7 @@ Console.CancelKeyPress += (_, e) =>
 
 while (!cts.IsCancellationRequested)
 {
-    var input = ChatRenderer.ReadInput();
+    var input = ChatRenderer.ReadInput(interactiveInput);
 
     if (string.IsNullOrWhiteSpace(input))
     {

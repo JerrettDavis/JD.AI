@@ -114,10 +114,14 @@ public static class ChatRenderer
         AnsiConsole.WriteLine();
     }
 
-    /// <summary>Prompt for user input.</summary>
-    public static string? ReadInput()
+    /// <summary>Prompt for user input with interactive completions.</summary>
+    public static string? ReadInput(InteractiveInput? input = null)
     {
         AnsiConsole.Markup("[bold green]>[/] ");
+
+        if (input != null)
+            return input.ReadLine();
+
         return Console.ReadLine();
     }
 
