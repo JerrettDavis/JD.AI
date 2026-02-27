@@ -67,7 +67,8 @@ public sealed class AgentLoop
 
     /// <summary>
     /// Send a user message with streaming output — tokens appear as they arrive.
-    /// Tool calls are still handled by <see cref="ToolConfirmationFilter"/> between chunks.
+    /// Thinking/reasoning content (via &lt;think&gt; tags or metadata) is rendered
+    /// as dim gray text, separate from the response content.
     /// </summary>
     public async Task<string> RunTurnStreamingAsync(
         string userMessage, CancellationToken ct = default)
@@ -85,19 +86,93 @@ public sealed class AgentLoop
         try
         {
             var fullResponse = new StringBuilder();
-            ChatRenderer.BeginStreaming();
+            var parser = new StreamingContentParser();
+            var contentStarted = false;
+            var thinkingActive = false;
 
             await foreach (var chunk in chat.GetStreamingChatMessageContentsAsync(
                 _session.History, settings, _session.Kernel, ct).ConfigureAwait(false))
             {
-                if (chunk.Content is { Length: > 0 } text)
+                // Check metadata for reasoning content (OpenAI o1/o3, future providers)
+                if (chunk.Metadata is { } meta &&
+                    meta.TryGetValue("ReasoningContent", out var reasonObj) &&
+                    reasonObj is string { Length: > 0 } reasonText)
                 {
-                    fullResponse.Append(text);
-                    ChatRenderer.WriteStreamingChunk(text);
+                    if (!thinkingActive)
+                    {
+                        ChatRenderer.BeginThinking();
+                        thinkingActive = true;
+                    }
+                    ChatRenderer.WriteThinkingChunk(reasonText);
+                    continue;
+                }
+
+                if (chunk.Content is not { Length: > 0 } text)
+                    continue;
+
+                // Parse chunk for <think> tags and classify segments
+                foreach (var seg in parser.ProcessChunk(text))
+                {
+                    switch (seg.Kind)
+                    {
+                        case StreamSegmentKind.EnterThinking:
+                            ChatRenderer.BeginThinking();
+                            thinkingActive = true;
+                            break;
+
+                        case StreamSegmentKind.Thinking:
+                            if (!thinkingActive)
+                            {
+                                ChatRenderer.BeginThinking();
+                                thinkingActive = true;
+                            }
+                            ChatRenderer.WriteThinkingChunk(seg.Text);
+                            break;
+
+                        case StreamSegmentKind.ExitThinking:
+                            ChatRenderer.EndThinking();
+                            thinkingActive = false;
+                            break;
+
+                        case StreamSegmentKind.Content:
+                            if (thinkingActive)
+                            {
+                                ChatRenderer.EndThinking();
+                                thinkingActive = false;
+                            }
+                            if (!contentStarted)
+                            {
+                                ChatRenderer.BeginStreaming();
+                                contentStarted = true;
+                            }
+                            fullResponse.Append(seg.Text);
+                            ChatRenderer.WriteStreamingChunk(seg.Text);
+                            break;
+                    }
                 }
             }
 
-            ChatRenderer.EndStreaming();
+            // Flush any buffered tag remnants
+            foreach (var seg in parser.Flush())
+            {
+                if (seg.Kind == StreamSegmentKind.Thinking)
+                {
+                    ChatRenderer.WriteThinkingChunk(seg.Text);
+                }
+                else if (seg.Kind == StreamSegmentKind.Content)
+                {
+                    if (!contentStarted)
+                    {
+                        ChatRenderer.BeginStreaming();
+                        contentStarted = true;
+                    }
+                    fullResponse.Append(seg.Text);
+                    ChatRenderer.WriteStreamingChunk(seg.Text);
+                }
+            }
+
+            if (thinkingActive) ChatRenderer.EndThinking();
+            if (contentStarted) ChatRenderer.EndStreaming();
 
             var response = fullResponse.Length > 0
                 ? fullResponse.ToString()
