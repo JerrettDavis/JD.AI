@@ -11,6 +11,10 @@
     <PackageTags>semantic-kernel;tui;ai;agent;claude;copilot;ollama</PackageTags>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="JD.AI.Tui.Tests" />
+  </ItemGroup>
+
   <!-- SK + Extensions -->
   <ItemGroup>
     <ProjectReference Include="..\..\src\JD.SemanticKernel.Extensions\JD.SemanticKernel.Extensions.csproj" />

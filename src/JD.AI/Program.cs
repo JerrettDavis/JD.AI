@@ -262,18 +262,35 @@ Console.CancelKeyPress += (_, e) =>
 
 while (!cts.IsCancellationRequested)
 {
-    var input = ChatRenderer.ReadInput(interactiveInput);
+    var inputResult = ChatRenderer.ReadInputStructured(interactiveInput);
+
+    if (inputResult is null)
+    {
+        continue;
+    }
+
+    var input = inputResult.AssemblePrompt();
 
     if (string.IsNullOrWhiteSpace(input))
     {
         continue;
     }
 
-    // Slash command?
-    if (commandRouter.IsSlashCommand(input))
+    // Show attachment summary if any were pasted
+    if (inputResult.Attachments.Count > 0)
     {
-        if (input.TrimStart().StartsWith("/quit", StringComparison.OrdinalIgnoreCase) ||
-            input.TrimStart().StartsWith("/exit", StringComparison.OrdinalIgnoreCase))
+        foreach (var att in inputResult.Attachments)
+        {
+            ChatRenderer.RenderInfo($"  {att.Label}");
+        }
+    }
+
+    // Slash command? (only check the typed text, not assembled)
+    var typedText = inputResult.TypedText;
+    if (inputResult.Attachments.Count == 0 && commandRouter.IsSlashCommand(typedText))
+    {
+        if (typedText.TrimStart().StartsWith("/quit", StringComparison.OrdinalIgnoreCase) ||
+            typedText.TrimStart().StartsWith("/exit", StringComparison.OrdinalIgnoreCase))
         {
             await session.CloseSessionAsync().ConfigureAwait(false);
             ChatRenderer.RenderInfo("Goodbye!");
@@ -281,7 +298,7 @@ while (!cts.IsCancellationRequested)
         }
 
         var cmdResult = await commandRouter
-            .ExecuteAsync(input, cts.Token)
+            .ExecuteAsync(typedText, cts.Token)
             .ConfigureAwait(false);
 
         if (cmdResult != null)

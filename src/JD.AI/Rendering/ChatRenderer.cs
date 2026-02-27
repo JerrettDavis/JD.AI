@@ -125,6 +125,13 @@ public static class ChatRenderer
         return Console.ReadLine();
     }
 
+    /// <summary>Prompt for user input, returning structured result with attachments.</summary>
+    public static InputResult? ReadInputStructured(InteractiveInput input)
+    {
+        AnsiConsole.Markup("[bold green]>[/] ");
+        return input.ReadLineWithAttachments();
+    }
+
     /// <summary>Ask the user for confirmation.</summary>
     public static bool Confirm(string message)
     {
