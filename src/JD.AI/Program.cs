@@ -252,15 +252,47 @@ if (pendingUpdate is not null)
 
 // 12. Main interaction loop
 var agentLoop = new AgentLoop(session);
-using var cts = new CancellationTokenSource();
+var appCts = new CancellationTokenSource();
+var lastCtrlCTime = DateTime.MinValue;
+var ctrlCWindow = TimeSpan.FromMilliseconds(1500);
+TurnInputMonitor? activeTurnMonitor = null;
 
 Console.CancelKeyPress += (_, e) =>
 {
-    e.Cancel = true;
-    cts.Cancel();
+    e.Cancel = true; // Always suppress default termination
+
+    // If there's an active turn, cancel it (like single ESC)
+    var monitor = Volatile.Read(ref activeTurnMonitor);
+    if (monitor != null)
+    {
+        try
+        {
+            ChatRenderer.RenderWarning("Cancelling...");
+            monitor.CancelTurn();
+        }
+#pragma warning disable CA1031 // catch broad — best effort during signal handler
+        catch { /* monitor may already be disposed */ }
+#pragma warning restore CA1031
+        return;
+    }
+
+    // No active turn — double-tap Ctrl+C to exit
+    var now = DateTime.UtcNow;
+    if (now - lastCtrlCTime <= ctrlCWindow)
+    {
+        try { appCts.Cancel(); }
+#pragma warning disable CA1031
+        catch { /* already disposed/cancelled */ }
+#pragma warning restore CA1031
+        return;
+    }
+
+    lastCtrlCTime = now;
+    Console.WriteLine();
+    ChatRenderer.RenderWarning("Press Ctrl+C again to exit...");
 };
 
-while (!cts.IsCancellationRequested)
+while (!appCts.IsCancellationRequested)
 {
     var inputResult = ChatRenderer.ReadInputStructured(interactiveInput);
 
@@ -298,7 +330,7 @@ while (!cts.IsCancellationRequested)
         }
 
         var cmdResult = await commandRouter
-            .ExecuteAsync(typedText, cts.Token)
+            .ExecuteAsync(typedText, appCts.Token)
             .ConfigureAwait(false);
 
         if (cmdResult != null)
@@ -313,9 +345,10 @@ while (!cts.IsCancellationRequested)
     ChatRenderer.RenderUserMessage(input);
     string? currentMessage = input;
 
-    while (currentMessage != null && !cts.IsCancellationRequested)
+    while (currentMessage != null && !appCts.IsCancellationRequested)
     {
-        using var turnMonitor = new TurnInputMonitor(cts.Token);
+        using var turnMonitor = new TurnInputMonitor(appCts.Token);
+        Volatile.Write(ref activeTurnMonitor, turnMonitor);
 
         try
         {
@@ -323,10 +356,14 @@ while (!cts.IsCancellationRequested)
                 .RunTurnStreamingAsync(currentMessage, turnMonitor.Token)
                 .ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (!cts.IsCancellationRequested)
+        catch (OperationCanceledException) when (!appCts.IsCancellationRequested)
         {
             ChatRenderer.RenderWarning("Turn cancelled.");
             break;
+        }
+        finally
+        {
+            Volatile.Write(ref activeTurnMonitor, null);
         }
 
         // Check for queued steering message
@@ -338,11 +375,18 @@ while (!cts.IsCancellationRequested)
     }
 
     // Auto-compaction check
-    var estimatedTokens = TokenEstimator.EstimateTokens(session.History);
-    if (estimatedTokens > 3000)
+    try
     {
-        ChatRenderer.RenderInfo("Compacting context...");
-        await session.CompactAsync(cts.Token).ConfigureAwait(false);
+        var estimatedTokens = TokenEstimator.EstimateTokens(session.History);
+        if (estimatedTokens > 3000)
+        {
+            ChatRenderer.RenderInfo("Compacting context...");
+            await session.CompactAsync(appCts.Token).ConfigureAwait(false);
+        }
+    }
+    catch (OperationCanceledException) when (!appCts.IsCancellationRequested)
+    {
+        // Turn was cancelled during compaction — safe to continue
     }
 
     // Status bar
@@ -352,4 +396,5 @@ while (!cts.IsCancellationRequested)
         session.TotalTokens);
 }
 
+appCts.Dispose();
 return 0;

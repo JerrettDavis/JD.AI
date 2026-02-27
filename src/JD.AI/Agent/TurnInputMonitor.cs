@@ -35,6 +35,19 @@ public sealed class TurnInputMonitor : IDisposable
     /// </summary>
     public CancellationToken Token => _turnCts.Token;
 
+    /// <summary>Cancel this turn from an external source (e.g. Ctrl+C handler).</summary>
+    public void CancelTurn()
+    {
+        try
+        {
+            if (!_turnCts.IsCancellationRequested)
+                _turnCts.Cancel();
+        }
+#pragma warning disable CA1031 // catch broad — CTS may already be disposed
+        catch (ObjectDisposedException) { }
+#pragma warning restore CA1031
+    }
+
     /// <summary>
     /// The steering message typed and submitted (Enter) during the turn, or null.
     /// </summary>
