@@ -3,6 +3,10 @@ using JD.AI.Tui.Commands;
 using JD.AI.Tui.Providers;
 using JD.AI.Tui.Rendering;
 using JD.AI.Tui.Tools;
+using JD.SemanticKernel.Extensions.Compaction;
+using JD.SemanticKernel.Extensions.Skills;
+using JD.SemanticKernel.Extensions.Plugins;
+using JD.SemanticKernel.Extensions.Hooks;
 using Microsoft.SemanticKernel;
 using Spectre.Console;
 
@@ -21,8 +25,14 @@ var detectors = new IProviderDetector[]
 };
 var registry = new ProviderRegistry(detectors);
 
-// 2. Detect available providers
+// 2. Detect available providers and show status
 var providers = await registry.DetectProvidersAsync().ConfigureAwait(false);
+foreach (var p in providers)
+{
+    var icon = p.IsAvailable ? "✅" : "❌";
+    AnsiConsole.MarkupLine($"  {icon} [bold]{Markup.Escape(p.Name)}[/]: {Markup.Escape(p.StatusMessage ?? "Unknown")}");
+}
+
 var allModels = await registry.GetModelsAsync().ConfigureAwait(false);
 
 if (allModels.Count == 0)
@@ -62,10 +72,69 @@ kernel.Plugins.AddFromType<GitTools>("git");
 kernel.Plugins.AddFromType<WebTools>("web");
 kernel.Plugins.AddFromObject(new MemoryTools(), "memory");
 
-// 7. Add tool confirmation filter
+// 7. Load Claude Code skills, plugins, and hooks if available
+var skillDirs = new[]
+{
+    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "skills"),
+    Path.Combine(Directory.GetCurrentDirectory(), ".claude", "skills"),
+    Path.Combine(Directory.GetCurrentDirectory(), ".jdai", "skills"),
+};
+
+foreach (var dir in skillDirs.Where(Directory.Exists))
+{
+    try
+    {
+        var builder = Kernel.CreateBuilder();
+        JD.SemanticKernel.Extensions.Skills.KernelBuilderExtensions.UseSkills(builder, dir);
+        var skillKernel = builder.Build();
+        foreach (var plugin in skillKernel.Plugins)
+        {
+            kernel.Plugins.Add(plugin);
+        }
+
+        ChatRenderer.RenderInfo($"  Loaded skills from {dir}");
+    }
+#pragma warning disable CA1031 // non-fatal
+    catch (Exception ex)
+    {
+        ChatRenderer.RenderWarning($"  Failed to load skills from {dir}: {ex.Message}");
+    }
+#pragma warning restore CA1031
+}
+
+var pluginDirs = new[]
+{
+    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "plugins"),
+    Path.Combine(Directory.GetCurrentDirectory(), ".claude", "plugins"),
+    Path.Combine(Directory.GetCurrentDirectory(), ".jdai", "plugins"),
+};
+
+foreach (var dir in pluginDirs.Where(Directory.Exists))
+{
+    try
+    {
+        var builder = Kernel.CreateBuilder();
+        JD.SemanticKernel.Extensions.Plugins.KernelBuilderExtensions.UseAllPlugins(builder, dir);
+        var pluginKernel = builder.Build();
+        foreach (var plugin in pluginKernel.Plugins)
+        {
+            kernel.Plugins.Add(plugin);
+        }
+
+        ChatRenderer.RenderInfo($"  Loaded plugins from {dir}");
+    }
+#pragma warning disable CA1031
+    catch (Exception ex)
+    {
+        ChatRenderer.RenderWarning($"  Failed to load plugins from {dir}: {ex.Message}");
+    }
+#pragma warning restore CA1031
+}
+
+// 8. Add tool confirmation filter
 kernel.AutoFunctionInvocationFilters.Add(new ToolConfirmationFilter(session));
 
-// 8. Add system prompt
+// 9. Add system prompt
 session.History.AddSystemMessage("""
     You are jdai, a helpful AI coding assistant running in a terminal.
     You have access to tools for file operations, code search, shell commands,
@@ -76,6 +145,7 @@ session.History.AddSystemMessage("""
     - Use search tools to find code patterns
     - Make minimal, surgical edits
     - Verify changes with builds/tests when appropriate
+    - Store important decisions and facts in memory for future recall
 
     Be concise and direct. Use tools proactively when they'll help answer the question.
     """);
@@ -138,6 +208,14 @@ while (!cts.IsCancellationRequested)
         .ConfigureAwait(false);
 
     ChatRenderer.RenderAssistantMessage(response);
+
+    // Auto-compaction check
+    var estimatedTokens = TokenEstimator.EstimateTokens(session.History);
+    if (estimatedTokens > 3000)
+    {
+        ChatRenderer.RenderInfo("Compacting context...");
+        await session.CompactAsync(cts.Token).ConfigureAwait(false);
+    }
 
     // Status bar
     ChatRenderer.RenderStatusBar(
