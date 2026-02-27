@@ -59,7 +59,11 @@ public sealed class OllamaDetector : IProviderDetector
         builder.AddOpenAIChatCompletion(
             modelId: model.Id,
             apiKey: "ollama",
-            httpClient: new HttpClient { BaseAddress = new Uri($"{_endpoint}/v1") });
+            httpClient: new HttpClient
+            {
+                BaseAddress = new Uri($"{_endpoint}/v1"),
+                Timeout = TimeSpan.FromMinutes(10),
+            });
 #pragma warning restore SKEXP0010
 
         return builder.Build();
