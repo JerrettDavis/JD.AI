@@ -41,6 +41,7 @@ public sealed class InteractiveInput
         var selected = 0;
         var dropdownLines = 0;
         var inputRow = Console.CursorTop;
+        var inputLineCount = 1; // how many screen rows the input occupies
 
         RedrawAll();
 
@@ -53,6 +54,8 @@ public sealed class InteractiveInput
                 case ConsoleKey.Enter:
                     ClearDropdown();
                     RedrawInputLine(showGhost: false);
+                    // Move to end of wrapped input, then newline
+                    SetCursorToEnd();
                     Console.WriteLine();
                     var result = Str();
                     if (!string.IsNullOrWhiteSpace(result))
@@ -183,6 +186,16 @@ public sealed class InteractiveInput
 
         string Str() => new(buffer.ToArray());
 
+        int WindowWidth() => Math.Max(1, Console.WindowWidth);
+
+        // Calculate wrapped column and row for a given character offset
+        int WrapCol(int charOffset) => (PromptWidth + charOffset) % WindowWidth();
+        int WrapRow(int charOffset) => inputRow + (PromptWidth + charOffset) / WindowWidth();
+
+        // How many screen rows the full input (+ optional ghost text) occupies
+        int CalcInputLines(int totalChars) =>
+            Math.Max(1, (PromptWidth + totalChars - 1) / WindowWidth() + 1);
+
         void AcceptCompletion()
         {
             ClearDropdown();
@@ -242,11 +255,19 @@ public sealed class InteractiveInput
 
         void RedrawInputLine(bool showGhost)
         {
-            Console.SetCursorPosition(PromptWidth, inputRow);
+            var w = WindowWidth();
 
-            // Clear from prompt to end of visible line
-            var clearLen = Math.Max(0, Console.WindowWidth - PromptWidth - 1);
-            Console.Write(new string(' ', clearLen));
+            // Clear all rows the previous input occupied
+            for (var row = 0; row < inputLineCount; row++)
+            {
+                var r = inputRow + row;
+                if (r >= Console.BufferHeight) break;
+                Console.SetCursorPosition(row == 0 ? PromptWidth : 0, r);
+                var clearLen = row == 0 ? Math.Max(0, w - PromptWidth) : w;
+                if (clearLen > 0)
+                    Console.Write(new string(' ', clearLen));
+            }
+
             Console.SetCursorPosition(PromptWidth, inputRow);
 
             var text = Str();
@@ -263,16 +284,30 @@ public sealed class InteractiveInput
                 Console.Write(text);
             }
 
+            var totalChars = text.Length;
+
             // Ghost text for top completion
             if (showGhost && matches.Count > 0)
             {
                 var completion = matches[selected].Text;
                 if (completion.Length > text.Length)
                 {
+                    var ghost = completion[text.Length..];
                     Console.ForegroundColor = ConsoleColor.DarkGray;
-                    Console.Write(completion[text.Length..]);
+                    Console.Write(ghost);
                     Console.ResetColor();
+                    totalChars = completion.Length;
                 }
+            }
+
+            inputLineCount = CalcInputLines(totalChars);
+
+            // If wrapping pushed us near the bottom, adjust inputRow for scroll
+            var lastRow = WrapRow(totalChars > 0 ? totalChars - 1 : 0);
+            if (lastRow >= Console.BufferHeight)
+            {
+                var overflow = lastRow - Console.BufferHeight + 1;
+                inputRow -= overflow;
             }
         }
 
@@ -286,11 +321,11 @@ public sealed class InteractiveInput
             }
 
             var itemCount = Math.Min(matches.Count, MaxDropdownItems);
+            var dropdownStart = inputRow + inputLineCount;
 
-            // Ensure we have room below the input line.
-            // If near the bottom of the buffer, force scroll by writing newlines.
+            // Ensure we have room below the input.
             var windowHeight = Console.WindowHeight;
-            var available = windowHeight - 1 - inputRow;
+            var available = windowHeight - dropdownStart;
             if (available < itemCount)
             {
                 var scrollNeeded = itemCount - available;
@@ -298,11 +333,13 @@ public sealed class InteractiveInput
                 for (var i = 0; i < scrollNeeded; i++)
                     Console.WriteLine();
                 inputRow -= scrollNeeded;
+                dropdownStart = inputRow + inputLineCount;
             }
 
             for (var i = 0; i < itemCount; i++)
             {
-                var row = inputRow + 1 + i;
+                var row = dropdownStart + i;
+                if (row >= Console.BufferHeight) break;
                 Console.SetCursorPosition(1, row);
 
                 var item = matches[i];
@@ -332,10 +369,11 @@ public sealed class InteractiveInput
         {
             if (dropdownLines == 0) return;
 
+            var dropdownStart = inputRow + inputLineCount;
             for (var i = 0; i < dropdownLines; i++)
             {
-                var row = inputRow + 1 + i;
-                if (row < Console.WindowHeight)
+                var row = dropdownStart + i;
+                if (row < Console.BufferHeight)
                 {
                     Console.SetCursorPosition(0, row);
                     Console.Write(new string(' ', Console.WindowWidth - 1));
@@ -345,7 +383,24 @@ public sealed class InteractiveInput
             dropdownLines = 0;
         }
 
-        void SetCursorPos() =>
-            Console.SetCursorPosition(PromptWidth + cursor, inputRow);
+        void SetCursorPos()
+        {
+            var col = WrapCol(cursor);
+            var row = WrapRow(cursor);
+            // Clamp to valid buffer bounds
+            col = Math.Clamp(col, 0, Math.Max(0, Console.BufferWidth - 1));
+            row = Math.Clamp(row, 0, Math.Max(0, Console.BufferHeight - 1));
+            Console.SetCursorPosition(col, row);
+        }
+
+        void SetCursorToEnd()
+        {
+            var endOffset = buffer.Count;
+            var col = WrapCol(endOffset);
+            var row = WrapRow(endOffset);
+            col = Math.Clamp(col, 0, Math.Max(0, Console.BufferWidth - 1));
+            row = Math.Clamp(row, 0, Math.Max(0, Console.BufferHeight - 1));
+            Console.SetCursorPosition(col, row);
+        }
     }
 }
