@@ -14,6 +14,9 @@ using Spectre.Console;
 //  jdai — Semantic Kernel TUI Agent
 // ──────────────────────────────────────────────────────────
 
+// Parse CLI flags
+var skipPermissions = args.Contains("--dangerously-skip-permissions");
+
 AnsiConsole.MarkupLine("[dim]Detecting providers...[/]");
 
 // 1. Build provider registry with all detectors
@@ -63,6 +66,13 @@ var kernel = registry.BuildKernel(selectedModel);
 
 // 5. Create agent session
 var session = new AgentSession(registry, kernel, selectedModel);
+
+// Apply CLI flags
+if (skipPermissions)
+{
+    session.SkipPermissions = true;
+    ChatRenderer.RenderWarning("--dangerously-skip-permissions: ALL tool confirmations disabled.");
+}
 
 // 6. Register built-in tools
 kernel.Plugins.AddFromType<FileTools>("file");
@@ -164,6 +174,7 @@ completionProvider.Register("/clear", "Clear chat history");
 completionProvider.Register("/compact", "Force context compaction");
 completionProvider.Register("/cost", "Show token usage");
 completionProvider.Register("/autorun", "Toggle auto-approve for tools");
+completionProvider.Register("/permissions", "Toggle permission checks");
 completionProvider.Register("/quit", "Exit jdai");
 completionProvider.Register("/exit", "Exit jdai");
 var interactiveInput = new InteractiveInput(completionProvider);

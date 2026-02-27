@@ -50,7 +50,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         var tier = ToolTiers.GetValueOrDefault(functionName, SafetyTier.AlwaysConfirm);
 
         // Check if we need confirmation
-        var needsConfirm = !_session.AutoRunEnabled && tier switch
+        var needsConfirm = !_session.SkipPermissions && !_session.AutoRunEnabled && tier switch
         {
             SafetyTier.AutoApprove => false,
             SafetyTier.ConfirmOnce => !_confirmedOnce.Contains(functionName),
