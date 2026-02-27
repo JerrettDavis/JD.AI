@@ -16,6 +16,7 @@ public sealed class CompletionProviderTests
         provider.Register("/compact", "Force context compaction");
         provider.Register("/cost", "Show token usage");
         provider.Register("/autorun", "Toggle auto-approve");
+        provider.Register("/permissions", "Toggle permission checks");
         provider.Register("/quit", "Exit jdai");
         provider.Register("/exit", "Exit jdai");
         return provider;
@@ -40,15 +41,16 @@ public sealed class CompletionProviderTests
     {
         var provider = BuildProvider();
         var results = provider.GetCompletions("/");
-        Assert.Equal(11, results.Count);
+        Assert.Equal(12, results.Count);
     }
 
     [Fact]
-    public void GetCompletions_SlashP_ReturnsProviderAndProviders()
+    public void GetCompletions_SlashP_ReturnsPermissionsProviderAndProviders()
     {
         var provider = BuildProvider();
         var results = provider.GetCompletions("/p");
-        Assert.Equal(2, results.Count);
+        Assert.Equal(3, results.Count);
+        Assert.Contains(results, r => r.Text == "/permissions");
         Assert.Contains(results, r => r.Text == "/provider");
         Assert.Contains(results, r => r.Text == "/providers");
     }

@@ -27,6 +27,7 @@ public sealed class AgentSessionTests
         Assert.Equal("test-model", session.CurrentModel?.Id);
         Assert.Empty(session.History);
         Assert.False(session.AutoRunEnabled);
+        Assert.False(session.SkipPermissions);
         Assert.Equal(0, session.TotalTokens);
     }
 

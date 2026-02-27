@@ -226,4 +226,77 @@ public sealed class SlashCommandRouterTests
 
         Assert.Null(result);
     }
+
+    [Fact]
+    public async Task Permissions_TurnsOff()
+    {
+        Assert.False(_session.SkipPermissions);
+
+        var result = await _router.ExecuteAsync("/permissions off");
+
+        Assert.NotNull(result);
+        Assert.True(_session.SkipPermissions);
+        Assert.Contains("DISABLED", result);
+    }
+
+    [Fact]
+    public async Task Permissions_TurnsOn()
+    {
+        _session.SkipPermissions = true;
+
+        var result = await _router.ExecuteAsync("/permissions on");
+
+        Assert.NotNull(result);
+        Assert.False(_session.SkipPermissions);
+        Assert.Contains("enabled", result);
+    }
+
+    [Fact]
+    public async Task Permissions_AcceptsFalseAlias()
+    {
+        var result = await _router.ExecuteAsync("/permissions false");
+
+        Assert.NotNull(result);
+        Assert.True(_session.SkipPermissions);
+    }
+
+    [Fact]
+    public async Task Permissions_AcceptsTrueAlias()
+    {
+        _session.SkipPermissions = true;
+
+        var result = await _router.ExecuteAsync("/permissions true");
+
+        Assert.NotNull(result);
+        Assert.False(_session.SkipPermissions);
+    }
+
+    [Fact]
+    public async Task Permissions_ShowsCurrentState()
+    {
+        var result = await _router.ExecuteAsync("/permissions");
+
+        Assert.NotNull(result);
+        Assert.Contains("ON", result);
+    }
+
+    [Fact]
+    public async Task Permissions_ShowsOffState()
+    {
+        _session.SkipPermissions = true;
+
+        var result = await _router.ExecuteAsync("/permissions");
+
+        Assert.NotNull(result);
+        Assert.Contains("OFF", result);
+    }
+
+    [Fact]
+    public async Task Help_IncludesPermissionsCommand()
+    {
+        var result = await _router.ExecuteAsync("/help");
+
+        Assert.NotNull(result);
+        Assert.Contains("/permissions", result);
+    }
 }

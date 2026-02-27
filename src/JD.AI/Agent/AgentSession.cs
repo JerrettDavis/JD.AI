@@ -26,6 +26,12 @@ public sealed class AgentSession
     public ChatHistory History { get; } = new();
     public ProviderModelInfo? CurrentModel { get; private set; }
     public bool AutoRunEnabled { get; set; }
+
+    /// <summary>
+    /// When true, ALL tool confirmations are bypassed — no safety prompts at all.
+    /// Set via --dangerously-skip-permissions or /permissions off.
+    /// </summary>
+    public bool SkipPermissions { get; set; }
     public long TotalTokens { get; set; }
 
     public Kernel Kernel => _kernel;

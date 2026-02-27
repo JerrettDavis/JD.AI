@@ -37,6 +37,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/COMPACT" => await CompactAsync(ct).ConfigureAwait(false),
             "/COST" => GetCost(),
             "/AUTORUN" => ToggleAutoRun(arg),
+            "/PERMISSIONS" => TogglePermissions(arg),
             "/QUIT" or "/EXIT" => null, // Signal exit
             _ => $"Unknown command: {parts[0]}. Type /help for available commands.",
         };
@@ -44,16 +45,17 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
     private static string GetHelp() => """
         Available commands:
-          /help        — Show this help
-          /models      — List available models
-          /model <id>  — Switch to a model
-          /providers   — List detected providers
-          /provider    — Show current provider
-          /clear       — Clear chat history
-          /compact     — Force context compaction
-          /cost        — Show token usage
-          /autorun     — Toggle auto-approve for tools
-          /quit        — Exit jdai
+          /help          — Show this help
+          /models        — List available models
+          /model <id>    — Switch to a model
+          /providers     — List detected providers
+          /provider      — Show current provider
+          /clear         — Clear chat history
+          /compact       — Force context compaction
+          /cost          — Show token usage
+          /autorun       — Toggle auto-approve for tools
+          /permissions   — Toggle permission checks (off = skip all)
+          /quit          — Exit jdai
         """;
 
     private async Task<string> ListModelsAsync(CancellationToken ct)
@@ -144,5 +146,24 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         }
 
         return $"Auto-run is {(_session.AutoRunEnabled ? "on" : "off")}. Usage: /autorun [on|off]";
+    }
+
+    private string TogglePermissions(string? arg)
+    {
+        if (string.Equals(arg, "off", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(arg, "false", StringComparison.OrdinalIgnoreCase))
+        {
+            _session.SkipPermissions = true;
+            return "⚠ Permission checks DISABLED — all tools will run without confirmation.";
+        }
+
+        if (string.Equals(arg, "on", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(arg, "true", StringComparison.OrdinalIgnoreCase))
+        {
+            _session.SkipPermissions = false;
+            return "Permission checks enabled — safety tiers apply.";
+        }
+
+        return $"Permission checks are {(_session.SkipPermissions ? "OFF (all skipped)" : "ON")}. Usage: /permissions [on|off]";
     }
 }
