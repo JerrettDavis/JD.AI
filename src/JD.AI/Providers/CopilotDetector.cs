@@ -2,11 +2,13 @@ using JD.SemanticKernel.Connectors.GitHubCopilot;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.SemanticKernel;
+using Spectre.Console;
 
 namespace JD.AI.Tui.Providers;
 
 /// <summary>
 /// Detects a local GitHub Copilot session and enumerates its models.
+/// When authentication fails, attempts a silent refresh via the <c>gh</c> CLI.
 /// </summary>
 public sealed class CopilotDetector : IProviderDetector
 {
@@ -24,11 +26,27 @@ public sealed class CopilotDetector : IProviderDetector
 
             if (!isAuth)
             {
-                return new ProviderInfo(
-                    ProviderName,
-                    IsAvailable: false,
-                    StatusMessage: "Not authenticated",
-                    Models: []);
+                // Token exchange may have failed — try refreshing via gh CLI
+                var refreshed = await TryRefreshAuthAsync(ct).ConfigureAwait(false);
+                if (refreshed)
+                {
+                    // Re-create provider to pick up refreshed credentials
+                    provider.Dispose();
+                    provider = new CopilotSessionProvider(
+                        Options.Create(new CopilotSessionOptions()),
+                        NullLogger<CopilotSessionProvider>.Instance);
+                    isAuth = await provider.IsAuthenticatedAsync(ct).ConfigureAwait(false);
+                }
+
+                if (!isAuth)
+                {
+                    provider.Dispose();
+                    return new ProviderInfo(
+                        ProviderName,
+                        IsAvailable: false,
+                        StatusMessage: "Not authenticated — run 'gh auth login' to sign in",
+                        Models: []);
+                }
             }
 
             // Try model discovery; fall back to well-known models
@@ -55,6 +73,8 @@ public sealed class CopilotDetector : IProviderDetector
                 });
             }
 
+            provider.Dispose();
+
             return new ProviderInfo(
                 ProviderName,
                 IsAvailable: true,
@@ -76,5 +96,40 @@ public sealed class CopilotDetector : IProviderDetector
         var builder = Kernel.CreateBuilder();
         builder.UseCopilotChatCompletion(modelId: model.Id);
         return builder.Build();
+    }
+
+    /// <summary>
+    /// Attempts to refresh GitHub auth by invoking <c>gh auth status</c>.
+    /// This triggers token validation and may refresh expired tokens
+    /// when the underlying OAuth grant is still valid.
+    /// </summary>
+    private static async Task<bool> TryRefreshAuthAsync(CancellationToken ct)
+    {
+        try
+        {
+            var ghPath = ClaudeCodeDetector.FindCli("gh");
+            if (ghPath is null) return false;
+
+            AnsiConsole.MarkupLine("[dim]  ↻ Attempting GitHub Copilot auth refresh...[/]");
+
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = ghPath,
+                Arguments = "auth status",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+
+            using var proc = System.Diagnostics.Process.Start(psi);
+            if (proc is null) return false;
+
+            await proc.WaitForExitAsync(ct).ConfigureAwait(false);
+            return proc.ExitCode == 0;
+        }
+#pragma warning disable CA1031 // best-effort refresh
+        catch { return false; }
+#pragma warning restore CA1031
     }
 }
