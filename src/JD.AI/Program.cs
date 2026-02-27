@@ -44,7 +44,7 @@ else
         new SelectionPrompt<ProviderModelInfo>()
             .Title("Select a model:")
             .PageSize(15)
-            .UseConverter(m => $"[{m.ProviderName}] {m.DisplayName}")
+            .UseConverter(m => Markup.Escape($"[{m.ProviderName}] {m.DisplayName}"))
             .AddChoices(allModels));
 }
 
