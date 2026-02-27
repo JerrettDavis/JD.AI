@@ -125,12 +125,12 @@ public sealed class SearchTools
         // Convert glob to regex
         var regexPattern = "^" + Regex.Escape(pattern)
             .Replace(@"\*\*", ".*")
-            .Replace(@"\*", "[^/\\\\]*")
+            .Replace(@"\*", "[^/]*")
             .Replace(@"\?", ".") + "$";
 
         return Regex.IsMatch(
             path.Replace('\\', '/'),
-            regexPattern.Replace('\\', '/'),
+            regexPattern,
             RegexOptions.IgnoreCase);
     }
 
