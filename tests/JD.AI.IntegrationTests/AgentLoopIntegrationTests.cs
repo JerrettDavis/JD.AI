@@ -71,7 +71,7 @@ public sealed class AgentLoopIntegrationTests
 
         // Create a temp file
         var tempFile = Path.GetTempFileName();
-        File.WriteAllText(tempFile, "integration test content");
+        await File.WriteAllTextAsync(tempFile, "integration test content");
         try
         {
             var response = await loop.RunTurnAsync($"Read the file at {tempFile} and tell me what it says.");

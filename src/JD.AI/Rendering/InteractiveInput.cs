@@ -17,7 +17,7 @@ public sealed class InteractiveInput
     private static readonly TimeSpan EscapeDoubleWindow = TimeSpan.FromMilliseconds(1500);
 
     /// <summary>Fires when the user double-taps ESC at an empty prompt.</summary>
-    public event Action? OnDoubleEscape;
+    public event EventHandler? OnDoubleEscape;
 
     public InteractiveInput(CompletionProvider completions)
     {
@@ -76,7 +76,7 @@ public sealed class InteractiveInput
                         if (now - _lastEscapeTime <= EscapeDoubleWindow)
                         {
                             _lastEscapeTime = DateTime.MinValue;
-                            OnDoubleEscape?.Invoke();
+                            OnDoubleEscape?.Invoke(this, EventArgs.Empty);
                         }
                         else
                         {

@@ -18,7 +18,8 @@ public sealed class SessionInfo
     public long TotalTokens { get; set; }
     public int MessageCount { get; set; }
     public bool IsActive { get; set; } = true;
-    public Collection<TurnRecord> Turns { get; init; } = [];
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "MA0016:Prefer using collection abstraction instead of implementation", Justification = "POCO for serialization")]
+    public Collection<TurnRecord> Turns { get; init; } = new Collection<TurnRecord>();
 }
 
 /// <summary>
@@ -38,8 +39,10 @@ public sealed class TurnRecord
     public long TokensOut { get; set; }
     public long DurationMs { get; set; }
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
-    public Collection<ToolCallRecord> ToolCalls { get; init; } = [];
-    public Collection<FileTouchRecord> FilesTouched { get; init; } = [];
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "MA0016:Prefer using collection abstraction instead of implementation", Justification = "POCO for serialization")]
+    public Collection<ToolCallRecord> ToolCalls { get; init; } = new Collection<ToolCallRecord>();
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "MA0016:Prefer using collection abstraction instead of implementation", Justification = "POCO for serialization")]
+    public Collection<FileTouchRecord> FilesTouched { get; init; } = new Collection<FileTouchRecord>();
 }
 
 /// <summary>

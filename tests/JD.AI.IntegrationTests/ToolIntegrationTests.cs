@@ -85,7 +85,7 @@ public sealed class ToolIntegrationTests : IDisposable
     {
         TuiIntegrationGuard.EnsureEnabled();
 
-        var cmd = OperatingSystem.IsWindows() ? "echo integration-test" : "echo integration-test";
+        var cmd = "echo integration-test";
         var result = await ShellTools.RunCommandAsync(cmd, cwd: _tempDir);
 
         Assert.Contains("Exit code: 0", result);
@@ -103,7 +103,7 @@ public sealed class ToolIntegrationTests : IDisposable
         await ShellTools.RunCommandAsync("git config user.name Test", cwd: _tempDir);
 
         // Create and commit a file
-        File.WriteAllText(Path.Combine(_tempDir, "test.txt"), "initial");
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, "test.txt"), "initial");
         await GitTools.GitCommitAsync("initial commit", _tempDir);
 
         // Verify log
@@ -111,7 +111,7 @@ public sealed class ToolIntegrationTests : IDisposable
         Assert.Contains("initial commit", log);
 
         // Modify and check status
-        File.WriteAllText(Path.Combine(_tempDir, "test.txt"), "modified");
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, "test.txt"), "modified");
         var status = await GitTools.GitStatusAsync(_tempDir);
         Assert.Contains("test.txt", status);
 

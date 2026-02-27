@@ -203,7 +203,7 @@ completionProvider.Register("/exit", "Exit jdai");
 var interactiveInput = new InteractiveInput(completionProvider);
 
 // Hook double-ESC at empty prompt → open history viewer
-interactiveInput.OnDoubleEscape += () =>
+interactiveInput.OnDoubleEscape += (sender, e) =>
 {
     if (session.SessionInfo is { } si && si.Turns.Count > 0)
     {

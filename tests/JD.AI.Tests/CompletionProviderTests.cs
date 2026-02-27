@@ -55,9 +55,9 @@ public sealed class CompletionProviderTests
         var provider = BuildProvider();
         var results = provider.GetCompletions("/p");
         Assert.Equal(3, results.Count);
-        Assert.Contains(results, r => r.Text == "/permissions");
-        Assert.Contains(results, r => r.Text == "/provider");
-        Assert.Contains(results, r => r.Text == "/providers");
+        Assert.Contains(results, r => string.Equals(r.Text, "/permissions", StringComparison.Ordinal));
+        Assert.Contains(results, r => string.Equals(r.Text, "/provider", StringComparison.Ordinal));
+        Assert.Contains(results, r => string.Equals(r.Text, "/providers", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -66,8 +66,8 @@ public sealed class CompletionProviderTests
         var provider = BuildProvider();
         var results = provider.GetCompletions("/mo");
         Assert.Equal(2, results.Count);
-        Assert.Contains(results, r => r.Text == "/model");
-        Assert.Contains(results, r => r.Text == "/models");
+        Assert.Contains(results, r => string.Equals(r.Text, "/model", StringComparison.Ordinal));
+        Assert.Contains(results, r => string.Equals(r.Text, "/models", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -84,8 +84,8 @@ public sealed class CompletionProviderTests
         var provider = BuildProvider();
         var results = provider.GetCompletions("/H");
         Assert.Equal(2, results.Count);
-        Assert.Contains(results, r => r.Text == "/help");
-        Assert.Contains(results, r => r.Text == "/history");
+        Assert.Contains(results, r => string.Equals(r.Text, "/help", StringComparison.Ordinal));
+        Assert.Contains(results, r => string.Equals(r.Text, "/history", StringComparison.Ordinal));
     }
 
     [Fact]

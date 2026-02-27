@@ -3,14 +3,18 @@ using System.Collections.ObjectModel;
 namespace JD.AI.Tui.Persistence;
 
 /// <summary>
+/// Result of an integrity check across SQLite store and JSON exports.
+/// </summary>
+public sealed record IntegrityResult(
+    int SessionsChecked,
+    int MismatchesFound,
+    ReadOnlyCollection<string> Issues);
+
+/// <summary>
 /// Cross-checks SQLite store ↔ JSON exports and repairs inconsistencies.
 /// </summary>
 public static class SessionIntegrity
 {
-    public sealed record IntegrityResult(
-        int SessionsChecked,
-        int MismatchesFound,
-        ReadOnlyCollection<string> Issues);
 
     /// <summary>
     /// Check all sessions in the store against their JSON exports.

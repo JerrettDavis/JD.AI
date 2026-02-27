@@ -64,7 +64,7 @@ public sealed class GitToolsTests : IDisposable
     [Fact]
     public async Task GitStatus_ShowsModifiedFiles()
     {
-        File.WriteAllText(Path.Combine(_tempDir, "initial.txt"), "modified");
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, "initial.txt"), "modified");
 
         var result = await GitTools.GitStatusAsync(_tempDir);
 
@@ -74,7 +74,7 @@ public sealed class GitToolsTests : IDisposable
     [Fact]
     public async Task GitStatus_ShowsUntrackedFiles()
     {
-        File.WriteAllText(Path.Combine(_tempDir, "new.txt"), "new");
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, "new.txt"), "new");
 
         var result = await GitTools.GitStatusAsync(_tempDir);
 
@@ -84,7 +84,7 @@ public sealed class GitToolsTests : IDisposable
     [Fact]
     public async Task GitDiff_ShowsUnstagedChanges()
     {
-        File.WriteAllText(Path.Combine(_tempDir, "initial.txt"), "modified content");
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, "initial.txt"), "modified content");
 
         var result = await GitTools.GitDiffAsync(path: _tempDir);
 
@@ -94,7 +94,7 @@ public sealed class GitToolsTests : IDisposable
     [Fact]
     public async Task GitDiff_ShowsStagedChanges()
     {
-        File.WriteAllText(Path.Combine(_tempDir, "initial.txt"), "staged content");
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, "initial.txt"), "staged content");
         RunGit("add -A");
 
         var result = await GitTools.GitDiffAsync(target: "--staged", path: _tempDir);
@@ -113,7 +113,7 @@ public sealed class GitToolsTests : IDisposable
     [Fact]
     public async Task GitCommit_StagesAndCommits()
     {
-        File.WriteAllText(Path.Combine(_tempDir, "new.txt"), "new file");
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, "new.txt"), "new file");
 
         var result = await GitTools.GitCommitAsync("test commit", _tempDir);
 

@@ -244,7 +244,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
         var lines = turns.Select(t =>
         {
-            var role = t.Role == "user" ? "👤" : "🤖";
+            var role = string.Equals(t.Role, "user", StringComparison.Ordinal) ? "👤" : "🤖";
             var preview = (t.Content ?? "").Replace('\n', ' ');
             if (preview.Length > 80)
                 preview = string.Concat(preview.AsSpan(0, 77), "...");
