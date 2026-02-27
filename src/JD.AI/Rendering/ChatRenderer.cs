@@ -130,4 +130,25 @@ public static class ChatRenderer
     {
         return AnsiConsole.Confirm($"[yellow]{Markup.Escape(message)}[/]");
     }
+
+    // ── Streaming rendering ────────────────────────────────
+
+    /// <summary>Begin an assistant streaming block.</summary>
+    public static void BeginStreaming()
+    {
+        AnsiConsole.Markup("[bold magenta]◆[/] ");
+    }
+
+    /// <summary>Write a streaming text chunk (raw, inline).</summary>
+    public static void WriteStreamingChunk(string text)
+    {
+        Console.Write(text);
+    }
+
+    /// <summary>End the streaming block.</summary>
+    public static void EndStreaming()
+    {
+        Console.WriteLine();
+        AnsiConsole.WriteLine();
+    }
 }

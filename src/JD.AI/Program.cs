@@ -226,24 +226,32 @@ while (!cts.IsCancellationRequested)
         continue;
     }
 
-    // Regular chat message → agent loop
+    // Regular chat message → streaming agent loop with steering
     ChatRenderer.RenderUserMessage(input);
+    string? currentMessage = input;
 
-    using var escapeMonitor = new EscapeCancellation(cts.Token);
-
-    try
+    while (currentMessage != null && !cts.IsCancellationRequested)
     {
-        var response = await agentLoop
-            .RunTurnAsync(input, escapeMonitor.Token)
-            .ConfigureAwait(false);
+        using var turnMonitor = new TurnInputMonitor(cts.Token);
 
-        ChatRenderer.RenderAssistantMessage(response);
-    }
-    catch (OperationCanceledException) when (!cts.IsCancellationRequested)
-    {
-        // ESC cancelled this turn only — not the whole app
-        ChatRenderer.RenderWarning("Turn cancelled.");
-        continue;
+        try
+        {
+            await agentLoop
+                .RunTurnStreamingAsync(currentMessage, turnMonitor.Token)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cts.IsCancellationRequested)
+        {
+            ChatRenderer.RenderWarning("Turn cancelled.");
+            break;
+        }
+
+        // Check for queued steering message
+        currentMessage = turnMonitor.SteeringMessage;
+        if (currentMessage != null)
+        {
+            ChatRenderer.RenderUserMessage(currentMessage);
+        }
     }
 
     // Auto-compaction check
