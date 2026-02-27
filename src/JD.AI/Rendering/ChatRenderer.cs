@@ -135,7 +135,28 @@ public static class ChatRenderer
     /// <summary>Ask the user for confirmation.</summary>
     public static bool Confirm(string message)
     {
-        return AnsiConsole.Confirm($"[yellow]{Markup.Escape(message)}[/]");
+        AnsiConsole.Markup($"[yellow]{Markup.Escape(message)}[/] [dim]([green]y[/]/[red]n[/])[/] [dim](y)[/]: ");
+
+        while (true)
+        {
+            var key = Console.ReadKey(intercept: true);
+            switch (key.Key)
+            {
+                case ConsoleKey.Y:
+                case ConsoleKey.Enter:
+                    AnsiConsole.MarkupLine("[green]y[/]");
+                    return true;
+
+                case ConsoleKey.N:
+                case ConsoleKey.Escape:
+                    AnsiConsole.MarkupLine("[red]n[/]");
+                    return false;
+
+                default:
+                    // ignore other keys
+                    break;
+            }
+        }
     }
 
     // ── Streaming rendering ────────────────────────────────
