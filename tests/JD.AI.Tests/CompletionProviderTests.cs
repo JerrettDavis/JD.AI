@@ -23,6 +23,9 @@ public sealed class CompletionProviderTests
         provider.Register("/history", "Show session turn history");
         provider.Register("/export", "Export current session to JSON");
         provider.Register("/update", "Check for and apply updates");
+        provider.Register("/instructions", "Show loaded project instructions");
+        provider.Register("/checkpoint", "List, restore, or clear checkpoints");
+        provider.Register("/sandbox", "Show or change sandbox mode");
         provider.Register("/quit", "Exit jdai");
         provider.Register("/exit", "Exit jdai");
         return provider;
@@ -47,7 +50,7 @@ public sealed class CompletionProviderTests
     {
         var provider = BuildProvider();
         var results = provider.GetCompletions("/");
-        Assert.Equal(18, results.Count);
+        Assert.Equal(21, results.Count);
     }
 
     [Fact]
@@ -125,12 +128,12 @@ public sealed class CompletionProviderTests
     }
 
     [Fact]
-    public void GetCompletions_SlashC_Returns3Items()
+    public void GetCompletions_SlashC_Returns4Items()
     {
         var provider = BuildProvider();
         var results = provider.GetCompletions("/c");
-        // /clear, /compact, /cost
-        Assert.Equal(3, results.Count);
+        // /clear, /compact, /cost, /checkpoint
+        Assert.Equal(4, results.Count);
     }
 
     [Fact]

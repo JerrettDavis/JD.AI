@@ -1,5 +1,6 @@
 using JD.AI.Tui;
 using JD.AI.Tui.Agent;
+using JD.AI.Tui.Agent.Checkpointing;
 using JD.AI.Tui.Commands;
 using JD.AI.Tui.Providers;
 using JD.AI.Tui.Rendering;
@@ -167,11 +168,30 @@ foreach (var dir in pluginDirs.Where(Directory.Exists))
 // 8. Add tool confirmation filter
 kernel.AutoFunctionInvocationFilters.Add(new ToolConfirmationFilter(session));
 
+// 8b. Load project instructions (JDAI.md, CLAUDE.md, AGENTS.md, etc.)
+var instructions = InstructionsLoader.Load();
+if (instructions.HasInstructions)
+{
+    ChatRenderer.RenderInfo($"  Loaded {instructions.Files.Count} instruction file(s)");
+}
+
+// 8c. Set up subagent runner and register tools
+var subagentRunner = new SubagentRunner(session);
+kernel.ImportPluginFromObject(new SubagentTools(subagentRunner), "SubagentTools");
+
+// 8d. Set up checkpoint strategy (stash if git repo, directory otherwise)
+ICheckpointStrategy checkpointStrategy = Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), ".git"))
+    ? new StashCheckpointStrategy()
+    : new DirectoryCheckpointStrategy();
+
+// 8e. Register web search tools
+kernel.ImportPluginFromObject(new WebSearchTools(), "WebSearchTools");
+
 // 9. Add system prompt
-session.History.AddSystemMessage("""
+var systemPrompt = """
     You are jdai, a helpful AI coding assistant running in a terminal.
     You have access to tools for file operations, code search, shell commands,
-    git operations, web fetching, and semantic memory.
+    git operations, web fetching, web search, semantic memory, and subagents.
 
     When helping with code tasks:
     - Read relevant files before making changes
@@ -179,12 +199,21 @@ session.History.AddSystemMessage("""
     - Make minimal, surgical edits
     - Verify changes with builds/tests when appropriate
     - Store important decisions and facts in memory for future recall
+    - Use subagents for specialized work (explore for analysis, task for commands, plan for planning, review for code review)
 
     Be concise and direct. Use tools proactively when they'll help answer the question.
-    """);
+    """;
+
+// Append project instructions if found
+if (instructions.HasInstructions)
+{
+    systemPrompt += "\n\n" + instructions.ToSystemPrompt();
+}
+
+session.History.AddSystemMessage(systemPrompt);
 
 // 9. Set up slash commands
-var commandRouter = new SlashCommandRouter(session, registry);
+var commandRouter = new SlashCommandRouter(session, registry, instructions, checkpointStrategy);
 
 // 10. Build interactive input with command completions
 var completionProvider = new CompletionProvider();
@@ -204,6 +233,9 @@ completionProvider.Register("/name", "Name the current session");
 completionProvider.Register("/history", "Show session turn history");
 completionProvider.Register("/export", "Export current session to JSON");
 completionProvider.Register("/update", "Check for and apply updates");
+completionProvider.Register("/instructions", "Show loaded project instructions");
+completionProvider.Register("/checkpoint", "List, restore, or clear checkpoints");
+completionProvider.Register("/sandbox", "Show or change sandbox mode");
 completionProvider.Register("/quit", "Exit jdai");
 completionProvider.Register("/exit", "Exit jdai");
 var interactiveInput = new InteractiveInput(completionProvider);
@@ -223,7 +255,7 @@ interactiveInput.OnDoubleEscape += (sender, e) =>
 
             // Rebuild chat history
             session.History.Clear();
-            session.History.AddSystemMessage("You are jdai, a helpful AI coding assistant running in a terminal.");
+            session.History.AddSystemMessage(systemPrompt);
             foreach (var t in si.Turns)
             {
                 if (string.Equals(t.Role, "user", StringComparison.Ordinal))

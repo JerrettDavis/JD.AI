@@ -1,4 +1,5 @@
 using JD.AI.Tui.Agent;
+using JD.AI.Tui.Agent.Checkpointing;
 using JD.AI.Tui.Persistence;
 using JD.AI.Tui.Providers;
 
@@ -11,11 +12,19 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 {
     private readonly AgentSession _session;
     private readonly IProviderRegistry _registry;
+    private readonly InstructionsResult? _instructions;
+    private readonly ICheckpointStrategy? _checkpointStrategy;
 
-    public SlashCommandRouter(AgentSession session, IProviderRegistry registry)
+    public SlashCommandRouter(
+        AgentSession session,
+        IProviderRegistry registry,
+        InstructionsResult? instructions = null,
+        ICheckpointStrategy? checkpointStrategy = null)
     {
         _session = session;
         _registry = registry;
+        _instructions = instructions;
+        _checkpointStrategy = checkpointStrategy;
     }
 
     public bool IsSlashCommand(string input) =>
@@ -45,6 +54,9 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/HISTORY" => ShowHistory(),
             "/EXPORT" => await ExportSessionAsync(ct).ConfigureAwait(false),
             "/UPDATE" => await CheckUpdateAsync(ct).ConfigureAwait(false),
+            "/INSTRUCTIONS" => ShowInstructions(),
+            "/CHECKPOINT" => await HandleCheckpointAsync(arg, ct).ConfigureAwait(false),
+            "/SANDBOX" => ShowSandboxInfo(),
             "/QUIT" or "/EXIT" => null, // Signal exit
             _ => $"Unknown command: {parts[0]}. Type /help for available commands.",
         };
@@ -52,23 +64,26 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
     private static string GetHelp() => """
         Available commands:
-          /help          — Show this help
-          /models        — List available models
-          /model <id>    — Switch to a model
-          /providers     — List detected providers
-          /provider      — Show current provider
-          /clear         — Clear chat history
-          /compact       — Force context compaction
-          /cost          — Show token usage
-          /autorun       — Toggle auto-approve for tools
-          /permissions   — Toggle permission checks (off = skip all)
-          /sessions      — List recent sessions
-          /resume [id]   — Resume a previous session
-          /name <name>   — Name the current session
-          /history       — Show session turn history
-          /export        — Export current session to JSON
-          /update        — Check for and apply updates
-          /quit          — Exit jdai
+          /help           — Show this help
+          /models         — List available models
+          /model <id>     — Switch to a model
+          /providers      — List detected providers
+          /provider       — Show current provider
+          /clear          — Clear chat history
+          /compact        — Force context compaction
+          /cost           — Show token usage
+          /autorun        — Toggle auto-approve for tools
+          /permissions    — Toggle permission checks (off = skip all)
+          /sessions       — List recent sessions
+          /resume [id]    — Resume a previous session
+          /name <name>    — Name the current session
+          /history        — Show session turn history
+          /export         — Export current session to JSON
+          /update         — Check for and apply updates
+          /instructions   — Show loaded project instructions
+          /checkpoint     — List, restore, or clear checkpoints
+          /sandbox        — Show sandbox mode info
+          /quit           — Exit jdai
         """;
 
     private async Task<string> ListModelsAsync(CancellationToken ct)
@@ -279,4 +294,61 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             ? "Update applied. Please restart jdai."
             : $"Update available: {info.CurrentVersion} → {info.LatestVersion}";
     }
+
+    // ── New Phase commands ─────────────────────────────────
+
+    private string ShowInstructions() =>
+        _instructions?.ToSummary() ?? "No project instructions loaded.";
+
+    private async Task<string> HandleCheckpointAsync(string? arg, CancellationToken ct)
+    {
+        if (_checkpointStrategy == null)
+            return "Checkpointing not configured.";
+
+        var subCmd = arg?.Trim().Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var action = subCmd is { Length: > 0 } ? subCmd[0].ToUpperInvariant() : "LIST";
+        var param = subCmd is { Length: > 1 } ? subCmd[1] : null;
+
+        return action switch
+        {
+            "LIST" or "" => await ListCheckpointsAsync(ct).ConfigureAwait(false),
+            "RESTORE" when param != null => await RestoreCheckpointAsync(param, ct).ConfigureAwait(false),
+            "RESTORE" => "Usage: /checkpoint restore <id>",
+            "CLEAR" => await ClearCheckpointsAsync(ct).ConfigureAwait(false),
+            "CREATE" => await CreateCheckpointAsync(param ?? "manual", ct).ConfigureAwait(false),
+            _ => "Usage: /checkpoint [list|create|restore <id>|clear]",
+        };
+    }
+
+    private async Task<string> ListCheckpointsAsync(CancellationToken ct)
+    {
+        var checkpoints = await _checkpointStrategy!.ListAsync(ct).ConfigureAwait(false);
+        if (checkpoints.Count == 0)
+            return "No checkpoints found.";
+
+        var lines = checkpoints.Select(c => $"  {c.Id} — {c.Label} ({c.CreatedAt:g})");
+        return $"Checkpoints:\n{string.Join('\n', lines)}";
+    }
+
+    private async Task<string> RestoreCheckpointAsync(string id, CancellationToken ct)
+    {
+        var success = await _checkpointStrategy!.RestoreAsync(id, ct).ConfigureAwait(false);
+        return success ? $"Restored checkpoint: {id}" : $"Failed to restore checkpoint '{id}'.";
+    }
+
+    private async Task<string> ClearCheckpointsAsync(CancellationToken ct)
+    {
+        await _checkpointStrategy!.ClearAsync(ct).ConfigureAwait(false);
+        return "All checkpoints cleared.";
+    }
+
+    private async Task<string> CreateCheckpointAsync(string label, CancellationToken ct)
+    {
+        var id = await _checkpointStrategy!.CreateAsync(label, ct).ConfigureAwait(false);
+        return id != null ? $"Checkpoint created: {id}" : "Nothing to checkpoint (no changes).";
+    }
+
+    private static string ShowSandboxInfo() =>
+        $"Sandbox modes: none (default), restricted, container.\n" +
+        $"Configure via JDAI.md: `sandbox: restricted`";
 }
