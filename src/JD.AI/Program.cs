@@ -202,6 +202,34 @@ completionProvider.Register("/quit", "Exit jdai");
 completionProvider.Register("/exit", "Exit jdai");
 var interactiveInput = new InteractiveInput(completionProvider);
 
+// Hook double-ESC at empty prompt → open history viewer
+interactiveInput.OnDoubleEscape += () =>
+{
+    if (session.SessionInfo is { } si && si.Turns.Count > 0)
+    {
+        var rollbackIndex = HistoryViewer.Show(si);
+        if (rollbackIndex is { } idx && session.Store != null)
+        {
+            session.Store.DeleteTurnsAfterAsync(si.Id, idx).GetAwaiter().GetResult();
+            // Remove from in-memory turns too
+            while (si.Turns.Count > idx + 1)
+                si.Turns.RemoveAt(si.Turns.Count - 1);
+
+            // Rebuild chat history
+            session.History.Clear();
+            session.History.AddSystemMessage("You are jdai, a helpful AI coding assistant running in a terminal.");
+            foreach (var t in si.Turns)
+            {
+                if (string.Equals(t.Role, "user", StringComparison.Ordinal))
+                    session.History.AddUserMessage(t.Content ?? string.Empty);
+                else if (string.Equals(t.Role, "assistant", StringComparison.Ordinal))
+                    session.History.AddAssistantMessage(t.Content ?? string.Empty);
+            }
+            ChatRenderer.RenderInfo($"Rolled back to turn {idx}. Context restored.");
+        }
+    }
+};
+
 // 11. Render welcome banner
 ChatRenderer.RenderBanner(
     selectedModel.DisplayName,

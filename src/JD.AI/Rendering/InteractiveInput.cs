@@ -10,9 +10,14 @@ public sealed class InteractiveInput
     private readonly CompletionProvider _completions;
     private readonly List<string> _history = [];
     private int _historyIndex = -1;
+    private DateTime _lastEscapeTime = DateTime.MinValue;
 
     private const int PromptWidth = 2; // "> " prefix
     private const int MaxDropdownItems = 8;
+    private static readonly TimeSpan EscapeDoubleWindow = TimeSpan.FromMilliseconds(1500);
+
+    /// <summary>Fires when the user double-taps ESC at an empty prompt.</summary>
+    public event Action? OnDoubleEscape;
 
     public InteractiveInput(CompletionProvider completions)
     {
@@ -61,7 +66,27 @@ public sealed class InteractiveInput
                     return null;
 
                 case ConsoleKey.Escape:
-                    DismissCompletions();
+                    if (matches.Count > 0)
+                    {
+                        DismissCompletions();
+                    }
+                    else if (buffer.Count == 0)
+                    {
+                        var now = DateTime.UtcNow;
+                        if (now - _lastEscapeTime <= EscapeDoubleWindow)
+                        {
+                            _lastEscapeTime = DateTime.MinValue;
+                            OnDoubleEscape?.Invoke();
+                        }
+                        else
+                        {
+                            _lastEscapeTime = now;
+                        }
+                    }
+                    else
+                    {
+                        DismissCompletions();
+                    }
                     break;
 
                 case ConsoleKey.Tab:
