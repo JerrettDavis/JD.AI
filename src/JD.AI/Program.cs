@@ -229,11 +229,22 @@ while (!cts.IsCancellationRequested)
     // Regular chat message → agent loop
     ChatRenderer.RenderUserMessage(input);
 
-    var response = await agentLoop
-        .RunTurnAsync(input, cts.Token)
-        .ConfigureAwait(false);
+    using var escapeMonitor = new EscapeCancellation(cts.Token);
 
-    ChatRenderer.RenderAssistantMessage(response);
+    try
+    {
+        var response = await agentLoop
+            .RunTurnAsync(input, escapeMonitor.Token)
+            .ConfigureAwait(false);
+
+        ChatRenderer.RenderAssistantMessage(response);
+    }
+    catch (OperationCanceledException) when (!cts.IsCancellationRequested)
+    {
+        // ESC cancelled this turn only — not the whole app
+        ChatRenderer.RenderWarning("Turn cancelled.");
+        continue;
+    }
 
     // Auto-compaction check
     var estimatedTokens = TokenEstimator.EstimateTokens(session.History);
