@@ -36,8 +36,8 @@ public sealed class StreamingContentParser
     private readonly StringBuilder _tagBuffer = new();
     private readonly List<StreamSegment> _segments = new(8);
 
-    private static readonly string s_openTag = "<think>";
-    private static readonly string s_closeTag = "</think>";
+    private const string OpenTag = "<think>";
+    private const string CloseTag = "</think>";
 
     /// <summary>Whether the parser is currently inside a thinking block.</summary>
     public bool IsThinking => _isThinking;
@@ -78,7 +78,7 @@ public sealed class StreamingContentParser
 
     private void ProcessChar(char c)
     {
-        var targetTag = _isThinking ? s_closeTag : s_openTag;
+        var targetTag = _isThinking ? CloseTag : OpenTag;
 
         // Start of a potential tag
         if (c == '<' && _tagBuffer.Length == 0)

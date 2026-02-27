@@ -16,10 +16,11 @@
     <ProjectReference Include="..\..\src\JD.SemanticKernel.Extensions\JD.SemanticKernel.Extensions.csproj" />
   </ItemGroup>
 
-  <!-- TUI rendering -->
+  <!-- TUI rendering + persistence -->
   <ItemGroup>
     <PackageReference Include="Spectre.Console" />
     <PackageReference Include="HtmlAgilityPack" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
   </ItemGroup>
 
   <!-- SK core -->

@@ -17,6 +17,11 @@ public sealed class CompletionProviderTests
         provider.Register("/cost", "Show token usage");
         provider.Register("/autorun", "Toggle auto-approve");
         provider.Register("/permissions", "Toggle permission checks");
+        provider.Register("/sessions", "List recent sessions");
+        provider.Register("/resume", "Resume a previous session");
+        provider.Register("/name", "Name the current session");
+        provider.Register("/history", "Show session turn history");
+        provider.Register("/export", "Export current session to JSON");
         provider.Register("/quit", "Exit jdai");
         provider.Register("/exit", "Exit jdai");
         return provider;
@@ -41,7 +46,7 @@ public sealed class CompletionProviderTests
     {
         var provider = BuildProvider();
         var results = provider.GetCompletions("/");
-        Assert.Equal(12, results.Count);
+        Assert.Equal(17, results.Count);
     }
 
     [Fact]
@@ -78,8 +83,9 @@ public sealed class CompletionProviderTests
     {
         var provider = BuildProvider();
         var results = provider.GetCompletions("/H");
-        Assert.Single(results);
-        Assert.Equal("/help", results[0].Text);
+        Assert.Equal(2, results.Count);
+        Assert.Contains(results, r => r.Text == "/help");
+        Assert.Contains(results, r => r.Text == "/history");
     }
 
     [Fact]
@@ -96,6 +102,15 @@ public sealed class CompletionProviderTests
         var results = provider.GetCompletions("/he");
         Assert.Single(results);
         Assert.Equal("Show available commands", results[0].Description);
+    }
+
+    [Fact]
+    public void GetCompletions_SlashHi_ReturnsHistory()
+    {
+        var provider = BuildProvider();
+        var results = provider.GetCompletions("/hi");
+        Assert.Single(results);
+        Assert.Equal("/history", results[0].Text);
     }
 
     [Fact]

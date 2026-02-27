@@ -1,4 +1,5 @@
 using JD.AI.Tui.Agent;
+using JD.AI.Tui.Persistence;
 using JD.AI.Tui.Providers;
 
 namespace JD.AI.Tui.Commands;
@@ -38,6 +39,11 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/COST" => GetCost(),
             "/AUTORUN" => ToggleAutoRun(arg),
             "/PERMISSIONS" => TogglePermissions(arg),
+            "/SESSIONS" => await ListSessionsAsync(ct).ConfigureAwait(false),
+            "/RESUME" => await ResumeSessionAsync(arg, ct).ConfigureAwait(false),
+            "/NAME" => NameSession(arg),
+            "/HISTORY" => ShowHistory(),
+            "/EXPORT" => await ExportSessionAsync(ct).ConfigureAwait(false),
             "/QUIT" or "/EXIT" => null, // Signal exit
             _ => $"Unknown command: {parts[0]}. Type /help for available commands.",
         };
@@ -55,6 +61,11 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /cost          — Show token usage
           /autorun       — Toggle auto-approve for tools
           /permissions   — Toggle permission checks (off = skip all)
+          /sessions      — List recent sessions
+          /resume [id]   — Resume a previous session
+          /name <name>   — Name the current session
+          /history       — Show session turn history
+          /export        — Export current session to JSON
           /quit          — Exit jdai
         """;
 
@@ -165,5 +176,91 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         }
 
         return $"Permission checks are {(_session.SkipPermissions ? "OFF (all skipped)" : "ON")}. Usage: /permissions [on|off]";
+    }
+
+    // ── Session commands ──────────────────────────────────
+
+    private async Task<string> ListSessionsAsync(CancellationToken ct)
+    {
+        _ = ct; // reserved for future async work
+        if (_session.Store == null) return "Session persistence not initialized.";
+
+        var projectHash = _session.SessionInfo?.ProjectHash;
+        var sessions = await _session.Store.ListSessionsAsync(projectHash, 15).ConfigureAwait(false);
+
+        if (sessions.Count == 0)
+            return "No sessions found.";
+
+        var lines = sessions.Select(s =>
+        {
+            var name = s.Name ?? "(unnamed)";
+            var active = s.IsActive ? " ●" : "";
+            var current = string.Equals(s.Id, _session.SessionInfo?.Id, StringComparison.Ordinal) ? " ◄" : "";
+            return $"  {s.Id}  {name}{active}{current}  ({s.MessageCount} msgs, {s.UpdatedAt:g})";
+        });
+
+        return $"Recent sessions:\n{string.Join('\n', lines)}";
+    }
+
+    private async Task<string> ResumeSessionAsync(string? sessionId, CancellationToken ct)
+    {
+        if (_session.Store == null) return "Session persistence not initialized.";
+
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            // Show list so user can pick
+            return await ListSessionsAsync(ct).ConfigureAwait(false) +
+                "\n\nUsage: /resume <session-id>";
+        }
+
+        var projectPath = _session.SessionInfo?.ProjectPath ?? Directory.GetCurrentDirectory();
+        await _session.InitializePersistenceAsync(projectPath, sessionId).ConfigureAwait(false);
+
+        return _session.SessionInfo != null
+            ? $"Resumed session {_session.SessionInfo.Id} ({_session.SessionInfo.Turns.Count} turns restored)"
+            : $"Session '{sessionId}' not found.";
+    }
+
+    private string NameSession(string? name)
+    {
+        if (_session.SessionInfo == null)
+            return "No active session.";
+
+        if (string.IsNullOrWhiteSpace(name))
+            return $"Current session: {_session.SessionInfo.Name ?? "(unnamed)"}. Usage: /name <name>";
+
+        _session.SessionInfo.Name = name;
+        return $"Session named: {name}";
+    }
+
+    private string ShowHistory()
+    {
+        if (_session.SessionInfo == null)
+            return "No active session.";
+
+        var turns = _session.SessionInfo.Turns;
+        if (turns.Count == 0)
+            return "No turns in this session.";
+
+        var lines = turns.Select(t =>
+        {
+            var role = t.Role == "user" ? "👤" : "🤖";
+            var preview = (t.Content ?? "").Replace('\n', ' ');
+            if (preview.Length > 80)
+                preview = string.Concat(preview.AsSpan(0, 77), "...");
+            var tools = t.ToolCalls.Count > 0 ? $" [{t.ToolCalls.Count} tools]" : "";
+            return $"  {t.TurnIndex}. {role} {preview}{tools}";
+        });
+
+        return $"Session history ({turns.Count} turns):\n{string.Join('\n', lines)}";
+    }
+
+    private async Task<string> ExportSessionAsync(CancellationToken ct)
+    {
+        _ = ct;
+        if (_session.SessionInfo == null) return "No active session.";
+
+        await _session.ExportSessionAsync().ConfigureAwait(false);
+        return $"Session exported to ~/.jdai/projects/{_session.SessionInfo.ProjectHash}/sessions/{_session.SessionInfo.Id}.json";
     }
 }

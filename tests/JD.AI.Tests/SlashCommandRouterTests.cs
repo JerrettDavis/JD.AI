@@ -299,4 +299,53 @@ public sealed class SlashCommandRouterTests
         Assert.NotNull(result);
         Assert.Contains("/permissions", result);
     }
+
+    [Fact]
+    public async Task Help_IncludesSessionCommands()
+    {
+        var result = await _router.ExecuteAsync("/help");
+
+        Assert.NotNull(result);
+        Assert.Contains("/sessions", result);
+        Assert.Contains("/resume", result);
+        Assert.Contains("/name", result);
+        Assert.Contains("/history", result);
+        Assert.Contains("/export", result);
+    }
+
+    [Fact]
+    public async Task Sessions_WithoutStore_ReportsNotInitialized()
+    {
+        var result = await _router.ExecuteAsync("/sessions");
+
+        Assert.NotNull(result);
+        Assert.Contains("not initialized", result);
+    }
+
+    [Fact]
+    public async Task Name_WithoutSession_ReportsNoActive()
+    {
+        var result = await _router.ExecuteAsync("/name Test");
+
+        Assert.NotNull(result);
+        Assert.Contains("No active session", result);
+    }
+
+    [Fact]
+    public async Task History_WithoutSession_ReportsNoActive()
+    {
+        var result = await _router.ExecuteAsync("/history");
+
+        Assert.NotNull(result);
+        Assert.Contains("No active session", result);
+    }
+
+    [Fact]
+    public async Task Export_WithoutSession_ReportsNoActive()
+    {
+        var result = await _router.ExecuteAsync("/export");
+
+        Assert.NotNull(result);
+        Assert.Contains("No active session", result);
+    }
 }

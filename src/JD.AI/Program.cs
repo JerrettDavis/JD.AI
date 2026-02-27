@@ -16,6 +16,9 @@ using Spectre.Console;
 
 // Parse CLI flags
 var skipPermissions = args.Contains("--dangerously-skip-permissions");
+var resumeId = args.SkipWhile(a => !string.Equals(a, "--resume", StringComparison.OrdinalIgnoreCase))
+    .Skip(1).FirstOrDefault();
+var isNewSession = args.Contains("--new");
 
 AnsiConsole.MarkupLine("[dim]Detecting providers...[/]");
 
@@ -72,6 +75,21 @@ if (skipPermissions)
 {
     session.SkipPermissions = true;
     ChatRenderer.RenderWarning("--dangerously-skip-permissions: ALL tool confirmations disabled.");
+}
+
+// Initialize session persistence
+var projectPath = Directory.GetCurrentDirectory();
+if (!isNewSession)
+{
+    await session.InitializePersistenceAsync(projectPath, resumeId).ConfigureAwait(false);
+    if (resumeId != null && session.SessionInfo != null)
+    {
+        ChatRenderer.RenderInfo($"Resumed session: {session.SessionInfo.Name ?? session.SessionInfo.Id} ({session.SessionInfo.Turns.Count} turns)");
+    }
+}
+else
+{
+    await session.InitializePersistenceAsync(projectPath).ConfigureAwait(false);
 }
 
 // 6. Register built-in tools
@@ -175,6 +193,11 @@ completionProvider.Register("/compact", "Force context compaction");
 completionProvider.Register("/cost", "Show token usage");
 completionProvider.Register("/autorun", "Toggle auto-approve for tools");
 completionProvider.Register("/permissions", "Toggle permission checks");
+completionProvider.Register("/sessions", "List recent sessions");
+completionProvider.Register("/resume", "Resume a previous session");
+completionProvider.Register("/name", "Name the current session");
+completionProvider.Register("/history", "Show session turn history");
+completionProvider.Register("/export", "Export current session to JSON");
 completionProvider.Register("/quit", "Exit jdai");
 completionProvider.Register("/exit", "Exit jdai");
 var interactiveInput = new InteractiveInput(completionProvider);
@@ -210,6 +233,7 @@ while (!cts.IsCancellationRequested)
         if (input.TrimStart().StartsWith("/quit", StringComparison.OrdinalIgnoreCase) ||
             input.TrimStart().StartsWith("/exit", StringComparison.OrdinalIgnoreCase))
         {
+            await session.CloseSessionAsync().ConfigureAwait(false);
             ChatRenderer.RenderInfo("Goodbye!");
             break;
         }

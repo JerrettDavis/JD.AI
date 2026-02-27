@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using JD.AI.Tui.Rendering;
 using Microsoft.SemanticKernel;
@@ -25,6 +26,7 @@ public sealed class AgentLoop
     public async Task<string> RunTurnAsync(
         string userMessage, CancellationToken ct = default)
     {
+        await _session.RecordUserTurnAsync(userMessage).ConfigureAwait(false);
         _session.History.AddUserMessage(userMessage);
 
         var chat = _session.Kernel.GetRequiredService<IChatCompletionService>();
@@ -35,6 +37,8 @@ public sealed class AgentLoop
             MaxTokens = 4096,
         };
 
+        var sw = Stopwatch.StartNew();
+
         try
         {
             var result = await chat.GetChatMessageContentAsync(
@@ -43,12 +47,17 @@ public sealed class AgentLoop
                 _session.Kernel,
                 ct).ConfigureAwait(false);
 
+            sw.Stop();
+
             var response = result.Content ?? "(no response)";
             _session.History.AddAssistantMessage(response);
 
-            // Update token count estimate
-            _session.TotalTokens += JD.SemanticKernel.Extensions.Compaction.TokenEstimator
+            var tokenEstimate = JD.SemanticKernel.Extensions.Compaction.TokenEstimator
                 .EstimateTokens(response);
+
+            await _session.RecordAssistantTurnAsync(
+                response, durationMs: sw.ElapsedMilliseconds,
+                tokensOut: tokenEstimate).ConfigureAwait(false);
 
             return response;
         }
@@ -57,7 +66,6 @@ public sealed class AgentLoop
             var errorMsg = $"Error: {ex.Message}";
             ChatRenderer.RenderError(errorMsg);
 
-            // Inject error into history so agent can self-correct
             _session.History.AddAssistantMessage(
                 $"[Error occurred: {ex.Message}. I'll try a different approach.]");
 
@@ -73,6 +81,7 @@ public sealed class AgentLoop
     public async Task<string> RunTurnStreamingAsync(
         string userMessage, CancellationToken ct = default)
     {
+        await _session.RecordUserTurnAsync(userMessage).ConfigureAwait(false);
         _session.History.AddUserMessage(userMessage);
 
         var chat = _session.Kernel.GetRequiredService<IChatCompletionService>();
@@ -83,9 +92,12 @@ public sealed class AgentLoop
             MaxTokens = 4096,
         };
 
+        var sw = Stopwatch.StartNew();
+
         try
         {
             var fullResponse = new StringBuilder();
+            var thinkingCapture = new StringBuilder();
             var parser = new StreamingContentParser();
             var contentStarted = false;
             var thinkingActive = false;
@@ -104,6 +116,7 @@ public sealed class AgentLoop
                         thinkingActive = true;
                     }
                     ChatRenderer.WriteThinkingChunk(reasonText);
+                    thinkingCapture.Append(reasonText);
                     continue;
                 }
 
@@ -127,6 +140,7 @@ public sealed class AgentLoop
                                 thinkingActive = true;
                             }
                             ChatRenderer.WriteThinkingChunk(seg.Text);
+                            thinkingCapture.Append(seg.Text);
                             break;
 
                         case StreamSegmentKind.ExitThinking:
@@ -158,6 +172,7 @@ public sealed class AgentLoop
                 if (seg.Kind == StreamSegmentKind.Thinking)
                 {
                     ChatRenderer.WriteThinkingChunk(seg.Text);
+                    thinkingCapture.Append(seg.Text);
                 }
                 else if (seg.Kind == StreamSegmentKind.Content)
                 {
@@ -174,13 +189,22 @@ public sealed class AgentLoop
             if (thinkingActive) ChatRenderer.EndThinking();
             if (contentStarted) ChatRenderer.EndStreaming();
 
+            sw.Stop();
+
             var response = fullResponse.Length > 0
                 ? fullResponse.ToString()
                 : "(no response)";
 
             _session.History.AddAssistantMessage(response);
-            _session.TotalTokens += JD.SemanticKernel.Extensions.Compaction.TokenEstimator
+
+            var tokenEstimate = JD.SemanticKernel.Extensions.Compaction.TokenEstimator
                 .EstimateTokens(response);
+
+            var thinkingText = thinkingCapture.Length > 0 ? thinkingCapture.ToString() : null;
+            await _session.RecordAssistantTurnAsync(
+                response, thinkingText,
+                durationMs: sw.ElapsedMilliseconds,
+                tokensOut: tokenEstimate).ConfigureAwait(false);
 
             return response;
         }
