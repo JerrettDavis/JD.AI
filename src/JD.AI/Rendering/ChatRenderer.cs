@@ -133,7 +133,7 @@ public static class ChatRenderer
 
     // ── Streaming rendering ────────────────────────────────
 
-    /// <summary>Begin an assistant streaming block.</summary>
+    /// <summary>Begin an assistant streaming block (response content).</summary>
     public static void BeginStreaming()
     {
         AnsiConsole.Markup("[bold magenta]◆[/] ");
@@ -150,5 +150,27 @@ public static class ChatRenderer
     {
         Console.WriteLine();
         AnsiConsole.WriteLine();
+    }
+
+    // ── Thinking/reasoning rendering ─────────────────────
+
+    /// <summary>Begin a thinking/reasoning block (dim gray output).</summary>
+    public static void BeginThinking()
+    {
+        AnsiConsole.Markup("[dim]💭 [/]");
+    }
+
+    /// <summary>Write a thinking/reasoning chunk as dim gray text.</summary>
+    public static void WriteThinkingChunk(string text)
+    {
+        Console.ForegroundColor = ConsoleColor.DarkGray;
+        Console.Write(text);
+        Console.ResetColor();
+    }
+
+    /// <summary>End a thinking/reasoning block.</summary>
+    public static void EndThinking()
+    {
+        Console.WriteLine();
     }
 }
