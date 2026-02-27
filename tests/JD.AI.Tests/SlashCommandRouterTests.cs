@@ -311,6 +311,7 @@ public sealed class SlashCommandRouterTests
         Assert.Contains("/name", result);
         Assert.Contains("/history", result);
         Assert.Contains("/export", result);
+        Assert.Contains("/update", result);
     }
 
     [Fact]

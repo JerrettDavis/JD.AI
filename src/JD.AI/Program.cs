@@ -1,3 +1,4 @@
+using JD.AI.Tui;
 using JD.AI.Tui.Agent;
 using JD.AI.Tui.Commands;
 using JD.AI.Tui.Providers;
@@ -16,9 +17,13 @@ using Spectre.Console;
 
 // Parse CLI flags
 var skipPermissions = args.Contains("--dangerously-skip-permissions");
+var forceUpdateCheck = args.Contains("--force-update-check");
 var resumeId = args.SkipWhile(a => !string.Equals(a, "--resume", StringComparison.OrdinalIgnoreCase))
     .Skip(1).FirstOrDefault();
 var isNewSession = args.Contains("--new");
+
+// Fire background update check immediately (non-blocking)
+var updateCheckTask = UpdateChecker.CheckAsync(forceUpdateCheck);
 
 AnsiConsole.MarkupLine("[dim]Detecting providers...[/]");
 
@@ -198,6 +203,7 @@ completionProvider.Register("/resume", "Resume a previous session");
 completionProvider.Register("/name", "Name the current session");
 completionProvider.Register("/history", "Show session turn history");
 completionProvider.Register("/export", "Export current session to JSON");
+completionProvider.Register("/update", "Check for and apply updates");
 completionProvider.Register("/quit", "Exit jdai");
 completionProvider.Register("/exit", "Exit jdai");
 var interactiveInput = new InteractiveInput(completionProvider);
@@ -235,6 +241,14 @@ ChatRenderer.RenderBanner(
     selectedModel.DisplayName,
     selectedModel.ProviderName,
     allModels.Count);
+
+// 11b. Show update notification if background check completed
+var pendingUpdate = await updateCheckTask.ConfigureAwait(false);
+if (pendingUpdate is not null)
+{
+    AnsiConsole.MarkupLine(UpdatePrompter.FormatNotification(pendingUpdate));
+    AnsiConsole.WriteLine();
+}
 
 // 12. Main interaction loop
 var agentLoop = new AgentLoop(session);

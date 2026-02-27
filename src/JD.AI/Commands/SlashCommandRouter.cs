@@ -44,6 +44,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/NAME" => NameSession(arg),
             "/HISTORY" => ShowHistory(),
             "/EXPORT" => await ExportSessionAsync(ct).ConfigureAwait(false),
+            "/UPDATE" => await CheckUpdateAsync(ct).ConfigureAwait(false),
             "/QUIT" or "/EXIT" => null, // Signal exit
             _ => $"Unknown command: {parts[0]}. Type /help for available commands.",
         };
@@ -66,6 +67,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /name <name>   — Name the current session
           /history       — Show session turn history
           /export        — Export current session to JSON
+          /update        — Check for and apply updates
           /quit          — Exit jdai
         """;
 
@@ -262,5 +264,19 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
         await _session.ExportSessionAsync().ConfigureAwait(false);
         return $"Session exported to ~/.jdai/projects/{_session.SessionInfo.ProjectHash}/sessions/{_session.SessionInfo.Id}.json";
+    }
+
+    private static async Task<string> CheckUpdateAsync(CancellationToken ct)
+    {
+        var info = await UpdateChecker.CheckAsync(forceCheck: true, ct).ConfigureAwait(false);
+        if (info is null)
+        {
+            return $"jdai is up to date (v{UpdateChecker.GetCurrentVersion()}).";
+        }
+
+        var shouldRestart = await UpdatePrompter.PromptAsync(info, ct).ConfigureAwait(false);
+        return shouldRestart
+            ? "Update applied. Please restart jdai."
+            : $"Update available: {info.CurrentVersion} → {info.LatestVersion}";
     }
 }

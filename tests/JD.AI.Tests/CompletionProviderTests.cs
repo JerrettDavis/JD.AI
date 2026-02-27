@@ -22,6 +22,7 @@ public sealed class CompletionProviderTests
         provider.Register("/name", "Name the current session");
         provider.Register("/history", "Show session turn history");
         provider.Register("/export", "Export current session to JSON");
+        provider.Register("/update", "Check for and apply updates");
         provider.Register("/quit", "Exit jdai");
         provider.Register("/exit", "Exit jdai");
         return provider;
@@ -46,7 +47,7 @@ public sealed class CompletionProviderTests
     {
         var provider = BuildProvider();
         var results = provider.GetCompletions("/");
-        Assert.Equal(17, results.Count);
+        Assert.Equal(18, results.Count);
     }
 
     [Fact]
