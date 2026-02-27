@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>jdai</ToolCommandName>
+    <PackageId>JD.AI.Tui</PackageId>
+    <Description>A Semantic Kernel-powered TUI agent with multi-provider support, developer tools, semantic memory, and context compaction.</Description>
+    <PackageTags>semantic-kernel;tui;ai;agent;claude;copilot;ollama</PackageTags>
+  </PropertyGroup>
+
+  <!-- SK + Extensions -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\JD.SemanticKernel.Extensions\JD.SemanticKernel.Extensions.csproj" />
+  </ItemGroup>
+
+  <!-- TUI rendering -->
+  <ItemGroup>
+    <PackageReference Include="Spectre.Console" />
+    <PackageReference Include="HtmlAgilityPack" />
+  </ItemGroup>
+
+  <!-- SK core -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SemanticKernel" />
+    <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" />
+  </ItemGroup>
+
+  <!-- AI provider connectors -->
+  <ItemGroup>
+    <PackageReference Include="JD.SemanticKernel.Connectors.ClaudeCode" />
+    <PackageReference Include="JD.SemanticKernel.Connectors.GitHubCopilot" />
+  </ItemGroup>
+
+</Project>
