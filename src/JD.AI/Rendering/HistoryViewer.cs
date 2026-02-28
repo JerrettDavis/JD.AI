@@ -1,4 +1,4 @@
-using JD.AI.Persistence;
+using JD.AI.Core.Sessions;
 
 namespace JD.AI.Rendering;
 

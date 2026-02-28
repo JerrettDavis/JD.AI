@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>JD.AI.Core</RootNamespace>
+    <Description>Core library for JD.AI — agents, providers, sessions, tools, orchestration, and event bus. Shared by the TUI, Gateway, and channel adapters.</Description>
+    <PackageTags>ai;semantic-kernel;agents;gateway</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="JD.AI.Tests" />
+    <InternalsVisibleTo Include="JD.AI" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JD.SemanticKernel.Extensions" />
+    <PackageReference Include="JD.SemanticKernel.Connectors.ClaudeCode" />
+    <PackageReference Include="JD.SemanticKernel.Connectors.GitHubCopilot" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="Microsoft.SemanticKernel" />
+    <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" />
+    <PackageReference Include="HtmlAgilityPack" />
+  </ItemGroup>
+
+</Project>

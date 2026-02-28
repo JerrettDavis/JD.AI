@@ -1,7 +1,7 @@
 using JD.AI.Agent;
-using JD.AI.Agent.Checkpointing;
-using JD.AI.Persistence;
-using JD.AI.Providers;
+using JD.AI.Core.Agents.Checkpointing;
+using JD.AI.Core.Sessions;
+using JD.AI.Core.Providers;
 
 namespace JD.AI.Commands;
 

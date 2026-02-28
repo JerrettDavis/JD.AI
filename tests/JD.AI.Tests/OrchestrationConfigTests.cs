@@ -1,5 +1,5 @@
-using JD.AI.Agent;
-using JD.AI.Agent.Orchestration;
+using JD.AI.Core.Agents;
+using JD.AI.Core.Agents.Orchestration;
 
 namespace JD.AI.Tests;
 

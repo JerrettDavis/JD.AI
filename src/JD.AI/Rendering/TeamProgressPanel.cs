@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using JD.AI.Agent.Orchestration;
+using JD.AI.Core.Agents.Orchestration;
 using Spectre.Console;
 
 namespace JD.AI.Rendering;

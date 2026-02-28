@@ -1,4 +1,4 @@
-using JD.AI.Tools;
+using JD.AI.Core.Tools;
 using JD.SemanticKernel.Extensions.Memory;
 using NSubstitute;
 

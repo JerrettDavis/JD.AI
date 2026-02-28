@@ -1,6 +1,6 @@
-using JD.AI.Agent;
-using JD.AI.Providers;
-using JD.AI.Tools;
+using JD.AI.Core.Agents;
+using JD.AI.Core.Providers;
+using JD.AI.Core.Tools;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Xunit;

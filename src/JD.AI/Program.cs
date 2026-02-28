@@ -1,9 +1,9 @@
 using JD.AI;
 using JD.AI.Agent;
-using JD.AI.Agent.Checkpointing;
-using JD.AI.Agent.Orchestration;
+using JD.AI.Core.Agents.Checkpointing;
+using JD.AI.Core.Agents.Orchestration;
 using JD.AI.Commands;
-using JD.AI.Providers;
+using JD.AI.Core.Providers;
 using JD.AI.Rendering;
 using JD.AI.Tools;
 using JD.SemanticKernel.Extensions.Compaction;

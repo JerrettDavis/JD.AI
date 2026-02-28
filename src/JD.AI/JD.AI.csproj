@@ -35,4 +35,9 @@
     <PackageReference Include="Microsoft.Data.Sqlite" />
   </ItemGroup>
 
+  <!-- Core library (agents, orchestration, checkpointing) -->
+  <ItemGroup>
+    <ProjectReference Include="..\JD.AI.Core\JD.AI.Core.csproj" />
+  </ItemGroup>
+
 </Project>

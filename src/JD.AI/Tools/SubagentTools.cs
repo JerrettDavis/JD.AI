@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Text.Json;
 using JD.AI.Agent;
-using JD.AI.Agent.Orchestration;
+using JD.AI.Core.Agents.Orchestration;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Tools;

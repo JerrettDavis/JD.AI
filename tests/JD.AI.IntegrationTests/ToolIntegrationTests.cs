@@ -1,4 +1,4 @@
-using JD.AI.Tools;
+using JD.AI.Core.Tools;
 using Xunit;
 
 namespace JD.AI.IntegrationTests;

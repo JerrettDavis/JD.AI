@@ -1,4 +1,4 @@
-using JD.AI.Tools.Sandbox;
+using JD.AI.Core.Tools.Sandbox;
 
 namespace JD.AI.Tests;
 

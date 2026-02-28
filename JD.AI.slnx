@@ -1,9 +1,12 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/JD.AI.Core/JD.AI.Core.csproj" />
+    <Project Path="src/JD.AI.Gateway/JD.AI.Gateway.csproj" />
     <Project Path="src/JD.AI/JD.AI.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/JD.AI.Tests/JD.AI.Tests.csproj" />
     <Project Path="tests/JD.AI.IntegrationTests/JD.AI.IntegrationTests.csproj" />
+    <Project Path="tests/JD.AI.Gateway.Tests/JD.AI.Gateway.Tests.csproj" />
   </Folder>
 </Solution>

@@ -1,4 +1,4 @@
-using JD.AI.Providers;
+using JD.AI.Core.Providers;
 using Xunit;
 
 namespace JD.AI.IntegrationTests;

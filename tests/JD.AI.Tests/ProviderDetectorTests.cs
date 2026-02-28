@@ -1,4 +1,4 @@
-using JD.AI.Providers;
+using JD.AI.Core.Providers;
 
 namespace JD.AI.Tests;
 

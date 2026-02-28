@@ -1,5 +1,5 @@
-using JD.AI.Agent;
-using JD.AI.Providers;
+using JD.AI.Core.Agents;
+using JD.AI.Core.Providers;
 using Microsoft.SemanticKernel;
 using NSubstitute;
 using Xunit;

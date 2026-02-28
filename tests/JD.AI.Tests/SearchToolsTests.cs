@@ -1,4 +1,4 @@
-using JD.AI.Tools;
+using JD.AI.Core.Tools;
 
 namespace JD.AI.Tests;
 

@@ -23,6 +23,12 @@
     <PackageVersion Include="HtmlAgilityPack" Version="1.12.2" />
   </ItemGroup>
 
+  <!-- Gateway -->
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.3" />
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="8.2.0" />
+  </ItemGroup>
+
   <!-- Testing -->
   <ItemGroup>
     <PackageVersion Include="coverlet.collector" Version="8.0.0" />
@@ -33,6 +39,7 @@
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="Xunit.SkippableFact" Version="1.5.61" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.3" />
   </ItemGroup>
 
 </Project>

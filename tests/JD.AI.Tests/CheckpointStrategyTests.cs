@@ -1,4 +1,4 @@
-using JD.AI.Agent.Checkpointing;
+using JD.AI.Core.Agents.Checkpointing;
 
 namespace JD.AI.Tests;
 
