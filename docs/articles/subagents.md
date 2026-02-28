@@ -2,6 +2,8 @@
 
 Subagents are specialized AI instances that handle specific tasks in isolation. Each subagent runs with its own Semantic Kernel, chat history, and scoped tool access — keeping the parent conversation clean and focused.
 
+![Subagent execution with explore type](../images/demo-subagents.png)
+
 ## Why use subagents?
 
 - **Context isolation.** Subagent work stays out of the parent conversation, preserving your context window for decision-making.

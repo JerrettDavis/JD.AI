@@ -6,6 +6,8 @@ _layout: landing
 
 An AI-powered terminal assistant built on Microsoft Semantic Kernel. Connect to Claude Code, GitHub Copilot, or Ollama and get an intelligent coding agent right in your terminal.
 
+![JD.AI in action](images/demo-startup.png)
+
 ## Get started
 
 ```bash

@@ -1,5 +1,7 @@
 # CLI Reference
 
+![JD.AI CLI usage and flags](../images/demo-cli.png)
+
 ## Usage
 ```
 jdai [options]
@@ -8,8 +10,10 @@ jdai [options]
 ## Options
 | Flag | Description |
 |------|-------------|
-| `--resume <id>` | Resume a specific session by ID |
 | `--new` | Start a fresh session (skip loading previous) |
+| `--resume <id>` | Resume a specific session by ID |
+| `--model <name>` | Select model by name (skips interactive picker) |
+| `--provider <name>` | Filter models to a specific provider |
 | `--force-update-check` | Force NuGet update check on startup |
 | `--dangerously-skip-permissions` | Skip all tool confirmation prompts |
 

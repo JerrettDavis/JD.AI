@@ -2,6 +2,8 @@
 
 JD.AI automatically saves conversation history to a local SQLite database so you can resume where you left off. Sessions capture turns, token usage, tool calls, and files touched — giving you a complete record of each interaction.
 
+![Session management: save, list, and resume](../images/demo-sessions.png)
+
 ## How It Works
 
 - Sessions are stored in SQLite at `~/.jdai/sessions.db`

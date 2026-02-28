@@ -4,6 +4,8 @@ JD.AI is an AI-powered terminal assistant built on [Microsoft Semantic Kernel](h
 
 Open source under the [MIT license](https://github.com/JerrettDavis/JD.AI/blob/main/LICENSE). Available on [NuGet](https://www.nuget.org/packages/JD.AI) and [GitHub](https://github.com/JerrettDavis/JD.AI).
 
+![JD.AI startup screen showing provider detection and welcome banner](../images/demo-startup.png)
+
 ## Get started
 
 Install JD.AI as a global .NET tool and launch it:
