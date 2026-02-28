@@ -1,5 +1,6 @@
 using JD.AI.Agent;
 using JD.AI.Core.Agents.Checkpointing;
+using JD.AI.Core.Plugins;
 using JD.AI.Core.Sessions;
 using JD.AI.Core.Providers;
 
@@ -14,17 +15,20 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private readonly IProviderRegistry _registry;
     private readonly InstructionsResult? _instructions;
     private readonly ICheckpointStrategy? _checkpointStrategy;
+    private readonly PluginLoader? _pluginLoader;
 
     public SlashCommandRouter(
         AgentSession session,
         IProviderRegistry registry,
         InstructionsResult? instructions = null,
-        ICheckpointStrategy? checkpointStrategy = null)
+        ICheckpointStrategy? checkpointStrategy = null,
+        PluginLoader? pluginLoader = null)
     {
         _session = session;
         _registry = registry;
         _instructions = instructions;
         _checkpointStrategy = checkpointStrategy;
+        _pluginLoader = pluginLoader;
     }
 
     public bool IsSlashCommand(string input) =>
@@ -55,6 +59,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/EXPORT" => await ExportSessionAsync(ct).ConfigureAwait(false),
             "/UPDATE" => await CheckUpdateAsync(ct).ConfigureAwait(false),
             "/INSTRUCTIONS" => ShowInstructions(),
+            "/PLUGINS" => ShowPlugins(),
             "/CHECKPOINT" => await HandleCheckpointAsync(arg, ct).ConfigureAwait(false),
             "/SANDBOX" => ShowSandboxInfo(),
             "/QUIT" or "/EXIT" => null, // Signal exit
@@ -81,6 +86,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /export         — Export current session to JSON
           /update         — Check for and apply updates
           /instructions   — Show loaded project instructions
+          /plugins        — List loaded plugins
           /checkpoint     — List, restore, or clear checkpoints
           /sandbox        — Show sandbox mode info
           /quit           — Exit jdai
@@ -299,6 +305,20 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
     private string ShowInstructions() =>
         _instructions?.ToSummary() ?? "No project instructions loaded.";
+
+    private string ShowPlugins()
+    {
+        if (_pluginLoader is null)
+            return "Plugin loader not available.";
+
+        var plugins = _pluginLoader.GetAll();
+        if (plugins.Count == 0)
+            return "No plugins loaded.";
+
+        var lines = plugins.Select(p =>
+            $"  ✓ {p.Name} v{p.Version} (loaded {p.LoadedAt:g})");
+        return $"Loaded plugins ({plugins.Count}):\n{string.Join('\n', lines)}";
+    }
 
     private async Task<string> HandleCheckpointAsync(string? arg, CancellationToken ct)
     {

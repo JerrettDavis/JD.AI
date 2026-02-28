@@ -10,6 +10,10 @@ using JD.SemanticKernel.Extensions.Compaction;
 using JD.SemanticKernel.Extensions.Skills;
 using JD.SemanticKernel.Extensions.Plugins;
 using JD.SemanticKernel.Extensions.Hooks;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.SemanticKernel;
 using Spectre.Console;
 
@@ -27,6 +31,26 @@ var cliModel = args.SkipWhile(a => !string.Equals(a, "--model", StringComparison
     .Skip(1).FirstOrDefault();
 var cliProvider = args.SkipWhile(a => !string.Equals(a, "--provider", StringComparison.OrdinalIgnoreCase))
     .Skip(1).FirstOrDefault();
+var gatewayMode = args.Contains("--gateway");
+var gatewayPort = args.SkipWhile(a => !string.Equals(a, "--gateway-port", StringComparison.OrdinalIgnoreCase))
+    .Skip(1).FirstOrDefault();
+
+// --gateway: start the Gateway as an embedded ASP.NET host alongside the TUI
+Microsoft.Extensions.Hosting.IHost? gatewayHost = null;
+if (gatewayMode)
+{
+    var port = gatewayPort ?? "5100";
+    var gwBuilder = Microsoft.AspNetCore.Builder.WebApplication.CreateBuilder(["--urls", $"http://localhost:{port}"]);
+    gwBuilder.Logging.SetMinimumLevel(LogLevel.Warning);
+
+    var gwApp = gwBuilder.Build();
+    gwApp.MapGet("/health", () => Results.Ok(new { Status = "Healthy" }));
+    gwApp.MapGet("/ready", () => Results.Ok(new { Status = "Ready" }));
+
+    gatewayHost = gwApp;
+    _ = gwApp.StartAsync();
+    AnsiConsole.MarkupLine($"[dim]Gateway started on http://localhost:{port}[/]");
+}
 
 // Fire background update check immediately (non-blocking)
 var updateCheckTask = UpdateChecker.CheckAsync(forceUpdateCheck);
@@ -280,6 +304,7 @@ completionProvider.Register("/history", "Show session turn history");
 completionProvider.Register("/export", "Export current session to JSON");
 completionProvider.Register("/update", "Check for and apply updates");
 completionProvider.Register("/instructions", "Show loaded project instructions");
+completionProvider.Register("/plugins", "List loaded plugins");
 completionProvider.Register("/checkpoint", "List, restore, or clear checkpoints");
 completionProvider.Register("/sandbox", "Show or change sandbox mode");
 completionProvider.Register("/quit", "Exit jdai");
@@ -475,4 +500,11 @@ while (!appCts.IsCancellationRequested)
 }
 
 appCts.Dispose();
+
+if (gatewayHost is not null)
+{
+    await gatewayHost.StopAsync().ConfigureAwait(false);
+    (gatewayHost as IDisposable)?.Dispose();
+}
+
 return 0;

@@ -9,6 +9,7 @@
     <Project Path="src/JD.AI.Channels.Slack/JD.AI.Channels.Slack.csproj" />
     <Project Path="src/JD.AI.Channels.Telegram/JD.AI.Channels.Telegram.csproj" />
     <Project Path="src/JD.AI.Channels.Web/JD.AI.Channels.Web.csproj" />
+    <Project Path="src/JD.AI.Channels.OpenClaw/JD.AI.Channels.OpenClaw.csproj" />
     <Project Path="src/JD.AI/JD.AI.csproj" />
   </Folder>
   <Folder Name="/tests/">

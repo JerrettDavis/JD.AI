@@ -40,4 +40,9 @@
     <ProjectReference Include="..\JD.AI.Core\JD.AI.Core.csproj" />
   </ItemGroup>
 
+  <!-- ASP.NET Core for embedded gateway mode -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
 </Project>

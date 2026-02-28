@@ -22,4 +22,8 @@
     <PackageReference Include="HtmlAgilityPack" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\JD.AI.Plugins.SDK\JD.AI.Plugins.SDK.csproj" />
+  </ItemGroup>
+
 </Project>
