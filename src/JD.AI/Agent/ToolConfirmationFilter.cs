@@ -36,6 +36,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["run_command"] = SafetyTier.AlwaysConfirm,
             ["web_search"] = SafetyTier.AlwaysConfirm,
             ["spawn_agent"] = SafetyTier.ConfirmOnce,
+            ["spawn_team"] = SafetyTier.ConfirmOnce,
         };
 
     public ToolConfirmationFilter(AgentSession session)

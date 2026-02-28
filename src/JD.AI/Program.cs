@@ -1,6 +1,7 @@
 using JD.AI.Tui;
 using JD.AI.Tui.Agent;
 using JD.AI.Tui.Agent.Checkpointing;
+using JD.AI.Tui.Agent.Orchestration;
 using JD.AI.Tui.Commands;
 using JD.AI.Tui.Providers;
 using JD.AI.Tui.Rendering;
@@ -176,8 +177,8 @@ if (instructions.HasInstructions)
 }
 
 // 8c. Set up subagent runner and register tools
-var subagentRunner = new SubagentRunner(session);
-kernel.ImportPluginFromObject(new SubagentTools(subagentRunner), "SubagentTools");
+var orchestrator = new TeamOrchestrator(session);
+kernel.ImportPluginFromObject(new SubagentTools(orchestrator), "SubagentTools");
 
 // 8d. Set up checkpoint strategy (stash if git repo, directory otherwise)
 ICheckpointStrategy checkpointStrategy = Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), ".git"))
