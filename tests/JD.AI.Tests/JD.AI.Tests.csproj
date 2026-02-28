@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\JD.AI\JD.AI.csproj" />
+    <ProjectReference Include="..\..\src\JD.AI.Channels.OpenClaw\JD.AI.Channels.OpenClaw.csproj" />
   </ItemGroup>
 
   <ItemGroup>
