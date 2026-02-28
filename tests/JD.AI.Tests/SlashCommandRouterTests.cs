@@ -1,11 +1,11 @@
-using JD.AI.Tui.Agent;
-using JD.AI.Tui.Commands;
-using JD.AI.Tui.Providers;
+using JD.AI.Agent;
+using JD.AI.Commands;
+using JD.AI.Providers;
 using Microsoft.SemanticKernel;
 using NSubstitute;
 using Xunit;
 
-namespace JD.AI.Tui.Tests;
+namespace JD.AI.Tests;
 
 public sealed class SlashCommandRouterTests
 {

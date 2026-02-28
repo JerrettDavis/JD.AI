@@ -1,12 +1,12 @@
 using System.Text;
-using JD.AI.Tui.Rendering;
-using JD.AI.Tui.Tools;
+using JD.AI.Rendering;
+using JD.AI.Tools;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 
-namespace JD.AI.Tui.Agent;
+namespace JD.AI.Agent;
 
 /// <summary>Type of subagent with scoped tool access and model preference.</summary>
 public enum SubagentType

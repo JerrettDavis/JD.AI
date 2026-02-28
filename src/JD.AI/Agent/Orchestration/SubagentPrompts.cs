@@ -1,4 +1,4 @@
-namespace JD.AI.Tui.Agent.Orchestration;
+namespace JD.AI.Agent.Orchestration;
 
 /// <summary>
 /// Centralized system prompts and tool scoping for subagent types.

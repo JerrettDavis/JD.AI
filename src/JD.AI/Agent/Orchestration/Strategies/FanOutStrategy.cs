@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace JD.AI.Tui.Agent.Orchestration.Strategies;
+namespace JD.AI.Agent.Orchestration.Strategies;
 
 /// <summary>
 /// Fan-out / fan-in — all agents run in parallel, then a synthesizer agent

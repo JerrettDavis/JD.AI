@@ -1,4 +1,4 @@
-namespace JD.AI.Tui.Tools;
+namespace JD.AI.Tools;
 
 /// <summary>
 /// Defines the safety tier for a tool.

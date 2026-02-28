@@ -1,4 +1,4 @@
-namespace JD.AI.Tui.Agent.Orchestration;
+namespace JD.AI.Agent.Orchestration;
 
 /// <summary>
 /// Strategy for orchestrating a team of subagents.

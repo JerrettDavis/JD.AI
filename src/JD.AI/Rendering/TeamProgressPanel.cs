@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
-using JD.AI.Tui.Agent.Orchestration;
+using JD.AI.Agent.Orchestration;
 using Spectre.Console;
 
-namespace JD.AI.Tui.Rendering;
+namespace JD.AI.Rendering;
 
 /// <summary>
 /// Live progress panel for team execution — shows per-agent status in real-time.

@@ -1,9 +1,9 @@
-using JD.AI.Tui.Agent;
-using JD.AI.Tui.Agent.Checkpointing;
-using JD.AI.Tui.Persistence;
-using JD.AI.Tui.Providers;
+using JD.AI.Agent;
+using JD.AI.Agent.Checkpointing;
+using JD.AI.Persistence;
+using JD.AI.Providers;
 
-namespace JD.AI.Tui.Commands;
+namespace JD.AI.Commands;
 
 /// <summary>
 /// Routes slash commands to their handlers.

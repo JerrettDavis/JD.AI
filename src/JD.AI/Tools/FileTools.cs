@@ -2,7 +2,7 @@ using System.ComponentModel;
 using System.Text;
 using Microsoft.SemanticKernel;
 
-namespace JD.AI.Tui.Tools;
+namespace JD.AI.Tools;
 
 /// <summary>
 /// File system tools for the AI agent.

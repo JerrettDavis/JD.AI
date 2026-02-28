@@ -1,7 +1,7 @@
-using JD.AI.Tui.Providers;
+using JD.AI.Providers;
 using Xunit;
 
-namespace JD.AI.Tui.IntegrationTests;
+namespace JD.AI.IntegrationTests;
 
 [Trait("Category", "Integration")]
 public sealed class ProviderDetectionTests

@@ -1,6 +1,6 @@
 using Spectre.Console;
 
-namespace JD.AI.Tui.Rendering;
+namespace JD.AI.Rendering;
 
 /// <summary>
 /// Renders chat messages, tool outputs, and status to the terminal

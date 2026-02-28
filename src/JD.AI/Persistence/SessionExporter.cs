@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace JD.AI.Tui.Persistence;
+namespace JD.AI.Persistence;
 
 /// <summary>
 /// Exports and imports sessions as human-readable JSON files.

@@ -1,4 +1,4 @@
-namespace JD.AI.Tui.Commands;
+namespace JD.AI.Commands;
 
 /// <summary>
 /// Handles slash command routing.

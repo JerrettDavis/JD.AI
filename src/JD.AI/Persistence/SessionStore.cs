@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using Microsoft.Data.Sqlite;
 
-namespace JD.AI.Tui.Persistence;
+namespace JD.AI.Persistence;
 
 /// <summary>
 /// SQLite-backed session store. Handles all CRUD against ~/.jdai/sessions.db.

@@ -1,6 +1,6 @@
-using JD.AI.Tui.Persistence;
+using JD.AI.Persistence;
 
-namespace JD.AI.Tui.Tests;
+namespace JD.AI.Tests;
 
 public class ProjectHasherTests
 {

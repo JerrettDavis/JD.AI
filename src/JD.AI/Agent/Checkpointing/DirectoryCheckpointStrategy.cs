@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace JD.AI.Tui.Agent.Checkpointing;
+namespace JD.AI.Agent.Checkpointing;
 
 /// <summary>
 /// Checkpoint strategy for non-git directories. Copies tracked files to

@@ -1,7 +1,7 @@
-using JD.AI.Tui.Tools;
+using JD.AI.Tools;
 using Xunit;
 
-namespace JD.AI.Tui.IntegrationTests;
+namespace JD.AI.IntegrationTests;
 
 /// <summary>
 /// Integration tests that validate tools work against real filesystem and shell.

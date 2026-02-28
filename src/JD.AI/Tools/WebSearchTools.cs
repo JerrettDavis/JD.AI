@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.SemanticKernel;
 
-namespace JD.AI.Tui.Tools;
+namespace JD.AI.Tools;
 
 /// <summary>
 /// Web search tool using Bing Search API (via Copilot connector auth or direct API key).

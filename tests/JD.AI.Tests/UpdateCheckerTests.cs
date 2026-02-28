@@ -1,4 +1,4 @@
-namespace JD.AI.Tui.Tests;
+namespace JD.AI.Tests;
 
 public sealed class UpdateCheckerTests
 {

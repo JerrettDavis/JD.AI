@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using Microsoft.SemanticKernel;
 
-namespace JD.AI.Tui.Agent.Orchestration;
+namespace JD.AI.Agent.Orchestration;
 
 /// <summary>
 /// SK kernel plugin injected into subagents running within a team,

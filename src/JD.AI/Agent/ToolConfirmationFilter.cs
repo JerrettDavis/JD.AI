@@ -1,8 +1,8 @@
-using JD.AI.Tui.Rendering;
-using JD.AI.Tui.Tools;
+using JD.AI.Rendering;
+using JD.AI.Tools;
 using Microsoft.SemanticKernel;
 
-namespace JD.AI.Tui.Agent;
+namespace JD.AI.Agent;
 
 /// <summary>
 /// SK auto-function-invocation filter that enforces safety tiers

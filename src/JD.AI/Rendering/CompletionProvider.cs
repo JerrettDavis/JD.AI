@@ -1,4 +1,4 @@
-namespace JD.AI.Tui.Rendering;
+namespace JD.AI.Rendering;
 
 /// <summary>
 /// A single completion candidate with optional description.

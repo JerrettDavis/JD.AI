@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace JD.AI.Tui.Tools.Sandbox;
+namespace JD.AI.Tools.Sandbox;
 
 /// <summary>
 /// No sandboxing — direct process execution (current default behavior).

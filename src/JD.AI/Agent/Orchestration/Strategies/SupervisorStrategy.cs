@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 
-namespace JD.AI.Tui.Agent.Orchestration.Strategies;
+namespace JD.AI.Agent.Orchestration.Strategies;
 
 /// <summary>
 /// Supervisor strategy — a coordinator agent dispatches work to worker agents,

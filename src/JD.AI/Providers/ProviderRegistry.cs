@@ -1,6 +1,6 @@
 using Microsoft.SemanticKernel;
 
-namespace JD.AI.Tui.Providers;
+namespace JD.AI.Providers;
 
 /// <summary>
 /// Aggregates all <see cref="IProviderDetector"/> instances and exposes

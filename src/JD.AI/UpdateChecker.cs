@@ -3,7 +3,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace JD.AI.Tui;
+namespace JD.AI;
 
 /// <summary>
 /// Checks NuGet for newer versions of the jdai tool and manages auto-update.
@@ -11,8 +11,8 @@ namespace JD.AI.Tui;
 /// </summary>
 public static class UpdateChecker
 {
-    private const string PackageId = "JD.AI.Tui";
-    private const string NuGetIndexUrl = "https://api.nuget.org/v3-flatcontainer/jd.ai.tui/index.json";
+    private const string PackageId = "JD.AI";
+    private const string NuGetIndexUrl = "https://api.nuget.org/v3-flatcontainer/JD.AI/index.json";
     private static readonly TimeSpan CacheExpiry = TimeSpan.FromHours(24);
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
@@ -82,7 +82,7 @@ public static class UpdateChecker
     }
 
     /// <summary>
-    /// Runs <c>dotnet tool update -g JD.AI.Tui</c> and returns the process output.
+    /// Runs <c>dotnet tool update -g JD.AI</c> and returns the process output.
     /// </summary>
     public static async Task<(bool Success, string Output)> ApplyUpdateAsync(CancellationToken ct = default)
     {

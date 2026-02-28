@@ -1,4 +1,4 @@
-namespace JD.AI.Tui.Providers;
+namespace JD.AI.Providers;
 
 /// <summary>
 /// Describes a detected AI provider and its available models.

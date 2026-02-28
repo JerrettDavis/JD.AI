@@ -1,7 +1,7 @@
-using JD.AI.Tui.Providers;
+using JD.AI.Providers;
 using Xunit;
 
-namespace JD.AI.Tui.Tests;
+namespace JD.AI.Tests;
 
 public sealed class ProviderInfoTests
 {

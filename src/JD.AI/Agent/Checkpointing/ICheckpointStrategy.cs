@@ -1,4 +1,4 @@
-namespace JD.AI.Tui.Agent.Checkpointing;
+namespace JD.AI.Agent.Checkpointing;
 
 /// <summary>
 /// Abstraction for creating and managing project state checkpoints

@@ -1,6 +1,6 @@
-using JD.AI.Tui.Persistence;
+using JD.AI.Persistence;
 
-namespace JD.AI.Tui.Rendering;
+namespace JD.AI.Rendering;
 
 /// <summary>
 /// Interactive session history browser with scrollable turns, details, and rollback.

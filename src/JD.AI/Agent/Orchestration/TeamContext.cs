@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace JD.AI.Tui.Agent.Orchestration;
+namespace JD.AI.Agent.Orchestration;
 
 /// <summary>
 /// Shared context for a team of agents — provides a thread-safe scratchpad,

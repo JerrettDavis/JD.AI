@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace JD.AI.Tui.Tools.Sandbox;
+namespace JD.AI.Tools.Sandbox;
 
 /// <summary>
 /// Restricted sandbox — filters environment variables, blocks dangerous commands,

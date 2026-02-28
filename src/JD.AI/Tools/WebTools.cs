@@ -4,7 +4,7 @@ using System.Text;
 using HtmlAgilityPack;
 using Microsoft.SemanticKernel;
 
-namespace JD.AI.Tui.Tools;
+namespace JD.AI.Tools;
 
 /// <summary>
 /// Web tools — fetch URLs and convert HTML to readable text.

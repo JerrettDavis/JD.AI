@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Text;
 using Microsoft.SemanticKernel;
 
-namespace JD.AI.Tui.Tools;
+namespace JD.AI.Tools;
 
 /// <summary>
 /// Git tools for the AI agent.

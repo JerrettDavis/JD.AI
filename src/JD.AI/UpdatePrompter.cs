@@ -1,6 +1,6 @@
 using Spectre.Console;
 
-namespace JD.AI.Tui;
+namespace JD.AI;
 
 /// <summary>
 /// Renders update notifications and handles the interactive update flow.
@@ -27,7 +27,7 @@ public static class UpdatePrompter
         if (!AnsiConsole.Profile.Capabilities.Interactive)
         {
             AnsiConsole.MarkupLine(
-                $"[dim]Run [bold]dotnet tool update -g JD.AI.Tui[/] to update.[/]");
+                $"[dim]Run [bold]dotnet tool update -g JD.AI[/] to update.[/]");
             return false;
         }
 

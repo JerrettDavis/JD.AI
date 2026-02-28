@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace JD.AI.Tui.Rendering;
+namespace JD.AI.Rendering;
 
 /// <summary>
 /// Classifies a segment of streaming output.

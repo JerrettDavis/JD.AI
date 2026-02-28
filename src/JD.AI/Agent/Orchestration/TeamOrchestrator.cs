@@ -1,8 +1,8 @@
 using System.Diagnostics;
-using JD.AI.Tui.Agent.Orchestration.Strategies;
-using JD.AI.Tui.Rendering;
+using JD.AI.Agent.Orchestration.Strategies;
+using JD.AI.Rendering;
 
-namespace JD.AI.Tui.Agent.Orchestration;
+namespace JD.AI.Agent.Orchestration;
 
 /// <summary>
 /// Manages team lifecycle: parse team config, select strategy, create executors,

@@ -1,11 +1,11 @@
 using System.Diagnostics;
 using System.Text;
-using JD.AI.Tui.Rendering;
+using JD.AI.Rendering;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 
-namespace JD.AI.Tui.Agent;
+namespace JD.AI.Agent;
 
 /// <summary>
 /// The core agent interaction loop: read input → LLM → tools → render.

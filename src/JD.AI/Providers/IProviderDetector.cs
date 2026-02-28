@@ -1,6 +1,6 @@
 using Microsoft.SemanticKernel;
 
-namespace JD.AI.Tui.Providers;
+namespace JD.AI.Providers;
 
 /// <summary>
 /// Detects a single AI backend and builds kernels for its models.

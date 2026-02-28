@@ -3,7 +3,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.SemanticKernel;
 
-namespace JD.AI.Tui.Tools;
+namespace JD.AI.Tools;
 
 /// <summary>
 /// Code search tools — grep and glob — for the AI agent.

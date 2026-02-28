@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 
-namespace JD.AI.Tui.Persistence;
+namespace JD.AI.Persistence;
 
 /// <summary>
 /// Result of an integrity check across SQLite store and JSON exports.

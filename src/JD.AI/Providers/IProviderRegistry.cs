@@ -1,6 +1,6 @@
 using Microsoft.SemanticKernel;
 
-namespace JD.AI.Tui.Providers;
+namespace JD.AI.Providers;
 
 /// <summary>
 /// Detects and registers AI providers, builds kernels on demand.
