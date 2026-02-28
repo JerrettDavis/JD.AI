@@ -23,6 +23,10 @@ var forceUpdateCheck = args.Contains("--force-update-check");
 var resumeId = args.SkipWhile(a => !string.Equals(a, "--resume", StringComparison.OrdinalIgnoreCase))
     .Skip(1).FirstOrDefault();
 var isNewSession = args.Contains("--new");
+var cliModel = args.SkipWhile(a => !string.Equals(a, "--model", StringComparison.OrdinalIgnoreCase))
+    .Skip(1).FirstOrDefault();
+var cliProvider = args.SkipWhile(a => !string.Equals(a, "--provider", StringComparison.OrdinalIgnoreCase))
+    .Skip(1).FirstOrDefault();
 
 // Fire background update check immediately (non-blocking)
 var updateCheckTask = UpdateChecker.CheckAsync(forceUpdateCheck);
@@ -55,9 +59,50 @@ if (allModels.Count == 0)
     return 1;
 }
 
-// 3. Let user pick a model (or use first available)
+// 3. Let user pick a model (or use CLI flags / first available)
 ProviderModelInfo selectedModel;
-if (allModels.Count == 1)
+if (cliModel != null)
+{
+    // --model flag: match by display name or model ID (case-insensitive)
+    var candidates = allModels.Where(m =>
+        m.DisplayName.Contains(cliModel, StringComparison.OrdinalIgnoreCase) ||
+        m.Id.Contains(cliModel, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    if (cliProvider != null)
+    {
+        candidates = candidates.Where(m =>
+            m.ProviderName.Contains(cliProvider, StringComparison.OrdinalIgnoreCase)).ToList();
+    }
+
+    if (candidates.Count == 0)
+    {
+        AnsiConsole.MarkupLine($"[red]No model matching '{Markup.Escape(cliModel)}' found.[/]");
+        return 1;
+    }
+
+    selectedModel = candidates[0];
+}
+else if (cliProvider != null)
+{
+    var candidates = allModels.Where(m =>
+        m.ProviderName.Contains(cliProvider, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    if (candidates.Count == 0)
+    {
+        AnsiConsole.MarkupLine($"[red]No models from provider '{Markup.Escape(cliProvider)}' found.[/]");
+        return 1;
+    }
+
+    selectedModel = candidates.Count == 1
+        ? candidates[0]
+        : AnsiConsole.Prompt(
+            new SelectionPrompt<ProviderModelInfo>()
+                .Title("Select a model:")
+                .PageSize(15)
+                .UseConverter(m => Markup.Escape($"[{m.ProviderName}] {m.DisplayName}"))
+                .AddChoices(candidates));
+}
+else if (allModels.Count == 1)
 {
     selectedModel = allModels[0];
 }

@@ -35,17 +35,7 @@ On startup, JD.AI:
 4. Loads project instructions (JDAI.md, CLAUDE.md, etc.)
 5. Shows the welcome banner
 
-```
-Detecting providers...
-  ✅ Claude Code: Authenticated — 1 model(s)
-  ✅ GitHub Copilot: Authenticated — 3 model(s)
-  ✅ Ollama: 59 model(s) available
-╭─Welcome──────────────────────────────────────────────────────╮
-│ jdai — Semantic Kernel TUI Agent                             │
-│ Provider: Ollama | Model: llama3.2 | Total models: 63        │
-│ Type /help for commands, /quit to exit.                      │
-╰──────────────────────────────────────────────────────────────╯
-```
+![JD.AI startup showing provider detection](../images/demo-startup.png)
 
 ## Provider setup
 

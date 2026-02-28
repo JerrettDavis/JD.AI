@@ -2,3 +2,5 @@ _site/
 api/
 obj/
 log/
+scripts/node_modules/
+scripts/package-lock.json

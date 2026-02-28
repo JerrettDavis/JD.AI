@@ -12,12 +12,7 @@ On startup, JD.AI checks for available providers in this order:
 
 The first provider with a valid connection becomes the default. Results are shown on startup:
 
-```text
-Detecting providers...
-  ✅ Claude Code: Authenticated — 1 model(s)
-  ✅ GitHub Copilot: Authenticated — 3 model(s)
-  ✅ Ollama: 59 model(s) available
-```
+![Provider detection on startup](../images/demo-providers.png)
 
 ## Claude Code
 

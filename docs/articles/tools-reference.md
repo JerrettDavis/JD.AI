@@ -4,6 +4,8 @@ JD.AI provides a set of built-in tools that the AI agent invokes automatically d
 
 Tools are grouped into eight categories: **File**, **Search**, **Shell**, **Git**, **Web**, **Web Search**, **Memory**, and **Subagent**.
 
+![Tool execution showing file reading and grep](../images/demo-tools.png)
+
 ## File tools
 
 | Function | Description |

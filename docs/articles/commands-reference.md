@@ -2,6 +2,8 @@
 
 Slash commands are typed at the `>` prompt prefixed with `/`. Type `/help` to see all commands.
 
+![Slash commands help output](../images/demo-commands-help.png)
+
 ## Model & Provider Management
 
 ### `/help`

@@ -4,6 +4,8 @@ Team orchestration coordinates multiple specialized [subagents](subagents.md) wo
 
 Each team maintains a shared `TeamContext` containing a scratchpad, event stream, and collected results.
 
+![Team orchestration with fan-out strategy and progress panel](../images/demo-orchestration.png)
+
 ## Strategies
 
 JD.AI supports four orchestration strategies. Choose based on how your agents need to interact.
