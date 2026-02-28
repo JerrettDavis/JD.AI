@@ -17,6 +17,20 @@ public static class TuiIntegrationGuard
         Xunit.Skip.IfNot(IsEnabled, $"Set {EnvVar}=true to run TUI integration tests.");
 
     /// <summary>
+    /// Chat model name, configurable via <c>OLLAMA_CHAT_MODEL</c> env var.
+    /// </summary>
+    public static string OllamaModel =>
+        Environment.GetEnvironmentVariable("OLLAMA_CHAT_MODEL") is { Length: > 0 } m
+            ? m : "llama3.2:latest";
+
+    /// <summary>
+    /// Ollama base endpoint, configurable via <c>OLLAMA_ENDPOINT</c> env var.
+    /// </summary>
+    public static string OllamaEndpoint =>
+        Environment.GetEnvironmentVariable("OLLAMA_ENDPOINT") is { Length: > 0 } ep
+            ? ep.TrimEnd('/') : "http://localhost:11434";
+
+    /// <summary>
     /// Checks if Ollama is reachable.
     /// </summary>
     public static async Task<bool> IsOllamaAvailableAsync()
@@ -24,7 +38,7 @@ public static class TuiIntegrationGuard
         try
         {
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
-            var response = await client.GetAsync("http://localhost:11434/api/tags").ConfigureAwait(false);
+            var response = await client.GetAsync($"{OllamaEndpoint}/api/tags").ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
         catch

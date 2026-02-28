@@ -18,7 +18,7 @@ public sealed class AgentLoopIntegrationTests
     {
         await TuiIntegrationGuard.EnsureOllamaAsync();
 
-        var model = new ProviderModelInfo("llama3.2:latest", "Llama 3.2", "Ollama");
+        var model = new ProviderModelInfo(TuiIntegrationGuard.OllamaModel, "Ollama Chat", "Ollama");
         var detector = new OllamaDetector();
         var kernel = detector.BuildKernel(model);
 
@@ -37,7 +37,7 @@ public sealed class AgentLoopIntegrationTests
     {
         await TuiIntegrationGuard.EnsureOllamaAsync();
 
-        var model = new ProviderModelInfo("llama3.2:latest", "Llama 3.2", "Ollama");
+        var model = new ProviderModelInfo(TuiIntegrationGuard.OllamaModel, "Ollama Chat", "Ollama");
         var detector = new OllamaDetector();
         var kernel = detector.BuildKernel(model);
 
@@ -58,7 +58,7 @@ public sealed class AgentLoopIntegrationTests
     {
         await TuiIntegrationGuard.EnsureOllamaAsync();
 
-        var model = new ProviderModelInfo("llama3.2:latest", "Llama 3.2", "Ollama");
+        var model = new ProviderModelInfo(TuiIntegrationGuard.OllamaModel, "Ollama Chat", "Ollama");
         var detector = new OllamaDetector();
         var kernel = detector.BuildKernel(model);
 
@@ -95,7 +95,7 @@ public sealed class AgentLoopIntegrationTests
     {
         await TuiIntegrationGuard.EnsureOllamaAsync();
 
-        var model = new ProviderModelInfo("llama3.2:latest", "Llama 3.2", "Ollama");
+        var model = new ProviderModelInfo(TuiIntegrationGuard.OllamaModel, "Ollama Chat", "Ollama");
         var detector = new OllamaDetector();
         var kernel = detector.BuildKernel(model);
 
