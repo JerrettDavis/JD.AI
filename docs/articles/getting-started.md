@@ -1,12 +1,9 @@
-# Getting Started with JD.AI
+# Getting Started
 
 ## Prerequisites
 
-- .NET 10.0 SDK or later
-- At least one AI provider configured:
-  - **Claude Code**: Install and authenticate via `claude auth login`
-  - **GitHub Copilot**: Authenticate via VS Code or `gh auth login`
-  - **Ollama**: Install and run `ollama serve`
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download) or later
+- At least one AI provider configured (see below)
 
 ## Installation
 
@@ -16,24 +13,102 @@ Install JD.AI as a global .NET tool:
 dotnet tool install --global JD.AI
 ```
 
-## First Run
-
-Launch the TUI:
+To update to the latest version:
 
 ```bash
+dotnet tool update --global JD.AI
+```
+
+## First run
+
+Launch JD.AI in any project directory:
+
+```bash
+cd /path/to/your/project
 jdai
 ```
 
-JD.AI will automatically detect available providers and select the best one.
+On startup, JD.AI:
+1. Checks for available AI providers
+2. Displays detected providers and models
+3. Selects the best available provider
+4. Loads project instructions (JDAI.md, CLAUDE.md, etc.)
+5. Shows the welcome banner
 
-## Slash Commands
+```
+Detecting providers...
+  ✅ Claude Code: Authenticated — 1 model(s)
+  ✅ GitHub Copilot: Authenticated — 3 model(s)
+  ✅ Ollama: 59 model(s) available
+╭─Welcome──────────────────────────────────────────────────────╮
+│ jdai — Semantic Kernel TUI Agent                             │
+│ Provider: Ollama | Model: llama3.2 | Total models: 63        │
+│ Type /help for commands, /quit to exit.                      │
+╰──────────────────────────────────────────────────────────────╯
+```
 
-| Command | Description |
-|---------|-------------|
-| `/help` | Show available commands |
-| `/model <name>` | Switch AI model |
-| `/provider <name>` | Switch AI provider |
-| `/compact` | Compact conversation history |
-| `/save [path]` | Save current session |
-| `/load [path]` | Load a saved session |
-| `/quit` | Exit the application |
+## Provider setup
+
+You need at least one AI provider. JD.AI auto-detects all available providers.
+
+### Claude Code
+
+1. Install the Claude Code CLI:
+   ```bash
+   npm install -g @anthropic-ai/claude-code
+   ```
+2. Authenticate:
+   ```bash
+   claude auth login
+   ```
+3. JD.AI detects the session automatically on next launch.
+
+### GitHub Copilot
+
+1. Authenticate via GitHub CLI:
+   ```bash
+   gh auth login --scopes copilot
+   ```
+   Or sign in through the VS Code GitHub Copilot extension.
+2. JD.AI detects available Copilot models automatically.
+
+### Ollama (local, free)
+
+1. Install Ollama from [ollama.com](https://ollama.com)
+2. Start the server:
+   ```bash
+   ollama serve
+   ```
+3. Pull a chat model:
+   ```bash
+   ollama pull llama3.2
+   ```
+4. Optionally pull an embedding model for semantic memory:
+   ```bash
+   ollama pull all-minilm
+   ```
+
+## Switching providers and models
+
+```
+/providers     # List all detected providers with status
+/provider      # Show current provider and model
+/models        # List all available models across providers
+/model <name>  # Switch to a specific model
+```
+
+## CLI options
+
+| Flag | Description |
+|------|-------------|
+| `--resume <id>` | Resume a previous session by ID |
+| `--new` | Start a fresh session |
+| `--force-update-check` | Force NuGet update check |
+| `--dangerously-skip-permissions` | Skip all tool confirmations |
+
+## What's next
+
+- [Quickstart](quickstart.md) — Walk through your first real task
+- [Best Practices](best-practices.md) — Tips for effective prompting
+- [Commands Reference](commands-reference.md) — All 20 slash commands
+- [Providers](providers.md) — Detailed provider documentation

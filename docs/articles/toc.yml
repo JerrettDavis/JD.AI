@@ -1,2 +1,36 @@
+- name: Overview
+  href: overview.md
 - name: Getting Started
   href: getting-started.md
+- name: Quickstart
+  href: quickstart.md
+- name: Best Practices
+  href: best-practices.md
+- name: Common Workflows
+  href: common-workflows.md
+- name: AI Providers
+  href: providers.md
+- name: Tools Reference
+  href: tools-reference.md
+- name: Commands Reference
+  href: commands-reference.md
+- name: Subagents
+  href: subagents.md
+- name: Team Orchestration
+  href: orchestration.md
+- name: Session Persistence
+  href: persistence.md
+- name: Configuration
+  href: configuration.md
+- name: Skills, Plugins, and Hooks
+  href: skills-and-plugins.md
+- name: Clipboard and Input
+  href: clipboard-and-input.md
+- name: Checkpointing
+  href: checkpointing.md
+- name: Troubleshooting
+  href: troubleshooting.md
+- name: CLI Reference
+  href: cli-reference.md
+- name: Extending JD.AI
+  href: extending.md
