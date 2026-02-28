@@ -1,6 +1,6 @@
-using JD.AI.Tui.Rendering;
+using JD.AI.Rendering;
 
-namespace JD.AI.Tui.Tests;
+namespace JD.AI.Tests;
 
 public sealed class CompletionProviderTests
 {

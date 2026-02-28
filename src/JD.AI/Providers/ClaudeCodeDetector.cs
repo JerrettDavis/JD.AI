@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.SemanticKernel;
 using Spectre.Console;
 
-namespace JD.AI.Tui.Providers;
+namespace JD.AI.Providers;
 
 /// <summary>
 /// Detects a local Claude Code session and exposes its models.

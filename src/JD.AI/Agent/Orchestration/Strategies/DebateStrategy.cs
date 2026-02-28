@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace JD.AI.Tui.Agent.Orchestration.Strategies;
+namespace JD.AI.Agent.Orchestration.Strategies;
 
 /// <summary>
 /// Debate strategy — multiple agents independently answer the same question with

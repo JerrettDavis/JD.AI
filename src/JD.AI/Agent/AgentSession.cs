@@ -1,10 +1,10 @@
-using JD.AI.Tui.Persistence;
-using JD.AI.Tui.Providers;
+using JD.AI.Persistence;
+using JD.AI.Providers;
 using JD.SemanticKernel.Extensions.Compaction;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 
-namespace JD.AI.Tui.Agent;
+namespace JD.AI.Agent;
 
 /// <summary>
 /// Manages the conversation state, kernel, compaction, and persistence.

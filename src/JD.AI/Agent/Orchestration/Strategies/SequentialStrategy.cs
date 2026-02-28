@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace JD.AI.Tui.Agent.Orchestration.Strategies;
+namespace JD.AI.Agent.Orchestration.Strategies;
 
 /// <summary>
 /// Sequential pipeline — agents run in order, each receiving the previous agent's

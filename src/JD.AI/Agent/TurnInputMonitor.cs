@@ -1,6 +1,6 @@
-using JD.AI.Tui.Rendering;
+using JD.AI.Rendering;
 
-namespace JD.AI.Tui.Agent;
+namespace JD.AI.Agent;
 
 /// <summary>
 /// Monitors keystrokes during an agent turn to support:

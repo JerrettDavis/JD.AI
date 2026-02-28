@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace JD.AI.Tui.Agent.Checkpointing;
+namespace JD.AI.Agent.Checkpointing;
 
 /// <summary>
 /// Checkpoint strategy using git stash. Lightweight, doesn't pollute branch history.

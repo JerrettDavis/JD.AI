@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 
-namespace JD.AI.Tui.Persistence;
+namespace JD.AI.Persistence;
 
 /// <summary>
 /// Top-level session metadata. Stored in SQLite and as the root of JSON exports.

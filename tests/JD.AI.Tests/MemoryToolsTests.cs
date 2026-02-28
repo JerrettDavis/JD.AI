@@ -1,8 +1,8 @@
-using JD.AI.Tui.Tools;
+using JD.AI.Tools;
 using JD.SemanticKernel.Extensions.Memory;
 using NSubstitute;
 
-namespace JD.AI.Tui.Tests;
+namespace JD.AI.Tests;
 
 public sealed class MemoryToolsTests
 {

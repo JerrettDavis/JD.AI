@@ -1,10 +1,10 @@
 using System.ComponentModel;
 using System.Text.Json;
-using JD.AI.Tui.Agent;
-using JD.AI.Tui.Agent.Orchestration;
+using JD.AI.Agent;
+using JD.AI.Agent.Orchestration;
 using Microsoft.SemanticKernel;
 
-namespace JD.AI.Tui.Tools;
+namespace JD.AI.Tools;
 
 /// <summary>
 /// Kernel functions for spawning subagents and teams from the parent agent loop.

@@ -1,11 +1,11 @@
-using JD.AI.Tui.Agent;
-using JD.AI.Tui.Providers;
-using JD.AI.Tui.Tools;
+using JD.AI.Agent;
+using JD.AI.Providers;
+using JD.AI.Tools;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Xunit;
 
-namespace JD.AI.Tui.IntegrationTests;
+namespace JD.AI.IntegrationTests;
 
 /// <summary>
 /// Agent loop integration tests requiring a running Ollama instance.

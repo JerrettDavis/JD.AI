@@ -2,7 +2,7 @@ using System.ComponentModel;
 using JD.SemanticKernel.Extensions.Memory;
 using Microsoft.SemanticKernel;
 
-namespace JD.AI.Tui.Tools;
+namespace JD.AI.Tools;
 
 /// <summary>
 /// Semantic memory tools — store, search, and forget.

@@ -1,4 +1,4 @@
-namespace JD.AI.Tui.IntegrationTests;
+namespace JD.AI.IntegrationTests;
 
 /// <summary>
 /// Guards for integration test preconditions.

@@ -1,6 +1,6 @@
-using JD.AI.Tui.Tools.Sandbox;
+using JD.AI.Tools.Sandbox;
 
-namespace JD.AI.Tui.Tests;
+namespace JD.AI.Tests;
 
 public sealed class SandboxTests
 {

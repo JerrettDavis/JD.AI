@@ -1,4 +1,4 @@
-namespace JD.AI.Tui.Tools.Sandbox;
+namespace JD.AI.Tools.Sandbox;
 
 /// <summary>
 /// Abstraction for executing commands with varying levels of isolation.

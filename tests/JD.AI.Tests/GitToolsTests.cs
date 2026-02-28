@@ -1,6 +1,6 @@
-using JD.AI.Tui.Tools;
+using JD.AI.Tools;
 
-namespace JD.AI.Tui.Tests;
+namespace JD.AI.Tests;
 
 public sealed class GitToolsTests : IDisposable
 {

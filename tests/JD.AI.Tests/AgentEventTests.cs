@@ -1,6 +1,6 @@
-using JD.AI.Tui.Agent.Orchestration;
+using JD.AI.Agent.Orchestration;
 
-namespace JD.AI.Tui.Tests;
+namespace JD.AI.Tests;
 
 public sealed class AgentEventTests
 {

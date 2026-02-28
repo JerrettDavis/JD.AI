@@ -1,4 +1,4 @@
-namespace JD.AI.Tui.Rendering;
+namespace JD.AI.Rendering;
 
 /// <summary>
 /// Represents content pasted into the input line that has been collapsed

@@ -1,6 +1,6 @@
-using JD.AI.Tui.Agent;
+using JD.AI.Agent;
 
-namespace JD.AI.Tui.Tests;
+namespace JD.AI.Tests;
 
 public sealed class SubagentRunnerTests
 {

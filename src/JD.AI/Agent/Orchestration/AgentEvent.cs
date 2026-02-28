@@ -1,4 +1,4 @@
-namespace JD.AI.Tui.Agent.Orchestration;
+namespace JD.AI.Agent.Orchestration;
 
 /// <summary>Type of event emitted by a subagent during execution.</summary>
 public enum AgentEventType

@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 
-namespace JD.AI.Tui.Agent;
+namespace JD.AI.Agent;
 
 /// <summary>
 /// Discovers and merges project instruction files (JDAI.md, CLAUDE.md, AGENTS.md, etc.)
