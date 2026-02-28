@@ -1,0 +1,45 @@
+{
+  "metadata": [
+    {
+      "src": [
+        {
+          "files": [ "src/**/*.csproj" ],
+          "src": ".."
+        }
+      ],
+      "dest": "api",
+      "properties": {
+        "TargetFramework": "net10.0"
+      },
+      "includePrivateMembers": false,
+      "disableDefaultFilter": false,
+      "allowCompilationErrors": false
+    }
+  ],
+  "build": {
+    "content": [
+      {
+        "files": [ "api/**.yml", "api/index.md" ]
+      },
+      {
+        "files": [ "articles/**/*.md", "articles/**/toc.yml", "toc.yml", "*.md" ]
+      }
+    ],
+    "resource": [
+      {
+        "files": [ "images/**" ]
+      }
+    ],
+    "output": "_site",
+    "template": [ "default", "modern" ],
+    "globalMetadata": {
+      "_appName": "JD.AI",
+      "_appTitle": "JD.AI",
+      "_appFooter": "JD.AI — MIT License",
+      "_description": "An AI-powered terminal assistant built on Microsoft Semantic Kernel.",
+      "_copyright": "Copyright © 2025 JD. Licensed under the MIT License.",
+      "_enableSearch": true,
+      "_disableContribution": false
+    }
+  }
+}
