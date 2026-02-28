@@ -1,3 +1,7 @@
+---
+description: "Specialized AI instances for scoped tasks — explore, task, plan, review, and general-purpose agents."
+---
+
 # Subagents
 
 Subagents are specialized AI instances that handle specific tasks in isolation. Each subagent runs with its own Semantic Kernel, chat history, and scoped tool access — keeping the parent conversation clean and focused.

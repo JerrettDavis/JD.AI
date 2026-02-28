@@ -1,3 +1,7 @@
+---
+description: "All 20 slash commands — model switching, sessions, context management, teams, and more."
+---
+
 # Commands Reference
 
 Slash commands are typed at the `>` prompt prefixed with `/`. Type `/help` to see all commands.

@@ -1,3 +1,7 @@
+---
+description: "Connect to Claude Code, GitHub Copilot, and Ollama — auto-detected on startup with no manual configuration."
+---
+
 # AI Providers
 
 JD.AI detects and connects to AI providers automatically on startup. No manual configuration is required — install a provider, authenticate if needed, and JD.AI handles the rest.

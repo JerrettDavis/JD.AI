@@ -1,3 +1,7 @@
+---
+description: "Install JD.AI and connect to Claude Code, GitHub Copilot, or Ollama in minutes."
+---
+
 # Getting Started
 
 ## Prerequisites

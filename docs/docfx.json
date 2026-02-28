@@ -47,7 +47,8 @@
         "branch": "main"
       },
       "_gitUrlPattern": "github",
-      "_lang": "en"
+      "_lang": "en",
+      "_siteUrl": "https://jerrettdavis.github.io/JD.AI/"
     }
   }
 }

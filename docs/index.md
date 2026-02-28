@@ -1,5 +1,6 @@
 ---
 _layout: landing
+description: "AI-powered terminal assistant built on Microsoft Semantic Kernel. Multi-provider support for Claude Code, GitHub Copilot, and Ollama with tool execution, subagent swarms, and team orchestration."
 ---
 
 # JD.AI

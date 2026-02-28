@@ -1,3 +1,7 @@
+---
+description: "All built-in tools — file operations, search, shell, git, web, memory, and subagent spawning — with parameters and examples."
+---
+
 # Tools reference
 
 JD.AI provides a set of built-in tools that the AI agent invokes automatically during conversations. Each tool call is confirmed before execution unless overridden by [`/autorun`](common-workflows.md), [`/permissions`](common-workflows.md), or the `--dangerously-skip-permissions` CLI flag.

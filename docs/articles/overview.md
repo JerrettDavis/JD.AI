@@ -1,3 +1,7 @@
+---
+description: "What JD.AI is, how it works, and what it offers — an AI-powered terminal assistant built on Microsoft Semantic Kernel."
+---
+
 # Overview
 
 JD.AI is an AI-powered terminal assistant built on [Microsoft Semantic Kernel](https://learn.microsoft.com/semantic-kernel/). It brings intelligent code understanding, generation, and project management directly to your command line — with support for multiple AI providers and a rich set of built-in tools.

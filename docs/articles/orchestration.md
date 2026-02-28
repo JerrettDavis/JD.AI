@@ -1,3 +1,7 @@
+---
+description: "Coordinate multiple agents with sequential, fan-out, supervisor, and debate orchestration strategies."
+---
+
 # Team Orchestration
 
 Team orchestration coordinates multiple specialized [subagents](subagents.md) working together on complex tasks. Rather than managing agents individually from your main session, you define a team with a strategy, and the system handles agent lifecycle, communication, and result aggregation automatically.
