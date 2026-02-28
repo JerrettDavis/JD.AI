@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>JD.AI.Daemon</RootNamespace>
+    <IsPackable>true</IsPackable>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>jdai-daemon</ToolCommandName>
+    <PackageId>JD.AI.Daemon</PackageId>
+    <Description>System service host for JD.AI Gateway — runs as Windows Service or systemd unit for always-on AI assistant.</Description>
+    <PackageTags>ai;daemon;service;gateway;systemd</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JD.AI.Core\JD.AI.Core.csproj" />
+    <ProjectReference Include="..\JD.AI.Gateway\JD.AI.Gateway.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" />
+  </ItemGroup>
+
+</Project>

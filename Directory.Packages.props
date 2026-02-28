@@ -36,6 +36,12 @@
     <PackageVersion Include="Telegram.Bot" Version="22.7.0" />
   </ItemGroup>
 
+  <!-- Daemon / service hosting -->
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Systemd" Version="10.0.3" />
+  </ItemGroup>
+
   <!-- Testing -->
   <ItemGroup>
     <PackageVersion Include="coverlet.collector" Version="8.0.0" />
