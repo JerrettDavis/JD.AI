@@ -69,6 +69,6 @@ JD.AI ships with a broad set of capabilities out of the box:
 
 ## Next steps
 
-- **[Getting started quickstart](getting-started-quickstart.md)** — end-to-end setup in under five minutes
+- **[Quickstart](quickstart.md)** — end-to-end setup in under five minutes
 - **[Best practices](best-practices.md)** — tips for writing effective prompts and structuring projects
 - **[Troubleshooting](troubleshooting.md)** — common issues and how to resolve them

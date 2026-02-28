@@ -31,15 +31,23 @@
       }
     ],
     "output": "_site",
-    "template": [ "default", "modern" ],
+    "template": [ "default", "modern", "template" ],
     "globalMetadata": {
       "_appName": "JD.AI",
       "_appTitle": "JD.AI",
-      "_appFooter": "JD.AI — MIT License",
-      "_description": "An AI-powered terminal assistant built on Microsoft Semantic Kernel.",
-      "_copyright": "Copyright © 2025 JD. Licensed under the MIT License.",
+      "_appLogoPath": "images/logo.svg",
+      "_appFaviconPath": "images/favicon.svg",
+      "_appFooter": "<span>JD.AI &copy; 2025 &mdash; MIT License &middot; <a href='https://github.com/JerrettDavis/JD.AI'>GitHub</a> &middot; <a href='https://www.nuget.org/packages/JD.AI'>NuGet</a></span>",
+      "_description": "An AI-powered terminal assistant built on Microsoft Semantic Kernel. Multi-provider support for Claude Code, GitHub Copilot, and Ollama.",
+      "_copyright": "Copyright &copy; 2025 Jerrett Davis. Licensed under the MIT License.",
       "_enableSearch": true,
-      "_disableContribution": false
+      "_disableContribution": false,
+      "_gitContribute": {
+        "repo": "https://github.com/JerrettDavis/JD.AI",
+        "branch": "main"
+      },
+      "_gitUrlPattern": "github",
+      "_lang": "en"
     }
   }
 }
