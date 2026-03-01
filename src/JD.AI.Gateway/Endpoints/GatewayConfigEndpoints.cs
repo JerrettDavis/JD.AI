@@ -7,6 +7,12 @@ namespace JD.AI.Gateway.Endpoints;
 
 public static class GatewayConfigEndpoints
 {
+    private static readonly System.Text.Json.JsonSerializerOptions CamelCaseOptions = new()
+    {
+        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+        WriteIndented = true
+    };
+
     public static void MapGatewayConfigEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/gateway").WithTags("Gateway");
@@ -349,8 +355,7 @@ public static class GatewayConfigEndpoints
                 if (depth == pathSegments.Length - 1)
                 {
                     // Replace this node with the serialized value
-                    var serialized = System.Text.Json.JsonSerializer.Serialize(value,
-                        new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase, WriteIndented = true });
+                    var serialized = System.Text.Json.JsonSerializer.Serialize(value, CamelCaseOptions);
                     using var replacement = System.Text.Json.JsonDocument.Parse(serialized);
                     replacement.RootElement.WriteTo(writer);
                 }

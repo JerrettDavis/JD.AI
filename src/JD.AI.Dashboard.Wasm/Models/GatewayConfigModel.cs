@@ -1,3 +1,7 @@
+using System.Diagnostics.CodeAnalysis;
+
+[assembly: SuppressMessage("Usage", "CA2227:Collection properties should be read only", Scope = "namespaceanddescendants", Target = "~N:JD.AI.Dashboard.Wasm.Models", Justification = "DTOs for JSON deserialization and Blazor form binding")]
+
 namespace JD.AI.Dashboard.Wasm.Models;
 
 /// <summary>Full gateway config matching Gateway:Config section shape.</summary>
