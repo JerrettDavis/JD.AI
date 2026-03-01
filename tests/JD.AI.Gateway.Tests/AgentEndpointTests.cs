@@ -1,13 +1,12 @@
 using System.Net;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace JD.AI.Gateway.Tests;
 
-public sealed class AgentEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class AgentEndpointTests : IClassFixture<GatewayTestFactory>
 {
     private readonly HttpClient _client;
 
-    public AgentEndpointTests(WebApplicationFactory<Program> factory)
+    public AgentEndpointTests(GatewayTestFactory factory)
     {
         _client = factory.CreateClient();
     }

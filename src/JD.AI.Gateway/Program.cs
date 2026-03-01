@@ -157,6 +157,9 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
 
 var app = builder.Build();
 
+// --- Initialize stores ---
+await app.Services.GetRequiredService<SessionStore>().InitializeAsync();
+
 // --- Middleware pipeline ---
 app.UseCors();
 

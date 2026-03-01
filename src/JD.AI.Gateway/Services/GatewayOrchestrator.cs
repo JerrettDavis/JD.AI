@@ -86,43 +86,50 @@ public sealed class GatewayOrchestrator : IHostedService
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Gateway orchestrator shutting down...");
-
-        // Unregister JD.AI agents from OpenClaw
-        if (_agentRegistrar is not null)
+        try
         {
-            try
-            {
-                await _agentRegistrar.UnregisterAgentsAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Error unregistering agents from OpenClaw");
-            }
-        }
+            _logger.LogInformation("Gateway orchestrator shutting down...");
 
-        // Disconnect all channels
-        foreach (var channel in _channels.Channels)
+            // Unregister JD.AI agents from OpenClaw
+            if (_agentRegistrar is not null)
+            {
+                try
+                {
+                    await _agentRegistrar.UnregisterAgentsAsync(cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error unregistering agents from OpenClaw");
+                }
+            }
+
+            // Disconnect all channels
+            foreach (var channel in _channels.Channels)
+            {
+                try
+                {
+                    if (channel.IsConnected)
+                        await channel.DisconnectAsync(cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error disconnecting channel '{Type}'", channel.ChannelType);
+                }
+            }
+
+            // Stop all agents
+            foreach (var agent in _agentPool.ListAgents())
+            {
+                _agentPool.StopAgent(agent.Id);
+            }
+
+            await _events.PublishAsync(
+                new GatewayEvent("gateway.stopped", "orchestrator", DateTimeOffset.UtcNow, null), cancellationToken);
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {
-            try
-            {
-                if (channel.IsConnected)
-                    await channel.DisconnectAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Error disconnecting channel '{Type}'", channel.ChannelType);
-            }
+            // Swallow during graceful shutdown (e.g., test teardown)
         }
-
-        // Stop all agents
-        foreach (var agent in _agentPool.ListAgents())
-        {
-            _agentPool.StopAgent(agent.Id);
-        }
-
-        await _events.PublishAsync(
-            new GatewayEvent("gateway.stopped", "orchestrator", DateTimeOffset.UtcNow, null), cancellationToken);
     }
 
     private async Task RegisterChannelsAsync(CancellationToken ct)

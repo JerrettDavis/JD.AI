@@ -1,14 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace JD.AI.Gateway.Tests;
 
-public sealed class ProviderEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class ProviderEndpointTests : IClassFixture<GatewayTestFactory>
 {
     private readonly HttpClient _client;
 
-    public ProviderEndpointTests(WebApplicationFactory<Program> factory)
+    public ProviderEndpointTests(GatewayTestFactory factory)
     {
         _client = factory.CreateClient();
     }

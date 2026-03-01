@@ -4,6 +4,7 @@ using JD.AI.Core.Memory;
 using Xunit;
 
 namespace JD.AI.Tests.Memory;
+
 public class SqliteVectorStoreTests : IAsyncDisposable
 {
     private readonly string _dbPath;

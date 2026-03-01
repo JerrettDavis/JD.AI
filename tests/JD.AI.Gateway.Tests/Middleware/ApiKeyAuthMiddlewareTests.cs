@@ -191,5 +191,18 @@ public sealed class ApiKeyAuthMiddlewareIntegrationTests
             builder.UseSetting("Gateway:Auth:ApiKeys:0:Role", "Admin");
             builder.UseSetting("Gateway:RateLimit:Enabled", "false");
         }
+
+        protected override void Dispose(bool disposing)
+        {
+            try { base.Dispose(disposing); }
+            catch (AggregateException) { }
+        }
+
+        public override async ValueTask DisposeAsync()
+        {
+            try { await base.DisposeAsync(); }
+            catch (AggregateException) { }
+            GC.SuppressFinalize(this);
+        }
     }
 }

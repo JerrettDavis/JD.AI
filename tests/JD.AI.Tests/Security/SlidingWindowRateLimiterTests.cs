@@ -4,6 +4,7 @@ using JD.AI.Core.Security;
 using Xunit;
 
 namespace JD.AI.Tests.Security;
+
 public class SlidingWindowRateLimiterTests
 {
     [Fact]

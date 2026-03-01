@@ -7,6 +7,7 @@ using NSubstitute;
 using Xunit;
 
 namespace JD.AI.Tests.Orchestration;
+
 public class StrategyIntegrationTests
 {
     private readonly ISubagentExecutor _executor = Substitute.For<ISubagentExecutor>();

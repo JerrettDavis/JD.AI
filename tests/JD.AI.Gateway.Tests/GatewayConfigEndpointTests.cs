@@ -3,15 +3,14 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
 using JD.AI.Gateway.Config;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace JD.AI.Gateway.Tests;
 
-public sealed class GatewayConfigEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class GatewayConfigEndpointTests : IClassFixture<GatewayTestFactory>
 {
     private readonly HttpClient _client;
 
-    public GatewayConfigEndpointTests(WebApplicationFactory<Program> factory)
+    public GatewayConfigEndpointTests(GatewayTestFactory factory)
     {
         _client = factory.CreateClient();
     }
