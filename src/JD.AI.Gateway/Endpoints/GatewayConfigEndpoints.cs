@@ -1,3 +1,4 @@
+using JD.AI.Channels.OpenClaw;
 using JD.AI.Gateway.Config;
 using JD.AI.Gateway.Services;
 
@@ -36,7 +37,12 @@ public static class GatewayConfigEndpoints
                     config.OpenClaw.WebSocketUrl,
                     config.OpenClaw.AutoConnect,
                     config.OpenClaw.DefaultMode,
-                    Channels = config.OpenClaw.Channels
+                    Channels = config.OpenClaw.Channels,
+                    RegisteredAgents = config.OpenClaw.RegisterAgents.Select(a => new
+                    {
+                        a.Id, a.Name, a.Emoji, a.Theme, a.Model,
+                        Bindings = a.Bindings.Count
+                    })
                 }
             });
         })
@@ -50,6 +56,7 @@ public static class GatewayConfigEndpoints
             AgentRouter router,
             JD.AI.Core.Channels.IChannelRegistry channels) =>
         {
+            var registrar = app.Services.GetService<OpenClawAgentRegistrar>();
             return Results.Ok(new
             {
                 Status = "running",
@@ -62,7 +69,11 @@ public static class GatewayConfigEndpoints
                 }),
                 Agents = pool.ListAgents(),
                 Routes = router.GetMappings(),
-                OpenClaw = new { config.OpenClaw.Enabled }
+                OpenClaw = new
+                {
+                    config.OpenClaw.Enabled,
+                    RegisteredAgents = registrar?.RegisteredAgentIds ?? (IReadOnlyList<string>)[]
+                }
             });
         })
         .WithName("GetGatewayStatus")
@@ -120,5 +131,62 @@ public static class GatewayConfigEndpoints
         })
         .WithName("SpawnGatewayAgent")
         .WithDescription("Spawn an agent from an inline definition.");
+
+        // GET /api/gateway/openclaw/agents — list JD.AI agents registered with OpenClaw
+        group.MapGet("/openclaw/agents", () =>
+        {
+            var registrar = app.Services.GetService<OpenClawAgentRegistrar>();
+            if (registrar is null)
+                return Results.Ok(new { Agents = Array.Empty<string>(), Message = "OpenClaw integration not enabled" });
+
+            return Results.Ok(new
+            {
+                Agents = registrar.RegisteredAgentIds,
+                Count = registrar.RegisteredAgentIds.Count
+            });
+        })
+        .WithName("GetOpenClawAgents")
+        .WithDescription("List JD.AI agents registered with the OpenClaw gateway.");
+
+        // POST /api/gateway/openclaw/agents/sync — re-sync agent registrations with OpenClaw
+        group.MapPost("/openclaw/agents/sync", async (
+            GatewayConfig config,
+            CancellationToken ct) =>
+        {
+            var registrar = app.Services.GetService<OpenClawAgentRegistrar>();
+            if (registrar is null)
+                return Results.BadRequest(new { Error = "OpenClaw integration not enabled" });
+
+            // Unregister current, then re-register from config
+            await registrar.UnregisterAgentsAsync(ct);
+
+            var definitions = config.OpenClaw.RegisterAgents.Select(reg => new JdAiAgentDefinition
+            {
+                Id = reg.Id,
+                Name = string.IsNullOrEmpty(reg.Name) ? $"JD.AI: {reg.Id}" : reg.Name,
+                Emoji = reg.Emoji,
+                Theme = reg.Theme,
+                Model = reg.Model,
+                Bindings = reg.Bindings.Select(b => new AgentBinding
+                {
+                    Channel = b.Channel,
+                    AccountId = b.AccountId,
+                    GuildId = b.GuildId,
+                    Peer = !string.IsNullOrEmpty(b.PeerId)
+                        ? new AgentBindingPeer { Kind = b.PeerKind ?? "direct", Id = b.PeerId }
+                        : null,
+                }).ToList(),
+            }).ToList();
+
+            await registrar.RegisterAgentsAsync(definitions, ct);
+
+            return Results.Ok(new
+            {
+                Message = "Agent registrations synced",
+                Agents = registrar.RegisteredAgentIds
+            });
+        })
+        .WithName("SyncOpenClawAgents")
+        .WithDescription("Re-synchronize JD.AI agent registrations with the OpenClaw gateway.");
     }
 }

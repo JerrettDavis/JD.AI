@@ -89,6 +89,44 @@ public sealed class OpenClawGatewayConfig
     public bool AutoConnect { get; set; } = true;
     public string DefaultMode { get; set; } = "Passthrough";
     public Dictionary<string, OpenClawChannelConfig> Channels { get; set; } = [];
+
+    /// <summary>JD.AI agents to register with OpenClaw so they appear in its dashboard.</summary>
+    public List<OpenClawAgentRegistration> RegisterAgents { get; set; } = [];
+}
+
+/// <summary>Defines a JD.AI agent to register with OpenClaw as a native agent.</summary>
+public sealed class OpenClawAgentRegistration
+{
+    /// <summary>Agent ID in OpenClaw (e.g., "jdai-default").</summary>
+    public string Id { get; set; } = "";
+
+    /// <summary>Display name.</summary>
+    public string Name { get; set; } = "";
+
+    /// <summary>Emoji identifier.</summary>
+    public string Emoji { get; set; } = "🤖";
+
+    /// <summary>Agent theme/persona.</summary>
+    public string Theme { get; set; } = "JD.AI agent";
+
+    /// <summary>Model identifier for display (actual execution is via JD.AI).</summary>
+    public string? Model { get; set; }
+
+    /// <summary>JD.AI gateway agent ID to route execution to.</summary>
+    public string? GatewayAgentId { get; set; }
+
+    /// <summary>Channel bindings in OpenClaw.</summary>
+    public List<OpenClawBindingConfig> Bindings { get; set; } = [];
+}
+
+/// <summary>Channel binding for an OpenClaw agent registration.</summary>
+public sealed class OpenClawBindingConfig
+{
+    public string Channel { get; set; } = "";
+    public string? AccountId { get; set; }
+    public string? PeerKind { get; set; }
+    public string? PeerId { get; set; }
+    public string? GuildId { get; set; }
 }
 
 /// <summary>Per-OpenClaw-channel routing config (maps to OpenClawChannelRouteConfig).</summary>

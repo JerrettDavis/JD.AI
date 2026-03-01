@@ -60,6 +60,66 @@ public sealed class GatewayConfigTests
         cfg.DefaultMode.Should().Be("Passthrough");
         cfg.WebSocketUrl.Should().Contain("18789");
         cfg.Channels.Should().BeEmpty();
+        cfg.RegisterAgents.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void OpenClawAgentRegistration_Defaults()
+    {
+        var reg = new OpenClawAgentRegistration();
+
+        reg.Id.Should().BeEmpty();
+        reg.Name.Should().BeEmpty();
+        reg.Emoji.Should().Be("🤖");
+        reg.Theme.Should().Be("JD.AI agent");
+        reg.Model.Should().BeNull();
+        reg.GatewayAgentId.Should().BeNull();
+        reg.Bindings.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void OpenClawAgentRegistration_FullyConfigured()
+    {
+        var reg = new OpenClawAgentRegistration
+        {
+            Id = "jdai-coder",
+            Name = "JD.AI Coder",
+            Emoji = "💻",
+            Theme = "Expert coder",
+            Model = "ollama/llama3.2",
+            GatewayAgentId = "default",
+            Bindings =
+            [
+                new OpenClawBindingConfig
+                {
+                    Channel = "discord",
+                    AccountId = "default",
+                    GuildId = "123456",
+                    PeerKind = "direct",
+                    PeerId = "user1",
+                },
+            ],
+        };
+
+        reg.Id.Should().Be("jdai-coder");
+        reg.Name.Should().Be("JD.AI Coder");
+        reg.Bindings.Should().HaveCount(1);
+        reg.Bindings[0].Channel.Should().Be("discord");
+        reg.Bindings[0].GuildId.Should().Be("123456");
+        reg.Bindings[0].PeerKind.Should().Be("direct");
+        reg.Bindings[0].PeerId.Should().Be("user1");
+    }
+
+    [Fact]
+    public void OpenClawBindingConfig_Defaults()
+    {
+        var binding = new OpenClawBindingConfig();
+
+        binding.Channel.Should().BeEmpty();
+        binding.AccountId.Should().BeNull();
+        binding.PeerKind.Should().BeNull();
+        binding.PeerId.Should().BeNull();
+        binding.GuildId.Should().BeNull();
     }
 
     [Fact]
