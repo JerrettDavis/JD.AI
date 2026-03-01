@@ -5,134 +5,61 @@
 <PageTitle>Settings — JD.AI</PageTitle>
 
 <div class="jd-page-header">
-    <MudText Typo="Typo.h4">Gateway Settings</MudText>
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h4">Settings</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small" />
+    </MudStack>
 </div>
 
 @if (_loading)
 {
-    <MudGrid>
-        <MudItem xs="12" md="6">
-            <MudPaper Class="pa-4 jd-skeleton-card" Elevation="0">
-                <MudSkeleton Width="160px" Height="20px" Class="mb-4" />
-                @for (var i = 0; i < 5; i++)
-                {
-                    <div class="jd-skeleton-row">
-                        <MudSkeleton Width="100px" Height="14px" />
-                        <MudSkeleton Width="80px" Height="14px" />
-                    </div>
-                }
-            </MudPaper>
-        </MudItem>
-        <MudItem xs="12" md="6">
-            <MudPaper Class="pa-4 jd-skeleton-card" Elevation="0">
-                <MudSkeleton Width="160px" Height="20px" Class="mb-4" />
-                <MudSkeleton Width="100%" Height="80px" />
-            </MudPaper>
-        </MudItem>
-        <MudItem xs="12">
-            <MudPaper Class="pa-4 jd-skeleton-card" Elevation="0">
-                <MudSkeleton Width="200px" Height="20px" Class="mb-4" />
-                <MudSkeleton Width="100%" Height="200px" />
-            </MudPaper>
-        </MudItem>
-    </MudGrid>
+    <MudPaper Elevation="0" Class="pa-4">
+        <MudSkeleton Width="400px" Height="40px" Class="mb-4" />
+        <MudSkeleton Width="100%" Height="200px" Class="mb-3" />
+        <MudSkeleton Width="100%" Height="200px" />
+    </MudPaper>
+}
+else if (_config is null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+        Unable to load gateway configuration. Is the gateway running?
+    </MudAlert>
 }
 else
 {
-    <MudGrid>
-        <MudItem xs="12" md="6">
-            <MudPaper Class="pa-4" Elevation="0">
-                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
-                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Primary" />
-                    <MudText Typo="Typo.h6">Operational Status</MudText>
-                </MudStack>
-                @if (_status is not null)
-                {
-                    <MudSimpleTable Dense="true" Hover="true">
-                        <tbody>
-                            <tr>
-                                <td>Running</td>
-                                <td><MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(_status.IsRunning ? Color.Success : Color.Error)">@(_status.IsRunning ? "Yes" : "No")</MudChip></td>
-                            </tr>
-                            <tr><td>Uptime</td><td>@_status.Uptime.LocalDateTime.ToString("g")</td></tr>
-                            <tr><td>Active Agents</td><td>@_status.ActiveAgents</td></tr>
-                            <tr><td>Active Channels</td><td>@_status.ActiveChannels</td></tr>
-                            <tr><td>Active Sessions</td><td>@_status.ActiveSessions</td></tr>
-                        </tbody>
-                    </MudSimpleTable>
-                }
-                else
-                {
-                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">Unable to reach gateway.</MudAlert>
-                }
-            </MudPaper>
-        </MudItem>
-
-        <MudItem xs="12" md="6">
-            <MudPaper Class="pa-4" Elevation="0">
-                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
-                    <MudIcon Icon="@Icons.Material.Filled.Cloud" Size="Size.Small" Color="Color.Secondary" />
-                    <MudText Typo="Typo.h6">OpenClaw Bridge</MudText>
-                </MudStack>
-                @if (_openClawStatus is not null)
-                {
-                    <div class="jd-code-block">@System.Text.Json.JsonSerializer.Serialize(_openClawStatus, _jsonOptions)</div>
-                }
-                else
-                {
-                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">OpenClaw status not available.</MudAlert>
-                }
-            </MudPaper>
-        </MudItem>
-
-        <MudItem xs="12">
-            <MudPaper Class="pa-4" Elevation="0">
-                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                        <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" Color="Color.Tertiary" />
-                        <MudText Typo="Typo.h6">Gateway Configuration</MudText>
-                    </MudStack>
-                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning">Secrets redacted</MudChip>
-                </MudStack>
-                @if (_config is not null)
-                {
-                    <div class="jd-code-block">@System.Text.Json.JsonSerializer.Serialize(_config, _jsonOptions)</div>
-                }
-                else
-                {
-                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">Unable to load configuration.</MudAlert>
-                }
-            </MudPaper>
-        </MudItem>
-    </MudGrid>
+    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4" Class="jd-settings-tabs">
+        <MudTabPanel Text="Server" Icon="@Icons.Material.Filled.Dns" ToolTip="Network, auth, and rate-limit settings">
+            <SettingsServerTab Config="_config.Server" Auth="_config.Auth" RateLimit="_config.RateLimit" Api="Api" />
+        </MudTabPanel>
+        <MudTabPanel Text="Providers" Icon="@Icons.Material.Filled.Hub" ToolTip="AI model provider configuration">
+            <SettingsProvidersTab Providers="_config.Providers" Api="Api" />
+        </MudTabPanel>
+        <MudTabPanel Text="Agents" Icon="@Icons.Material.Filled.SmartToy" ToolTip="Agent definitions and auto-spawn settings">
+            <SettingsAgentsTab Agents="_config.Agents" AvailableProviders="_config.Providers" Api="Api" />
+        </MudTabPanel>
+        <MudTabPanel Text="Channels" Icon="@Icons.Material.Filled.Cable" ToolTip="Messaging channel connections">
+            <SettingsChannelsTab Channels="_config.Channels" Api="Api" />
+        </MudTabPanel>
+        <MudTabPanel Text="Routing" Icon="@Icons.Material.Filled.AltRoute" ToolTip="Channel-to-agent routing rules">
+            <SettingsRoutingTab Routing="_config.Routing" AvailableAgents="_config.Agents" AvailableChannels="_config.Channels" Api="Api" />
+        </MudTabPanel>
+        <MudTabPanel Text="OpenClaw" Icon="@Icons.Material.Filled.Cloud" ToolTip="OpenClaw bridge integration">
+            <SettingsOpenClawTab OpenClaw="_config.OpenClaw" Api="Api" />
+        </MudTabPanel>
+    </MudTabs>
 }
 
 @code {
-    private GatewayStatus? _status;
-    private object? _config;
-    private object? _openClawStatus;
+    private GatewayConfigModel? _config;
     private bool _loading = true;
 
-    private static readonly System.Text.Json.JsonSerializerOptions _jsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
-    };
+    protected override async Task OnInitializedAsync() => await LoadAsync();
 
-    protected override async Task OnInitializedAsync()
+    private async Task LoadAsync()
     {
         _loading = true;
-        try
-        {
-            var statusTask = Api.GetStatusAsync();
-            var configTask = Api.GetConfigAsync();
-            var openClawTask = Api.GetOpenClawStatusAsync();
-            await Task.WhenAll(statusTask, configTask, openClawTask);
-            _status = statusTask.Result;
-            _config = configTask.Result;
-            _openClawStatus = openClawTask.Result;
-        }
-        catch { /* Gateway may not be running */ }
+        try { _config = await Api.GetConfigAsync(); }
+        catch { _config = null; }
         _loading = false;
     }
 }

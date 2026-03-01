@@ -67,8 +67,59 @@ public sealed class GatewayApiClient(HttpClient http)
     public Task<GatewayStatus?> GetStatusAsync() =>
         http.GetFromJsonAsync<GatewayStatus>("api/gateway/status");
 
-    public Task<object?> GetConfigAsync() =>
-        http.GetFromJsonAsync<object>("api/gateway/config");
+    public Task<GatewayConfigModel?> GetConfigAsync() =>
+        http.GetFromJsonAsync<GatewayConfigModel>("api/gateway/config/raw");
+
+    // Config section updates
+    public async Task<ServerConfigModel?> UpdateServerConfigAsync(ServerConfigModel config)
+    {
+        var response = await http.PutAsJsonAsync("api/gateway/config/server", config);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<ServerConfigModel>();
+    }
+
+    public async Task UpdateAuthConfigAsync(AuthConfigModel config)
+    {
+        var response = await http.PutAsJsonAsync("api/gateway/config/auth", config);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task<RateLimitConfigModel?> UpdateRateLimitConfigAsync(RateLimitConfigModel config)
+    {
+        var response = await http.PutAsJsonAsync("api/gateway/config/ratelimit", config);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<RateLimitConfigModel>();
+    }
+
+    public async Task UpdateProvidersConfigAsync(List<ProviderConfigModel> providers)
+    {
+        var response = await http.PutAsJsonAsync("api/gateway/config/providers", providers);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task UpdateAgentsConfigAsync(List<AgentDefinition> agents)
+    {
+        var response = await http.PutAsJsonAsync("api/gateway/config/agents", agents);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task UpdateChannelsConfigAsync(List<ChannelConfigModel> channels)
+    {
+        var response = await http.PutAsJsonAsync("api/gateway/config/channels", channels);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task UpdateRoutingConfigAsync(RoutingConfigModel routing)
+    {
+        var response = await http.PutAsJsonAsync("api/gateway/config/routing", routing);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task UpdateOpenClawConfigAsync(OpenClawConfigModel openClaw)
+    {
+        var response = await http.PutAsJsonAsync("api/gateway/config/openclaw", openClaw);
+        response.EnsureSuccessStatusCode();
+    }
 
     // OpenClaw
     public Task<object?> GetOpenClawStatusAsync() =>

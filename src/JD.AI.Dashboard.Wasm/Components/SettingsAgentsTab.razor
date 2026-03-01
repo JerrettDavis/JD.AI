@@ -1,0 +1,135 @@
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="4">
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+        Define agents that can handle conversations. Auto-spawn agents start when the gateway boots.
+    </MudText>
+
+    @for (var i = 0; i < Agents.Count; i++)
+    {
+        var idx = i;
+        var agent = Agents[idx];
+        <MudPaper Class="pa-4" Elevation="0">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                <MudText Typo="Typo.subtitle2" Style="font-weight:600;">
+                    @(string.IsNullOrEmpty(agent.Id) ? "New Agent" : agent.Id)
+                </MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                               OnClick="@(() => RemoveAgent(idx))" />
+            </MudStack>
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="agent.Id" Label="Agent ID" Variant="Variant.Outlined" Required="true"
+                                  HelperText="Unique identifier for this agent (e.g. 'default', 'code-reviewer')."
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Badge" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudSelect @bind-Value="agent.Provider" Label="Provider" Variant="Variant.Outlined"
+                               HelperText="The AI provider to use for this agent."
+                               Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Hub">
+                        @foreach (var p in AvailableProviders.Where(p => p.Enabled))
+                        {
+                            <MudSelectItem T="string" Value="@p.Name">@p.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    @if (_providerModels.TryGetValue(agent.Provider, out var models) && models.Length > 0)
+                    {
+                        <MudSelect @bind-Value="agent.Model" Label="Model" Variant="Variant.Outlined"
+                                   HelperText="Select the AI model. List filtered by chosen provider."
+                                   Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Memory">
+                            @foreach (var m in models)
+                            {
+                                <MudSelectItem T="string" Value="@m.Id">@m.DisplayName (@m.Id)</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                    else
+                    {
+                        <MudTextField @bind-Value="agent.Model" Label="Model" Variant="Variant.Outlined"
+                                      HelperText="Model identifier (e.g. 'qwen3.5:27b'). Select a provider to see available models."
+                                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Memory" />
+                    }
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudNumericField @bind-Value="agent.MaxTurns" Label="Max Turns" Variant="Variant.Outlined"
+                                     Min="0" Max="100"
+                                     HelperText="Maximum conversation turns (0 = unlimited)." />
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudSwitch @bind-Value="agent.AutoSpawn" Color="Color.Primary" UncheckedColor="Color.Default" Class="mt-3">
+                        <ChildContent>
+                            <MudStack Spacing="0">
+                                <MudText>Auto-Spawn</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Start on boot</MudText>
+                            </MudStack>
+                        </ChildContent>
+                    </MudSwitch>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="agent.SystemPrompt" Label="System Prompt" Variant="Variant.Outlined"
+                                  Lines="3"
+                                  HelperText="Instructions that define the agent's personality and capabilities." />
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    }
+
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="AddAgent" FullWidth="true">
+        Add Agent Definition
+    </MudButton>
+
+    <MudStack Row="true" Justify="Justify.FlexEnd">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save"
+                   OnClick="SaveAsync" Disabled="_saving">
+            @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+            Save Agents
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter] public List<AgentDefinition> Agents { get; set; } = [];
+    [Parameter] public List<ProviderConfigModel> AvailableProviders { get; set; } = [];
+    [Parameter] public GatewayApiClient Api { get; set; } = null!;
+
+    private readonly Dictionary<string, ProviderModelInfo[]> _providerModels = [];
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Pre-load models for all enabled providers
+        foreach (var p in AvailableProviders.Where(p => p.Enabled))
+        {
+            try { _providerModels[p.Name] = await Api.GetProviderModelsAsync(p.Name); }
+            catch { /* Provider may be offline */ }
+        }
+    }
+
+    private async Task OnProviderChanged(AgentDefinition agent)
+    {
+        if (!_providerModels.ContainsKey(agent.Provider))
+        {
+            try { _providerModels[agent.Provider] = await Api.GetProviderModelsAsync(agent.Provider); }
+            catch { /* ignore */ }
+        }
+    }
+
+    private void AddAgent() => Agents.Add(new AgentDefinition { AutoSpawn = true });
+
+    private void RemoveAgent(int idx) => Agents.RemoveAt(idx);
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            await Api.UpdateAgentsConfigAsync(Agents);
+            Snackbar.Add("Agent definitions saved", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add($"Save failed: {ex.Message}", Severity.Error); }
+        finally { _saving = false; }
+    }
+}
