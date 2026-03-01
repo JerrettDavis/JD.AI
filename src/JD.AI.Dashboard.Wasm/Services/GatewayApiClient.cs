@@ -6,8 +6,8 @@ namespace JD.AI.Dashboard.Wasm.Services;
 public sealed class GatewayApiClient(HttpClient http)
 {
     // Agents
-    public Task<AgentInfo[]?> GetAgentsAsync() =>
-        http.GetFromJsonAsync<AgentInfo[]>("api/agents");
+    public async Task<AgentInfo[]> GetAgentsAsync()
+        => await http.GetFromJsonAsync<AgentInfo[]>("api/agents") ?? [];
 
     public async Task<AgentInfo?> SpawnAgentAsync(AgentDefinition definition)
     {
@@ -17,41 +17,45 @@ public sealed class GatewayApiClient(HttpClient http)
     }
 
     public Task DeleteAgentAsync(string id) =>
-        http.DeleteAsync($"api/agents/{id}");
+        http.DeleteAsync(new Uri($"api/agents/{id}", UriKind.Relative));
 
     // Channels
-    public Task<ChannelInfo[]?> GetChannelsAsync() =>
-        http.GetFromJsonAsync<ChannelInfo[]>("api/channels");
+    public async Task<ChannelInfo[]> GetChannelsAsync()
+        => await http.GetFromJsonAsync<ChannelInfo[]>("api/channels") ?? [];
 
     public Task ConnectChannelAsync(string type) =>
-        http.PostAsync($"api/channels/{type}/connect", null);
+        http.PostAsync(new Uri($"api/channels/{type}/connect", UriKind.Relative), null);
 
     public Task DisconnectChannelAsync(string type) =>
-        http.PostAsync($"api/channels/{type}/disconnect", null);
+        http.PostAsync(new Uri($"api/channels/{type}/disconnect", UriKind.Relative), null);
 
     // Sessions
-    public Task<SessionInfo[]?> GetSessionsAsync(int limit = 50) =>
-        http.GetFromJsonAsync<SessionInfo[]>($"api/sessions?limit={limit}");
+    public async Task<SessionInfo[]> GetSessionsAsync(int limit = 50)
+        => await http.GetFromJsonAsync<SessionInfo[]>($"api/sessions?limit={limit}") ?? [];
 
     public Task<SessionInfo?> GetSessionAsync(string id) =>
         http.GetFromJsonAsync<SessionInfo>($"api/sessions/{Uri.EscapeDataString(id)}");
 
     public Task CloseSessionAsync(string id) =>
-        http.PostAsync($"api/sessions/{Uri.EscapeDataString(id)}/close", null);
+        http.PostAsync(new Uri($"api/sessions/{Uri.EscapeDataString(id)}/close", UriKind.Relative), null);
 
     public Task ExportSessionAsync(string id) =>
-        http.PostAsync($"api/sessions/{Uri.EscapeDataString(id)}/export", null);
+        http.PostAsync(new Uri($"api/sessions/{Uri.EscapeDataString(id)}/export", UriKind.Relative), null);
 
     // Providers
-    public Task<ProviderInfo[]?> GetProvidersAsync() =>
-        http.GetFromJsonAsync<ProviderInfo[]>("api/providers");
+    public async Task<ProviderInfo[]> GetProvidersAsync()
+        => await http.GetFromJsonAsync<ProviderInfo[]>("api/providers") ?? [];
 
-    public Task<ProviderModelInfo[]?> GetProviderModelsAsync(string name) =>
-        http.GetFromJsonAsync<ProviderModelInfo[]>($"api/providers/{name}/models");
+    public async Task<ProviderModelInfo[]> GetProviderModelsAsync(string name)
+        => await http.GetFromJsonAsync<ProviderModelInfo[]>($"api/providers/{name}/models") ?? [];
 
-    // Routing
-    public Task<RoutingMapping[]?> GetRoutingMappingsAsync() =>
-        http.GetFromJsonAsync<RoutingMapping[]>("api/routing/mappings");
+    // Routing — API returns Dictionary<string, string>, we convert to RoutingMapping[]
+    public async Task<RoutingMapping[]> GetRoutingMappingsAsync()
+    {
+        var dict = await http.GetFromJsonAsync<Dictionary<string, string>>("api/routing/mappings");
+        if (dict is null) return [];
+        return dict.Select(kv => new RoutingMapping { ChannelType = kv.Key, AgentId = kv.Value }).ToArray();
+    }
 
     public async Task MapRoutingAsync(string channelId, string agentId)
     {
@@ -74,5 +78,5 @@ public sealed class GatewayApiClient(HttpClient http)
         http.GetFromJsonAsync<object[]>("api/gateway/openclaw/agents");
 
     public Task SyncOpenClawAsync() =>
-        http.PostAsync("api/gateway/openclaw/agents/sync", null);
+        http.PostAsync(new Uri("api/gateway/openclaw/agents/sync", UriKind.Relative), null);
 }

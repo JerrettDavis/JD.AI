@@ -54,7 +54,7 @@
     </MudItem>
 </MudGrid>
 
-@if (_status?.OpenClaw is not null)
+    @if (_status?.OpenClaw is not null)
 {
     <MudPaper Class="pa-4 mt-4" Elevation="2">
         <MudText Typo="Typo.h6" Class="mb-2">OpenClaw Bridge</MudText>
@@ -63,13 +63,8 @@
                 <tr><th>Property</th><th>Value</th></tr>
             </thead>
             <tbody>
-                <tr><td>Endpoint</td><td>@(_status.OpenClaw.Endpoint ?? "—")</td></tr>
-                <tr><td>Registered Agents</td><td>@_status.OpenClaw.RegisteredAgents</td></tr>
-                <tr><td>Active Bindings</td><td>@_status.OpenClaw.ActiveBindings</td></tr>
-                @if (_status.OpenClaw.LastError is not null)
-                {
-                    <tr><td>Last Error</td><td class="mud-error-text">@_status.OpenClaw.LastError</td></tr>
-                }
+                <tr><td>Enabled</td><td>@(_status.OpenClaw.Enabled ? "Yes" : "No")</td></tr>
+                <tr><td>Registered Agents</td><td>@string.Join(", ", _status.OpenClaw.RegisteredAgents)</td></tr>
             </tbody>
         </MudSimpleTable>
     </MudPaper>

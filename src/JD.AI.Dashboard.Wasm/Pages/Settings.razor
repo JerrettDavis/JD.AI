@@ -24,7 +24,7 @@ else
                     <MudSimpleTable Dense="true" Hover="true" Striped="true">
                         <tbody>
                             <tr><td>Running</td><td><MudChip T="string" Size="Size.Small" Color="@(_status.IsRunning ? Color.Success : Color.Error)">@_status.IsRunning</MudChip></td></tr>
-                            <tr><td>Started</td><td>@_status.StartedAt.LocalDateTime.ToString("g")</td></tr>
+                            <tr><td>Uptime</td><td>@_status.Uptime.LocalDateTime.ToString("g")</td></tr>
                             <tr><td>Active Agents</td><td>@_status.ActiveAgents</td></tr>
                             <tr><td>Active Channels</td><td>@_status.ActiveChannels</td></tr>
                             <tr><td>Active Sessions</td><td>@_status.ActiveSessions</td></tr>

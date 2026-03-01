@@ -15,6 +15,7 @@ public sealed class SignalRService : IAsyncDisposable
     public event Action? OnStateChanged;
 
     public bool IsConnected => _eventHub?.State == HubConnectionState.Connected;
+    public string ConnectionError { get; private set; } = string.Empty;
 
     public SignalRService(string baseUrl)
     {
@@ -23,43 +24,70 @@ public sealed class SignalRService : IAsyncDisposable
 
     public async Task ConnectAsync()
     {
-        _eventHub = new HubConnectionBuilder()
-            .WithUrl($"{_baseUrl}/hubs/events")
-            .WithAutomaticReconnect()
-            .Build();
-
-        _agentHub = new HubConnectionBuilder()
-            .WithUrl($"{_baseUrl}/hubs/agent")
-            .WithAutomaticReconnect()
-            .Build();
-
-        _eventHub.On<ActivityEvent>("ActivityEvent", evt =>
+        try
         {
-            OnActivityEvent?.Invoke(evt);
-            OnStateChanged?.Invoke();
-        });
+            _eventHub = new HubConnectionBuilder()
+                .WithUrl($"{_baseUrl}/hubs/events")
+                .WithAutomaticReconnect([TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30)])
+                .Build();
 
-        _eventHub.On<string, bool>("ChannelStatusChanged", (channel, connected) =>
+            _agentHub = new HubConnectionBuilder()
+                .WithUrl($"{_baseUrl}/hubs/agent")
+                .WithAutomaticReconnect([TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30)])
+                .Build();
+
+            _eventHub.On<ActivityEvent>("ActivityEvent", evt =>
+            {
+                OnActivityEvent?.Invoke(evt);
+                OnStateChanged?.Invoke();
+            });
+
+            _eventHub.On<string, bool>("ChannelStatusChanged", (channel, connected) =>
+            {
+                OnChannelStatusChanged?.Invoke(channel, connected);
+                OnStateChanged?.Invoke();
+            });
+
+            _agentHub.On<string, string>("AgentMessage", (agentId, message) =>
+            {
+                OnAgentMessage?.Invoke(agentId, message);
+            });
+
+            _eventHub.Reconnecting += _ => { OnStateChanged?.Invoke(); return Task.CompletedTask; };
+            _eventHub.Reconnected += _ => { ConnectionError = string.Empty; OnStateChanged?.Invoke(); return Task.CompletedTask; };
+            _eventHub.Closed += _ => { OnStateChanged?.Invoke(); return Task.CompletedTask; };
+
+            ConnectionError = string.Empty;
+            await _eventHub.StartAsync();
+        }
+        catch (Exception ex)
         {
-            OnChannelStatusChanged?.Invoke(channel, connected);
-            OnStateChanged?.Invoke();
-        });
+            ConnectionError = ex.Message;
+        }
 
-        _agentHub.On<string, string>("AgentMessage", (agentId, message) =>
+        try
         {
-            OnAgentMessage?.Invoke(agentId, message);
-        });
+            if (_agentHub is not null)
+                await _agentHub.StartAsync();
+        }
+        catch
+        {
+            // Agent hub is optional
+        }
 
-        _eventHub.Reconnecting += _ => { OnStateChanged?.Invoke(); return Task.CompletedTask; };
-        _eventHub.Reconnected += _ => { OnStateChanged?.Invoke(); return Task.CompletedTask; };
-
-        try { await _eventHub.StartAsync(); } catch { /* Gateway may not be running */ }
-        try { await _agentHub.StartAsync(); } catch { /* Gateway may not be running */ }
+        OnStateChanged?.Invoke();
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (_eventHub is not null) await _eventHub.DisposeAsync();
-        if (_agentHub is not null) await _agentHub.DisposeAsync();
+        if (_eventHub is not null)
+        {
+            try { await _eventHub.DisposeAsync(); } catch { /* ignore */ }
+        }
+
+        if (_agentHub is not null)
+        {
+            try { await _agentHub.DisposeAsync(); } catch { /* ignore */ }
+        }
     }
 }

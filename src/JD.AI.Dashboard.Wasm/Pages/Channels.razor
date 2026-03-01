@@ -31,18 +31,18 @@ else
                 <MudCard Elevation="2">
                     <MudCardHeader>
                         <CardHeaderAvatar>
-                            <MudAvatar Color="@(channel.Connected ? Color.Success : Color.Default)" Size="Size.Small">
-                                <MudIcon Icon="@GetChannelIcon(channel.Type)" />
+                            <MudAvatar Color="@(channel.IsConnected ? Color.Success : Color.Default)" Size="Size.Small">
+                                <MudIcon Icon="@GetChannelIcon(channel.ChannelType)" />
                             </MudAvatar>
                         </CardHeaderAvatar>
                         <CardHeaderContent>
-                            <MudText Typo="Typo.h6">@channel.Name</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">@channel.Type</MudText>
+                            <MudText Typo="Typo.h6">@channel.DisplayName</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@channel.ChannelType</MudText>
                         </CardHeaderContent>
                         <CardHeaderActions>
                             <MudChip T="string" Size="Size.Small"
-                                     Color="@(channel.Connected ? Color.Success : channel.Enabled ? Color.Warning : Color.Default)">
-                                @(channel.Connected ? "Connected" : channel.Enabled ? "Enabled" : "Disabled")
+                                     Color="@(channel.IsConnected ? Color.Success : Color.Default)">
+                                @(channel.IsConnected ? "Connected" : "Disconnected")
                             </MudChip>
                         </CardHeaderActions>
                     </MudCardHeader>
@@ -50,41 +50,22 @@ else
                         <MudSimpleTable Dense="true">
                             <tbody>
                                 <tr>
-                                    <td><MudText Typo="Typo.caption">Agent</MudText></td>
-                                    <td><MudText>@(channel.AssignedAgentId ?? "default")</MudText></td>
+                                    <td><MudText Typo="Typo.caption">Status</MudText></td>
+                                    <td><MudText>@(channel.IsConnected ? "Online" : "Offline")</MudText></td>
                                 </tr>
-                                <tr>
-                                    <td><MudText Typo="Typo.caption">Model</MudText></td>
-                                    <td><MudText>@(channel.Model ?? "—")</MudText></td>
-                                </tr>
-                                <tr>
-                                    <td><MudText Typo="Typo.caption">Routing</MudText></td>
-                                    <td>
-                                        <MudChip T="string" Size="Size.Small" Color="@GetRoutingColor(channel.RoutingMode)">
-                                            @(channel.RoutingMode ?? "Passthrough")
-                                        </MudChip>
-                                    </td>
-                                </tr>
-                                @if (channel.LastActivity.HasValue)
-                                {
-                                    <tr>
-                                        <td><MudText Typo="Typo.caption">Last Activity</MudText></td>
-                                        <td><MudText>@channel.LastActivity.Value.LocalDateTime.ToString("g")</MudText></td>
-                                    </tr>
-                                }
                             </tbody>
                         </MudSimpleTable>
                     </MudCardContent>
                     <MudCardActions>
-                        @if (channel.Connected)
+                        @if (channel.IsConnected)
                         {
-                            <MudButton Size="Size.Small" Color="Color.Warning" OnClick="@(() => DisconnectAsync(channel.Type))">
+                            <MudButton Size="Size.Small" Color="Color.Warning" OnClick="@(() => DisconnectAsync(channel.ChannelType))">
                                 Disconnect
                             </MudButton>
                         }
-                        else if (channel.Enabled)
+                        else
                         {
-                            <MudButton Size="Size.Small" Color="Color.Success" OnClick="@(() => ConnectAsync(channel.Type))">
+                            <MudButton Size="Size.Small" Color="Color.Success" OnClick="@(() => ConnectAsync(channel.ChannelType))">
                                 Connect
                             </MudButton>
                         }
@@ -170,12 +151,5 @@ else
         "telegram" => Icons.Material.Filled.Send,
         "web" => Icons.Material.Filled.Language,
         _ => Icons.Material.Filled.Cable
-    };
-
-    private static Color GetRoutingColor(string? mode) => mode?.ToLowerInvariant() switch
-    {
-        "sidecar" => Color.Warning,
-        "intercept" => Color.Error,
-        _ => Color.Info
     };
 }
