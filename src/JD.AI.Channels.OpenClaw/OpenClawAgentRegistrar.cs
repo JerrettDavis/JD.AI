@@ -140,6 +140,9 @@ public sealed class OpenClawAgentRegistrar
             // Write the updated config atomically
             await WriteConfigAsync(configNode, baseHash!, ct);
 
+            // Register channel bindings for the agents
+            await RegisterBindingsAsync(agentList, ct);
+
             _logger.LogInformation(
                 "Registered {Count} JD.AI agent(s) with OpenClaw",
                 _registeredAgentIds.Count);
@@ -190,6 +193,21 @@ public sealed class OpenClawAgentRegistrar
                 }
             }
 
+            // Remove JD.AI-managed bindings
+            var bindings = configNode["bindings"]?.AsArray();
+            if (bindings is not null)
+            {
+                for (var i = bindings.Count - 1; i >= 0; i--)
+                {
+                    var agentId = bindings[i]?["agentId"]?.GetValue<string>();
+                    if (agentId is not null && agentId.StartsWith(AgentIdPrefix, StringComparison.Ordinal))
+                        bindings.RemoveAt(i);
+                }
+
+                if (bindings.Count == 0)
+                    configNode.AsObject().Remove("bindings");
+            }
+
             // Remove empty list to keep config clean
             if (list.Count == 0)
                 configNode["agents"]!.AsObject().Remove("list");
@@ -207,6 +225,69 @@ public sealed class OpenClawAgentRegistrar
 
     /// <summary>Gets the list of registered JD.AI agent IDs.</summary>
     public IReadOnlyList<string> RegisteredAgentIds => _registeredAgentIds;
+
+    /// <summary>
+    /// Registers channel bindings so OpenClaw routes messages to JD.AI agents.
+    /// Bindings are top-level in the OpenClaw config: <c>bindings: [{ agentId, match: { channel, ... } }]</c>.
+    /// </summary>
+    private async Task RegisterBindingsAsync(
+        IEnumerable<JdAiAgentDefinition> agents, CancellationToken ct)
+    {
+        var allBindings = agents
+            .Where(a => a.Bindings.Count > 0 && _registeredAgentIds.Contains(a.Id))
+            .SelectMany(a => a.Bindings.Select(b => (a.Id, Binding: b)))
+            .ToList();
+
+        if (allBindings.Count == 0)
+            return;
+
+        var (configNode, baseHash) = await ReadConfigAsync(ct);
+        if (configNode is null)
+            return;
+
+        // Ensure top-level bindings array
+        if (configNode["bindings"] is null)
+            configNode["bindings"] = new JsonArray();
+        var bindingsArray = configNode["bindings"]!.AsArray();
+
+        // Remove existing JD.AI bindings (by agentId prefix)
+        for (var i = bindingsArray.Count - 1; i >= 0; i--)
+        {
+            var agentId = bindingsArray[i]?["agentId"]?.GetValue<string>();
+            if (agentId is not null && agentId.StartsWith(AgentIdPrefix, StringComparison.Ordinal))
+            {
+                bindingsArray.RemoveAt(i);
+            }
+        }
+
+        // Add new bindings
+        foreach (var (agentId, binding) in allBindings)
+        {
+            var matchNode = new JsonObject { ["channel"] = binding.Channel };
+
+            if (binding.AccountId is not null)
+                matchNode["accountId"] = binding.AccountId;
+
+            if (binding.Peer is not null)
+                matchNode["peer"] = new JsonObject
+                {
+                    ["kind"] = binding.Peer.Kind,
+                    ["id"] = binding.Peer.Id,
+                };
+
+            bindingsArray.Add(new JsonObject
+            {
+                ["agentId"] = agentId,
+                ["match"] = matchNode,
+            });
+
+            _logger.LogInformation(
+                "Added binding: {Channel} → agent '{AgentId}'",
+                binding.Channel, agentId);
+        }
+
+        await WriteConfigAsync(configNode, baseHash!, ct);
+    }
 
     /// <summary>
     /// Reads the full OpenClaw config and its hash for optimistic concurrency.
@@ -282,12 +363,10 @@ public sealed class OpenClawAgentRegistrar
             },
         };
 
+        // Per-agent model is a flat string in OpenClaw (not {primary: "..."} like defaults)
         if (agent.Model is not null)
         {
-            entry["model"] = new JsonObject
-            {
-                ["primary"] = agent.Model,
-            };
+            entry["model"] = agent.Model;
         }
 
         list.Add(entry);
