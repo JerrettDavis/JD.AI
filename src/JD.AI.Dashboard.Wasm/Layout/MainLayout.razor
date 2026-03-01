@@ -7,21 +7,26 @@
 <MudSnackbarProvider />
 
 <MudLayout>
-    <MudAppBar Elevation="1" Dense="true">
+    <MudAppBar Elevation="0" Dense="true" Class="jd-appbar">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
                        OnClick="@(() => _drawerOpen = !_drawerOpen)" />
-        <MudText Typo="Typo.h6" Class="ml-3">JD.AI Dashboard</MudText>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="ml-2">
+            <MudText Typo="Typo.h6" Class="jd-logo-text">JD<span class="jd-logo-dot">.</span>AI</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Inherit" Class="jd-logo-sub">Gateway</MudText>
+        </MudStack>
         <MudSpacer />
-        <MudChip T="string" Size="Size.Small"
+        <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
                  Color="@(SignalR.IsConnected ? Color.Success : Color.Error)"
-                 Icon="@(SignalR.IsConnected ? Icons.Material.Filled.Cloud : Icons.Material.Filled.CloudOff)">
-            @(SignalR.IsConnected ? "Connected" : "Disconnected")
+                 Icon="@(SignalR.IsConnected ? Icons.Material.Filled.FiberManualRecord : Icons.Material.Filled.CloudOff)"
+                 Class="jd-status-chip">
+            @(SignalR.IsConnected ? "Live" : "Offline")
         </MudChip>
     </MudAppBar>
-    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2" Variant="DrawerVariant.Mini">
+    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="0"
+               Variant="DrawerVariant.Mini" Class="jd-drawer">
         <NavMenu />
     </MudDrawer>
-    <MudMainContent Class="pa-4">
+    <MudMainContent Class="jd-main-content">
         @Body
     </MudMainContent>
 </MudLayout>
@@ -31,6 +36,15 @@
 
     private readonly MudTheme _theme = new()
     {
+        Typography = new Typography
+        {
+            Default = new DefaultTypography { FontFamily = ["'DM Sans'", "'Segoe UI'", "sans-serif"] },
+            H4 = new H4Typography { FontWeight = "700", FontSize = "1.75rem", LetterSpacing = "-0.02em" },
+            H6 = new H6Typography { FontWeight = "600", FontSize = "1.05rem" },
+            Body1 = new Body1Typography { FontSize = "0.925rem", LineHeight = "1.6" },
+            Body2 = new Body2Typography { FontSize = "0.85rem" },
+            Caption = new CaptionTypography { FontSize = "0.75rem", FontWeight = "500", LetterSpacing = "0.04em" },
+        },
         PaletteLight = new PaletteLight
         {
             Primary = "#6366f1",
@@ -41,13 +55,23 @@
         {
             Primary = "#818cf8",
             Secondary = "#a78bfa",
-            Surface = "#1e1e2e",
-            Background = "#11111b",
-            AppbarBackground = "#181825",
-            DrawerBackground = "#1e1e2e",
-            DrawerText = "#cdd6f4",
-            TextPrimary = "#cdd6f4",
-            TextSecondary = "#a6adc8",
+            Tertiary = "#34d399",
+            Info = "#38bdf8",
+            Success = "#34d399",
+            Warning = "#fbbf24",
+            Error = "#f87171",
+            Surface = "#1a1a2e",
+            Background = "#0f0f1a",
+            AppbarBackground = "#12121e",
+            DrawerBackground = "#141424",
+            DrawerText = "#b4bcd0",
+            TextPrimary = "#e2e8f0",
+            TextSecondary = "#8892a8",
+            ActionDefault = "#8892a8",
+            Divider = "rgba(136,146,168,0.12)",
+            LinesDefault = "rgba(136,146,168,0.12)",
+            TableLines = "rgba(136,146,168,0.08)",
+            HoverOpacity = 0.06,
         }
     };
 

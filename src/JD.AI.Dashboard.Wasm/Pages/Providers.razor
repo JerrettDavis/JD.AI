@@ -1,20 +1,51 @@
 @page "/providers"
 @inject GatewayApiClient Api
 
-<PageTitle>Providers - JD.AI Dashboard</PageTitle>
+<PageTitle>Providers — JD.AI</PageTitle>
 
-<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h4">Model Providers</MudText>
-    <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" />
-</MudStack>
+<div class="jd-page-header">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h4">Model Providers</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small" />
+    </MudStack>
+</div>
 
 @if (_loading)
 {
-    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    <MudGrid>
+        @for (var i = 0; i < 2; i++)
+        {
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4 jd-skeleton-card" Elevation="0">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-4">
+                        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="36px" Height="36px" />
+                        <MudStack Spacing="1">
+                            <MudSkeleton Width="120px" Height="18px" />
+                            <MudSkeleton Width="80px" Height="12px" />
+                        </MudStack>
+                        <MudSpacer />
+                        <MudSkeleton Width="64px" Height="24px" />
+                    </MudStack>
+                    @for (var j = 0; j < 3; j++)
+                    {
+                        <div class="jd-skeleton-row">
+                            <MudSkeleton Width="180px" Height="14px" />
+                            <MudSkeleton Width="120px" Height="14px" />
+                        </div>
+                    }
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
 }
 else if (_providers is null || _providers.Length == 0)
 {
-    <MudAlert Severity="Severity.Info">No providers configured.</MudAlert>
+    <MudPaper Class="pa-6" Elevation="0">
+        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Hub" Size="Size.Large" Color="Color.Default" Style="opacity:0.3" />
+            <MudText Color="Color.Secondary">No providers configured.</MudText>
+        </MudStack>
+    </MudPaper>
 }
 else
 {
@@ -22,21 +53,24 @@ else
         @foreach (var provider in _providers)
         {
             <MudItem xs="12" md="6">
-                <MudCard Elevation="2">
+                <MudCard Elevation="0" Class="jd-stat-card">
                     <MudCardHeader>
                         <CardHeaderAvatar>
-                            <MudAvatar Color="@(provider.IsAvailable ? Color.Success : Color.Error)" Size="Size.Small">
-                                <MudIcon Icon="@Icons.Material.Filled.Hub" />
+                            <MudAvatar Color="@(provider.IsAvailable ? Color.Success : Color.Error)"
+                                       Variant="Variant.Outlined" Size="Size.Small">
+                                <MudIcon Icon="@Icons.Material.Filled.Hub" Size="Size.Small" />
                             </MudAvatar>
                         </CardHeaderAvatar>
                         <CardHeaderContent>
-                            <MudText Typo="Typo.h6">@provider.Name</MudText>
+                            <MudText Typo="Typo.body1" Style="font-weight:600;">@provider.Name</MudText>
                             <MudText Typo="Typo.caption" Color="Color.Secondary">
                                 @(provider.IsAvailable ? $"{provider.Models.Length} models" : provider.StatusMessage ?? "Unavailable")
                             </MudText>
                         </CardHeaderContent>
                         <CardHeaderActions>
-                            <MudChip T="string" Size="Size.Small" Color="@(provider.IsAvailable ? Color.Success : Color.Error)">
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
+                                     Color="@(provider.IsAvailable ? Color.Success : Color.Error)"
+                                     Icon="@(provider.IsAvailable ? Icons.Material.Filled.FiberManualRecord : Icons.Material.Filled.RadioButtonUnchecked)">
                                 @(provider.IsAvailable ? "Online" : "Offline")
                             </MudChip>
                         </CardHeaderActions>
@@ -52,7 +86,7 @@ else
                                     @foreach (var model in provider.Models)
                                     {
                                         <tr>
-                                            <td><MudText Typo="Typo.body2"><code>@model.Id</code></MudText></td>
+                                            <td><MudText Typo="Typo.body2" Style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;">@model.Id</MudText></td>
                                             <td><MudText Typo="Typo.body2">@model.DisplayName</MudText></td>
                                         </tr>
                                     }

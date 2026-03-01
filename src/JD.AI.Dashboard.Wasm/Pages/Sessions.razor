@@ -2,56 +2,78 @@
 @inject GatewayApiClient Api
 @inject ISnackbar Snackbar
 
-<PageTitle>Sessions - JD.AI Dashboard</PageTitle>
+<PageTitle>Sessions — JD.AI</PageTitle>
 
-<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h4">Sessions</MudText>
-    <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" />
-</MudStack>
+<div class="jd-page-header">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h4">Sessions</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small" />
+    </MudStack>
+</div>
 
 @if (_loading)
 {
-    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    <MudPaper Elevation="0">
+        @for (var i = 0; i < 5; i++)
+        {
+            <div class="jd-skeleton-row">
+                <MudSkeleton Width="160px" Height="14px" />
+                <MudSkeleton Width="140px" Height="14px" />
+                <MudSkeleton Width="80px" Height="14px" />
+                <MudSkeleton Width="50px" Height="14px" />
+                <MudSkeleton Width="60px" Height="14px" />
+                <MudSkeleton Width="72px" Height="24px" />
+                <MudSkeleton Width="100px" Height="14px" />
+            </div>
+        }
+    </MudPaper>
 }
 else if (_sessions is null || _sessions.Length == 0)
 {
-    <MudAlert Severity="Severity.Info">No sessions found.</MudAlert>
+    <MudPaper Class="pa-6" Elevation="0">
+        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Forum" Size="Size.Large" Color="Color.Default" Style="opacity:0.3" />
+            <MudText Color="Color.Secondary">No sessions found.</MudText>
+        </MudStack>
+    </MudPaper>
 }
 else
 {
-    <MudDataGrid Items="@_sessions" Dense="true" Hover="true" Striped="true" Filterable="true" SortMode="SortMode.Multiple">
-        <Columns>
-            <PropertyColumn Property="x => x.Id" Title="Session ID" />
-            <PropertyColumn Property="x => x.ModelId" Title="Model" />
-            <PropertyColumn Property="x => x.ProviderName" Title="Provider" />
-            <PropertyColumn Property="x => x.MessageCount" Title="Messages" />
-            <PropertyColumn Property="x => x.TotalTokens" Title="Tokens" />
-            <TemplateColumn Title="Status">
-                <CellTemplate>
-                    <MudChip T="string" Size="Size.Small" Color="@(context.Item.IsActive ? Color.Success : Color.Default)">
-                        @(context.Item.IsActive ? "Active" : "Closed")
-                    </MudChip>
-                </CellTemplate>
-            </TemplateColumn>
-            <PropertyColumn Property="x => x.CreatedAt" Title="Created" Format="g" />
-            <PropertyColumn Property="x => x.UpdatedAt" Title="Updated" Format="g" />
-            <TemplateColumn Title="Actions" CellClass="d-flex justify-end">
-                <CellTemplate>
-                    <MudStack Row="true" Spacing="1">
-                        <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
-                                       OnClick="@(() => ViewSessionAsync(context.Item.Id))" />
-                        <MudIconButton Icon="@Icons.Material.Filled.FileDownload" Size="Size.Small"
-                                       OnClick="@(() => ExportSessionAsync(context.Item.Id))" />
-                        @if (context.Item.IsActive)
-                        {
-                            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Warning"
-                                           OnClick="@(() => CloseSessionAsync(context.Item.Id))" />
-                        }
-                    </MudStack>
-                </CellTemplate>
-            </TemplateColumn>
-        </Columns>
-    </MudDataGrid>
+    <MudPaper Elevation="0">
+        <MudDataGrid Items="@_sessions" Dense="true" Hover="true" Filterable="true" SortMode="SortMode.Multiple">
+            <Columns>
+                <PropertyColumn Property="x => x.Id" Title="Session ID" />
+                <PropertyColumn Property="x => x.ModelId" Title="Model" />
+                <PropertyColumn Property="x => x.ProviderName" Title="Provider" />
+                <PropertyColumn Property="x => x.MessageCount" Title="Messages" />
+                <PropertyColumn Property="x => x.TotalTokens" Title="Tokens" />
+                <TemplateColumn Title="Status">
+                    <CellTemplate>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
+                                 Color="@(context.Item.IsActive ? Color.Success : Color.Default)">
+                            @(context.Item.IsActive ? "Active" : "Closed")
+                        </MudChip>
+                    </CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.CreatedAt" Title="Created" Format="g" />
+                <TemplateColumn Title="" CellClass="d-flex justify-end">
+                    <CellTemplate>
+                        <MudStack Row="true" Spacing="1">
+                            <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
+                                           OnClick="@(() => ViewSessionAsync(context.Item.Id))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.FileDownload" Size="Size.Small"
+                                           OnClick="@(() => ExportSessionAsync(context.Item.Id))" />
+                            @if (context.Item.IsActive)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Warning"
+                                               OnClick="@(() => CloseSessionAsync(context.Item.Id))" />
+                            }
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    </MudPaper>
 }
 
 @if (_selectedSession is not null)

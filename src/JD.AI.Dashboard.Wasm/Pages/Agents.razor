@@ -3,42 +3,64 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
-<PageTitle>Agents - JD.AI Dashboard</PageTitle>
+<PageTitle>Agents — JD.AI</PageTitle>
 
-<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h4">Agents</MudText>
-    <MudStack Row="true" Spacing="2">
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
-                   OnClick="SpawnAgentAsync">Spawn Agent</MudButton>
-        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" />
+<div class="jd-page-header">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h4">Agents</MudText>
+        <MudStack Row="true" Spacing="2">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.Add" OnClick="SpawnAgentAsync">Spawn Agent</MudButton>
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small" />
+        </MudStack>
     </MudStack>
-</MudStack>
+</div>
 
 @if (_loading)
 {
-    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    <MudPaper Elevation="0">
+        @for (var i = 0; i < 5; i++)
+        {
+            <div class="jd-skeleton-row">
+                <MudSkeleton Width="140px" Height="14px" />
+                <MudSkeleton Width="80px" Height="14px" />
+                <MudSkeleton Width="180px" Height="14px" />
+                <MudSkeleton Width="40px" Height="14px" />
+                <MudSkeleton Width="120px" Height="14px" />
+                <MudSpacer />
+                <MudSkeleton SkeletonType="SkeletonType.Circle" Width="28px" Height="28px" />
+            </div>
+        }
+    </MudPaper>
 }
 else if (_agents is null || _agents.Length == 0)
 {
-    <MudAlert Severity="Severity.Info">No active agents. Spawn one to get started.</MudAlert>
+    <MudPaper Class="pa-6" Elevation="0">
+        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Large" Color="Color.Default" Style="opacity:0.3" />
+            <MudText Color="Color.Secondary">No active agents. Spawn one to get started.</MudText>
+        </MudStack>
+    </MudPaper>
 }
 else
 {
-    <MudDataGrid Items="@_agents" Dense="true" Hover="true" Striped="true">
-        <Columns>
-            <PropertyColumn Property="x => x.Id" Title="ID" />
-            <PropertyColumn Property="x => x.Provider" Title="Provider" />
-            <PropertyColumn Property="x => x.Model" Title="Model" />
-            <PropertyColumn Property="x => x.TurnCount" Title="Turns" />
-            <PropertyColumn Property="x => x.CreatedAt" Title="Created" Format="g" />
-            <TemplateColumn Title="Actions" CellClass="d-flex justify-end">
-                <CellTemplate>
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
-                                   OnClick="@(() => DeleteAgentAsync(context.Item.Id))" />
-                </CellTemplate>
-            </TemplateColumn>
-        </Columns>
-    </MudDataGrid>
+    <MudPaper Elevation="0">
+        <MudDataGrid Items="@_agents" Dense="true" Hover="true">
+            <Columns>
+                <PropertyColumn Property="x => x.Id" Title="ID" />
+                <PropertyColumn Property="x => x.Provider" Title="Provider" />
+                <PropertyColumn Property="x => x.Model" Title="Model" />
+                <PropertyColumn Property="x => x.TurnCount" Title="Turns" />
+                <PropertyColumn Property="x => x.CreatedAt" Title="Created" Format="g" />
+                <TemplateColumn Title="" CellClass="d-flex justify-end">
+                    <CellTemplate>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                       OnClick="@(() => DeleteAgentAsync(context.Item.Id))" />
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    </MudPaper>
 }
 
 @code {

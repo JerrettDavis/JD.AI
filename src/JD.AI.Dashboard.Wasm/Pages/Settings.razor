@@ -2,28 +2,58 @@
 @inject GatewayApiClient Api
 @inject ISnackbar Snackbar
 
-<PageTitle>Settings - JD.AI Dashboard</PageTitle>
+<PageTitle>Settings — JD.AI</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">Gateway Settings</MudText>
+<div class="jd-page-header">
+    <MudText Typo="Typo.h4">Gateway Settings</MudText>
+</div>
 
 @if (_loading)
 {
-    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4 jd-skeleton-card" Elevation="0">
+                <MudSkeleton Width="160px" Height="20px" Class="mb-4" />
+                @for (var i = 0; i < 5; i++)
+                {
+                    <div class="jd-skeleton-row">
+                        <MudSkeleton Width="100px" Height="14px" />
+                        <MudSkeleton Width="80px" Height="14px" />
+                    </div>
+                }
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4 jd-skeleton-card" Elevation="0">
+                <MudSkeleton Width="160px" Height="20px" Class="mb-4" />
+                <MudSkeleton Width="100%" Height="80px" />
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12">
+            <MudPaper Class="pa-4 jd-skeleton-card" Elevation="0">
+                <MudSkeleton Width="200px" Height="20px" Class="mb-4" />
+                <MudSkeleton Width="100%" Height="200px" />
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
 }
 else
 {
     <MudGrid>
         <MudItem xs="12" md="6">
-            <MudPaper Class="pa-4" Elevation="2">
-                <MudText Typo="Typo.h6" Class="mb-3">
-                    <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" />
-                    Operational Status
-                </MudText>
+            <MudPaper Class="pa-4" Elevation="0">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Primary" />
+                    <MudText Typo="Typo.h6">Operational Status</MudText>
+                </MudStack>
                 @if (_status is not null)
                 {
-                    <MudSimpleTable Dense="true" Hover="true" Striped="true">
+                    <MudSimpleTable Dense="true" Hover="true">
                         <tbody>
-                            <tr><td>Running</td><td><MudChip T="string" Size="Size.Small" Color="@(_status.IsRunning ? Color.Success : Color.Error)">@_status.IsRunning</MudChip></td></tr>
+                            <tr>
+                                <td>Running</td>
+                                <td><MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(_status.IsRunning ? Color.Success : Color.Error)">@(_status.IsRunning ? "Yes" : "No")</MudChip></td>
+                            </tr>
                             <tr><td>Uptime</td><td>@_status.Uptime.LocalDateTime.ToString("g")</td></tr>
                             <tr><td>Active Agents</td><td>@_status.ActiveAgents</td></tr>
                             <tr><td>Active Channels</td><td>@_status.ActiveChannels</td></tr>
@@ -33,48 +63,44 @@ else
                 }
                 else
                 {
-                    <MudAlert Severity="Severity.Warning">Unable to reach gateway.</MudAlert>
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">Unable to reach gateway.</MudAlert>
                 }
             </MudPaper>
         </MudItem>
 
         <MudItem xs="12" md="6">
-            <MudPaper Class="pa-4" Elevation="2">
-                <MudText Typo="Typo.h6" Class="mb-3">
-                    <MudIcon Icon="@Icons.Material.Filled.Cloud" Class="mr-2" />
-                    OpenClaw Bridge
-                </MudText>
+            <MudPaper Class="pa-4" Elevation="0">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Cloud" Size="Size.Small" Color="Color.Secondary" />
+                    <MudText Typo="Typo.h6">OpenClaw Bridge</MudText>
+                </MudStack>
                 @if (_openClawStatus is not null)
                 {
-                    <MudText Typo="Typo.body2" Style="white-space: pre-wrap; font-family: monospace; font-size: 0.85rem;">
-                        @System.Text.Json.JsonSerializer.Serialize(_openClawStatus, _jsonOptions)
-                    </MudText>
+                    <div class="jd-code-block">@System.Text.Json.JsonSerializer.Serialize(_openClawStatus, _jsonOptions)</div>
                 }
                 else
                 {
-                    <MudAlert Severity="Severity.Info">OpenClaw status not available.</MudAlert>
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">OpenClaw status not available.</MudAlert>
                 }
             </MudPaper>
         </MudItem>
 
         <MudItem xs="12">
-            <MudPaper Class="pa-4" Elevation="2">
+            <MudPaper Class="pa-4" Elevation="0">
                 <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
-                    <MudText Typo="Typo.h6">
-                        <MudIcon Icon="@Icons.Material.Filled.Settings" Class="mr-2" />
-                        Gateway Configuration
-                    </MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">Secrets are redacted</MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" Color="Color.Tertiary" />
+                        <MudText Typo="Typo.h6">Gateway Configuration</MudText>
+                    </MudStack>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning">Secrets redacted</MudChip>
                 </MudStack>
                 @if (_config is not null)
                 {
-                    <MudText Style="white-space: pre-wrap; font-family: monospace; font-size: 0.85rem; max-height: 600px; overflow-y: auto;">
-                        @System.Text.Json.JsonSerializer.Serialize(_config, _jsonOptions)
-                    </MudText>
+                    <div class="jd-code-block">@System.Text.Json.JsonSerializer.Serialize(_config, _jsonOptions)</div>
                 }
                 else
                 {
-                    <MudAlert Severity="Severity.Warning">Unable to load configuration.</MudAlert>
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">Unable to load configuration.</MudAlert>
                 }
             </MudPaper>
         </MudItem>

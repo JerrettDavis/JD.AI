@@ -1,115 +1,148 @@
-html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+/* ── JD.AI Dashboard ── */
+
+/* --- Scrollbar --- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(129,140,248,0.25); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(129,140,248,0.45); }
+
+/* --- Layout --- */
+.jd-main-content {
+    padding: 80px 28px 28px 28px !important;
+    min-height: 100vh;
 }
 
-h1:focus {
-    outline: none;
+.jd-appbar {
+    border-bottom: 1px solid rgba(136,146,168,0.1) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
-a, .btn-link {
-    color: #0071c1;
+.jd-drawer {
+    border-right: 1px solid rgba(136,146,168,0.08) !important;
 }
 
-.btn-primary {
-    color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
+/* --- Branding --- */
+.jd-logo-text {
+    font-weight: 800 !important;
+    letter-spacing: -0.03em !important;
 }
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+.jd-logo-dot {
+    color: #818cf8;
 }
 
-.content {
-    padding-top: 1.1rem;
+.jd-logo-sub {
+    opacity: 0.5;
+    font-size: 0.7rem !important;
+    margin-top: 2px;
 }
 
-.valid.modified:not([type=checkbox]) {
-    outline: 1px solid #26b050;
+.jd-status-chip {
+    font-size: 0.72rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
 }
 
-.invalid {
-    outline: 1px solid red;
+/* --- Cards --- */
+.mud-card, .mud-paper {
+    border: 1px solid rgba(136,146,168,0.08);
+    transition: border-color 0.2s ease;
 }
 
-.validation-message {
-    color: red;
+.mud-card:hover {
+    border-color: rgba(129,140,248,0.2);
 }
 
-#blazor-error-ui {
-    color-scheme: light only;
-    background: lightyellow;
-    bottom: 0;
-    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
-    box-sizing: border-box;
-    display: none;
-    left: 0;
-    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
-    position: fixed;
-    width: 100%;
-    z-index: 1000;
+/* --- Data Grids --- */
+.mud-table-head .mud-table-cell {
+    font-weight: 600 !important;
+    font-size: 0.72rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--mud-palette-text-secondary) !important;
 }
 
-    #blazor-error-ui .dismiss {
-        cursor: pointer;
-        position: absolute;
-        right: 0.75rem;
-        top: 0.5rem;
-    }
+/* --- Skeleton Loaders --- */
+.jd-skeleton-card {
+    border-radius: 8px;
+    overflow: hidden;
+}
 
+.jd-skeleton-row {
+    display: flex;
+    gap: 16px;
+    padding: 12px 16px;
+    align-items: center;
+}
+
+.jd-skeleton-row + .jd-skeleton-row {
+    border-top: 1px solid rgba(136,146,168,0.06);
+}
+
+/* --- Status Indicators --- */
+.jd-pulse {
+    animation: jd-pulse 2s ease-in-out infinite;
+}
+
+@keyframes jd-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* --- Code Blocks --- */
+.jd-code-block {
+    font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 0.8rem;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 600px;
+    overflow-y: auto;
+    padding: 16px;
+    border-radius: 6px;
+    background: rgba(15,15,26,0.6);
+    border: 1px solid rgba(136,146,168,0.1);
+}
+
+/* --- Page Headers --- */
+.jd-page-header {
+    margin-bottom: 24px;
+}
+
+.jd-page-header h4 {
+    margin: 0;
+}
+
+/* --- Stat Cards --- */
+.jd-stat-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.jd-stat-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    background: linear-gradient(135deg, rgba(129,140,248,0.06), transparent);
+}
+
+.jd-stat-card:hover::before {
+    opacity: 1;
+}
+
+/* --- Blazor error boundary --- */
 .blazor-error-boundary {
-    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, #b32121;
-    padding: 1rem 1rem 1rem 3.7rem;
+    background: #b32121;
+    padding: 1rem 1rem 1rem 2rem;
     color: white;
+    border-radius: 6px;
+    margin: 1rem;
 }
 
-    .blazor-error-boundary::after {
-        content: "An error has occurred."
-    }
-
-.loading-progress {
-    position: absolute;
-    display: block;
-    width: 8rem;
-    height: 8rem;
-    inset: 20vh 0 auto 0;
-    margin: 0 auto 0 auto;
-}
-
-    .loading-progress circle {
-        fill: none;
-        stroke: #e0e0e0;
-        stroke-width: 0.6rem;
-        transform-origin: 50% 50%;
-        transform: rotate(-90deg);
-    }
-
-        .loading-progress circle:last-child {
-            stroke: #1b6ec2;
-            stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
-            transition: stroke-dasharray 0.05s ease-in-out;
-        }
-
-.loading-progress-text {
-    position: absolute;
-    text-align: center;
-    font-weight: bold;
-    inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
-}
-
-    .loading-progress-text:after {
-        content: var(--blazor-load-percentage-text, "Loading");
-    }
-
-code {
-    color: #c02d76;
-}
-
-.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
-    color: var(--bs-secondary-color);
-    text-align: end;
-}
-
-.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
-    text-align: start;
+.blazor-error-boundary::after {
+    content: "An error has occurred.";
 }
