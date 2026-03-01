@@ -1,114 +1,164 @@
 @page "/"
 @inject GatewayApiClient Api
 @inject SignalRService SignalR
+@implements IDisposable
 
-<PageTitle>JD.AI Dashboard</PageTitle>
+<PageTitle>JD.AI — Gateway</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">Gateway Overview</MudText>
+<div class="jd-page-header">
+    <MudText Typo="Typo.h4">Gateway Overview</MudText>
+</div>
 
-<MudGrid>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4" Elevation="2">
-            <MudStack Row="true" AlignItems="AlignItems.Center">
-                <MudIcon Icon="@Icons.Material.Filled.SmartToy" Color="Color.Primary" Size="Size.Large" />
-                <MudStack Spacing="0">
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">Active Agents</MudText>
-                    <MudText Typo="Typo.h4">@(_status?.ActiveAgents ?? 0)</MudText>
+@if (_status is null && !_loaded)
+{
+    @* Skeleton stat cards *@
+    <MudGrid>
+        @for (var i = 0; i < 4; i++)
+        {
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-4 jd-stat-card" Elevation="0">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="40px" Height="40px" />
+                        <MudStack Spacing="1">
+                            <MudSkeleton Width="80px" Height="14px" />
+                            <MudSkeleton Width="48px" Height="28px" />
+                        </MudStack>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+    <MudPaper Class="pa-4 mt-4" Elevation="0">
+        <MudSkeleton Width="160px" Height="20px" Class="mb-3" />
+        @for (var i = 0; i < 3; i++)
+        {
+            <div class="jd-skeleton-row">
+                <MudSkeleton Width="100px" Height="14px" />
+                <MudSkeleton Width="200px" Height="14px" />
+            </div>
+        }
+    </MudPaper>
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 jd-stat-card" Elevation="0">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudAvatar Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Medium">
+                        <MudIcon Icon="@Icons.Material.Filled.SmartToy" />
+                    </MudAvatar>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Agents</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700;">@(_status?.ActiveAgents ?? 0)</MudText>
+                    </MudStack>
                 </MudStack>
-            </MudStack>
-        </MudPaper>
-    </MudItem>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4" Elevation="2">
-            <MudStack Row="true" AlignItems="AlignItems.Center">
-                <MudIcon Icon="@Icons.Material.Filled.Cable" Color="Color.Secondary" Size="Size.Large" />
-                <MudStack Spacing="0">
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">Active Channels</MudText>
-                    <MudText Typo="Typo.h4">@(_status?.ActiveChannels ?? 0)</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 jd-stat-card" Elevation="0">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudAvatar Color="Color.Secondary" Variant="Variant.Outlined" Size="Size.Medium">
+                        <MudIcon Icon="@Icons.Material.Filled.Cable" />
+                    </MudAvatar>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Channels</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700;">@(_status?.ActiveChannels ?? 0)</MudText>
+                    </MudStack>
                 </MudStack>
-            </MudStack>
-        </MudPaper>
-    </MudItem>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4" Elevation="2">
-            <MudStack Row="true" AlignItems="AlignItems.Center">
-                <MudIcon Icon="@Icons.Material.Filled.Forum" Color="Color.Tertiary" Size="Size.Large" />
-                <MudStack Spacing="0">
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">Sessions</MudText>
-                    <MudText Typo="Typo.h4">@(_status?.ActiveSessions ?? 0)</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 jd-stat-card" Elevation="0">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudAvatar Color="Color.Tertiary" Variant="Variant.Outlined" Size="Size.Medium">
+                        <MudIcon Icon="@Icons.Material.Filled.Forum" />
+                    </MudAvatar>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Sessions</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700;">@(_status?.ActiveSessions ?? 0)</MudText>
+                    </MudStack>
                 </MudStack>
-            </MudStack>
-        </MudPaper>
-    </MudItem>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4" Elevation="2">
-            <MudStack Row="true" AlignItems="AlignItems.Center">
-                <MudIcon Icon="@(_status?.OpenClaw?.Connected == true ? Icons.Material.Filled.Cloud : Icons.Material.Filled.CloudOff)"
-                         Color="@(_status?.OpenClaw?.Connected == true ? Color.Success : Color.Error)" Size="Size.Large" />
-                <MudStack Spacing="0">
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">OpenClaw</MudText>
-                    <MudText Typo="Typo.h6">@(_status?.OpenClaw?.Connected == true ? "Connected" : "Disconnected")</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 jd-stat-card" Elevation="0">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudAvatar Color="@(_status?.OpenClaw?.Connected == true ? Color.Success : Color.Error)"
+                               Variant="Variant.Outlined" Size="Size.Medium">
+                        <MudIcon Icon="@(_status?.OpenClaw?.Connected == true ? Icons.Material.Filled.Cloud : Icons.Material.Filled.CloudOff)" />
+                    </MudAvatar>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">OpenClaw</MudText>
+                        <MudText Typo="Typo.h6" Style="font-weight:600;">@(_status?.OpenClaw?.Connected == true ? "Connected" : "Offline")</MudText>
+                    </MudStack>
                 </MudStack>
-            </MudStack>
-        </MudPaper>
-    </MudItem>
-</MudGrid>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
 
     @if (_status?.OpenClaw is not null)
-{
-    <MudPaper Class="pa-4 mt-4" Elevation="2">
-        <MudText Typo="Typo.h6" Class="mb-2">OpenClaw Bridge</MudText>
-        <MudSimpleTable Dense="true" Hover="true" Striped="true">
-            <thead>
-                <tr><th>Property</th><th>Value</th></tr>
-            </thead>
-            <tbody>
-                <tr><td>Enabled</td><td>@(_status.OpenClaw.Enabled ? "Yes" : "No")</td></tr>
-                <tr><td>Registered Agents</td><td>@string.Join(", ", _status.OpenClaw.RegisteredAgents)</td></tr>
-            </tbody>
-        </MudSimpleTable>
+    {
+        <MudPaper Class="pa-4 mt-4" Elevation="0">
+            <MudText Typo="Typo.h6" Class="mb-3">OpenClaw Bridge</MudText>
+            <MudSimpleTable Dense="true" Hover="true">
+                <thead>
+                    <tr><th>Property</th><th>Value</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Enabled</td><td><MudChip T="string" Size="Size.Small" Color="@(_status.OpenClaw.Enabled ? Color.Success : Color.Default)">@(_status.OpenClaw.Enabled ? "Yes" : "No")</MudChip></td></tr>
+                    <tr><td>Registered Agents</td><td>@string.Join(", ", _status.OpenClaw.RegisteredAgents)</td></tr>
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+    }
+
+    <MudPaper Class="pa-4 mt-4" Elevation="0">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+            <MudText Typo="Typo.h6">Recent Activity</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small" />
+        </MudStack>
+        @if (_events.Count == 0)
+        {
+            <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="pa-6">
+                <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Large" Color="Color.Default" Style="opacity:0.3" />
+                <MudText Color="Color.Secondary" Typo="Typo.body2">No recent activity. Events appear here in real-time.</MudText>
+            </MudStack>
+        }
+        else
+        {
+            <MudList T="ActivityEvent" Dense="true">
+                @foreach (var evt in _events.TakeLast(20).Reverse())
+                {
+                    <MudListItem T="ActivityEvent" Icon="@Icons.Material.Filled.FiberManualRecord" IconColor="Color.Info" IconSize="Size.Small">
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">@evt.EventType</MudChip>
+                            <MudText Typo="Typo.body2">@evt.Message</MudText>
+                            <MudSpacer />
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@evt.Timestamp.LocalDateTime.ToString("HH:mm:ss")</MudText>
+                        </MudStack>
+                    </MudListItem>
+                }
+            </MudList>
+        }
     </MudPaper>
 }
 
-<MudPaper Class="pa-4 mt-4" Elevation="2">
-    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
-        <MudText Typo="Typo.h6">Recent Activity</MudText>
-        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small" />
-    </MudStack>
-    @if (_events.Count == 0)
-    {
-        <MudText Color="Color.Secondary">No recent activity. Events will appear here in real-time.</MudText>
-    }
-    else
-    {
-        <MudList T="ActivityEvent" Dense="true">
-            @foreach (var evt in _events.TakeLast(20).Reverse())
-            {
-                <MudListItem T="ActivityEvent" Icon="@Icons.Material.Filled.Circle" IconColor="Color.Info" IconSize="Size.Small">
-                    <MudStack Row="true" Spacing="2">
-                        <MudChip T="string" Size="Size.Small" Color="Color.Default">@evt.EventType</MudChip>
-                        <MudText>@evt.Message</MudText>
-                        <MudSpacer />
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">@evt.Timestamp.LocalDateTime.ToString("HH:mm:ss")</MudText>
-                    </MudStack>
-                </MudListItem>
-            }
-        </MudList>
-    }
-</MudPaper>
-
 @code {
     private GatewayStatus? _status;
+    private bool _loaded;
     private readonly List<ActivityEvent> _events = [];
+    private Action<ActivityEvent>? _activityHandler;
 
     protected override async Task OnInitializedAsync()
     {
-        SignalR.OnActivityEvent += evt =>
+        _activityHandler = evt =>
         {
             _events.Add(evt);
             if (_events.Count > 100) _events.RemoveAt(0);
             InvokeAsync(StateHasChanged);
         };
+        SignalR.OnActivityEvent += _activityHandler;
         await LoadAsync();
     }
 
@@ -116,5 +166,12 @@
     {
         try { _status = await Api.GetStatusAsync(); }
         catch { _status = null; }
+        _loaded = true;
+    }
+
+    public void Dispose()
+    {
+        if (_activityHandler is not null)
+            SignalR.OnActivityEvent -= _activityHandler;
     }
 }

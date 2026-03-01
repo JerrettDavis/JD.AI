@@ -3,24 +3,54 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
-<PageTitle>Channels - JD.AI Dashboard</PageTitle>
+<PageTitle>Channels — JD.AI</PageTitle>
 
-<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h4">Channel Management</MudText>
-    <MudStack Row="true" Spacing="2">
-        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Sync"
-                   OnClick="SyncOpenClawAsync">Sync OpenClaw</MudButton>
-        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" />
+<div class="jd-page-header">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h4">Channels</MudText>
+        <MudStack Row="true" Spacing="2">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.Sync" OnClick="SyncOpenClawAsync">Sync OpenClaw</MudButton>
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small" />
+        </MudStack>
     </MudStack>
-</MudStack>
+</div>
 
 @if (_loading)
 {
-    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    <MudGrid>
+        @for (var i = 0; i < 3; i++)
+        {
+            <MudItem xs="12" md="6" lg="4">
+                <MudPaper Class="pa-4 jd-skeleton-card" Elevation="0">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-4">
+                        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="36px" Height="36px" />
+                        <MudStack Spacing="1">
+                            <MudSkeleton Width="120px" Height="18px" />
+                            <MudSkeleton Width="80px" Height="12px" />
+                        </MudStack>
+                        <MudSpacer />
+                        <MudSkeleton Width="72px" Height="24px" />
+                    </MudStack>
+                    <MudSkeleton Width="100%" Height="32px" Class="mb-2" />
+                    <MudStack Row="true" Spacing="2">
+                        <MudSkeleton Width="90px" Height="28px" />
+                        <MudSpacer />
+                        <MudSkeleton Width="80px" Height="28px" />
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
 }
 else if (_channels is null || _channels.Length == 0)
 {
-    <MudAlert Severity="Severity.Info">No channels configured. Check your Gateway configuration.</MudAlert>
+    <MudPaper Class="pa-6" Elevation="0">
+        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Cable" Size="Size.Large" Color="Color.Default" Style="opacity:0.3" />
+            <MudText Color="Color.Secondary">No channels configured. Check your Gateway configuration.</MudText>
+        </MudStack>
+    </MudPaper>
 }
 else
 {
@@ -28,53 +58,41 @@ else
         @foreach (var channel in _channels)
         {
             <MudItem xs="12" md="6" lg="4">
-                <MudCard Elevation="2">
+                <MudCard Elevation="0" Class="jd-stat-card">
                     <MudCardHeader>
                         <CardHeaderAvatar>
-                            <MudAvatar Color="@(channel.IsConnected ? Color.Success : Color.Default)" Size="Size.Small">
-                                <MudIcon Icon="@GetChannelIcon(channel.ChannelType)" />
+                            <MudAvatar Color="@(channel.IsConnected ? Color.Success : Color.Default)"
+                                       Variant="Variant.Outlined" Size="Size.Small">
+                                <MudIcon Icon="@GetChannelIcon(channel.ChannelType)" Size="Size.Small" />
                             </MudAvatar>
                         </CardHeaderAvatar>
                         <CardHeaderContent>
-                            <MudText Typo="Typo.h6">@channel.DisplayName</MudText>
+                            <MudText Typo="Typo.body1" Style="font-weight:600;">@channel.DisplayName</MudText>
                             <MudText Typo="Typo.caption" Color="Color.Secondary">@channel.ChannelType</MudText>
                         </CardHeaderContent>
                         <CardHeaderActions>
-                            <MudChip T="string" Size="Size.Small"
-                                     Color="@(channel.IsConnected ? Color.Success : Color.Default)">
-                                @(channel.IsConnected ? "Connected" : "Disconnected")
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
+                                     Color="@(channel.IsConnected ? Color.Success : Color.Default)"
+                                     Icon="@(channel.IsConnected ? Icons.Material.Filled.FiberManualRecord : Icons.Material.Filled.RadioButtonUnchecked)">
+                                @(channel.IsConnected ? "Online" : "Offline")
                             </MudChip>
                         </CardHeaderActions>
                     </MudCardHeader>
-                    <MudCardContent>
-                        <MudSimpleTable Dense="true">
-                            <tbody>
-                                <tr>
-                                    <td><MudText Typo="Typo.caption">Status</MudText></td>
-                                    <td><MudText>@(channel.IsConnected ? "Online" : "Offline")</MudText></td>
-                                </tr>
-                            </tbody>
-                        </MudSimpleTable>
-                    </MudCardContent>
                     <MudCardActions>
                         @if (channel.IsConnected)
                         {
-                            <MudButton Size="Size.Small" Color="Color.Warning" OnClick="@(() => DisconnectAsync(channel.ChannelType))">
-                                Disconnect
-                            </MudButton>
+                            <MudButton Size="Size.Small" Color="Color.Warning" Variant="Variant.Text"
+                                       OnClick="@(() => DisconnectAsync(channel.ChannelType))">Disconnect</MudButton>
                         }
                         else
                         {
-                            <MudButton Size="Size.Small" Color="Color.Success" OnClick="@(() => ConnectAsync(channel.ChannelType))">
-                                Connect
-                            </MudButton>
+                            <MudButton Size="Size.Small" Color="Color.Success" Variant="Variant.Text"
+                                       OnClick="@(() => ConnectAsync(channel.ChannelType))">Connect</MudButton>
                         }
                         <MudSpacer />
-                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
                                    StartIcon="@Icons.Material.Filled.Edit"
-                                   OnClick="@(() => EditOverrideAsync(channel))">
-                            Override
-                        </MudButton>
+                                   OnClick="@(() => EditOverrideAsync(channel))">Override</MudButton>
                     </MudCardActions>
                 </MudCard>
             </MudItem>
