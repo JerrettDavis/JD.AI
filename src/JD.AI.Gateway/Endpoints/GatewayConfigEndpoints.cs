@@ -228,5 +228,142 @@ public static class GatewayConfigEndpoints
         })
         .WithName("GetOpenClawStatus")
         .WithDescription("Diagnostic endpoint showing OpenClaw bridge connection status and recent events.");
+
+        // GET /api/gateway/config/raw — full typed config for editor (no redaction except secrets)
+        group.MapGet("/config/raw", (GatewayConfig config) => Results.Ok(config))
+            .WithName("GetGatewayConfigRaw")
+            .WithDescription("Get full typed gateway configuration for the settings editor.");
+
+        // PUT /api/gateway/config/server — update server section
+        group.MapPut("/config/server", (ServerConfig update, GatewayConfig config, IConfiguration root) =>
+        {
+            config.Server = update;
+            WriteConfigSection(root, "Gateway:Server", update);
+            return Results.Ok(config.Server);
+        })
+        .WithName("UpdateServerConfig")
+        .WithDescription("Update the gateway server configuration.");
+
+        // PUT /api/gateway/config/auth — update auth section
+        group.MapPut("/config/auth", (AuthConfig update, GatewayConfig config, IConfiguration root) =>
+        {
+            config.Auth = update;
+            WriteConfigSection(root, "Gateway:Auth", update);
+            return Results.Ok(new { config.Auth.Enabled, KeyCount = config.Auth.ApiKeys.Count });
+        })
+        .WithName("UpdateAuthConfig")
+        .WithDescription("Update the gateway auth configuration.");
+
+        // PUT /api/gateway/config/ratelimit — update rate limit section
+        group.MapPut("/config/ratelimit", (RateLimitConfig update, GatewayConfig config, IConfiguration root) =>
+        {
+            config.RateLimit = update;
+            WriteConfigSection(root, "Gateway:RateLimit", update);
+            return Results.Ok(config.RateLimit);
+        })
+        .WithName("UpdateRateLimitConfig")
+        .WithDescription("Update the gateway rate-limit configuration.");
+
+        // PUT /api/gateway/config/providers — update providers list
+        group.MapPut("/config/providers", (List<ProviderConfig> update, GatewayConfig config, IConfiguration root) =>
+        {
+            config.Providers = update;
+            WriteConfigSection(root, "Gateway:Providers", update);
+            return Results.Ok(config.Providers);
+        })
+        .WithName("UpdateProvidersConfig")
+        .WithDescription("Update the gateway providers configuration.");
+
+        // PUT /api/gateway/config/agents — update agent definitions
+        group.MapPut("/config/agents", (List<AgentDefinition> update, GatewayConfig config, IConfiguration root) =>
+        {
+            config.Agents = update;
+            WriteConfigSection(root, "Gateway:Agents", update);
+            return Results.Ok(config.Agents);
+        })
+        .WithName("UpdateAgentsConfig")
+        .WithDescription("Update the gateway agents configuration.");
+
+        // PUT /api/gateway/config/channels — update channel definitions
+        group.MapPut("/config/channels", (List<ChannelConfig> update, GatewayConfig config, IConfiguration root) =>
+        {
+            config.Channels = update;
+            WriteConfigSection(root, "Gateway:Channels", update);
+            return Results.Ok(config.Channels);
+        })
+        .WithName("UpdateChannelsConfig")
+        .WithDescription("Update the gateway channels configuration.");
+
+        // PUT /api/gateway/config/routing — update routing config
+        group.MapPut("/config/routing", (RoutingConfig update, GatewayConfig config, IConfiguration root) =>
+        {
+            config.Routing = update;
+            WriteConfigSection(root, "Gateway:Routing", update);
+            return Results.Ok(config.Routing);
+        })
+        .WithName("UpdateRoutingConfig")
+        .WithDescription("Update the gateway routing configuration.");
+
+        // PUT /api/gateway/config/openclaw — update OpenClaw config
+        group.MapPut("/config/openclaw", (OpenClawGatewayConfig update, GatewayConfig config, IConfiguration root) =>
+        {
+            config.OpenClaw = update;
+            WriteConfigSection(root, "Gateway:OpenClaw", update);
+            return Results.Ok(config.OpenClaw);
+        })
+        .WithName("UpdateOpenClawConfig")
+        .WithDescription("Update the OpenClaw bridge configuration.");
+    }
+
+    /// <summary>Persists a config section to appsettings.json via JSON merge.</summary>
+    private static void WriteConfigSection<T>(IConfiguration root, string sectionPath, T value)
+    {
+        var appSettingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+        if (!File.Exists(appSettingsPath)) return;
+
+        var json = File.ReadAllText(appSettingsPath);
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        using var ms = new MemoryStream();
+        using (var writer = new System.Text.Json.Utf8JsonWriter(ms, new System.Text.Json.JsonWriterOptions { Indented = true }))
+        {
+            MergeSection(writer, doc.RootElement, sectionPath.Split(':'), 0, value);
+        }
+
+        File.WriteAllBytes(appSettingsPath, ms.ToArray());
+    }
+
+    private static void MergeSection<T>(
+        System.Text.Json.Utf8JsonWriter writer,
+        System.Text.Json.JsonElement current,
+        string[] pathSegments,
+        int depth,
+        T value)
+    {
+        writer.WriteStartObject();
+        foreach (var prop in current.EnumerateObject())
+        {
+            if (depth < pathSegments.Length &&
+                prop.Name.Equals(pathSegments[depth], StringComparison.OrdinalIgnoreCase))
+            {
+                writer.WritePropertyName(prop.Name);
+                if (depth == pathSegments.Length - 1)
+                {
+                    // Replace this node with the serialized value
+                    var serialized = System.Text.Json.JsonSerializer.Serialize(value,
+                        new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase, WriteIndented = true });
+                    using var replacement = System.Text.Json.JsonDocument.Parse(serialized);
+                    replacement.RootElement.WriteTo(writer);
+                }
+                else
+                {
+                    MergeSection(writer, prop.Value, pathSegments, depth + 1, value);
+                }
+            }
+            else
+            {
+                prop.WriteTo(writer);
+            }
+        }
+        writer.WriteEndObject();
     }
 }

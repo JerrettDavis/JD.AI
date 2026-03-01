@@ -1,0 +1,109 @@
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="4">
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+        Core server settings. Changes to Host and Port require a gateway restart to take effect.
+    </MudText>
+
+    <MudPaper Class="pa-4" Elevation="0">
+        <MudText Typo="Typo.subtitle2" Class="mb-3" Style="font-weight:600;">Network</MudText>
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="Config.Host" Label="Host" Variant="Variant.Outlined"
+                              HelperText="The hostname or IP to bind to. Use 0.0.0.0 for all interfaces."
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Dns" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudNumericField @bind-Value="Config.Port" Label="Port" Variant="Variant.Outlined"
+                                 Min="1" Max="65535"
+                                 HelperText="TCP port for the Gateway API (1–65535). Default: 15790."
+                                 Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Router" />
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <MudPaper Class="pa-4" Elevation="0">
+        <MudText Typo="Typo.subtitle2" Class="mb-3" Style="font-weight:600;">Behavior</MudText>
+        <MudStack Spacing="3">
+            <MudSwitch @bind-Value="Config.Verbose" Label="Verbose Logging" Color="Color.Primary"
+                       UncheckedColor="Color.Default">
+                <ChildContent>
+                    <MudStack Spacing="0">
+                        <MudText>Verbose Logging</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Enables detailed request/response logging for debugging.</MudText>
+                    </MudStack>
+                </ChildContent>
+            </MudSwitch>
+        </MudStack>
+    </MudPaper>
+
+    <MudPaper Class="pa-4" Elevation="0">
+        <MudText Typo="Typo.subtitle2" Class="mb-3" Style="font-weight:600;">Authentication</MudText>
+        <MudSwitch @bind-Value="Auth.Enabled" Label="Enable API Key Authentication" Color="Color.Primary"
+                   UncheckedColor="Color.Default">
+            <ChildContent>
+                <MudStack Spacing="0">
+                    <MudText>API Key Authentication</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">When enabled, all API requests must include a valid API key.</MudText>
+                </MudStack>
+            </ChildContent>
+        </MudSwitch>
+    </MudPaper>
+
+    <MudPaper Class="pa-4" Elevation="0">
+        <MudText Typo="Typo.subtitle2" Class="mb-3" Style="font-weight:600;">Rate Limiting</MudText>
+        <MudSwitch @bind-Value="RateLimit.Enabled" Label="Enable Rate Limiting" Color="Color.Primary" Class="mb-3"
+                   UncheckedColor="Color.Default">
+            <ChildContent>
+                <MudStack Spacing="0">
+                    <MudText>Rate Limiting</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Prevents excessive API calls from a single client.</MudText>
+                </MudStack>
+            </ChildContent>
+        </MudSwitch>
+        @if (RateLimit.Enabled)
+        {
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <MudSlider @bind-Value="RateLimit.MaxRequestsPerMinute" Min="10" Max="1000" Step="10"
+                           Color="Color.Primary" Style="flex:1;">
+                    Max Requests / Minute: @RateLimit.MaxRequestsPerMinute
+                </MudSlider>
+                <MudNumericField @bind-Value="RateLimit.MaxRequestsPerMinute" Variant="Variant.Outlined"
+                                 Min="10" Max="1000" Style="width:120px;" />
+            </MudStack>
+        }
+    </MudPaper>
+
+    <MudStack Row="true" Justify="Justify.FlexEnd">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save"
+                   OnClick="SaveAsync" Disabled="_saving">
+            @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+            Save Server Settings
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter] public ServerConfigModel Config { get; set; } = new();
+    [Parameter] public AuthConfigModel Auth { get; set; } = new();
+    [Parameter] public RateLimitConfigModel RateLimit { get; set; } = new();
+    [Parameter] public GatewayApiClient Api { get; set; } = null!;
+
+    private bool _saving;
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            await Task.WhenAll(
+                Api.UpdateServerConfigAsync(Config),
+                Api.UpdateAuthConfigAsync(Auth),
+                Api.UpdateRateLimitConfigAsync(RateLimit)
+            );
+            Snackbar.Add("Server settings saved. Restart gateway for host/port changes.", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add($"Save failed: {ex.Message}", Severity.Error); }
+        finally { _saving = false; }
+    }
+}

@@ -1,0 +1,115 @@
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="4">
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+        AI providers supply the models your agents use. Enable providers and test connectivity here.
+    </MudText>
+
+    @foreach (var provider in Providers)
+    {
+        <MudPaper Class="pa-4" Elevation="0">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-3">
+                <MudAvatar Color="@(provider.Enabled ? Color.Success : Color.Default)"
+                           Variant="Variant.Outlined" Size="Size.Small">
+                    <MudIcon Icon="@Icons.Material.Filled.Hub" Size="Size.Small" />
+                </MudAvatar>
+                <MudStack Spacing="0" Style="flex:1;">
+                    <MudText Typo="Typo.subtitle2" Style="font-weight:600;">@provider.Name</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @GetProviderDescription(provider.Name)
+                    </MudText>
+                </MudStack>
+                <MudSwitch @bind-Value="provider.Enabled" Color="Color.Primary" UncheckedColor="Color.Default" />
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info"
+                           StartIcon="@Icons.Material.Filled.NetworkCheck"
+                           OnClick="@(() => TestProviderAsync(provider.Name))"
+                           Disabled="!provider.Enabled">
+                    Test
+                </MudButton>
+            </MudStack>
+
+            @if (provider.Enabled && _providerModels.TryGetValue(provider.Name, out var models) && models.Length > 0)
+            {
+                <MudSimpleTable Dense="true" Hover="true" Class="mt-2">
+                    <thead>
+                        <tr>
+                            <th>Model ID</th>
+                            <th>Display Name</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var model in models)
+                        {
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;">@model.Id</MudText></td>
+                                <td><MudText Typo="Typo.body2">@model.DisplayName</MudText></td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
+            else if (provider.Enabled && _testResults.TryGetValue(provider.Name, out var result))
+            {
+                <MudAlert Severity="@(result.Success ? Severity.Success : Severity.Error)" Variant="Variant.Outlined" Dense="true" Class="mt-2">
+                    @result.Message
+                </MudAlert>
+            }
+        </MudPaper>
+    }
+
+    <MudStack Row="true" Justify="Justify.FlexEnd">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save"
+                   OnClick="SaveAsync" Disabled="_saving">
+            @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+            Save Providers
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter] public List<ProviderConfigModel> Providers { get; set; } = [];
+    [Parameter] public GatewayApiClient Api { get; set; } = null!;
+
+    private readonly Dictionary<string, ProviderModelInfo[]> _providerModels = [];
+    private readonly Dictionary<string, (bool Success, string Message)> _testResults = [];
+    private bool _saving;
+
+    private async Task TestProviderAsync(string name)
+    {
+        try
+        {
+            var models = await Api.GetProviderModelsAsync(name);
+            _providerModels[name] = models;
+            _testResults[name] = (true, $"{models.Length} models available");
+            Snackbar.Add($"{name}: {models.Length} models available", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            _providerModels.Remove(name);
+            _testResults[name] = (false, ex.Message);
+            Snackbar.Add($"{name}: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            await Api.UpdateProvidersConfigAsync(Providers);
+            Snackbar.Add("Provider configuration saved", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add($"Save failed: {ex.Message}", Severity.Error); }
+        finally { _saving = false; }
+    }
+
+    private static string GetProviderDescription(string name) => name.ToLowerInvariant() switch
+    {
+        "ollama" => "Local AI models via Ollama. Supports Llama, Qwen, Mistral, Gemma, and more.",
+        "claude-code" => "Anthropic Claude models via claude-code CLI. Requires API key.",
+        "copilot" => "GitHub Copilot models. Requires GitHub authentication.",
+        "openai" => "OpenAI GPT models. Requires API key.",
+        "azure-openai" => "Azure-hosted OpenAI models. Requires Azure deployment.",
+        _ => $"AI model provider: {name}"
+    };
+}

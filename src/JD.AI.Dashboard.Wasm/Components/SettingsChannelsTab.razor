@@ -1,0 +1,153 @@
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="4">
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+        Channels connect the gateway to messaging platforms. Enable channels and configure their settings here.
+    </MudText>
+
+    @for (var i = 0; i < Channels.Count; i++)
+    {
+        var idx = i;
+        var channel = Channels[idx];
+        <MudPaper Class="pa-4" Elevation="0">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-3">
+                <MudAvatar Color="@(channel.Enabled ? Color.Primary : Color.Default)"
+                           Variant="Variant.Outlined" Size="Size.Small">
+                    <MudIcon Icon="@GetChannelIcon(channel.Type)" Size="Size.Small" />
+                </MudAvatar>
+                <MudStack Spacing="0" Style="flex:1;">
+                    <MudText Typo="Typo.subtitle2" Style="font-weight:600;">
+                        @(string.IsNullOrEmpty(channel.Name) ? channel.Type : channel.Name)
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@GetChannelDescription(channel.Type)</MudText>
+                </MudStack>
+                <MudSwitch @bind-Value="channel.Enabled" Color="Color.Primary" UncheckedColor="Color.Default" />
+            </MudStack>
+
+            @if (channel.Enabled)
+            {
+                <MudGrid>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="channel.Name" Label="Display Name" Variant="Variant.Outlined"
+                                      HelperText="Friendly name shown in the dashboard." />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudSwitch @bind-Value="channel.AutoConnect" Color="Color.Primary" UncheckedColor="Color.Default" Class="mt-3">
+                            <ChildContent>
+                                <MudStack Spacing="0">
+                                    <MudText>Auto-Connect</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Connect automatically on gateway start</MudText>
+                                </MudStack>
+                            </ChildContent>
+                        </MudSwitch>
+                    </MudItem>
+                </MudGrid>
+
+                @if (channel.Settings.Count > 0 || _expandedSettings.Contains(idx))
+                {
+                    <MudDivider Class="my-3" />
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">
+                        Channel Settings
+                    </MudText>
+                    @foreach (var key in channel.Settings.Keys.ToList())
+                    {
+                        var k = key;
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+                            <MudTextField Value="@channel.Settings[k]"
+                                          ValueChanged="@((string v) => channel.Settings[k] = v)"
+                                          Label="@k" Variant="Variant.Outlined"
+                                          InputType="@(IsSecretKey(k) ? InputType.Password : InputType.Text)"
+                                          HelperText="@GetSettingHelperText(channel.Type, k)"
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@(IsSecretKey(k) ? Icons.Material.Filled.Key : Icons.Material.Filled.Settings)"
+                                          Style="flex:1;" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                           OnClick="@(() => channel.Settings.Remove(k))" />
+                        </MudStack>
+                    }
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="@(() => AddSettingKey(channel))">Add Setting</MudButton>
+                }
+                else
+                {
+                    <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Settings"
+                               OnClick="@(() => _expandedSettings.Add(idx))" Class="mt-2">
+                        Show Advanced Settings
+                    </MudButton>
+                }
+            }
+        </MudPaper>
+    }
+
+    <MudStack Row="true" Justify="Justify.FlexEnd">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save"
+                   OnClick="SaveAsync" Disabled="_saving">
+            @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+            Save Channels
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter] public List<ChannelConfigModel> Channels { get; set; } = [];
+    [Parameter] public GatewayApiClient Api { get; set; } = null!;
+
+    private readonly HashSet<int> _expandedSettings = [];
+    private bool _saving;
+
+    private void AddSettingKey(ChannelConfigModel channel)
+    {
+        var key = $"Setting{channel.Settings.Count + 1}";
+        channel.Settings[key] = "";
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            await Api.UpdateChannelsConfigAsync(Channels);
+            Snackbar.Add("Channel configuration saved", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add($"Save failed: {ex.Message}", Severity.Error); }
+        finally { _saving = false; }
+    }
+
+    private static bool IsSecretKey(string key) =>
+        key.Contains("token", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("secret", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("key", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("password", StringComparison.OrdinalIgnoreCase);
+
+    private static string GetChannelIcon(string type) => type.ToLowerInvariant() switch
+    {
+        "discord" => Icons.Material.Filled.Forum,
+        "signal" => Icons.Material.Filled.Security,
+        "slack" => Icons.Material.Filled.Tag,
+        "telegram" => Icons.Material.Filled.Send,
+        "web" => Icons.Material.Filled.Language,
+        _ => Icons.Material.Filled.Cable
+    };
+
+    private static string GetChannelDescription(string type) => type.ToLowerInvariant() switch
+    {
+        "discord" => "Discord bot integration. Requires a bot token from the Discord Developer Portal.",
+        "signal" => "Signal messenger bridge. Requires a linked Signal account.",
+        "slack" => "Slack workspace bot. Requires bot and app tokens from the Slack API.",
+        "telegram" => "Telegram bot. Requires a token from @BotFather.",
+        "web" => "Built-in web chat interface. No external credentials needed.",
+        _ => $"Messaging channel: {type}"
+    };
+
+    private static string GetSettingHelperText(string type, string key) => (type.ToLowerInvariant(), key.ToLowerInvariant()) switch
+    {
+        ("discord", "bottoken") => "Discord bot token from Developer Portal → Bot → Token.",
+        ("slack", "bottoken") => "Slack bot OAuth token starting with xoxb-.",
+        ("slack", "apptoken") => "Slack app-level token starting with xapp-.",
+        ("telegram", "bottoken") => "Telegram bot token from @BotFather.",
+        ("signal", "account") => "Signal phone number or UUID for the linked account.",
+        _ => $"Configuration value for {key}."
+    };
+}

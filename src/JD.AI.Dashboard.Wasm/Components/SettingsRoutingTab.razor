@@ -1,0 +1,95 @@
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="4">
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+        Route incoming messages from channels to specific agents. The default agent handles unmatched channels.
+    </MudText>
+
+    <MudPaper Class="pa-4" Elevation="0">
+        <MudText Typo="Typo.subtitle2" Class="mb-3" Style="font-weight:600;">Default Agent</MudText>
+        <MudSelect @bind-Value="Routing.DefaultAgentId" Label="Default Agent" Variant="Variant.Outlined"
+                   HelperText="The agent that handles messages when no specific routing rule matches."
+                   Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.SmartToy">
+            @foreach (var agent in AvailableAgents)
+            {
+                <MudSelectItem T="string" Value="@agent.Id">@agent.Id (@agent.Provider / @agent.Model)</MudSelectItem>
+            }
+        </MudSelect>
+    </MudPaper>
+
+    <MudPaper Class="pa-4" Elevation="0">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+            <MudText Typo="Typo.subtitle2" Style="font-weight:600;">Routing Rules</MudText>
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add" OnClick="AddRule">Add Rule</MudButton>
+        </MudStack>
+
+        @if (Routing.Rules.Count == 0)
+        {
+            <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="pa-4">
+                <MudIcon Icon="@Icons.Material.Filled.AltRoute" Size="Size.Large" Color="Color.Default" Style="opacity:0.3" />
+                <MudText Color="Color.Secondary" Typo="Typo.body2">No routing rules. All channels use the default agent.</MudText>
+            </MudStack>
+        }
+        else
+        {
+            @for (var i = 0; i < Routing.Rules.Count; i++)
+            {
+                var idx = i;
+                var rule = Routing.Rules[idx];
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+                    <MudSelect @bind-Value="rule.ChannelType" Label="Channel" Variant="Variant.Outlined"
+                               Style="flex:1;"
+                               Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Cable">
+                        @foreach (var ch in AvailableChannels)
+                        {
+                            <MudSelectItem T="string" Value="@ch.Type">@ch.Name (@ch.Type)</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Color="Color.Secondary" />
+                    <MudSelect @bind-Value="rule.AgentId" Label="Agent" Variant="Variant.Outlined"
+                               Style="flex:1;"
+                               Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.SmartToy">
+                        @foreach (var agent in AvailableAgents)
+                        {
+                            <MudSelectItem T="string" Value="@agent.Id">@agent.Id (@agent.Model)</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                   OnClick="@(() => Routing.Rules.RemoveAt(idx))" />
+                </MudStack>
+            }
+        }
+    </MudPaper>
+
+    <MudStack Row="true" Justify="Justify.FlexEnd">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save"
+                   OnClick="SaveAsync" Disabled="_saving">
+            @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+            Save Routing
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter] public RoutingConfigModel Routing { get; set; } = new();
+    [Parameter] public List<AgentDefinition> AvailableAgents { get; set; } = [];
+    [Parameter] public List<ChannelConfigModel> AvailableChannels { get; set; } = [];
+    [Parameter] public GatewayApiClient Api { get; set; } = null!;
+
+    private bool _saving;
+
+    private void AddRule() => Routing.Rules.Add(new RoutingRuleModel());
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            await Api.UpdateRoutingConfigAsync(Routing);
+            Snackbar.Add("Routing configuration saved", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add($"Save failed: {ex.Message}", Severity.Error); }
+        finally { _saving = false; }
+    }
+}
