@@ -138,7 +138,7 @@ public static class GatewayConfigEndpoints
             AgentPoolService pool,
             CancellationToken ct) =>
         {
-            var id = await pool.SpawnAgentAsync(def.Provider, def.Model, def.SystemPrompt, ct);
+            var id = await pool.SpawnAgentAsync(def.Provider, def.Model, def.SystemPrompt, ct, def.Parameters);
             return Results.Created($"/api/agents/{id}", new
             {
                 Id = id,

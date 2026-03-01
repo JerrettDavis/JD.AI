@@ -66,6 +66,41 @@ public sealed class AgentDefinition
     public bool AutoSpawn { get; set; } = true;
     public int MaxTurns { get; set; }
     public IList<string> Tools { get; set; } = [];
+    public ModelParameters Parameters { get; set; } = new();
+}
+
+/// <summary>Tunable model inference parameters (Ollama, OpenAI, etc.).</summary>
+public sealed class ModelParameters
+{
+    /// <summary>Sampling temperature (0.0–2.0). Lower = deterministic, higher = creative.</summary>
+    public double? Temperature { get; set; }
+
+    /// <summary>Nucleus sampling. Only tokens with cumulative probability ≤ TopP are considered.</summary>
+    public double? TopP { get; set; }
+
+    /// <summary>Top-K sampling. Limits token selection to the K most probable tokens.</summary>
+    public int? TopK { get; set; }
+
+    /// <summary>Maximum tokens in the generated response.</summary>
+    public int? MaxTokens { get; set; }
+
+    /// <summary>Context window size in tokens (Ollama num_ctx). 0 = provider default.</summary>
+    public int? ContextWindowSize { get; set; }
+
+    /// <summary>Penalizes tokens that have already appeared. Range: -2.0 to 2.0.</summary>
+    public double? FrequencyPenalty { get; set; }
+
+    /// <summary>Penalizes tokens based on whether they appear at all. Range: -2.0 to 2.0.</summary>
+    public double? PresencePenalty { get; set; }
+
+    /// <summary>Ollama-specific repeat penalty (1.0 = no penalty).</summary>
+    public double? RepeatPenalty { get; set; }
+
+    /// <summary>Random seed for reproducible output. Null = random each time.</summary>
+    public int? Seed { get; set; }
+
+    /// <summary>Sequences that cause the model to stop generating further tokens.</summary>
+    public IList<string> StopSequences { get; set; } = [];
 }
 
 /// <summary>Routing rules that map channels to agents.</summary>

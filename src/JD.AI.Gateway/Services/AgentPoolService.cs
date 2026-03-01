@@ -1,8 +1,10 @@
 using System.Collections.Concurrent;
 using JD.AI.Core.Events;
 using JD.AI.Core.Providers;
+using JD.AI.Gateway.Config;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
 
 namespace JD.AI.Gateway.Services;
 
@@ -34,7 +36,8 @@ public sealed class AgentPoolService : IHostedService
         _agents.Values.Select(a => new AgentInfo(a.Id, a.Provider, a.Model, a.TurnCount, a.CreatedAt)).ToList();
 
     public async Task<string> SpawnAgentAsync(
-        string provider, string model, string? systemPrompt, CancellationToken ct)
+        string provider, string model, string? systemPrompt,
+        CancellationToken ct, ModelParameters? parameters = null)
     {
         var allProviders = await _providers.DetectProvidersAsync(ct);
         var providerInfo = allProviders.FirstOrDefault(p =>
@@ -58,7 +61,7 @@ public sealed class AgentPoolService : IHostedService
             history.AddSystemMessage(systemPrompt);
 
         var id = Guid.NewGuid().ToString("N")[..12];
-        var instance = new AgentInstance(id, provider, model, kernel, history);
+        var instance = new AgentInstance(id, provider, model, kernel, history, parameters);
         _agents[id] = instance;
 
         await _eventBus.PublishAsync(
@@ -73,7 +76,9 @@ public sealed class AgentPoolService : IHostedService
 
         agent.History.AddUserMessage(message);
         var chat = agent.Kernel.GetRequiredService<IChatCompletionService>();
-        var response = await chat.GetChatMessageContentAsync(agent.History, cancellationToken: ct);
+
+        var settings = BuildExecutionSettings(agent.Parameters);
+        var response = await chat.GetChatMessageContentAsync(agent.History, settings, cancellationToken: ct);
         agent.History.AddAssistantMessage(response.Content ?? "");
         agent.TurnCount++;
 
@@ -92,15 +97,44 @@ public sealed class AgentPoolService : IHostedService
     public IProviderDetector? GetDetector(string provider) =>
         _providers.GetDetector(provider);
 
+    private static OpenAIPromptExecutionSettings BuildExecutionSettings(ModelParameters? p)
+    {
+        var settings = new OpenAIPromptExecutionSettings
+        {
+            MaxTokens = p?.MaxTokens ?? 4096,
+        };
+
+        if (p is null) return settings;
+
+        if (p.Temperature.HasValue) settings.Temperature = p.Temperature.Value;
+        if (p.TopP.HasValue) settings.TopP = p.TopP.Value;
+        if (p.FrequencyPenalty.HasValue) settings.FrequencyPenalty = p.FrequencyPenalty.Value;
+        if (p.PresencePenalty.HasValue) settings.PresencePenalty = p.PresencePenalty.Value;
+        if (p.Seed.HasValue) settings.Seed = p.Seed.Value;
+        if (p.StopSequences.Count > 0) settings.StopSequences = p.StopSequences;
+
+        // Ollama-specific params go via ExtensionData
+        var extra = new Dictionary<string, object>();
+        if (p.TopK.HasValue) extra["top_k"] = p.TopK.Value;
+        if (p.ContextWindowSize is > 0) extra["num_ctx"] = p.ContextWindowSize.Value;
+        if (p.RepeatPenalty.HasValue) extra["repeat_penalty"] = p.RepeatPenalty.Value;
+
+        if (extra.Count > 0) settings.ExtensionData = extra;
+
+        return settings;
+    }
+
     private sealed class AgentInstance(
         string id, string provider, string model,
-        Kernel kernel, ChatHistory history)
+        Kernel kernel, ChatHistory history,
+        ModelParameters? parameters = null)
     {
         public string Id => id;
         public string Provider => provider;
         public string Model => model;
         public Kernel Kernel => kernel;
         public ChatHistory History => history;
+        public ModelParameters? Parameters => parameters;
         public int TurnCount { get; set; }
         public DateTimeOffset CreatedAt { get; } = DateTimeOffset.UtcNow;
     }

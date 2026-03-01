@@ -159,7 +159,7 @@ public sealed class GatewayOrchestrator : IHostedService
             try
             {
                 var poolId = await _agentPool.SpawnAgentAsync(
-                    def.Provider, def.Model, def.SystemPrompt, ct);
+                    def.Provider, def.Model, def.SystemPrompt, ct, def.Parameters);
 
                 _spawnedAgents[def.Id] = poolId;
                 _logger.LogInformation(
