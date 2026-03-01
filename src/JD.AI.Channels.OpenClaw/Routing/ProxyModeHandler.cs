@@ -46,21 +46,28 @@ public sealed class ProxyModeHandler(ILogger<ProxyModeHandler> logger) : IOpenCl
         sessionKey = "";
         content = null;
 
-        if (!string.Equals(evt.EventName, "chat", StringComparison.Ordinal) || !evt.Payload.HasValue)
+        if (!evt.Payload.HasValue)
             return false;
 
         var payload = evt.Payload.Value;
-        var stream = payload.TryGetProperty("stream", out var s) ? s.GetString() : null;
-        if (!string.Equals(stream, "user", StringComparison.Ordinal))
-            return false;
-
-        content = payload.TryGetProperty("data", out var data)
-            && data.TryGetProperty("text", out var t)
-                ? t.GetString()
-                : null;
-
         sessionKey = payload.TryGetProperty("sessionKey", out var sk) ? sk.GetString() ?? "" : "";
 
-        return !string.IsNullOrEmpty(content);
+        var stream = payload.TryGetProperty("stream", out var s) ? s.GetString() : null;
+        if (string.Equals(stream, "user", StringComparison.Ordinal))
+        {
+            content = payload.TryGetProperty("data", out var data)
+                && data.TryGetProperty("text", out var t)
+                    ? t.GetString()
+                    : null;
+            return !string.IsNullOrEmpty(content);
+        }
+
+        if (payload.TryGetProperty("content", out var directContent) && directContent.ValueKind == JsonValueKind.String)
+        {
+            content = directContent.GetString();
+            return !string.IsNullOrEmpty(content);
+        }
+
+        return false;
     }
 }

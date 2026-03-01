@@ -93,26 +93,43 @@ public sealed class SidecarModeHandler(ILogger<SidecarModeHandler> logger) : IOp
         return (false, content);
     }
 
+    /// <summary>
+    /// Extracts user message from an agent lifecycle event (synthetic or real).
+    /// Works with events that have stream="user" and data.text.
+    /// Also works with the legacy format for backward compatibility.
+    /// </summary>
     private static bool TryExtractUserMessage(OpenClawEvent evt, out string sessionKey, out string? content)
     {
         sessionKey = "";
         content = null;
 
-        if (!string.Equals(evt.EventName, "chat", StringComparison.Ordinal) || !evt.Payload.HasValue)
+        if (!evt.Payload.HasValue)
             return false;
 
         var payload = evt.Payload.Value;
-        var stream = payload.TryGetProperty("stream", out var s) ? s.GetString() : null;
-        if (!string.Equals(stream, "user", StringComparison.Ordinal))
-            return false;
 
-        content = payload.TryGetProperty("data", out var data)
-            && data.TryGetProperty("text", out var t)
-                ? t.GetString()
-                : null;
-
+        // Extract session key
         sessionKey = payload.TryGetProperty("sessionKey", out var sk) ? sk.GetString() ?? "" : "";
 
-        return !string.IsNullOrEmpty(content);
+        // Try stream=user, data.text (synthetic events from routing service)
+        var stream = payload.TryGetProperty("stream", out var s) ? s.GetString() : null;
+        if (string.Equals(stream, "user", StringComparison.Ordinal))
+        {
+            content = payload.TryGetProperty("data", out var data)
+                && data.TryGetProperty("text", out var t)
+                    ? t.GetString()
+                    : null;
+
+            return !string.IsNullOrEmpty(content);
+        }
+
+        // Try direct "content" or "message" field (alternative formats)
+        if (payload.TryGetProperty("content", out var directContent) && directContent.ValueKind == JsonValueKind.String)
+        {
+            content = directContent.GetString();
+            return !string.IsNullOrEmpty(content);
+        }
+
+        return false;
     }
 }

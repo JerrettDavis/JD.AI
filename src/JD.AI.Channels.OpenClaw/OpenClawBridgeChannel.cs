@@ -36,6 +36,13 @@ public sealed class OpenClawBridgeChannel : IChannel
 
     public async Task ConnectAsync(CancellationToken ct = default)
     {
+        // Idempotent — skip if already connected
+        if (_rpc.IsConnected)
+        {
+            _logger.LogDebug("OpenClaw bridge already connected, skipping duplicate ConnectAsync");
+            return;
+        }
+
         _rpc.EventReceived += OnEvent;
         await _rpc.ConnectAsync(ct);
 
