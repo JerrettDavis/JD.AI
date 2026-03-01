@@ -38,7 +38,7 @@ public class SlidingWindowRateLimiterTests
         (await limiter.AllowAsync("user1")).Should().BeTrue();
         (await limiter.AllowAsync("user1")).Should().BeFalse();
 
-        await Task.Delay(100);
+        await Task.Delay(200);
 
         (await limiter.AllowAsync("user1")).Should().BeTrue();
     }

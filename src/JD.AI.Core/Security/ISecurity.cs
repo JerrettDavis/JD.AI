@@ -93,7 +93,7 @@ public sealed class SlidingWindowRateLimiter : IRateLimiter
             }
 
             // Trim expired entries
-            while (queue.Count > 0 && now - queue.Peek() > _window)
+            while (queue.Count > 0 && now - queue.Peek() >= _window)
                 queue.Dequeue();
 
             if (queue.Count >= _maxRequests)
