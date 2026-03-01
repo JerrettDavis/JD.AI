@@ -197,12 +197,15 @@ public sealed class OpenClawRoutingService : BackgroundService
             sessionKey, runId);
 
         // Query chat.history to get the latest user message
-        var userMessage = await QueryLatestUserMessageAsync(sessionKey, ct);
-        if (string.IsNullOrEmpty(userMessage))
+        var rawMessage = await QueryLatestUserMessageAsync(sessionKey, ct);
+        if (string.IsNullOrEmpty(rawMessage))
         {
             _logger.LogDebug("[Agent] No user message found for session '{Session}'", sessionKey);
             return;
         }
+
+        // Strip OpenClaw's metadata wrapper (e.g., "Conversation info (untrusted metadata): ```json...```")
+        var userMessage = StripOpenClawMetadata(rawMessage);
 
         _logger.LogInformation(
             "[Agent] User message: '{Preview}' session={Session}",
@@ -399,6 +402,65 @@ public sealed class OpenClawRoutingService : BackgroundService
             "Cannot determine channel for session '{Session}', using default routing",
             sessionKey);
         return "__unknown";
+    }
+
+    /// <summary>
+    /// Strips OpenClaw's metadata wrapper from user messages.
+    /// OpenClaw wraps Discord/Signal messages in a format like:
+    /// <code>
+    /// Conversation info (untrusted metadata):
+    /// ```json
+    /// { "conversation_label": "...", "sender_name": "..." }
+    /// ```
+    /// actual user text here
+    /// </code>
+    /// This method extracts the actual user text after the metadata block.
+    /// </summary>
+    internal static string StripOpenClawMetadata(string message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+            return message;
+
+        // OpenClaw wraps channel messages in metadata blocks with various headers:
+        // - "Conversation info (untrusted metadata): ```json ... ```"
+        // - "Sender (untrusted metadata): ```json ... ```"
+        // The actual user text follows after the closing code fence.
+
+        // Strategy: find the LAST closing code fence (```) and extract text after it.
+        // Only strip if the message contains a code fence with "(untrusted metadata)" marker.
+        if (!message.Contains("(untrusted metadata)", StringComparison.OrdinalIgnoreCase))
+            return message;
+
+        // Find the last closing code fence. Code fences come in pairs (open + close).
+        // We iterate through all ``` occurrences and take the last one.
+        var lastFenceIndex = -1;
+        var searchPos = 0;
+        while (true)
+        {
+            var idx = message.IndexOf("```", searchPos, StringComparison.Ordinal);
+            if (idx < 0)
+                break;
+            lastFenceIndex = idx;
+            searchPos = idx + 3;
+        }
+
+        if (lastFenceIndex >= 0)
+        {
+            var afterFence = message[(lastFenceIndex + 3)..].Trim();
+            if (!string.IsNullOrEmpty(afterFence))
+                return afterFence;
+        }
+
+        // No usable text after fence — try the last paragraph after double newline
+        var sections = message.Split("\n\n", StringSplitOptions.RemoveEmptyEntries);
+        if (sections.Length > 1)
+        {
+            var lastSection = sections[^1].Trim();
+            if (!lastSection.StartsWith("```", StringComparison.Ordinal) && !string.IsNullOrEmpty(lastSection))
+                return lastSection;
+        }
+
+        return message;
     }
 
     private void TrackEvent(OpenClawEvent evt)

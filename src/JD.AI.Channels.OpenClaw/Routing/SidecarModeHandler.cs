@@ -69,28 +69,40 @@ public sealed class SidecarModeHandler(ILogger<SidecarModeHandler> logger) : IOp
     /// <summary>
     /// Checks if the message matches the configured trigger.
     /// Returns (matched, content-with-prefix-stripped).
+    /// Handles Discord mentions (e.g., &lt;@123456&gt;) that may precede the command prefix.
     /// </summary>
     private static (bool Matched, string Content) CheckTrigger(string content, OpenClawChannelRouteConfig config)
     {
+        // Strip leading Discord mentions (e.g., "<@1234567890>" or "<@!1234567890>")
+        var cleaned = StripDiscordMentions(content);
+
         // Check command prefix (e.g., "/jdai hello" → "hello")
         if (!string.IsNullOrEmpty(config.CommandPrefix))
         {
-            if (content.StartsWith(config.CommandPrefix, StringComparison.OrdinalIgnoreCase))
+            if (cleaned.StartsWith(config.CommandPrefix, StringComparison.OrdinalIgnoreCase))
             {
-                var stripped = content[config.CommandPrefix.Length..].TrimStart();
+                var stripped = cleaned[config.CommandPrefix.Length..].TrimStart();
                 return (true, stripped);
             }
         }
 
-        // Check regex pattern
+        // Check regex pattern (against both raw and cleaned content)
         if (!string.IsNullOrEmpty(config.TriggerPattern))
         {
-            var match = Regex.IsMatch(content, config.TriggerPattern, RegexOptions.IgnoreCase);
+            var match = Regex.IsMatch(cleaned, config.TriggerPattern, RegexOptions.IgnoreCase);
             if (match)
-                return (true, content);
+                return (true, cleaned);
         }
 
         return (false, content);
+    }
+
+    /// <summary>
+    /// Strips Discord mention tags (&lt;@123456&gt; or &lt;@!123456&gt;) from the beginning of a message.
+    /// </summary>
+    private static string StripDiscordMentions(string content)
+    {
+        return Regex.Replace(content, @"^(\s*<@!?\d+>\s*)+", "", RegexOptions.None).TrimStart();
     }
 
     /// <summary>
