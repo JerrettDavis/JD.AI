@@ -4,7 +4,7 @@
     <TitleContent>
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
             <MudIcon Icon="@Icons.Material.Filled.Edit" />
-            <MudText>Override: @Channel.Name (@Channel.Type)</MudText>
+            <MudText>Override: @Channel.DisplayName (@Channel.ChannelType)</MudText>
         </MudStack>
     </TitleContent>
     <DialogContent>
@@ -43,10 +43,10 @@
 
     protected override void OnParametersSet()
     {
-        _agentId = Channel.AssignedAgentId ?? "";
-        _model = Channel.Model ?? "";
-        _routingMode = Channel.RoutingMode ?? "Passthrough";
-        _enabled = Channel.Connected || Channel.Enabled;
+        _agentId = "";
+        _model = "";
+        _routingMode = "Passthrough";
+        _enabled = Channel.IsConnected;
     }
 
     private void Cancel() => MudDialog.Cancel();
@@ -56,8 +56,8 @@
         _saving = true;
         try
         {
-            await Api.MapRoutingAsync(Channel.Type, _agentId);
-            Snackbar.Add($"Override saved for {Channel.Type}", Severity.Success);
+            await Api.MapRoutingAsync(Channel.ChannelType, _agentId);
+            Snackbar.Add($"Override saved for {Channel.ChannelType}", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
         }
         catch (Exception ex)

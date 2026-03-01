@@ -32,7 +32,6 @@ else
                     </CellTemplate>
                 </PropertyColumn>
                 <PropertyColumn Property="x => x.AgentId" Title="Agent ID" Editable="true" />
-                <PropertyColumn Property="x => x.ConversationPattern" Title="Pattern" Editable="true" />
                 <TemplateColumn Title="Status" CellClass="d-flex justify-end">
                     <CellTemplate>
                         <MudChip T="string" Size="Size.Small"
@@ -60,10 +59,6 @@ else
                             <MudChip T="string" Size="Size.Small" Color="Color.Primary">
                                 @(string.IsNullOrEmpty(mapping.AgentId) ? "OpenClaw Default" : mapping.AgentId)
                             </MudChip>
-                            @if (!string.IsNullOrEmpty(mapping.ConversationPattern))
-                            {
-                                <MudText Typo="Typo.caption" Color="Color.Secondary">pattern: @mapping.ConversationPattern</MudText>
-                            }
                         </MudStack>
                     </MudTimelineItem>
                 }

@@ -1,0 +1,167 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using FluentAssertions;
+using JD.AI.Dashboard.Wasm.Models;
+
+namespace JD.AI.Gateway.Tests;
+
+/// <summary>
+/// Validates that the Gateway API responses can be deserialized into
+/// the Dashboard's client-side models without error.
+/// </summary>
+public sealed class DashboardModelIntegrationTests : IClassFixture<GatewayTestFactory>
+{
+    private readonly HttpClient _client;
+
+    public DashboardModelIntegrationTests(GatewayTestFactory factory)
+    {
+        _client = factory.CreateClient();
+    }
+
+    [Fact]
+    public async Task GetStatus_DeserializesIntoGatewayStatus()
+    {
+        var response = await _client.GetAsync("/api/gateway/status");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var status = await response.Content.ReadFromJsonAsync<GatewayStatus>();
+
+        status.Should().NotBeNull();
+        status!.Status.Should().Be("running");
+        status.IsRunning.Should().BeTrue();
+        status.Channels.Should().NotBeNull();
+        status.Agents.Should().NotBeNull();
+        status.Routes.Should().NotBeNull();
+        status.OpenClaw.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task GetStatus_ChannelsHaveExpectedShape()
+    {
+        var status = await _client.GetFromJsonAsync<GatewayStatus>("/api/gateway/status");
+
+        status.Should().NotBeNull();
+        // The default config has at least the "web" channel
+        status!.Channels.Should().Contain(c => c.ChannelType == "web");
+
+        foreach (var channel in status.Channels)
+        {
+            channel.ChannelType.Should().NotBeNullOrEmpty();
+            channel.DisplayName.Should().NotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public async Task GetStatus_AgentsIncludeAutoSpawnedDefault()
+    {
+        var status = await _client.GetFromJsonAsync<GatewayStatus>("/api/gateway/status");
+
+        status.Should().NotBeNull();
+        status!.Agents.Should().NotBeEmpty("the default agent is auto-spawned");
+        status.ActiveAgents.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task GetStatus_OpenClawStatusPresent()
+    {
+        var status = await _client.GetFromJsonAsync<GatewayStatus>("/api/gateway/status");
+
+        status.Should().NotBeNull();
+        status!.OpenClaw.Should().NotBeNull();
+        status.OpenClaw!.Enabled.Should().BeTrue("OpenClaw is enabled in test config");
+    }
+
+    [Fact]
+    public async Task GetAgents_DeserializesIntoAgentInfoArray()
+    {
+        var response = await _client.GetAsync("/api/agents");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var agents = await response.Content.ReadFromJsonAsync<AgentInfo[]>();
+
+        agents.Should().NotBeNull();
+        agents.Should().NotBeEmpty("the default agent is auto-spawned");
+        agents![0].Id.Should().NotBeNullOrEmpty();
+        agents[0].Provider.Should().NotBeNullOrEmpty();
+        agents[0].Model.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task GetChannels_DeserializesIntoChannelInfoArray()
+    {
+        var response = await _client.GetAsync("/api/channels");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var channels = await response.Content.ReadFromJsonAsync<ChannelInfo[]>();
+
+        channels.Should().NotBeNull();
+        channels.Should().NotBeEmpty("web channel is registered by default");
+    }
+
+    [Fact]
+    public async Task GetRoutingMappings_DeserializesIntoDictionary()
+    {
+        var response = await _client.GetAsync("/api/routing/mappings");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // The API returns Dictionary<string, string> (channelType → agentId)
+        var dict = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+
+        dict.Should().NotBeNull();
+        dict.Should().NotBeEmpty("default routing rules exist");
+
+        // Verify the GatewayApiClient conversion works
+        var mappings = dict!.Select(kv => new RoutingMapping { ChannelType = kv.Key, AgentId = kv.Value }).ToArray();
+        mappings.Should().Contain(m => m.ChannelType == "web");
+    }
+
+    [Fact]
+    public async Task GetProviders_DeserializesIntoProviderInfoArray()
+    {
+        var response = await _client.GetAsync("/api/providers");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var providers = await response.Content.ReadFromJsonAsync<ProviderInfo[]>();
+
+        providers.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task GetSessions_DeserializesIntoSessionInfoArray()
+    {
+        var response = await _client.GetAsync("/api/sessions");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var sessions = await response.Content.ReadFromJsonAsync<SessionInfo[]>();
+
+        sessions.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task SignalR_EventHub_NegotiateEndpointResponds()
+    {
+        var response = await _client.PostAsync("/hubs/events/negotiate?negotiateVersion=1", null);
+
+        // SignalR negotiate returns 200 with connection info
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("connectionId");
+    }
+
+    [Fact]
+    public async Task SignalR_AgentHub_NegotiateEndpointResponds()
+    {
+        var response = await _client.PostAsync("/hubs/agent/negotiate?negotiateVersion=1", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("connectionId");
+    }
+}

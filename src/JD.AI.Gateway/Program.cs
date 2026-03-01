@@ -151,9 +151,9 @@ builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks()
     .AddCheck<GatewayHealthCheck>("gateway");
 
-// --- CORS (allow TUI and web clients) ---
+// --- CORS (allow TUI, web clients, and SignalR WebSockets) ---
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
-    p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
+    p.SetIsOriginAllowed(_ => true).AllowAnyMethod().AllowAnyHeader().AllowCredentials()));
 
 var app = builder.Build();
 
