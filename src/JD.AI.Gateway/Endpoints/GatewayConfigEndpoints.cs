@@ -1,4 +1,5 @@
 using JD.AI.Channels.OpenClaw;
+using JD.AI.Channels.OpenClaw.Routing;
 using JD.AI.Gateway.Config;
 using JD.AI.Gateway.Services;
 
@@ -199,5 +200,33 @@ public static class GatewayConfigEndpoints
         })
         .WithName("SyncOpenClawAgents")
         .WithDescription("Re-synchronize JD.AI agent registrations with the OpenClaw gateway.");
+
+        // GET /api/gateway/openclaw/status — diagnostic endpoint for bridge status
+        group.MapGet("/openclaw/status", () =>
+        {
+            var bridge = app.Services.GetService<OpenClawBridgeChannel>();
+            if (bridge is null)
+                return Results.Ok(new { Enabled = false, Message = "OpenClaw integration not enabled" });
+
+            var routingService = app.Services.GetServices<IHostedService>()
+                .OfType<OpenClawRoutingService>()
+                .FirstOrDefault();
+
+            var recentEvents = routingService?.GetRecentEvents() ?? [];
+
+            return Results.Ok(new
+            {
+                Enabled = true,
+                Connected = bridge.IsConnected,
+                ChannelType = bridge.ChannelType,
+                DisplayName = bridge.DisplayName,
+                RecentEventCount = recentEvents.Count,
+                RecentEvents = recentEvents
+                    .TakeLast(20)
+                    .Select(e => new { e.Time, e.EventName, e.Summary })
+            });
+        })
+        .WithName("GetOpenClawStatus")
+        .WithDescription("Diagnostic endpoint showing OpenClaw bridge connection status and recent events.");
     }
 }
