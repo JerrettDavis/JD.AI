@@ -1,5 +1,5 @@
-using JD.AI.Core.Sessions;
 using JD.AI.Core.Providers;
+using JD.AI.Core.Sessions;
 using JD.SemanticKernel.Extensions.Compaction;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;

@@ -20,7 +20,10 @@ public static class GatewayConfigEndpoints
                 config.RateLimit,
                 Channels = config.Channels.Select(c => new
                 {
-                    c.Type, c.Name, c.Enabled, c.AutoConnect,
+                    c.Type,
+                    c.Name,
+                    c.Enabled,
+                    c.AutoConnect,
                     Settings = c.Settings.ToDictionary(
                         kv => kv.Key,
                         kv => kv.Value.StartsWith("env:", StringComparison.OrdinalIgnoreCase)
@@ -28,7 +31,11 @@ public static class GatewayConfigEndpoints
                 }),
                 Agents = config.Agents.Select(a => new
                 {
-                    a.Id, a.Provider, a.Model, a.AutoSpawn, a.MaxTurns
+                    a.Id,
+                    a.Provider,
+                    a.Model,
+                    a.AutoSpawn,
+                    a.MaxTurns
                 }),
                 config.Routing,
                 OpenClaw = new
@@ -40,7 +47,11 @@ public static class GatewayConfigEndpoints
                     Channels = config.OpenClaw.Channels,
                     RegisteredAgents = config.OpenClaw.RegisterAgents.Select(a => new
                     {
-                        a.Id, a.Name, a.Emoji, a.Theme, a.Model,
+                        a.Id,
+                        a.Name,
+                        a.Emoji,
+                        a.Theme,
+                        a.Model,
                         Bindings = a.Bindings.Count
                     })
                 }

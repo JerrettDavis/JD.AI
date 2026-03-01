@@ -1,8 +1,8 @@
 using FluentAssertions;
 using JD.AI.Core.Plugins;
+using JD.AI.Plugins.SDK;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using JD.AI.Plugins.SDK;
 
 namespace JD.AI.Tests.Plugins;
 

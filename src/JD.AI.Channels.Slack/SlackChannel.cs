@@ -49,11 +49,14 @@ public sealed class SlackChannel : IChannel
     {
         if (_api is null) throw new InvalidOperationException("Not connected.");
 
+        // SlackAPI does not expose CancellationToken on PostMessage
+#pragma warning disable CA2016
         await _api.Chat.PostMessage(new Message
         {
             Channel = conversationId,
             Text = content
         });
+#pragma warning restore CA2016
     }
 
     /// <summary>

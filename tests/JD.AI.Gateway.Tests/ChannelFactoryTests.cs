@@ -52,7 +52,7 @@ public sealed class ChannelFactoryTests
         {
             Type = "discord",
             Name = "Discord",
-            Settings = new() { ["BotToken"] = "test-token-value" }
+            Settings = new Dictionary<string, string>(StringComparer.Ordinal) { ["BotToken"] = "test-token-value" }
         };
 
         var channel = _factory.Create(config);
@@ -67,7 +67,7 @@ public sealed class ChannelFactoryTests
         {
             Type = "signal",
             Name = "Signal",
-            Settings = new() { ["Account"] = "+15551234567" }
+            Settings = new Dictionary<string, string>(StringComparer.Ordinal) { ["Account"] = "+15551234567" }
         };
 
         var channel = _factory.Create(config);
@@ -82,7 +82,7 @@ public sealed class ChannelFactoryTests
         {
             Type = "telegram",
             Name = "Telegram",
-            Settings = new() { ["BotToken"] = "123456:ABC-DEF" }
+            Settings = new Dictionary<string, string>(StringComparer.Ordinal) { ["BotToken"] = "123456:ABC-DEF" }
         };
 
         var channel = _factory.Create(config);
@@ -97,7 +97,7 @@ public sealed class ChannelFactoryTests
         {
             Type = "slack",
             Name = "Slack",
-            Settings = new()
+            Settings = new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["BotToken"] = "xoxb-test",
                 ["AppToken"] = "xapp-test"
@@ -132,7 +132,7 @@ public sealed class ChannelFactoryTests
             {
                 Type = "telegram",
                 Name = "Telegram",
-                Settings = new() { ["BotToken"] = $"env:{envKey}" }
+                Settings = new Dictionary<string, string>(StringComparer.Ordinal) { ["BotToken"] = $"env:{envKey}" }
             };
 
             var channel = _factory.Create(config);

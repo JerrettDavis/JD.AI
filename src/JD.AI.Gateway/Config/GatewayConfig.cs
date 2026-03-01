@@ -1,3 +1,5 @@
+#pragma warning disable CA2227 // Collection properties should be read only — needed for IOptions binding
+
 namespace JD.AI.Gateway.Config;
 
 public sealed class GatewayConfig
@@ -5,9 +7,9 @@ public sealed class GatewayConfig
     public ServerConfig Server { get; set; } = new();
     public AuthConfig Auth { get; set; } = new();
     public RateLimitConfig RateLimit { get; set; } = new();
-    public List<ChannelConfig> Channels { get; set; } = [];
-    public List<ProviderConfig> Providers { get; set; } = [];
-    public List<AgentDefinition> Agents { get; set; } = [];
+    public IList<ChannelConfig> Channels { get; set; } = [];
+    public IList<ProviderConfig> Providers { get; set; } = [];
+    public IList<AgentDefinition> Agents { get; set; } = [];
     public RoutingConfig Routing { get; set; } = new();
     public OpenClawGatewayConfig OpenClaw { get; set; } = new();
 }
@@ -22,7 +24,7 @@ public sealed class ServerConfig
 public sealed class AuthConfig
 {
     public bool Enabled { get; set; }
-    public List<ApiKeyEntry> ApiKeys { get; set; } = [];
+    public IList<ApiKeyEntry> ApiKeys { get; set; } = [];
 }
 
 public sealed class ApiKeyEntry
@@ -44,14 +46,14 @@ public sealed class ChannelConfig
     public string Name { get; set; } = "";
     public bool Enabled { get; set; } = true;
     public bool AutoConnect { get; set; }
-    public Dictionary<string, string> Settings { get; set; } = [];
+    public IDictionary<string, string> Settings { get; set; } = new Dictionary<string, string>();
 }
 
 public sealed class ProviderConfig
 {
     public string Name { get; set; } = "";
     public bool Enabled { get; set; } = true;
-    public Dictionary<string, string> Settings { get; set; } = [];
+    public IDictionary<string, string> Settings { get; set; } = new Dictionary<string, string>();
 }
 
 /// <summary>An agent to auto-spawn on gateway startup.</summary>
@@ -63,13 +65,13 @@ public sealed class AgentDefinition
     public string? SystemPrompt { get; set; }
     public bool AutoSpawn { get; set; } = true;
     public int MaxTurns { get; set; }
-    public List<string> Tools { get; set; } = [];
+    public IList<string> Tools { get; set; } = [];
 }
 
 /// <summary>Routing rules that map channels to agents.</summary>
 public sealed class RoutingConfig
 {
-    public List<RoutingRule> Rules { get; set; } = [];
+    public IList<RoutingRule> Rules { get; set; } = [];
     public string DefaultAgentId { get; set; } = "";
 }
 
@@ -88,10 +90,10 @@ public sealed class OpenClawGatewayConfig
     public string WebSocketUrl { get; set; } = "ws://127.0.0.1:18789/ws/gateway";
     public bool AutoConnect { get; set; } = true;
     public string DefaultMode { get; set; } = "Passthrough";
-    public Dictionary<string, OpenClawChannelConfig> Channels { get; set; } = [];
+    public IDictionary<string, OpenClawChannelConfig> Channels { get; set; } = new Dictionary<string, OpenClawChannelConfig>();
 
     /// <summary>JD.AI agents to register with OpenClaw so they appear in its dashboard.</summary>
-    public List<OpenClawAgentRegistration> RegisterAgents { get; set; } = [];
+    public IList<OpenClawAgentRegistration> RegisterAgents { get; set; } = [];
 }
 
 /// <summary>Defines a JD.AI agent to register with OpenClaw as a native agent.</summary>
@@ -116,7 +118,7 @@ public sealed class OpenClawAgentRegistration
     public string? GatewayAgentId { get; set; }
 
     /// <summary>Channel bindings in OpenClaw.</summary>
-    public List<OpenClawBindingConfig> Bindings { get; set; } = [];
+    public IList<OpenClawBindingConfig> Bindings { get; set; } = [];
 }
 
 /// <summary>Channel binding for an OpenClaw agent registration.</summary>

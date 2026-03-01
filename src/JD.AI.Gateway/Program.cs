@@ -1,9 +1,9 @@
 using JD.AI.Channels.OpenClaw;
 using JD.AI.Channels.OpenClaw.Routing;
-using JD.AI.Core.Plugins;
 using JD.AI.Core.Channels;
 using JD.AI.Core.Events;
 using JD.AI.Core.Memory;
+using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Security;
 using JD.AI.Core.Sessions;
@@ -116,11 +116,12 @@ if (gatewayConfig.OpenClaw.Enabled)
             {
                 // Look up the pool agent spawned from this config ID
                 var agents = pool.ListAgents();
-                poolAgentId = agents.FirstOrDefault()?.Id; // Spawned agents currently don't track config ID
+                poolAgentId = agents.Count > 0 ? agents[0].Id : null; // Spawned agents currently don't track config ID
             }
 
             // Fall back to first available agent
-            poolAgentId ??= pool.ListAgents().FirstOrDefault()?.Id;
+            var allAgents = pool.ListAgents();
+            poolAgentId ??= allAgents.Count > 0 ? allAgents[0].Id : null;
 
             if (poolAgentId is null) return null;
             return await pool.SendMessageAsync(poolAgentId, content, CancellationToken.None);

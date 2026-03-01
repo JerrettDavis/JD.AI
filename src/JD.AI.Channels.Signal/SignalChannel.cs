@@ -101,7 +101,7 @@ public sealed class SignalChannel : IChannel
                 var root = doc.RootElement;
 
                 if (root.TryGetProperty("method", out var method)
-                    && method.GetString() == "receive"
+                    && string.Equals(method.GetString(), "receive", StringComparison.Ordinal)
                     && root.TryGetProperty("params", out var p)
                     && p.TryGetProperty("envelope", out var envelope)
                     && envelope.TryGetProperty("dataMessage", out var data))

@@ -13,7 +13,7 @@ public sealed class OpenClawRoutingService : BackgroundService
 {
     private readonly OpenClawBridgeChannel _bridge;
     private readonly OpenClawRoutingConfig _routingConfig;
-    private readonly IReadOnlyDictionary<OpenClawRoutingMode, IOpenClawModeHandler> _handlers;
+    private readonly Dictionary<OpenClawRoutingMode, IOpenClawModeHandler> _handlers;
     private readonly Func<string, string, Task<string?>> _messageProcessor;
     private readonly ILogger<OpenClawRoutingService> _logger;
 
@@ -105,7 +105,7 @@ public sealed class OpenClawRoutingService : BackgroundService
 
     private async Task DispatchEventAsync(OpenClawEvent evt, CancellationToken ct)
     {
-        if (evt.EventName != "chat" || !evt.Payload.HasValue)
+        if (!string.Equals(evt.EventName, "chat", StringComparison.Ordinal) || !evt.Payload.HasValue)
             return;
 
         // Determine which OpenClaw channel this event came from

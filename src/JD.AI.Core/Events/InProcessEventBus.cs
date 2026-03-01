@@ -19,7 +19,7 @@ public sealed class InProcessEventBus : IEventBus, IDisposable
         lock (_lock)
         {
             targets = _subscriptions
-                .Where(s => s.Filter is null || s.Filter == evt.EventType)
+                .Where(s => s.Filter is null || string.Equals(s.Filter, evt.EventType, StringComparison.Ordinal))
                 .ToList();
         }
 

@@ -28,10 +28,12 @@ public sealed class OpenClawRoutingConfig
     public bool AutoConnect { get; set; } = true;
 
     /// <summary>Per-channel routing overrides keyed by OpenClaw channel name (e.g., "discord", "signal").</summary>
-    public Dictionary<string, OpenClawChannelRouteConfig> Channels { get; set; } = new();
+#pragma warning disable CA2227 // Config DTO requires public setter for IOptions binding
+    public IDictionary<string, OpenClawChannelRouteConfig> Channels { get; set; } = new Dictionary<string, OpenClawChannelRouteConfig>();
 
     /// <summary>Named agent profiles that channels can reference.</summary>
-    public Dictionary<string, OpenClawAgentProfileConfig> AgentProfiles { get; set; } = new();
+    public IDictionary<string, OpenClawAgentProfileConfig> AgentProfiles { get; set; } = new Dictionary<string, OpenClawAgentProfileConfig>();
+#pragma warning restore CA2227
 }
 
 /// <summary>Routing configuration for a specific OpenClaw channel.</summary>
@@ -69,5 +71,7 @@ public sealed class OpenClawAgentProfileConfig
     public string? SystemPrompt { get; set; }
 
     /// <summary>Tool categories enabled for this agent (e.g., "file", "web", "shell").</summary>
-    public List<string> Tools { get; set; } = ["file", "web", "shell"];
+#pragma warning disable CA2227 // Config DTO requires public setter for IOptions binding
+    public IList<string> Tools { get; set; } = ["file", "web", "shell"];
+#pragma warning restore CA2227
 }

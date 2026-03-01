@@ -134,7 +134,7 @@ public sealed class OpenClawBridgeChannel : IChannel
 
     private void OnEvent(OpenClawEvent evt)
     {
-        if (evt.EventName != "chat" || !evt.Payload.HasValue)
+        if (!string.Equals(evt.EventName, "chat", StringComparison.Ordinal) || !evt.Payload.HasValue)
             return;
 
         try
@@ -142,8 +142,7 @@ public sealed class OpenClawBridgeChannel : IChannel
             var payload = evt.Payload.Value;
             var stream = payload.TryGetProperty("stream", out var s) ? s.GetString() : null;
 
-            // Only surface assistant final messages
-            if (stream != "assistant")
+            if (!string.Equals(stream, "assistant", StringComparison.Ordinal))
                 return;
 
             var text = payload.TryGetProperty("data", out var data)

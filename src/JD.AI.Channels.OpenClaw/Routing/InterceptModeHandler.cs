@@ -26,7 +26,7 @@ public sealed class InterceptModeHandler(ILogger<InterceptModeHandler> logger) :
 
         logger.LogInformation(
             "[Intercept] Handling user message on '{Channel}' session='{Session}': {Preview}",
-            channelName, sessionKey, content![..Math.Min(80, content.Length)]);
+            channelName, sessionKey, content![..Math.Min(80, content!.Length)]);
 
         // Step 1: Abort OpenClaw's agent to prevent duplicate responses
         if (bridge?.IsConnected == true)
@@ -67,12 +67,12 @@ public sealed class InterceptModeHandler(ILogger<InterceptModeHandler> logger) :
         sessionKey = "";
         content = null;
 
-        if (evt.EventName != "chat" || !evt.Payload.HasValue)
+        if (!string.Equals(evt.EventName, "chat", StringComparison.Ordinal) || !evt.Payload.HasValue)
             return false;
 
         var payload = evt.Payload.Value;
         var stream = payload.TryGetProperty("stream", out var s) ? s.GetString() : null;
-        if (stream != "user")
+        if (!string.Equals(stream, "user", StringComparison.Ordinal))
             return false;
 
         content = payload.TryGetProperty("data", out var data)

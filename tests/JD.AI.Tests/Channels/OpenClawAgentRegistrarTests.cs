@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace JD.AI.Tests.Channels;
 
-public sealed class OpenClawAgentRegistrarTests
+public sealed class OpenClawAgentRegistrarTests : IDisposable
 {
     private readonly OpenClawRpcClient _rpc;
     private readonly OpenClawAgentRegistrar _registrar;
@@ -14,6 +14,8 @@ public sealed class OpenClawAgentRegistrarTests
         _rpc = new OpenClawRpcClient(new OpenClawConfig(), NullLogger<OpenClawRpcClient>.Instance);
         _registrar = new OpenClawAgentRegistrar(_rpc, NullLogger<OpenClawAgentRegistrar>.Instance);
     }
+
+    public void Dispose() => (_rpc as IAsyncDisposable)?.DisposeAsync().AsTask().GetAwaiter().GetResult();
 
     [Fact]
     public async Task RegisterAgentsAsync_WhenNotConnected_LogsWarningAndReturns()

@@ -88,7 +88,7 @@ public sealed class DiscordChannel : Core.Channels.IChannel
                 async ct =>
                 {
                     using var http = new HttpClient();
-                    return await http.GetStreamAsync(a.Url, ct);
+                    return await http.GetStreamAsync(new Uri(a.Url), ct);
                 })).ToList()
         };
 

@@ -70,7 +70,9 @@ public sealed class ModeHandlerTests
         var rpcConfig = new OpenClawConfig
         {
             WebSocketUrl = "ws://localhost:0",
-            DeviceId = "test", DeviceToken = "test", GatewayToken = "test",
+            DeviceId = "test",
+            DeviceToken = "test",
+            GatewayToken = "test",
             PublicKeyPem = "-----BEGIN PUBLIC KEY-----\ntest\n-----END PUBLIC KEY-----",
             PrivateKeyPem = "-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----",
         };

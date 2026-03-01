@@ -47,27 +47,27 @@ public sealed class GatewayOrchestrator : IHostedService
         _openClawBridge = openClawBridge;
     }
 
-    public async Task StartAsync(CancellationToken ct)
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Gateway orchestrator starting...");
 
         // Phase 1: Register channels from config
-        await RegisterChannelsAsync(ct);
+        await RegisterChannelsAsync(cancellationToken);
 
         // Phase 2: Auto-spawn agents from config
-        await SpawnAgentsAsync(ct);
+        await SpawnAgentsAsync(cancellationToken);
 
         // Phase 3: Wire routing rules
         WireRoutingRules();
 
         // Phase 4: Auto-connect channels marked for auto-connect
-        await AutoConnectChannelsAsync(ct);
+        await AutoConnectChannelsAsync(cancellationToken);
 
         // Phase 5: Wire MessageReceived events to the router
         WireMessageRouting();
 
         // Phase 6: Register JD.AI agents with OpenClaw
-        await RegisterOpenClawAgentsAsync(ct);
+        await RegisterOpenClawAgentsAsync(cancellationToken);
 
         await _events.PublishAsync(
             new GatewayEvent("gateway.started", "orchestrator", DateTimeOffset.UtcNow,
@@ -77,14 +77,14 @@ public sealed class GatewayOrchestrator : IHostedService
                     Agents = _agentPool.ListAgents().Count,
                     Routes = _router.GetMappings().Count,
                     OpenClawAgents = _agentRegistrar?.RegisteredAgentIds.Count ?? 0
-                }), ct);
+                }), cancellationToken);
 
         _logger.LogInformation(
             "Gateway orchestrator ready — {Channels} channels, {Agents} agents, {Routes} routes",
             _channels.Channels.Count, _agentPool.ListAgents().Count, _router.GetMappings().Count);
     }
 
-    public async Task StopAsync(CancellationToken ct)
+    public async Task StopAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Gateway orchestrator shutting down...");
 
@@ -93,7 +93,7 @@ public sealed class GatewayOrchestrator : IHostedService
         {
             try
             {
-                await _agentRegistrar.UnregisterAgentsAsync(ct);
+                await _agentRegistrar.UnregisterAgentsAsync(cancellationToken);
             }
             catch (Exception ex)
             {
@@ -107,7 +107,7 @@ public sealed class GatewayOrchestrator : IHostedService
             try
             {
                 if (channel.IsConnected)
-                    await channel.DisconnectAsync(ct);
+                    await channel.DisconnectAsync(cancellationToken);
             }
             catch (Exception ex)
             {
@@ -122,7 +122,7 @@ public sealed class GatewayOrchestrator : IHostedService
         }
 
         await _events.PublishAsync(
-            new GatewayEvent("gateway.stopped", "orchestrator", DateTimeOffset.UtcNow, null), ct);
+            new GatewayEvent("gateway.stopped", "orchestrator", DateTimeOffset.UtcNow, null), cancellationToken);
     }
 
     private async Task RegisterChannelsAsync(CancellationToken ct)
@@ -259,7 +259,7 @@ public sealed class GatewayOrchestrator : IHostedService
             return poolId;
 
         // Maybe it's already a pool agent ID
-        if (_agentPool.ListAgents().Any(a => a.Id == configId))
+        if (_agentPool.ListAgents().Any(a => string.Equals(a.Id, configId, StringComparison.Ordinal)))
             return configId;
 
         return null;

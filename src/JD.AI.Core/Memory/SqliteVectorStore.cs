@@ -63,17 +63,26 @@ public sealed class SqliteVectorStore : IVectorStore, IDisposable
         await tx.CommitAsync(ct);
     }
 
+    private const string SearchAllSql =
+        "SELECT id, content, source, category, embedding, created_at FROM memory_entries WHERE embedding IS NOT NULL";
+
+    private const string SearchByCategorySql =
+        "SELECT id, content, source, category, embedding, created_at FROM memory_entries WHERE category = $cat AND embedding IS NOT NULL";
+
     public async Task<IReadOnlyList<MemorySearchResult>> SearchAsync(
         float[] queryEmbedding, int topK = 5, string? categoryFilter = null,
         CancellationToken ct = default)
     {
         using var cmd = _connection.CreateCommand();
-        cmd.CommandText = categoryFilter is not null
-            ? "SELECT id, content, source, category, embedding, created_at FROM memory_entries WHERE category = $cat AND embedding IS NOT NULL"
-            : "SELECT id, content, source, category, embedding, created_at FROM memory_entries WHERE embedding IS NOT NULL";
-
         if (categoryFilter is not null)
+        {
+            cmd.CommandText = SearchByCategorySql;
             cmd.Parameters.AddWithValue("$cat", categoryFilter);
+        }
+        else
+        {
+            cmd.CommandText = SearchAllSql;
+        }
 
         var results = new List<(MemoryEntry Entry, double Score)>();
         using var reader = await cmd.ExecuteReaderAsync(ct);

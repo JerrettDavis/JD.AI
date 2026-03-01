@@ -29,10 +29,10 @@ public sealed class JdAiAgentDefinition
     public string? Model { get; init; }
 
     /// <summary>Tools available to this agent.</summary>
-    public List<string> Tools { get; init; } = [];
+    public IList<string> Tools { get; init; } = [];
 
     /// <summary>Channel bindings: which OpenClaw channels route to this agent.</summary>
-    public List<AgentBinding> Bindings { get; init; } = [];
+    public IList<AgentBinding> Bindings { get; init; } = [];
 }
 
 /// <summary>Maps an OpenClaw channel/peer to this agent.</summary>
@@ -258,7 +258,7 @@ public sealed class OpenClawAgentRegistrar
         // Remove existing entry if present (for update)
         for (var i = list.Count - 1; i >= 0; i--)
         {
-            if (list[i]?["id"]?.GetValue<string>() == agent.Id)
+            if (string.Equals(list[i]?["id"]?.GetValue<string>(), agent.Id, StringComparison.Ordinal))
             {
                 list.RemoveAt(i);
                 _logger.LogDebug("Replacing existing agent '{Id}' in OpenClaw", agent.Id);

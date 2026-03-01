@@ -49,7 +49,10 @@ public interface IChannel : IAsyncDisposable
     Task SendMessageAsync(string conversationId, string content, CancellationToken ct = default);
 
     /// <summary>Raised when a new inbound message arrives.</summary>
+    /// <remarks>Uses <c>Func&lt;ChannelMessage, Task&gt;</c> instead of <c>EventHandler</c> to support async handlers.</remarks>
+#pragma warning disable CA1003 // Async event pattern requires Func<T, Task> delegate
     event Func<ChannelMessage, Task>? MessageReceived;
+#pragma warning restore CA1003
 }
 
 /// <summary>
@@ -83,11 +86,11 @@ public sealed class ChannelRegistry : IChannelRegistry
 
     public void Unregister(string channelType)
     {
-        lock (_lock) _channels.RemoveAll(c => c.ChannelType == channelType);
+        lock (_lock) _channels.RemoveAll(c => string.Equals(c.ChannelType, channelType, StringComparison.Ordinal));
     }
 
     public IChannel? GetChannel(string channelType)
     {
-        lock (_lock) return _channels.FirstOrDefault(c => c.ChannelType == channelType);
+        lock (_lock) return _channels.FirstOrDefault(c => string.Equals(c.ChannelType, channelType, StringComparison.Ordinal));
     }
 }

@@ -46,12 +46,12 @@ public sealed class ProxyModeHandler(ILogger<ProxyModeHandler> logger) : IOpenCl
         sessionKey = "";
         content = null;
 
-        if (evt.EventName != "chat" || !evt.Payload.HasValue)
+        if (!string.Equals(evt.EventName, "chat", StringComparison.Ordinal) || !evt.Payload.HasValue)
             return false;
 
         var payload = evt.Payload.Value;
         var stream = payload.TryGetProperty("stream", out var s) ? s.GetString() : null;
-        if (stream != "user")
+        if (!string.Equals(stream, "user", StringComparison.Ordinal))
             return false;
 
         content = payload.TryGetProperty("data", out var data)

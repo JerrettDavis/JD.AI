@@ -1,19 +1,19 @@
 using JD.AI;
 using JD.AI.Agent;
+using JD.AI.Commands;
 using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Agents.Orchestration;
-using JD.AI.Commands;
 using JD.AI.Core.Providers;
 using JD.AI.Rendering;
 using JD.AI.Tools;
 using JD.SemanticKernel.Extensions.Compaction;
-using JD.SemanticKernel.Extensions.Skills;
-using JD.SemanticKernel.Extensions.Plugins;
 using JD.SemanticKernel.Extensions.Hooks;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using JD.SemanticKernel.Extensions.Plugins;
+using JD.SemanticKernel.Extensions.Skills;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Spectre.Console;
 
@@ -36,7 +36,7 @@ var gatewayPort = args.SkipWhile(a => !string.Equals(a, "--gateway-port", String
     .Skip(1).FirstOrDefault();
 
 // --gateway: start the Gateway as an embedded ASP.NET host alongside the TUI
-Microsoft.Extensions.Hosting.IHost? gatewayHost = null;
+Microsoft.AspNetCore.Builder.WebApplication? gatewayHost = null;
 if (gatewayMode)
 {
     var port = gatewayPort ?? "5100";

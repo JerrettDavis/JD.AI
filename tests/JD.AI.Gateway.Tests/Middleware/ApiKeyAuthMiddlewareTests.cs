@@ -179,7 +179,9 @@ public sealed class ApiKeyAuthMiddlewareIntegrationTests
     /// by replacing the <see cref="GatewayConfig"/> and <see cref="IAuthProvider"/>
     /// singletons in the DI container.
     /// </summary>
+#pragma warning disable CA1034 // Nested type used by xUnit IClassFixture
     public sealed class AuthEnabledFactory : WebApplicationFactory<Program>
+#pragma warning restore CA1034
     {
         protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
         {

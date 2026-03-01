@@ -40,7 +40,9 @@ public sealed class OpenClawRpcClient : IAsyncDisposable
     private bool _disposed;
 
     /// <summary>Raised when an event frame is received from the gateway.</summary>
+#pragma warning disable CA1003 // Event callback pattern requires Action<T> for synchronous invocation
     public event Action<OpenClawEvent>? EventReceived;
+#pragma warning restore CA1003
 
     /// <summary>Whether the client is connected and authenticated.</summary>
     public bool IsConnected { get; private set; }
@@ -66,7 +68,7 @@ public sealed class OpenClawRpcClient : IAsyncDisposable
 
         // Wait for challenge
         var challengeFrame = await ReceiveFrameAsync(ct);
-        if (challengeFrame.Type != "event" || challengeFrame.Event != "connect.challenge")
+        if (challengeFrame.Type is not "event" || !string.Equals(challengeFrame.Event, "connect.challenge", StringComparison.Ordinal))
             throw new InvalidOperationException($"Expected connect.challenge, got: {challengeFrame.Type}/{challengeFrame.Event}");
 
         var nonce = challengeFrame.Payload?.GetProperty("nonce").GetString()
@@ -239,7 +241,7 @@ public sealed class OpenClawRpcClient : IAsyncDisposable
             {
                 var frame = await ReceiveFrameAsync(ct);
 
-                if (frame.Type == "res")
+                if (string.Equals(frame.Type, "res", StringComparison.Ordinal))
                 {
                     if (frame.Id is not null && _pending.TryGetValue(frame.Id, out var tcs))
                     {
@@ -251,7 +253,7 @@ public sealed class OpenClawRpcClient : IAsyncDisposable
                         });
                     }
                 }
-                else if (frame.Type == "event")
+                else if (string.Equals(frame.Type, "event", StringComparison.Ordinal))
                 {
                     EventReceived?.Invoke(new OpenClawEvent
                     {
@@ -372,7 +374,11 @@ public sealed class OpenClawRpcClient : IAsyncDisposable
 public sealed class RpcResponse
 {
     public bool Ok { get; init; }
+
+#pragma warning disable CA1721 // Payload property is the canonical name; GetPayload<T> is a typed accessor
     public JsonElement? Payload { get; init; }
+#pragma warning restore CA1721
+
     public JsonElement? Error { get; init; }
 
     public T? GetPayload<T>() =>

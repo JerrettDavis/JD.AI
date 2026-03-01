@@ -13,7 +13,7 @@ public sealed class GatewayHealthCheck : IHealthCheck
 
     public Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
-        CancellationToken ct = default)
+        CancellationToken cancellationToken = default)
     {
         var agents = _pool.ListAgents();
         var data = new Dictionary<string, object>

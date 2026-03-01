@@ -13,7 +13,7 @@ namespace JD.AI.Gateway.Tests;
 public sealed class GatewayOrchestratorTests
 {
     private readonly GatewayConfig _config;
-    private readonly IChannelRegistry _channels;
+    private readonly ChannelRegistry _channels;
     private readonly AgentPoolService _pool;
     private readonly AgentRouter _router;
     private readonly IEventBus _events;
@@ -77,7 +77,10 @@ public sealed class GatewayOrchestratorTests
     {
         _config.Channels.Add(new ChannelConfig
         {
-            Type = "web", Name = "Web", Enabled = true, AutoConnect = true
+            Type = "web",
+            Name = "Web",
+            Enabled = true,
+            AutoConnect = true
         });
 
         var orchestrator = CreateOrchestrator();
@@ -92,7 +95,9 @@ public sealed class GatewayOrchestratorTests
     {
         _config.Channels.Add(new ChannelConfig
         {
-            Type = "web", Name = "Web", Enabled = true
+            Type = "web",
+            Name = "Web",
+            Enabled = true
         });
 
         var orchestrator = CreateOrchestrator();
@@ -108,7 +113,9 @@ public sealed class GatewayOrchestratorTests
     {
         _config.Channels.Add(new ChannelConfig
         {
-            Type = "web", Name = "Web", Enabled = true
+            Type = "web",
+            Name = "Web",
+            Enabled = true
         });
 
         var orchestrator = CreateOrchestrator();

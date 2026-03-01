@@ -18,7 +18,7 @@ public static class MemoryEndpoints
                 Embedding = req.Embedding,
                 Source = req.Source,
                 Category = req.Category,
-                Metadata = req.Metadata ?? new Dictionary<string, string>()
+                Metadata = req.Metadata is not null ? new Dictionary<string, string>(req.Metadata) : new Dictionary<string, string>()
             };
             await store.UpsertAsync([entry]);
             return Results.Ok(new { req.Id, Status = "indexed" });
@@ -46,7 +46,7 @@ public record IndexRequest(
     float[] Embedding,
     string? Source = null,
     string? Category = null,
-    Dictionary<string, string>? Metadata = null);
+    IDictionary<string, string>? Metadata = null);
 
 public record SearchRequest(
     float[] Embedding,

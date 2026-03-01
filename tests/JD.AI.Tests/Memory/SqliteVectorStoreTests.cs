@@ -1,9 +1,9 @@
-namespace JD.AI.Tests.Memory;
 
 using FluentAssertions;
 using JD.AI.Core.Memory;
 using Xunit;
 
+namespace JD.AI.Tests.Memory;
 public class SqliteVectorStoreTests : IAsyncDisposable
 {
     private readonly string _dbPath;
@@ -99,7 +99,7 @@ public class SqliteVectorStoreTests : IAsyncDisposable
         results[0].Score.Should().BeGreaterThan(0.9);
 
         // The far document should have a low score
-        var farResult = results.FirstOrDefault(r => r.Entry.Id == "far");
+        var farResult = results.FirstOrDefault(r => string.Equals(r.Entry.Id, "far", StringComparison.Ordinal));
         farResult.Should().NotBeNull();
         farResult!.Score.Should().BeLessThan(0.1);
     }

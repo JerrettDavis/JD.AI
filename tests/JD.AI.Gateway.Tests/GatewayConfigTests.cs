@@ -183,7 +183,7 @@ public sealed class GatewayConfigTests
                     Name = "My Discord",
                     Enabled = true,
                     AutoConnect = true,
-                    Settings = new() { ["BotToken"] = "env:DISCORD_TOKEN" }
+                    Settings = new Dictionary<string, string>(StringComparer.Ordinal) { ["BotToken"] = "env:DISCORD_TOKEN" }
                 }
             ],
             Routing = new RoutingConfig
@@ -194,7 +194,7 @@ public sealed class GatewayConfigTests
             OpenClaw = new OpenClawGatewayConfig
             {
                 Enabled = true,
-                Channels = new()
+                Channels = new Dictionary<string, OpenClawChannelConfig>(StringComparer.Ordinal)
                 {
                     ["discord"] = new OpenClawChannelConfig { Mode = "Intercept" }
                 }

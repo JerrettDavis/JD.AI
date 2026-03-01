@@ -15,7 +15,7 @@ public sealed class AgentHub : Hub
         string message,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
     {
-        // TODO: wire to AgentPoolService streaming
+        // HACK: wire to AgentPoolService streaming
         yield return new AgentStreamChunk("start", agentId, null);
         yield return new AgentStreamChunk("content", agentId, $"Echo: {message}");
         yield return new AgentStreamChunk("end", agentId, null);

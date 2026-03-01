@@ -22,9 +22,9 @@ public sealed class AgentPoolService : IHostedService
         _eventBus = eventBus;
     }
 
-    public Task StartAsync(CancellationToken ct) => Task.CompletedTask;
+    public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-    public Task StopAsync(CancellationToken ct)
+    public Task StopAsync(CancellationToken cancellationToken)
     {
         _agents.Clear();
         return Task.CompletedTask;
