@@ -91,19 +91,19 @@ public sealed class GatewayApiClient(HttpClient http)
         return await response.Content.ReadFromJsonAsync<RateLimitConfigModel>();
     }
 
-    public async Task UpdateProvidersConfigAsync(List<ProviderConfigModel> providers)
+    public async Task UpdateProvidersConfigAsync(IList<ProviderConfigModel> providers)
     {
         var response = await http.PutAsJsonAsync("api/gateway/config/providers", providers);
         response.EnsureSuccessStatusCode();
     }
 
-    public async Task UpdateAgentsConfigAsync(List<AgentDefinition> agents)
+    public async Task UpdateAgentsConfigAsync(IList<AgentDefinition> agents)
     {
         var response = await http.PutAsJsonAsync("api/gateway/config/agents", agents);
         response.EnsureSuccessStatusCode();
     }
 
-    public async Task UpdateChannelsConfigAsync(List<ChannelConfigModel> channels)
+    public async Task UpdateChannelsConfigAsync(IList<ChannelConfigModel> channels)
     {
         var response = await http.PutAsJsonAsync("api/gateway/config/channels", channels);
         response.EnsureSuccessStatusCode();

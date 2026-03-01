@@ -148,13 +148,13 @@ else
     private GatewayStatus? _status;
     private bool _loaded;
     private readonly List<ActivityEvent> _events = [];
-    private Action<ActivityEvent>? _activityHandler;
+    private EventHandler<ActivityEventArgs>? _activityHandler;
 
     protected override async Task OnInitializedAsync()
     {
-        _activityHandler = evt =>
+        _activityHandler = (_, e) =>
         {
-            _events.Add(evt);
+            _events.Add(e.Activity);
             if (_events.Count > 100) _events.RemoveAt(0);
             InvokeAsync(StateHasChanged);
         };

@@ -91,8 +91,8 @@
 </MudStack>
 
 @code {
-    [Parameter] public List<AgentDefinition> Agents { get; set; } = [];
-    [Parameter] public List<ProviderConfigModel> AvailableProviders { get; set; } = [];
+    [Parameter] public IList<AgentDefinition> Agents { get; set; } = new List<AgentDefinition>();
+    [Parameter] public IList<ProviderConfigModel> AvailableProviders { get; set; } = new List<ProviderConfigModel>();
     [Parameter] public GatewayApiClient Api { get; set; } = null!;
 
     private readonly Dictionary<string, ProviderModelInfo[]> _providerModels = [];

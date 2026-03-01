@@ -94,7 +94,7 @@ else
                 <MudPaper Class="pa-3 mb-2" Elevation="0"
                           Style="@GetTurnBorderStyle(turn.Role)">
                     <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-                        <MudChip T="string" Size="Size.Small" Color="@(turn.Role == "user" ? Color.Primary : Color.Secondary)">
+                        <MudChip T="string" Size="Size.Small" Color="@(string.Equals(turn.Role, "user", StringComparison.Ordinal) ? Color.Primary : Color.Secondary)">
                             @turn.Role
                         </MudChip>
                         <MudStack Row="true" Spacing="2">
@@ -152,5 +152,5 @@ else
     }
 
     private static string GetTurnBorderStyle(string role) =>
-        $"border-left: 3px solid {(role == "user" ? "var(--mud-palette-primary)" : "var(--mud-palette-secondary)")}";
+        $"border-left: 3px solid {(string.Equals(role, "user", StringComparison.Ordinal) ? "var(--mud-palette-primary)" : "var(--mud-palette-secondary)")}";
 }

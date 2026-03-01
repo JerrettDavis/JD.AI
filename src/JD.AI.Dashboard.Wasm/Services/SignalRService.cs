@@ -3,16 +3,33 @@ using JD.AI.Dashboard.Wasm.Models;
 
 namespace JD.AI.Dashboard.Wasm.Services;
 
+public sealed class ActivityEventArgs(ActivityEvent activity) : EventArgs
+{
+    public ActivityEvent Activity { get; } = activity;
+}
+
+public sealed class ChannelStatusEventArgs(string channel, bool connected) : EventArgs
+{
+    public string Channel { get; } = channel;
+    public bool Connected { get; } = connected;
+}
+
+public sealed class AgentMessageEventArgs(string agentId, string message) : EventArgs
+{
+    public string AgentId { get; } = agentId;
+    public string Message { get; } = message;
+}
+
 public sealed class SignalRService : IAsyncDisposable
 {
     private HubConnection? _eventHub;
     private HubConnection? _agentHub;
     private readonly string _baseUrl;
 
-    public event Action<ActivityEvent>? OnActivityEvent;
-    public event Action<string, bool>? OnChannelStatusChanged;
-    public event Action<string, string>? OnAgentMessage;
-    public event Action? OnStateChanged;
+    public event EventHandler<ActivityEventArgs>? OnActivityEvent;
+    public event EventHandler<ChannelStatusEventArgs>? OnChannelStatusChanged;
+    public event EventHandler<AgentMessageEventArgs>? OnAgentMessage;
+    public event EventHandler? OnStateChanged;
 
     public bool IsConnected => _eventHub?.State == HubConnectionState.Connected;
     public string ConnectionError { get; private set; } = string.Empty;
@@ -38,24 +55,24 @@ public sealed class SignalRService : IAsyncDisposable
 
             _eventHub.On<ActivityEvent>("ActivityEvent", evt =>
             {
-                OnActivityEvent?.Invoke(evt);
-                OnStateChanged?.Invoke();
+                OnActivityEvent?.Invoke(this, new ActivityEventArgs(evt));
+                OnStateChanged?.Invoke(this, EventArgs.Empty);
             });
 
             _eventHub.On<string, bool>("ChannelStatusChanged", (channel, connected) =>
             {
-                OnChannelStatusChanged?.Invoke(channel, connected);
-                OnStateChanged?.Invoke();
+                OnChannelStatusChanged?.Invoke(this, new ChannelStatusEventArgs(channel, connected));
+                OnStateChanged?.Invoke(this, EventArgs.Empty);
             });
 
             _agentHub.On<string, string>("AgentMessage", (agentId, message) =>
             {
-                OnAgentMessage?.Invoke(agentId, message);
+                OnAgentMessage?.Invoke(this, new AgentMessageEventArgs(agentId, message));
             });
 
-            _eventHub.Reconnecting += _ => { OnStateChanged?.Invoke(); return Task.CompletedTask; };
-            _eventHub.Reconnected += _ => { ConnectionError = string.Empty; OnStateChanged?.Invoke(); return Task.CompletedTask; };
-            _eventHub.Closed += _ => { OnStateChanged?.Invoke(); return Task.CompletedTask; };
+            _eventHub.Reconnecting += _ => { OnStateChanged?.Invoke(this, EventArgs.Empty); return Task.CompletedTask; };
+            _eventHub.Reconnected += _ => { ConnectionError = string.Empty; OnStateChanged?.Invoke(this, EventArgs.Empty); return Task.CompletedTask; };
+            _eventHub.Closed += _ => { OnStateChanged?.Invoke(this, EventArgs.Empty); return Task.CompletedTask; };
 
             ConnectionError = string.Empty;
             await _eventHub.StartAsync();
@@ -75,7 +92,7 @@ public sealed class SignalRService : IAsyncDisposable
             // Agent hub is optional
         }
 
-        OnStateChanged?.Invoke();
+        OnStateChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public async ValueTask DisposeAsync()

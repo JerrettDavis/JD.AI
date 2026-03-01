@@ -67,7 +67,7 @@
 </MudStack>
 
 @code {
-    [Parameter] public List<ProviderConfigModel> Providers { get; set; } = [];
+    [Parameter] public IList<ProviderConfigModel> Providers { get; set; } = new List<ProviderConfigModel>();
     [Parameter] public GatewayApiClient Api { get; set; } = null!;
 
     private readonly Dictionary<string, ProviderModelInfo[]> _providerModels = [];

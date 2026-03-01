@@ -17,14 +17,14 @@ public record GatewayStatus
     public GatewayAgentStatus[] Agents { get; init; } = [];
 
     [JsonPropertyName("routes")]
-    public Dictionary<string, string> Routes { get; init; } = [];
+    public IDictionary<string, string> Routes { get; init; } = new Dictionary<string, string>();
 
     [JsonPropertyName("openClaw")]
     public OpenClawStatus? OpenClaw { get; init; }
 
     // Computed convenience properties for the UI
     [JsonIgnore]
-    public bool IsRunning => Status == "running";
+    public bool IsRunning => string.Equals(Status, "running", StringComparison.Ordinal);
     [JsonIgnore]
     public int ActiveAgents => Agents.Length;
     [JsonIgnore]

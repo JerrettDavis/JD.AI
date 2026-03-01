@@ -73,8 +73,8 @@
 
 @code {
     [Parameter] public RoutingConfigModel Routing { get; set; } = new();
-    [Parameter] public List<AgentDefinition> AvailableAgents { get; set; } = [];
-    [Parameter] public List<ChannelConfigModel> AvailableChannels { get; set; } = [];
+    [Parameter] public IList<AgentDefinition> AvailableAgents { get; set; } = new List<AgentDefinition>();
+    [Parameter] public IList<ChannelConfigModel> AvailableChannels { get; set; } = new List<ChannelConfigModel>();
     [Parameter] public GatewayApiClient Api { get; set; } = null!;
 
     private bool _saving;

@@ -11,7 +11,7 @@ public record SessionInfo
     public int TotalTokens { get; init; }
     public int MessageCount { get; init; }
     public bool IsActive { get; init; }
-    public List<TurnRecord> Turns { get; init; } = [];
+    public IList<TurnRecord> Turns { get; init; } = new List<TurnRecord>();
 }
 
 public record TurnRecord

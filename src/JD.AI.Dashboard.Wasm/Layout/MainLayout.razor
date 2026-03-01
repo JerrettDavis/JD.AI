@@ -77,7 +77,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        SignalR.OnStateChanged += () => InvokeAsync(StateHasChanged);
+        SignalR.OnStateChanged += (_, _) => InvokeAsync(StateHasChanged);
         await SignalR.ConnectAsync();
     }
 }

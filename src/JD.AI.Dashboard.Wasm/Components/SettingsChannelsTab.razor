@@ -91,7 +91,7 @@
 </MudStack>
 
 @code {
-    [Parameter] public List<ChannelConfigModel> Channels { get; set; } = [];
+    [Parameter] public IList<ChannelConfigModel> Channels { get; set; } = new List<ChannelConfigModel>();
     [Parameter] public GatewayApiClient Api { get; set; } = null!;
 
     private readonly HashSet<int> _expandedSettings = [];
