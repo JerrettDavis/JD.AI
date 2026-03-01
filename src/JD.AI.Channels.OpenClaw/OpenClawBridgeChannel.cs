@@ -19,6 +19,9 @@ public sealed class OpenClawBridgeChannel : IChannel
     public string DisplayName => $"OpenClaw ({_config.InstanceName})";
     public bool IsConnected => _rpc.IsConnected;
 
+    /// <summary>The underlying RPC client for direct event subscription.</summary>
+    public OpenClawRpcClient RpcClient => _rpc;
+
     public event Func<ChannelMessage, Task>? MessageReceived;
 
     public OpenClawBridgeChannel(
