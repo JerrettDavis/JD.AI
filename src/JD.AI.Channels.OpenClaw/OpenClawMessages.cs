@@ -2,35 +2,46 @@ using System.Text.Json.Serialization;
 
 namespace JD.AI.Channels.OpenClaw;
 
-internal sealed class OpenClawOutboundMessage
+/// <summary>OpenClaw session summary from sessions.list.</summary>
+public sealed class OpenClawSession
 {
+    [JsonPropertyName("key")]
+    public string Key { get; set; } = "";
+
+    [JsonPropertyName("kind")]
+    public string Kind { get; set; } = "";
+
+    [JsonPropertyName("displayName")]
+    public string? DisplayName { get; set; }
+
+    [JsonPropertyName("label")]
+    public string? Label { get; set; }
+
     [JsonPropertyName("channel")]
-    public string Channel { get; set; } = "";
+    public string? Channel { get; set; }
 
-    [JsonPropertyName("content")]
-    public string Content { get; set; } = "";
+    [JsonPropertyName("model")]
+    public string? Model { get; set; }
 
-    [JsonPropertyName("sender")]
-    public string Sender { get; set; } = "";
+    [JsonPropertyName("modelProvider")]
+    public string? ModelProvider { get; set; }
 
-    [JsonPropertyName("metadata")]
-    public Dictionary<string, string> Metadata { get; set; } = [];
+    [JsonPropertyName("totalTokens")]
+    public long TotalTokens { get; set; }
+
+    [JsonPropertyName("updatedAt")]
+    public long UpdatedAt { get; set; }
 }
 
-internal sealed class OpenClawInboundMessage
+/// <summary>OpenClaw channel status from channels.status.</summary>
+public sealed class OpenClawChannelStatus
 {
-    [JsonPropertyName("id")]
-    public string Id { get; set; } = "";
+    [JsonPropertyName("configured")]
+    public bool Configured { get; set; }
 
-    [JsonPropertyName("content")]
-    public string Content { get; set; } = "";
+    [JsonPropertyName("running")]
+    public bool Running { get; set; }
 
-    [JsonPropertyName("sender")]
-    public string Sender { get; set; } = "";
-
-    [JsonPropertyName("timestamp")]
-    public DateTimeOffset Timestamp { get; set; }
-
-    [JsonPropertyName("channel")]
-    public string Channel { get; set; } = "";
+    [JsonPropertyName("lastError")]
+    public string? LastError { get; set; }
 }

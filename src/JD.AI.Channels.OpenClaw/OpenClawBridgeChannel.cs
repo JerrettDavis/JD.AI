@@ -1,134 +1,143 @@
-using System.Net.Http.Json;
 using JD.AI.Core.Channels;
 using Microsoft.Extensions.Logging;
 
 namespace JD.AI.Channels.OpenClaw;
 
 /// <summary>
-/// Bridges JD.AI gateway to an OpenClaw instance.
+/// Bridges JD.AI gateway to an OpenClaw instance via WebSocket JSON-RPC.
 /// Implements <see cref="IChannel"/> to appear as a regular channel in the JD.AI gateway.
-/// Messages sent to this channel are forwarded to OpenClaw; messages from OpenClaw
-/// are surfaced as inbound channel messages.
+/// Messages sent to this channel are forwarded to OpenClaw via <c>chat.send</c>;
+/// messages from OpenClaw are surfaced as inbound channel messages via <c>chat</c> events.
 /// </summary>
 public sealed class OpenClawBridgeChannel : IChannel
 {
-    private readonly HttpClient _http;
+    private readonly OpenClawRpcClient _rpc;
     private readonly ILogger<OpenClawBridgeChannel> _logger;
     private readonly OpenClawConfig _config;
-    private CancellationTokenSource? _pollCts;
-    private Task? _pollTask;
 
     public string ChannelType => "openclaw";
     public string DisplayName => $"OpenClaw ({_config.InstanceName})";
-    public bool IsConnected { get; private set; }
+    public bool IsConnected => _rpc.IsConnected;
 
     public event Func<ChannelMessage, Task>? MessageReceived;
 
-    public OpenClawBridgeChannel(HttpClient http, ILogger<OpenClawBridgeChannel> logger, OpenClawConfig config)
+    public OpenClawBridgeChannel(
+        OpenClawRpcClient rpc,
+        ILogger<OpenClawBridgeChannel> logger,
+        OpenClawConfig config)
     {
-        _http = http;
+        _rpc = rpc;
         _logger = logger;
         _config = config;
     }
 
     public async Task ConnectAsync(CancellationToken ct = default)
     {
-        // Verify OpenClaw is reachable
-        var response = await _http.GetAsync(new Uri($"{_config.BaseUrl}/api/health"), ct);
-        response.EnsureSuccessStatusCode();
+        _rpc.EventReceived += OnEvent;
+        await _rpc.ConnectAsync(ct);
 
-        IsConnected = true;
-        _logger.LogInformation("Connected to OpenClaw at {Url}", _config.BaseUrl);
-
-        // Start polling for inbound messages
-        _pollCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        _pollTask = PollMessagesAsync(_pollCts.Token);
+        // Subscribe to chat events for the default session
+        var sub = await _rpc.RequestAsync("chat.history", new { session = _config.SessionKey, limit = 0 }, ct);
+        _logger.LogInformation(
+            "Connected to OpenClaw at {Url}, session={Session}",
+            _config.WebSocketUrl, _config.SessionKey);
     }
 
     public async Task DisconnectAsync(CancellationToken ct = default)
     {
-        if (_pollCts is not null)
-        {
-            await _pollCts.CancelAsync();
-            if (_pollTask is not null)
-            {
-                try { await _pollTask; }
-                catch (OperationCanceledException) { /* expected */ }
-            }
-
-            _pollCts.Dispose();
-            _pollCts = null;
-        }
-
-        IsConnected = false;
+        _rpc.EventReceived -= OnEvent;
+        await _rpc.DisconnectAsync();
         _logger.LogInformation("Disconnected from OpenClaw");
     }
 
     public async Task SendMessageAsync(string conversationId, string content, CancellationToken ct = default)
     {
-        var payload = new OpenClawOutboundMessage
-        {
-            Channel = _config.TargetChannel,
-            Content = content,
-            Sender = "jdai",
-            Metadata = new Dictionary<string, string>
-            {
-                ["source"] = "jdai-gateway",
-                ["original_channel"] = conversationId,
-            },
-        };
+        var sessionKey = string.IsNullOrEmpty(conversationId) ? _config.SessionKey : conversationId;
 
-        await _http.PostAsJsonAsync(new Uri($"{_config.BaseUrl}/api/messages"), payload, ct);
+        var response = await _rpc.RequestAsync("chat.send", new
+        {
+            session = sessionKey,
+            message = new { role = "user", content },
+        }, ct);
+
+        if (!response.Ok)
+        {
+            var error = response.Error?.GetProperty("message").GetString() ?? "unknown error";
+            _logger.LogWarning("chat.send failed: {Error}", error);
+        }
     }
 
-    private async Task PollMessagesAsync(CancellationToken ct)
+    /// <summary>Lists all active sessions on the OpenClaw gateway.</summary>
+    public async Task<RpcResponse> ListSessionsAsync(CancellationToken ct = default) =>
+        await _rpc.RequestAsync("sessions.list", new { }, ct);
+
+    /// <summary>Gets channel status from the OpenClaw gateway.</summary>
+    public async Task<RpcResponse> GetChannelStatusAsync(CancellationToken ct = default) =>
+        await _rpc.RequestAsync("channels.status", new { }, ct);
+
+    /// <summary>Gets skill status from the OpenClaw gateway.</summary>
+    public async Task<RpcResponse> GetSkillStatusAsync(CancellationToken ct = default) =>
+        await _rpc.RequestAsync("skills.status", new { }, ct);
+
+    /// <summary>Sends an arbitrary RPC request to the OpenClaw gateway.</summary>
+    public Task<RpcResponse> RpcAsync(string method, object? parameters = null, CancellationToken ct = default) =>
+        _rpc.RequestAsync(method, parameters, ct);
+
+    private void OnEvent(OpenClawEvent evt)
     {
-        var lastTimestamp = DateTimeOffset.UtcNow;
+        if (evt.EventName != "chat" || !evt.Payload.HasValue)
+            return;
 
-        while (!ct.IsCancellationRequested)
+        try
         {
-            try
+            var payload = evt.Payload.Value;
+            var stream = payload.TryGetProperty("stream", out var s) ? s.GetString() : null;
+
+            // Only surface assistant final messages
+            if (stream != "assistant")
+                return;
+
+            var text = payload.TryGetProperty("data", out var data)
+                && data.TryGetProperty("text", out var t)
+                    ? t.GetString()
+                    : null;
+
+            if (string.IsNullOrEmpty(text))
+                return;
+
+            var sessionKey = payload.TryGetProperty("sessionKey", out var sk) ? sk.GetString() ?? "" : "";
+            var runId = payload.TryGetProperty("runId", out var rid) ? rid.GetString() ?? "" : Guid.NewGuid().ToString();
+
+            var msg = new ChannelMessage
             {
-                await Task.Delay(_config.PollIntervalMs, ct);
-
-                var url = $"{_config.BaseUrl}/api/messages?since={lastTimestamp:O}&channel={_config.SourceChannel}";
-                var messages = await _http.GetFromJsonAsync<OpenClawInboundMessage[]>(new Uri(url), ct);
-
-                if (messages is { Length: > 0 })
+                Id = runId,
+                ChannelId = $"openclaw-{_config.InstanceName}",
+                SenderId = "openclaw-assistant",
+                SenderDisplayName = "OpenClaw",
+                Content = text,
+                Timestamp = DateTimeOffset.UtcNow,
+                Metadata = new Dictionary<string, string>
                 {
-                    foreach (var msg in messages)
-                    {
-                        lastTimestamp = msg.Timestamp;
+                    ["session_key"] = sessionKey,
+                    ["stream"] = stream ?? "",
+                },
+            };
 
-                        var channelMsg = new ChannelMessage
-                        {
-                            Id = msg.Id,
-                            ChannelId = $"openclaw-{_config.InstanceName}",
-                            SenderId = msg.Sender,
-                            SenderDisplayName = msg.Sender,
-                            Content = msg.Content,
-                            Timestamp = msg.Timestamp,
-                        };
-
-                        if (MessageReceived is not null)
-                            await MessageReceived.Invoke(channelMsg);
-                    }
-                }
-            }
-            catch (OperationCanceledException)
+            _ = Task.Run(async () =>
             {
-                break;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Error polling OpenClaw messages");
-                await Task.Delay(5000, ct); // Back off on error
-            }
+                if (MessageReceived is not null)
+                    await MessageReceived.Invoke(msg);
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error processing OpenClaw chat event");
         }
     }
 
     public async ValueTask DisposeAsync()
     {
         await DisconnectAsync();
+        await _rpc.DisposeAsync();
     }
 }

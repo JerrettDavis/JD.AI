@@ -7,10 +7,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\JD.AI\JD.AI.csproj" />
+    <ProjectReference Include="..\..\src\JD.AI.Channels.OpenClaw\JD.AI.Channels.OpenClaw.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" PrivateAssets="all" />
+    <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" />
     <PackageReference Include="Microsoft.Extensions.Http" />

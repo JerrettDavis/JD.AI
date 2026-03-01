@@ -1,25 +1,43 @@
 namespace JD.AI.Channels.OpenClaw;
 
 /// <summary>
-/// Configuration for connecting to an OpenClaw instance.
+/// Configuration for connecting to an OpenClaw gateway via WebSocket JSON-RPC.
+/// Device identity fields are required for Ed25519 challenge-response authentication.
 /// </summary>
 public sealed class OpenClawConfig
 {
-    /// <summary>Base URL of the OpenClaw HTTP API.</summary>
-    public string BaseUrl { get; set; } = "http://localhost:3000";
+    /// <summary>WebSocket URL of the OpenClaw gateway (e.g., "ws://localhost:18789").</summary>
+    public string WebSocketUrl { get; set; } = "ws://localhost:18789";
 
-    /// <summary>Friendly name for this OpenClaw instance (used in <see cref="OpenClawBridgeChannel.DisplayName"/>).</summary>
+    /// <summary>Friendly name for this OpenClaw instance.</summary>
     public string InstanceName { get; set; } = "local";
 
-    /// <summary>Optional API key for authenticating with OpenClaw.</summary>
-    public string? ApiKey { get; set; }
+    /// <summary>Default session key to send messages to (e.g., "agent:main:main").</summary>
+    public string SessionKey { get; set; } = "agent:main:main";
 
-    /// <summary>OpenClaw channel to send outbound messages to.</summary>
-    public string TargetChannel { get; set; } = "default";
+    // Device identity (loaded from ~/.openclaw/identity/)
 
-    /// <summary>OpenClaw channel to poll for inbound messages.</summary>
-    public string SourceChannel { get; set; } = "default";
+    /// <summary>Hex-encoded device ID (SHA-256 of the raw Ed25519 public key).</summary>
+    public string DeviceId { get; set; } = "";
 
-    /// <summary>Interval in milliseconds between message polls.</summary>
-    public int PollIntervalMs { get; set; } = 1000;
+    /// <summary>PEM-encoded Ed25519 public key.</summary>
+    public string PublicKeyPem { get; set; } = "";
+
+    /// <summary>PEM-encoded Ed25519 private key (PKCS#8).</summary>
+    public string PrivateKeyPem { get; set; } = "";
+
+    /// <summary>Device auth token issued by OpenClaw after pairing.</summary>
+    public string DeviceToken { get; set; } = "";
+
+    /// <summary>Gateway shared authentication token (from openclaw.json → gateway.auth.token).</summary>
+    public string GatewayToken { get; set; } = "";
+
+    /// <summary>
+    /// Path to the OpenClaw state directory containing identity files.
+    /// When set, <see cref="DeviceId"/>, <see cref="PublicKeyPem"/>,
+    /// <see cref="PrivateKeyPem"/>, and <see cref="DeviceToken"/> are
+    /// loaded automatically from device.json and device-auth.json.
+    /// Defaults to ~/.openclaw.
+    /// </summary>
+    public string? OpenClawStateDir { get; set; }
 }
