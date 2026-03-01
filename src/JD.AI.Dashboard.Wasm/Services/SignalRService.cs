@@ -107,4 +107,23 @@ public sealed class SignalRService : IAsyncDisposable
             try { await _agentHub.DisposeAsync(); } catch { /* ignore */ }
         }
     }
+
+    /// <summary>
+    /// Streams a chat message to an agent and yields content chunks as they arrive.
+    /// </summary>
+    public async IAsyncEnumerable<AgentStreamChunk> StreamChatAsync(
+        string agentId, string message,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
+    {
+        if (_agentHub?.State != HubConnectionState.Connected)
+            yield break;
+
+        var stream = _agentHub.StreamAsync<AgentStreamChunk>("StreamChat", agentId, message, ct);
+        await foreach (var chunk in stream.WithCancellation(ct))
+        {
+            yield return chunk;
+        }
+    }
 }
+
+public record AgentStreamChunk(string Type, string AgentId, string? Content);

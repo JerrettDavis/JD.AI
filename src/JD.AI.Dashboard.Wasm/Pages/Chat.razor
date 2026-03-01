@@ -1,0 +1,298 @@
+@page "/chat"
+@inject GatewayApiClient Api
+@inject SignalRService SignalR
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+<PageTitle>Chat — JD.AI</PageTitle>
+
+<div class="jd-chat-container">
+    @* ── Top bar: agent selector ── *@
+    <MudPaper Class="jd-chat-header" Elevation="0">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Chat" Size="Size.Small" Color="Color.Primary" />
+            <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Web Chat</MudText>
+            <MudSpacer />
+            @if (_agents.Length > 0)
+            {
+                <MudSelect @bind-Value="_selectedAgentId" Label="Agent" Variant="Variant.Outlined"
+                           Margin="Margin.Dense" Style="max-width:280px;"
+                           Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.SmartToy">
+                    @foreach (var a in _agents)
+                    {
+                        <MudSelectItem T="string" Value="@a.Id">
+                            @a.Id <span style="opacity:.5;">(@a.Provider/@a.Model)</span>
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            }
+            else
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text"
+                         Icon="@Icons.Material.Filled.Warning">
+                    No agents running
+                </MudChip>
+            }
+            <MudIconButton Icon="@Icons.Material.Filled.DeleteSweep" Color="Color.Error" Size="Size.Small"
+                           OnClick="ClearChat" Disabled="@(_messages.Count == 0)" />
+        </MudStack>
+    </MudPaper>
+
+    @* ── Messages area ── *@
+    <div class="jd-chat-messages" @ref="_messagesContainer">
+        @if (_messages.Count == 0 && !_loading)
+        {
+            <div class="jd-chat-empty">
+                <MudIcon Icon="@Icons.Material.Filled.Forum" Size="Size.Large"
+                         Style="opacity:.2;font-size:4rem;" />
+                <MudText Typo="Typo.h6" Color="Color.Secondary" Style="opacity:.4;">
+                    Start a conversation
+                </MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Style="opacity:.3;">
+                    Type a message below to chat with the selected agent.
+                </MudText>
+            </div>
+        }
+
+        @foreach (var msg in _messages)
+        {
+            <div class="jd-chat-bubble @(msg.IsUser ? "jd-chat-user" : "jd-chat-agent")">
+                <div class="jd-chat-bubble-header">
+                    <MudIcon Icon="@(msg.IsUser ? Icons.Material.Filled.Person : Icons.Material.Filled.SmartToy)"
+                             Size="Size.Small" />
+                    <MudText Typo="Typo.caption" Style="font-weight:600;">
+                        @(msg.IsUser ? "You" : msg.AgentId)
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-auto">
+                        @msg.Timestamp.ToString("HH:mm:ss")
+                    </MudText>
+                </div>
+                <MudText Typo="Typo.body2" Class="jd-chat-text" Style="white-space:pre-wrap;">@msg.Content</MudText>
+            </div>
+        }
+
+        @if (_streaming)
+        {
+            <div class="jd-chat-bubble jd-chat-agent">
+                <div class="jd-chat-bubble-header">
+                    <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Small" />
+                    <MudText Typo="Typo.caption" Style="font-weight:600;">@_selectedAgentId</MudText>
+                </div>
+                <MudText Typo="Typo.body2" Class="jd-chat-text" Style="white-space:pre-wrap;">@_streamBuffer<span class="jd-cursor">▋</span></MudText>
+            </div>
+        }
+    </div>
+
+    @* ── Input bar ── *@
+    <MudPaper Class="jd-chat-input" Elevation="0">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudTextField @bind-Value="_userInput" Label="" Placeholder="Type a message…"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" FullWidth="true"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@Icons.Material.Filled.Send"
+                          AdornmentColor="Color.Primary"
+                          OnAdornmentClick="SendMessage"
+                          OnKeyDown="OnKeyDown"
+                          Disabled="@(_streaming || string.IsNullOrEmpty(_selectedAgentId))"
+                          Immediate="true" />
+        </MudStack>
+    </MudPaper>
+</div>
+
+<style>
+    .jd-chat-container {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 48px);
+        max-height: calc(100vh - 48px);
+    }
+
+    .jd-chat-header {
+        padding: 12px 20px;
+        border-bottom: 1px solid rgba(136,146,168,0.12);
+        background: rgba(20,20,36,0.6);
+        backdrop-filter: blur(12px);
+        flex-shrink: 0;
+    }
+
+    .jd-chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        scroll-behavior: smooth;
+    }
+
+    .jd-chat-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        gap: 8px;
+    }
+
+    .jd-chat-bubble {
+        max-width: 75%;
+        padding: 10px 14px;
+        border-radius: 12px;
+        animation: jd-fade-in 0.2s ease;
+    }
+
+    .jd-chat-user {
+        align-self: flex-end;
+        background: rgba(99,102,241,0.15);
+        border: 1px solid rgba(99,102,241,0.2);
+        border-bottom-right-radius: 4px;
+    }
+
+    .jd-chat-agent {
+        align-self: flex-start;
+        background: rgba(136,146,168,0.08);
+        border: 1px solid rgba(136,146,168,0.1);
+        border-bottom-left-radius: 4px;
+    }
+
+    .jd-chat-bubble-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 4px;
+        opacity: 0.7;
+    }
+
+    .jd-chat-text {
+        line-height: 1.6;
+        word-break: break-word;
+    }
+
+    .jd-chat-input {
+        padding: 12px 20px;
+        border-top: 1px solid rgba(136,146,168,0.12);
+        background: rgba(20,20,36,0.6);
+        backdrop-filter: blur(12px);
+        flex-shrink: 0;
+    }
+
+    .jd-cursor {
+        animation: jd-blink 1s step-end infinite;
+        color: var(--mud-palette-primary);
+    }
+
+    @@keyframes jd-blink {
+        50% { opacity: 0; }
+    }
+
+    @@keyframes jd-fade-in {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+@code {
+    private AgentInfo[] _agents = [];
+    private string _selectedAgentId = "";
+    private string _userInput = "";
+    private bool _loading = true;
+    private bool _streaming;
+    private string _streamBuffer = "";
+    private ElementReference _messagesContainer;
+    private readonly List<ChatMessage> _messages = [];
+    private CancellationTokenSource? _streamCts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAgents();
+        _loading = false;
+    }
+
+    private async Task LoadAgents()
+    {
+        try
+        {
+            _agents = await Api.GetAgentsAsync();
+            if (_agents.Length > 0 && string.IsNullOrEmpty(_selectedAgentId))
+                _selectedAgentId = _agents[0].Id;
+        }
+        catch { /* Gateway may be down */ }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (string.Equals(e.Key, "Enter", StringComparison.Ordinal) && !e.ShiftKey)
+            await SendMessage();
+    }
+
+    private async Task SendMessage()
+    {
+        var text = _userInput?.Trim();
+        if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(_selectedAgentId) || _streaming)
+            return;
+
+        _messages.Add(new ChatMessage(true, _selectedAgentId, text, DateTime.Now));
+        _userInput = "";
+        StateHasChanged();
+        await ScrollToBottom();
+
+        _streaming = true;
+        _streamBuffer = "";
+        _streamCts = new CancellationTokenSource();
+        StateHasChanged();
+
+        try
+        {
+            var hasContent = false;
+            await foreach (var chunk in SignalR.StreamChatAsync(_selectedAgentId, text, _streamCts.Token))
+            {
+                if (string.Equals(chunk.Type, "content", StringComparison.Ordinal) && chunk.Content is not null)
+                {
+                    _streamBuffer += chunk.Content;
+                    hasContent = true;
+                    StateHasChanged();
+                    await ScrollToBottom();
+                }
+                else if (string.Equals(chunk.Type, "error", StringComparison.Ordinal))
+                {
+                    Snackbar.Add($"Agent error: {chunk.Content}", Severity.Error);
+                    break;
+                }
+            }
+
+            if (hasContent)
+                _messages.Add(new ChatMessage(false, _selectedAgentId, _streamBuffer, DateTime.Now));
+        }
+        catch (OperationCanceledException) { /* user cancelled */ }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Chat error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _streaming = false;
+            _streamBuffer = "";
+            _streamCts?.Dispose();
+            _streamCts = null;
+            StateHasChanged();
+        }
+    }
+
+    private void ClearChat()
+    {
+        _messages.Clear();
+        StateHasChanged();
+    }
+
+    private async Task ScrollToBottom()
+    {
+        try
+        {
+            await Task.Delay(30);
+            await JS.InvokeVoidAsync("jdChat.scrollToBottom", _messagesContainer);
+        }
+        catch { /* ignore during prerender */ }
+    }
+
+    private record ChatMessage(bool IsUser, string AgentId, string Content, DateTime Timestamp);
+}
