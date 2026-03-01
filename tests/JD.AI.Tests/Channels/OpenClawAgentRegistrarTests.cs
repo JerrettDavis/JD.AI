@@ -122,4 +122,10 @@ public sealed class OpenClawAgentRegistrarTests
         Assert.Equal("direct", peer.Kind);
         Assert.Equal("user123", peer.Id);
     }
+
+    [Fact]
+    public void AgentIdPrefix_IsJdai()
+    {
+        Assert.Equal("jdai-", OpenClawAgentRegistrar.AgentIdPrefix);
+    }
 }
