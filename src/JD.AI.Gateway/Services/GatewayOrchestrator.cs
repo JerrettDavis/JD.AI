@@ -1,3 +1,4 @@
+using JD.AI.Channels.OpenClaw;
 using JD.AI.Core.Channels;
 using JD.AI.Core.Events;
 using JD.AI.Gateway.Config;
@@ -6,7 +7,8 @@ namespace JD.AI.Gateway.Services;
 
 /// <summary>
 /// Hosted service that orchestrates gateway startup: registers channels from config,
-/// auto-connects channels, auto-spawns agents, and wires message routing.
+/// auto-connects channels, auto-spawns agents, wires message routing,
+/// and registers JD.AI agents with OpenClaw.
 /// </summary>
 public sealed class GatewayOrchestrator : IHostedService
 {
@@ -17,6 +19,7 @@ public sealed class GatewayOrchestrator : IHostedService
     private readonly AgentRouter _router;
     private readonly IEventBus _events;
     private readonly ILogger<GatewayOrchestrator> _logger;
+    private readonly OpenClawAgentRegistrar? _agentRegistrar;
 
     // Track spawned agent IDs from config (definition.Id → pool agentId)
     private readonly Dictionary<string, string> _spawnedAgents = new(StringComparer.OrdinalIgnoreCase);
@@ -28,7 +31,8 @@ public sealed class GatewayOrchestrator : IHostedService
         AgentPoolService agentPool,
         AgentRouter router,
         IEventBus events,
-        ILogger<GatewayOrchestrator> logger)
+        ILogger<GatewayOrchestrator> logger,
+        OpenClawAgentRegistrar? agentRegistrar = null)
     {
         _config = config;
         _channelFactory = channelFactory;
@@ -37,6 +41,7 @@ public sealed class GatewayOrchestrator : IHostedService
         _router = router;
         _events = events;
         _logger = logger;
+        _agentRegistrar = agentRegistrar;
     }
 
     public async Task StartAsync(CancellationToken ct)
@@ -58,13 +63,17 @@ public sealed class GatewayOrchestrator : IHostedService
         // Phase 5: Wire MessageReceived events to the router
         WireMessageRouting();
 
+        // Phase 6: Register JD.AI agents with OpenClaw
+        await RegisterOpenClawAgentsAsync(ct);
+
         await _events.PublishAsync(
             new GatewayEvent("gateway.started", "orchestrator", DateTimeOffset.UtcNow,
                 new
                 {
                     Channels = _channels.Channels.Count,
                     Agents = _agentPool.ListAgents().Count,
-                    Routes = _router.GetMappings().Count
+                    Routes = _router.GetMappings().Count,
+                    OpenClawAgents = _agentRegistrar?.RegisteredAgentIds.Count ?? 0
                 }), ct);
 
         _logger.LogInformation(
@@ -75,6 +84,19 @@ public sealed class GatewayOrchestrator : IHostedService
     public async Task StopAsync(CancellationToken ct)
     {
         _logger.LogInformation("Gateway orchestrator shutting down...");
+
+        // Unregister JD.AI agents from OpenClaw
+        if (_agentRegistrar is not null)
+        {
+            try
+            {
+                await _agentRegistrar.UnregisterAgentsAsync(ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error unregistering agents from OpenClaw");
+            }
+        }
 
         // Disconnect all channels
         foreach (var channel in _channels.Channels)
@@ -238,5 +260,38 @@ public sealed class GatewayOrchestrator : IHostedService
             return configId;
 
         return null;
+    }
+
+    private async Task RegisterOpenClawAgentsAsync(CancellationToken ct)
+    {
+        if (_agentRegistrar is null || !_config.OpenClaw.Enabled ||
+            _config.OpenClaw.RegisterAgents.Count == 0)
+            return;
+
+        // Convert config registrations to JdAiAgentDefinition
+        var definitions = _config.OpenClaw.RegisterAgents.Select(reg => new JdAiAgentDefinition
+        {
+            Id = reg.Id,
+            Name = string.IsNullOrEmpty(reg.Name) ? $"JD.AI: {reg.Id}" : reg.Name,
+            Emoji = reg.Emoji,
+            Theme = reg.Theme,
+            Model = reg.Model,
+            Bindings = reg.Bindings.Select(b => new AgentBinding
+            {
+                Channel = b.Channel,
+                AccountId = b.AccountId,
+                GuildId = b.GuildId,
+                Peer = !string.IsNullOrEmpty(b.PeerId)
+                    ? new AgentBindingPeer { Kind = b.PeerKind ?? "direct", Id = b.PeerId }
+                    : null,
+            }).ToList(),
+        }).ToList();
+
+        await _agentRegistrar.RegisterAgentsAsync(definitions, ct);
+
+        _logger.LogInformation(
+            "Registered {Count} JD.AI agents with OpenClaw: {Ids}",
+            _agentRegistrar.RegisteredAgentIds.Count,
+            string.Join(", ", _agentRegistrar.RegisteredAgentIds));
     }
 }

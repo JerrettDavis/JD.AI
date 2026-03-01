@@ -105,6 +105,9 @@ if (gatewayConfig.OpenClaw.Enabled)
             return await pool.SendMessageAsync(agentId, content, CancellationToken.None);
         };
     });
+
+    // Register JD.AI agents with OpenClaw so they appear in the dashboard
+    builder.Services.AddSingleton<OpenClawAgentRegistrar>();
 }
 
 // --- SignalR ---
