@@ -34,7 +34,7 @@ public sealed class ProxyModeHandler(ILogger<ProxyModeHandler> logger) : IOpenCl
         }
 
         if (bridge?.IsConnected == true)
-            await bridge.SendMessageAsync(sessionKey, response, ct);
+            await bridge.InjectMessageAsync(sessionKey, response, ct);
 
         logger.LogInformation("[Proxy] Sent JD.AI response to '{Channel}' session='{Session}'", channelName, sessionKey);
 

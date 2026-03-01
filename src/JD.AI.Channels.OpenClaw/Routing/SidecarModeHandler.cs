@@ -43,7 +43,7 @@ public sealed class SidecarModeHandler(ILogger<SidecarModeHandler> logger) : IOp
         {
             try
             {
-                await bridge.RpcAsync("chat.abort", new { session = sessionKey }, ct);
+                await bridge.AbortSessionAsync(sessionKey, ct);
             }
             catch (Exception ex)
             {
@@ -59,7 +59,7 @@ public sealed class SidecarModeHandler(ILogger<SidecarModeHandler> logger) : IOp
         }
 
         if (bridge?.IsConnected == true)
-            await bridge.SendMessageAsync(sessionKey, response, ct);
+            await bridge.InjectMessageAsync(sessionKey, response, ct);
 
         logger.LogInformation("[Sidecar] Sent JD.AI response to '{Channel}'", channelName);
 

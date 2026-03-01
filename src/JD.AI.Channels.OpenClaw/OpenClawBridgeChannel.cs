@@ -40,7 +40,7 @@ public sealed class OpenClawBridgeChannel : IChannel
         await _rpc.ConnectAsync(ct);
 
         // Subscribe to chat events for the default session
-        var sub = await _rpc.RequestAsync("chat.history", new { session = _config.SessionKey, limit = 0 }, ct);
+        var sub = await _rpc.RequestAsync("chat.history", new { sessionKey = _config.SessionKey, limit = 0 }, ct);
         _logger.LogInformation(
             "Connected to OpenClaw at {Url}, session={Session}",
             _config.WebSocketUrl, _config.SessionKey);
@@ -49,7 +49,15 @@ public sealed class OpenClawBridgeChannel : IChannel
     public async Task DisconnectAsync(CancellationToken ct = default)
     {
         _rpc.EventReceived -= OnEvent;
-        await _rpc.DisconnectAsync();
+        try
+        {
+            await _rpc.DisconnectAsync();
+        }
+        catch (ObjectDisposedException)
+        {
+            // RPC client already disposed during shutdown
+        }
+
         _logger.LogInformation("Disconnected from OpenClaw");
     }
 
@@ -59,14 +67,52 @@ public sealed class OpenClawBridgeChannel : IChannel
 
         var response = await _rpc.RequestAsync("chat.send", new
         {
-            session = sessionKey,
-            message = new { role = "user", content },
+            sessionKey,
+            idempotencyKey = Guid.NewGuid().ToString(),
+            message = content,
         }, ct);
 
         if (!response.Ok)
         {
             var error = response.Error?.GetProperty("message").GetString() ?? "unknown error";
             _logger.LogWarning("chat.send failed: {Error}", error);
+        }
+    }
+
+    /// <summary>
+    /// Injects a message into an OpenClaw session without triggering agent processing.
+    /// Use this for injecting JD.AI-generated responses back into the conversation.
+    /// </summary>
+    public async Task InjectMessageAsync(string sessionKey, string content, CancellationToken ct = default)
+    {
+        var response = await _rpc.RequestAsync("chat.inject", new
+        {
+            sessionKey,
+            message = content,
+        }, ct);
+
+        if (!response.Ok)
+        {
+            var error = response.Error?.GetProperty("message").GetString() ?? "unknown error";
+            _logger.LogWarning("chat.inject failed for session '{Session}': {Error}", sessionKey, error);
+        }
+    }
+
+    /// <summary>
+    /// Aborts the currently running agent for an OpenClaw session.
+    /// Used by the intercept handler to stop OpenClaw's own processing.
+    /// </summary>
+    public async Task AbortSessionAsync(string sessionKey, CancellationToken ct = default)
+    {
+        var response = await _rpc.RequestAsync("chat.abort", new
+        {
+            sessionKey,
+        }, ct);
+
+        if (!response.Ok)
+        {
+            var error = response.Error?.GetProperty("message").GetString() ?? "unknown error";
+            _logger.LogWarning("chat.abort failed for session '{Session}': {Error}", sessionKey, error);
         }
     }
 

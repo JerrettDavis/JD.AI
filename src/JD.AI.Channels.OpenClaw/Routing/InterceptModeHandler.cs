@@ -5,8 +5,9 @@ namespace JD.AI.Channels.OpenClaw.Routing;
 
 /// <summary>
 /// Intercept mode: suppresses OpenClaw's agent and routes the message through JD.AI instead.
-/// On receiving a user message, calls chat.abort to stop OpenClaw's processing,
-/// runs the message through JD.AI, then sends the response back via OpenClaw.
+/// On receiving a user message, calls <c>chat.abort</c> to stop OpenClaw's processing,
+/// runs the message through JD.AI (Semantic Kernel → Ollama/provider), then injects
+/// the response back via <c>chat.inject</c> (without re-triggering OpenClaw's agent).
 /// </summary>
 public sealed class InterceptModeHandler(ILogger<InterceptModeHandler> logger) : IOpenClawModeHandler
 {
@@ -24,15 +25,15 @@ public sealed class InterceptModeHandler(ILogger<InterceptModeHandler> logger) :
             return false;
 
         logger.LogInformation(
-            "[Intercept] Handling user message on '{Channel}' session='{Session}'",
-            channelName, sessionKey);
+            "[Intercept] Handling user message on '{Channel}' session='{Session}': {Preview}",
+            channelName, sessionKey, content![..Math.Min(80, content.Length)]);
 
-        // Abort OpenClaw's agent to prevent duplicate responses
+        // Step 1: Abort OpenClaw's agent to prevent duplicate responses
         if (bridge?.IsConnected == true)
         {
             try
             {
-                await bridge.RpcAsync("chat.abort", new { session = sessionKey }, ct);
+                await bridge.AbortSessionAsync(sessionKey, ct);
                 logger.LogDebug("Aborted OpenClaw agent for session '{Session}'", sessionKey);
             }
             catch (Exception ex)
@@ -41,7 +42,7 @@ public sealed class InterceptModeHandler(ILogger<InterceptModeHandler> logger) :
             }
         }
 
-        // Route through JD.AI
+        // Step 2: Route through JD.AI (Semantic Kernel → Ollama)
         var response = await messageProcessor(sessionKey, content!);
         if (string.IsNullOrEmpty(response))
         {
@@ -49,11 +50,14 @@ public sealed class InterceptModeHandler(ILogger<InterceptModeHandler> logger) :
             return true;
         }
 
-        // Send response back through OpenClaw
+        // Step 3: Inject the JD.AI response back into the OpenClaw session
+        // Uses chat.inject (not chat.send) to avoid re-triggering the agent loop
         if (bridge?.IsConnected == true)
-            await bridge.SendMessageAsync(sessionKey, response, ct);
+            await bridge.InjectMessageAsync(sessionKey, response, ct);
 
-        logger.LogInformation("[Intercept] Sent JD.AI response to '{Channel}' session='{Session}'", channelName, sessionKey);
+        logger.LogInformation(
+            "[Intercept] Sent JD.AI response ({Length} chars) to '{Channel}' session='{Session}'",
+            response.Length, channelName, sessionKey);
 
         return true;
     }

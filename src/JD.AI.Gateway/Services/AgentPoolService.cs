@@ -43,7 +43,9 @@ public sealed class AgentPoolService : IHostedService
 
         var modelInfo = providerInfo.Models.FirstOrDefault(m =>
             m.Id.Equals(model, StringComparison.OrdinalIgnoreCase)
-            || m.DisplayName.Equals(model, StringComparison.OrdinalIgnoreCase))
+            || m.DisplayName.Equals(model, StringComparison.OrdinalIgnoreCase)
+            // Support short model names (e.g., "llama3.2" matches "llama3.2:latest")
+            || m.Id.StartsWith(model + ":", StringComparison.OrdinalIgnoreCase))
             ?? throw new InvalidOperationException($"Model '{model}' not found in provider '{provider}'.");
 
         var detector = _providers.GetDetector(provider)

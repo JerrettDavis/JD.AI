@@ -20,6 +20,7 @@ public sealed class GatewayOrchestrator : IHostedService
     private readonly IEventBus _events;
     private readonly ILogger<GatewayOrchestrator> _logger;
     private readonly OpenClawAgentRegistrar? _agentRegistrar;
+    private readonly OpenClawBridgeChannel? _openClawBridge;
 
     // Track spawned agent IDs from config (definition.Id → pool agentId)
     private readonly Dictionary<string, string> _spawnedAgents = new(StringComparer.OrdinalIgnoreCase);
@@ -32,7 +33,8 @@ public sealed class GatewayOrchestrator : IHostedService
         AgentRouter router,
         IEventBus events,
         ILogger<GatewayOrchestrator> logger,
-        OpenClawAgentRegistrar? agentRegistrar = null)
+        OpenClawAgentRegistrar? agentRegistrar = null,
+        OpenClawBridgeChannel? openClawBridge = null)
     {
         _config = config;
         _channelFactory = channelFactory;
@@ -42,6 +44,7 @@ public sealed class GatewayOrchestrator : IHostedService
         _events = events;
         _logger = logger;
         _agentRegistrar = agentRegistrar;
+        _openClawBridge = openClawBridge;
     }
 
     public async Task StartAsync(CancellationToken ct)
@@ -267,6 +270,21 @@ public sealed class GatewayOrchestrator : IHostedService
         if (_agentRegistrar is null || !_config.OpenClaw.Enabled ||
             _config.OpenClaw.RegisterAgents.Count == 0)
             return;
+
+        // Ensure the OpenClaw bridge is connected before registering
+        if (_openClawBridge is not null && !_openClawBridge.IsConnected)
+        {
+            try
+            {
+                await _openClawBridge.ConnectAsync(ct);
+                _logger.LogInformation("Connected to OpenClaw for agent registration");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to connect to OpenClaw — cannot register agents");
+                return;
+            }
+        }
 
         // Convert config registrations to JdAiAgentDefinition
         var definitions = _config.OpenClaw.RegisterAgents.Select(reg => new JdAiAgentDefinition

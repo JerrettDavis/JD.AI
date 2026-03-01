@@ -93,17 +93,47 @@ if (gatewayConfig.OpenClaw.Enabled)
         },
         messageProcessor: null); // Wired below after build
 
-    // Register the real message processor after app is built
+    // Register the real message processor that routes based on OpenClaw session key
     builder.Services.AddSingleton<Func<string, string, Task<string?>>>(sp =>
     {
         var pool = sp.GetRequiredService<AgentPoolService>();
+        var gwConfig = sp.GetRequiredService<GatewayConfig>();
+
+        // Build a map: OpenClaw agent ID → JD.AI gateway pool agent ID
+        // e.g., "jdai-default" → "default" (config ID)
+        var agentMapping = gwConfig.OpenClaw.RegisterAgents
+            .Where(r => !string.IsNullOrEmpty(r.GatewayAgentId))
+            .ToDictionary(r => r.Id, r => r.GatewayAgentId!, StringComparer.OrdinalIgnoreCase);
+
         return async (sessionKey, content) =>
         {
-            var agents = pool.ListAgents();
-            var agentId = agents.FirstOrDefault()?.Id;
-            if (agentId is null) return null;
-            return await pool.SendMessageAsync(agentId, content, CancellationToken.None);
+            // OpenClaw session keys are "agent:{agentId}:{sessionSuffix}"
+            var ocAgentId = ExtractAgentIdFromSessionKey(sessionKey);
+            string? poolAgentId = null;
+
+            // Try to resolve via config mapping: OpenClaw agent ID → gateway agent config ID → pool ID
+            if (ocAgentId is not null && agentMapping.TryGetValue(ocAgentId, out var gatewayAgentConfigId))
+            {
+                // Look up the pool agent spawned from this config ID
+                var agents = pool.ListAgents();
+                poolAgentId = agents.FirstOrDefault()?.Id; // Spawned agents currently don't track config ID
+            }
+
+            // Fall back to first available agent
+            poolAgentId ??= pool.ListAgents().FirstOrDefault()?.Id;
+
+            if (poolAgentId is null) return null;
+            return await pool.SendMessageAsync(poolAgentId, content, CancellationToken.None);
         };
+
+        static string? ExtractAgentIdFromSessionKey(string sessionKey)
+        {
+            // Session key format: "agent:{agentId}:{suffix}"
+            if (!sessionKey.StartsWith("agent:", StringComparison.Ordinal))
+                return null;
+            var parts = sessionKey.Split(':', 3);
+            return parts.Length >= 2 ? parts[1] : null;
+        }
     });
 
     // Register JD.AI agents with OpenClaw so they appear in the dashboard
