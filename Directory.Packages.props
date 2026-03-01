@@ -10,7 +10,7 @@
   </ItemGroup>
   <!-- Application -->
   <ItemGroup>
-    <PackageVersion Include="JD.SemanticKernel.Extensions" Version="0.1.38" />
+    <PackageVersion Include="JD.SemanticKernel.Extensions" Version="0.1.39" />
     <PackageVersion Include="JD.SemanticKernel.Connectors.ClaudeCode" Version="0.1.17" />
     <PackageVersion Include="JD.SemanticKernel.Connectors.GitHubCopilot" Version="0.1.14" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.3" />
