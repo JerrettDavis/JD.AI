@@ -1,5 +1,10 @@
 /* ── JD.AI Dashboard ── */
 
+/* --- Global Font --- */
+html, body, * {
+    font-family: 'DM Sans', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
 /* --- Scrollbar --- */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
