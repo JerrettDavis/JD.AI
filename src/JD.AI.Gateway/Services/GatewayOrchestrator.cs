@@ -1,0 +1,242 @@
+using JD.AI.Core.Channels;
+using JD.AI.Core.Events;
+using JD.AI.Gateway.Config;
+
+namespace JD.AI.Gateway.Services;
+
+/// <summary>
+/// Hosted service that orchestrates gateway startup: registers channels from config,
+/// auto-connects channels, auto-spawns agents, and wires message routing.
+/// </summary>
+public sealed class GatewayOrchestrator : IHostedService
+{
+    private readonly GatewayConfig _config;
+    private readonly ChannelFactory _channelFactory;
+    private readonly IChannelRegistry _channels;
+    private readonly AgentPoolService _agentPool;
+    private readonly AgentRouter _router;
+    private readonly IEventBus _events;
+    private readonly ILogger<GatewayOrchestrator> _logger;
+
+    // Track spawned agent IDs from config (definition.Id → pool agentId)
+    private readonly Dictionary<string, string> _spawnedAgents = new(StringComparer.OrdinalIgnoreCase);
+
+    public GatewayOrchestrator(
+        GatewayConfig config,
+        ChannelFactory channelFactory,
+        IChannelRegistry channels,
+        AgentPoolService agentPool,
+        AgentRouter router,
+        IEventBus events,
+        ILogger<GatewayOrchestrator> logger)
+    {
+        _config = config;
+        _channelFactory = channelFactory;
+        _channels = channels;
+        _agentPool = agentPool;
+        _router = router;
+        _events = events;
+        _logger = logger;
+    }
+
+    public async Task StartAsync(CancellationToken ct)
+    {
+        _logger.LogInformation("Gateway orchestrator starting...");
+
+        // Phase 1: Register channels from config
+        await RegisterChannelsAsync(ct);
+
+        // Phase 2: Auto-spawn agents from config
+        await SpawnAgentsAsync(ct);
+
+        // Phase 3: Wire routing rules
+        WireRoutingRules();
+
+        // Phase 4: Auto-connect channels marked for auto-connect
+        await AutoConnectChannelsAsync(ct);
+
+        // Phase 5: Wire MessageReceived events to the router
+        WireMessageRouting();
+
+        await _events.PublishAsync(
+            new GatewayEvent("gateway.started", "orchestrator", DateTimeOffset.UtcNow,
+                new
+                {
+                    Channels = _channels.Channels.Count,
+                    Agents = _agentPool.ListAgents().Count,
+                    Routes = _router.GetMappings().Count
+                }), ct);
+
+        _logger.LogInformation(
+            "Gateway orchestrator ready — {Channels} channels, {Agents} agents, {Routes} routes",
+            _channels.Channels.Count, _agentPool.ListAgents().Count, _router.GetMappings().Count);
+    }
+
+    public async Task StopAsync(CancellationToken ct)
+    {
+        _logger.LogInformation("Gateway orchestrator shutting down...");
+
+        // Disconnect all channels
+        foreach (var channel in _channels.Channels)
+        {
+            try
+            {
+                if (channel.IsConnected)
+                    await channel.DisconnectAsync(ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error disconnecting channel '{Type}'", channel.ChannelType);
+            }
+        }
+
+        // Stop all agents
+        foreach (var agent in _agentPool.ListAgents())
+        {
+            _agentPool.StopAgent(agent.Id);
+        }
+
+        await _events.PublishAsync(
+            new GatewayEvent("gateway.stopped", "orchestrator", DateTimeOffset.UtcNow, null), ct);
+    }
+
+    private async Task RegisterChannelsAsync(CancellationToken ct)
+    {
+        foreach (var channelConfig in _config.Channels.Where(c => c.Enabled))
+        {
+            try
+            {
+                var channel = _channelFactory.Create(channelConfig);
+                if (channel is null) continue;
+
+                _channels.Register(channel);
+                _logger.LogInformation("Registered channel '{Type}' ({Name})",
+                    channelConfig.Type, channelConfig.Name);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to register channel '{Type}'", channelConfig.Type);
+            }
+        }
+    }
+
+    private async Task SpawnAgentsAsync(CancellationToken ct)
+    {
+        foreach (var def in _config.Agents.Where(a => a.AutoSpawn))
+        {
+            try
+            {
+                var poolId = await _agentPool.SpawnAgentAsync(
+                    def.Provider, def.Model, def.SystemPrompt, ct);
+
+                _spawnedAgents[def.Id] = poolId;
+                _logger.LogInformation(
+                    "Auto-spawned agent '{Id}' → pool:{PoolId} ({Provider}/{Model})",
+                    def.Id, poolId, def.Provider, def.Model);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to auto-spawn agent '{Id}' ({Provider}/{Model})",
+                    def.Id, def.Provider, def.Model);
+            }
+        }
+    }
+
+    private void WireRoutingRules()
+    {
+        foreach (var rule in _config.Routing.Rules)
+        {
+            var agentId = ResolveAgentId(rule.AgentId);
+            if (agentId is null)
+            {
+                _logger.LogWarning("Routing rule for channel '{Channel}' references unknown agent '{Agent}'",
+                    rule.ChannelType, rule.AgentId);
+                continue;
+            }
+
+            _router.MapChannel(rule.ChannelType, agentId);
+            _logger.LogInformation("Mapped channel '{Channel}' → agent '{Agent}'",
+                rule.ChannelType, agentId);
+        }
+
+        // Wire default agent for any channel not explicitly mapped
+        if (!string.IsNullOrEmpty(_config.Routing.DefaultAgentId))
+        {
+            var defaultId = ResolveAgentId(_config.Routing.DefaultAgentId);
+            if (defaultId is not null)
+            {
+                foreach (var channel in _channels.Channels)
+                {
+                    if (!_router.GetMappings().ContainsKey(channel.ChannelType))
+                    {
+                        _router.MapChannel(channel.ChannelType, defaultId);
+                        _logger.LogDebug("Default-mapped channel '{Channel}' → agent '{Agent}'",
+                            channel.ChannelType, defaultId);
+                    }
+                }
+            }
+        }
+    }
+
+    private async Task AutoConnectChannelsAsync(CancellationToken ct)
+    {
+        var autoConnectTypes = _config.Channels
+            .Where(c => c.Enabled && c.AutoConnect)
+            .Select(c => c.Type.ToLowerInvariant())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var channel in _channels.Channels)
+        {
+            if (!autoConnectTypes.Contains(channel.ChannelType)) continue;
+
+            try
+            {
+                await channel.ConnectAsync(ct);
+                _logger.LogInformation("Auto-connected channel '{Type}'", channel.ChannelType);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to auto-connect channel '{Type}'", channel.ChannelType);
+            }
+        }
+    }
+
+    private void WireMessageRouting()
+    {
+        foreach (var channel in _channels.Channels)
+        {
+            channel.MessageReceived += async msg =>
+            {
+                try
+                {
+                    _logger.LogDebug("Routing message from {Channel}/{Sender}",
+                        msg.ChannelId, msg.SenderDisplayName ?? msg.SenderId);
+                    await _router.RouteAsync(msg);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error routing message from {Channel}", msg.ChannelId);
+                }
+            };
+        }
+
+        _logger.LogDebug("Wired MessageReceived → AgentRouter for {Count} channels",
+            _channels.Channels.Count);
+    }
+
+    /// <summary>
+    /// Resolves a config agent ID (e.g., "default") to the actual pool agent ID.
+    /// If the ID is already a pool ID (hex string), returns it directly.
+    /// </summary>
+    private string? ResolveAgentId(string configId)
+    {
+        if (_spawnedAgents.TryGetValue(configId, out var poolId))
+            return poolId;
+
+        // Maybe it's already a pool agent ID
+        if (_agentPool.ListAgents().Any(a => a.Id == configId))
+            return configId;
+
+        return null;
+    }
+}

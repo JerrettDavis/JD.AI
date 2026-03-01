@@ -1,3 +1,5 @@
+using JD.AI.Channels.OpenClaw;
+using JD.AI.Channels.OpenClaw.Routing;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Channels;
 using JD.AI.Core.Events;
@@ -52,6 +54,59 @@ builder.Services.AddSingleton<IVectorStore>(_ =>
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
         ".jdai", "vectors.db")));
 
+// --- Channel factory & orchestrator ---
+builder.Services.AddSingleton<ChannelFactory>();
+builder.Services.AddHostedService<GatewayOrchestrator>();
+
+// --- OpenClaw bridge (if enabled) ---
+if (gatewayConfig.OpenClaw.Enabled)
+{
+    builder.Services.AddOpenClawBridge(config =>
+    {
+        config.WebSocketUrl = gatewayConfig.OpenClaw.WebSocketUrl;
+    });
+
+    builder.Services.AddOpenClawRouting(
+        routing =>
+        {
+            if (Enum.TryParse<OpenClawRoutingMode>(gatewayConfig.OpenClaw.DefaultMode, true, out var defaultMode))
+                routing.DefaultMode = defaultMode;
+
+            foreach (var (channelName, channelConfig) in gatewayConfig.OpenClaw.Channels)
+            {
+                var route = new OpenClawChannelRouteConfig();
+
+                if (Enum.TryParse<OpenClawRoutingMode>(channelConfig.Mode, true, out var mode))
+                    route.Mode = mode;
+
+                route.CommandPrefix = channelConfig.CommandPrefix;
+                route.TriggerPattern = channelConfig.TriggerPattern;
+
+                if (!string.IsNullOrEmpty(channelConfig.SystemPrompt))
+                    route.SystemPrompt = channelConfig.SystemPrompt;
+
+                if (!string.IsNullOrEmpty(channelConfig.AgentId))
+                    route.AgentProfile = channelConfig.AgentId;
+
+                routing.Channels[channelName] = route;
+            }
+        },
+        messageProcessor: null); // Wired below after build
+
+    // Register the real message processor after app is built
+    builder.Services.AddSingleton<Func<string, string, Task<string?>>>(sp =>
+    {
+        var pool = sp.GetRequiredService<AgentPoolService>();
+        return async (sessionKey, content) =>
+        {
+            var agents = pool.ListAgents();
+            var agentId = agents.FirstOrDefault()?.Id;
+            if (agentId is null) return null;
+            return await pool.SendMessageAsync(agentId, content, CancellationToken.None);
+        };
+    });
+}
+
 // --- SignalR ---
 builder.Services.AddSignalR();
 
@@ -99,6 +154,7 @@ app.MapChannelEndpoints();
 app.MapPluginEndpoints();
 app.MapMemoryEndpoints();
 app.MapRoutingEndpoints();
+app.MapGatewayConfigEndpoints();
 
 // --- SignalR hubs ---
 app.MapHub<AgentHub>("/hubs/agent");

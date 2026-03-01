@@ -13,12 +13,13 @@ public sealed class ChannelEndpointTests : IClassFixture<WebApplicationFactory<P
     }
 
     [Fact]
-    public async Task ListChannels_ReturnsEmptyList()
+    public async Task ListChannels_ReturnsConfiguredChannels()
     {
         var response = await _client.GetAsync("/api/channels");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
-        Assert.Equal("[]", body);
+        // The default config enables "web" channel
+        Assert.Contains("web", body);
     }
 
     [Fact]

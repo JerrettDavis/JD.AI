@@ -14,6 +14,12 @@
   <ItemGroup>
     <ProjectReference Include="..\JD.AI.Core\JD.AI.Core.csproj" />
     <ProjectReference Include="..\JD.AI.Plugins.SDK\JD.AI.Plugins.SDK.csproj" />
+    <ProjectReference Include="..\JD.AI.Channels.Discord\JD.AI.Channels.Discord.csproj" />
+    <ProjectReference Include="..\JD.AI.Channels.Signal\JD.AI.Channels.Signal.csproj" />
+    <ProjectReference Include="..\JD.AI.Channels.Slack\JD.AI.Channels.Slack.csproj" />
+    <ProjectReference Include="..\JD.AI.Channels.Telegram\JD.AI.Channels.Telegram.csproj" />
+    <ProjectReference Include="..\JD.AI.Channels.Web\JD.AI.Channels.Web.csproj" />
+    <ProjectReference Include="..\JD.AI.Channels.OpenClaw\JD.AI.Channels.OpenClaw.csproj" />
   </ItemGroup>
 
   <ItemGroup>
