@@ -1,0 +1,134 @@
+@page "/sessions"
+@inject GatewayApiClient Api
+@inject ISnackbar Snackbar
+
+<PageTitle>Sessions - JD.AI Dashboard</PageTitle>
+
+<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">Sessions</MudText>
+    <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" />
+</MudStack>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_sessions is null || _sessions.Length == 0)
+{
+    <MudAlert Severity="Severity.Info">No sessions found.</MudAlert>
+}
+else
+{
+    <MudDataGrid Items="@_sessions" Dense="true" Hover="true" Striped="true" Filterable="true" SortMode="SortMode.Multiple">
+        <Columns>
+            <PropertyColumn Property="x => x.Id" Title="Session ID" />
+            <PropertyColumn Property="x => x.ModelId" Title="Model" />
+            <PropertyColumn Property="x => x.ProviderName" Title="Provider" />
+            <PropertyColumn Property="x => x.MessageCount" Title="Messages" />
+            <PropertyColumn Property="x => x.TotalTokens" Title="Tokens" />
+            <TemplateColumn Title="Status">
+                <CellTemplate>
+                    <MudChip T="string" Size="Size.Small" Color="@(context.Item.IsActive ? Color.Success : Color.Default)">
+                        @(context.Item.IsActive ? "Active" : "Closed")
+                    </MudChip>
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.CreatedAt" Title="Created" Format="g" />
+            <PropertyColumn Property="x => x.UpdatedAt" Title="Updated" Format="g" />
+            <TemplateColumn Title="Actions" CellClass="d-flex justify-end">
+                <CellTemplate>
+                    <MudStack Row="true" Spacing="1">
+                        <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
+                                       OnClick="@(() => ViewSessionAsync(context.Item.Id))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.FileDownload" Size="Size.Small"
+                                       OnClick="@(() => ExportSessionAsync(context.Item.Id))" />
+                        @if (context.Item.IsActive)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Warning"
+                                           OnClick="@(() => CloseSessionAsync(context.Item.Id))" />
+                        }
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+}
+
+@if (_selectedSession is not null)
+{
+    <MudPaper Class="pa-4 mt-4" Elevation="2">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+            <MudText Typo="Typo.h6">Conversation: @_selectedSession.Id</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="@(() => _selectedSession = null)" />
+        </MudStack>
+        @if (_selectedSession.Turns.Count == 0)
+        {
+            <MudText Color="Color.Secondary">No turns in this session.</MudText>
+        }
+        else
+        {
+            @foreach (var turn in _selectedSession.Turns)
+            {
+                <MudPaper Class="pa-3 mb-2" Elevation="0"
+                          Style="@GetTurnBorderStyle(turn.Role)">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <MudChip T="string" Size="Size.Small" Color="@(turn.Role == "user" ? Color.Primary : Color.Secondary)">
+                            @turn.Role
+                        </MudChip>
+                        <MudStack Row="true" Spacing="2">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@turn.TokensIn/@turn.TokensOut tokens</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@(turn.DurationMs)ms</MudText>
+                        </MudStack>
+                    </MudStack>
+                    <MudText Class="mt-2" Style="white-space: pre-wrap;">@turn.Content</MudText>
+                </MudPaper>
+            }
+        }
+    </MudPaper>
+}
+
+@code {
+    private SessionInfo[]? _sessions;
+    private SessionInfo? _selectedSession;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try { _sessions = await Api.GetSessionsAsync(); }
+        catch { _sessions = null; }
+        _loading = false;
+    }
+
+    private async Task ViewSessionAsync(string id)
+    {
+        try { _selectedSession = await Api.GetSessionAsync(id); }
+        catch (Exception ex) { Snackbar.Add($"Failed: {ex.Message}", Severity.Error); }
+    }
+
+    private async Task ExportSessionAsync(string id)
+    {
+        try
+        {
+            await Api.ExportSessionAsync(id);
+            Snackbar.Add("Session exported", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add($"Failed: {ex.Message}", Severity.Error); }
+    }
+
+    private async Task CloseSessionAsync(string id)
+    {
+        try
+        {
+            await Api.CloseSessionAsync(id);
+            Snackbar.Add("Session closed", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex) { Snackbar.Add($"Failed: {ex.Message}", Severity.Error); }
+    }
+
+    private static string GetTurnBorderStyle(string role) =>
+        $"border-left: 3px solid {(role == "user" ? "var(--mud-palette-primary)" : "var(--mud-palette-secondary)")}";
+}

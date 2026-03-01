@@ -1,0 +1,112 @@
+@page "/settings"
+@inject GatewayApiClient Api
+@inject ISnackbar Snackbar
+
+<PageTitle>Settings - JD.AI Dashboard</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Gateway Settings</MudText>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudText Typo="Typo.h6" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" />
+                    Operational Status
+                </MudText>
+                @if (_status is not null)
+                {
+                    <MudSimpleTable Dense="true" Hover="true" Striped="true">
+                        <tbody>
+                            <tr><td>Running</td><td><MudChip T="string" Size="Size.Small" Color="@(_status.IsRunning ? Color.Success : Color.Error)">@_status.IsRunning</MudChip></td></tr>
+                            <tr><td>Started</td><td>@_status.StartedAt.LocalDateTime.ToString("g")</td></tr>
+                            <tr><td>Active Agents</td><td>@_status.ActiveAgents</td></tr>
+                            <tr><td>Active Channels</td><td>@_status.ActiveChannels</td></tr>
+                            <tr><td>Active Sessions</td><td>@_status.ActiveSessions</td></tr>
+                        </tbody>
+                    </MudSimpleTable>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Warning">Unable to reach gateway.</MudAlert>
+                }
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudText Typo="Typo.h6" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Cloud" Class="mr-2" />
+                    OpenClaw Bridge
+                </MudText>
+                @if (_openClawStatus is not null)
+                {
+                    <MudText Typo="Typo.body2" Style="white-space: pre-wrap; font-family: monospace; font-size: 0.85rem;">
+                        @System.Text.Json.JsonSerializer.Serialize(_openClawStatus, _jsonOptions)
+                    </MudText>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info">OpenClaw status not available.</MudAlert>
+                }
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                    <MudText Typo="Typo.h6">
+                        <MudIcon Icon="@Icons.Material.Filled.Settings" Class="mr-2" />
+                        Gateway Configuration
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Secrets are redacted</MudText>
+                </MudStack>
+                @if (_config is not null)
+                {
+                    <MudText Style="white-space: pre-wrap; font-family: monospace; font-size: 0.85rem; max-height: 600px; overflow-y: auto;">
+                        @System.Text.Json.JsonSerializer.Serialize(_config, _jsonOptions)
+                    </MudText>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Warning">Unable to load configuration.</MudAlert>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private GatewayStatus? _status;
+    private object? _config;
+    private object? _openClawStatus;
+    private bool _loading = true;
+
+    private static readonly System.Text.Json.JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        try
+        {
+            var statusTask = Api.GetStatusAsync();
+            var configTask = Api.GetConfigAsync();
+            var openClawTask = Api.GetOpenClawStatusAsync();
+            await Task.WhenAll(statusTask, configTask, openClawTask);
+            _status = statusTask.Result;
+            _config = configTask.Result;
+            _openClawStatus = openClawTask.Result;
+        }
+        catch { /* Gateway may not be running */ }
+        _loading = false;
+    }
+}

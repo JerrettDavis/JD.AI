@@ -1,0 +1,119 @@
+@page "/routing"
+@inject GatewayApiClient Api
+@inject ISnackbar Snackbar
+
+<PageTitle>Routing - JD.AI Dashboard</PageTitle>
+
+<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">Channel → Agent Routing</MudText>
+    <MudStack Row="true" Spacing="2">
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Sync"
+                   OnClick="SyncAsync">Sync OpenClaw</MudButton>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" />
+    </MudStack>
+</MudStack>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudPaper Elevation="2">
+        <MudDataGrid Items="@_mappings" Dense="true" Hover="true" Striped="true" EditMode="DataGridEditMode.Cell"
+                     CommittedItemChanges="@(async (RoutingMapping m) => await OnMappingChanged(m))">
+            <Columns>
+                <PropertyColumn Property="x => x.ChannelType" Title="Channel" Editable="false">
+                    <CellTemplate>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@GetChannelIcon(context.Item.ChannelType)" Size="Size.Small" />
+                            <MudText>@context.Item.ChannelType</MudText>
+                        </MudStack>
+                    </CellTemplate>
+                </PropertyColumn>
+                <PropertyColumn Property="x => x.AgentId" Title="Agent ID" Editable="true" />
+                <PropertyColumn Property="x => x.ConversationPattern" Title="Pattern" Editable="true" />
+                <TemplateColumn Title="Status" CellClass="d-flex justify-end">
+                    <CellTemplate>
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(string.IsNullOrEmpty(context.Item.AgentId) ? Color.Default : Color.Primary)">
+                            @(string.IsNullOrEmpty(context.Item.AgentId) ? "Default" : "Override")
+                        </MudChip>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mt-4" Elevation="2">
+        <MudText Typo="Typo.h6" Class="mb-3">Routing Diagram</MudText>
+        <MudTimeline TimelinePosition="TimelinePosition.Start">
+            @if (_mappings is not null)
+            {
+                @foreach (var mapping in _mappings)
+                {
+                    <MudTimelineItem Color="@(string.IsNullOrEmpty(mapping.AgentId) ? Color.Default : Color.Primary)"
+                                     Size="Size.Small">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@mapping.ChannelType</MudChip>
+                            <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" />
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary">
+                                @(string.IsNullOrEmpty(mapping.AgentId) ? "OpenClaw Default" : mapping.AgentId)
+                            </MudChip>
+                            @if (!string.IsNullOrEmpty(mapping.ConversationPattern))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">pattern: @mapping.ConversationPattern</MudText>
+                            }
+                        </MudStack>
+                    </MudTimelineItem>
+                }
+            }
+        </MudTimeline>
+    </MudPaper>
+}
+
+@code {
+    private RoutingMapping[]? _mappings;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try { _mappings = await Api.GetRoutingMappingsAsync(); }
+        catch { _mappings = null; }
+        _loading = false;
+    }
+
+    private async Task OnMappingChanged(RoutingMapping mapping)
+    {
+        try
+        {
+            await Api.MapRoutingAsync(mapping.ChannelType, mapping.AgentId);
+            Snackbar.Add($"Routing updated: {mapping.ChannelType} → {mapping.AgentId}", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add($"Failed: {ex.Message}", Severity.Error); }
+    }
+
+    private async Task SyncAsync()
+    {
+        try
+        {
+            await Api.SyncOpenClawAsync();
+            Snackbar.Add("OpenClaw sync complete", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex) { Snackbar.Add($"Sync failed: {ex.Message}", Severity.Error); }
+    }
+
+    private static string GetChannelIcon(string type) => type.ToLowerInvariant() switch
+    {
+        "discord" => Icons.Material.Filled.Forum,
+        "signal" => Icons.Material.Filled.Security,
+        "slack" => Icons.Material.Filled.Tag,
+        "telegram" => Icons.Material.Filled.Send,
+        "web" => Icons.Material.Filled.Language,
+        _ => Icons.Material.Filled.Cable
+    };
+}

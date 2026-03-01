@@ -1,0 +1,125 @@
+@page "/"
+@inject GatewayApiClient Api
+@inject SignalRService SignalR
+
+<PageTitle>JD.AI Dashboard</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Gateway Overview</MudText>
+
+<MudGrid>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudIcon Icon="@Icons.Material.Filled.SmartToy" Color="Color.Primary" Size="Size.Large" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Active Agents</MudText>
+                    <MudText Typo="Typo.h4">@(_status?.ActiveAgents ?? 0)</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudIcon Icon="@Icons.Material.Filled.Cable" Color="Color.Secondary" Size="Size.Large" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Active Channels</MudText>
+                    <MudText Typo="Typo.h4">@(_status?.ActiveChannels ?? 0)</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudIcon Icon="@Icons.Material.Filled.Forum" Color="Color.Tertiary" Size="Size.Large" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Sessions</MudText>
+                    <MudText Typo="Typo.h4">@(_status?.ActiveSessions ?? 0)</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudIcon Icon="@(_status?.OpenClaw?.Connected == true ? Icons.Material.Filled.Cloud : Icons.Material.Filled.CloudOff)"
+                         Color="@(_status?.OpenClaw?.Connected == true ? Color.Success : Color.Error)" Size="Size.Large" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">OpenClaw</MudText>
+                    <MudText Typo="Typo.h6">@(_status?.OpenClaw?.Connected == true ? "Connected" : "Disconnected")</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@if (_status?.OpenClaw is not null)
+{
+    <MudPaper Class="pa-4 mt-4" Elevation="2">
+        <MudText Typo="Typo.h6" Class="mb-2">OpenClaw Bridge</MudText>
+        <MudSimpleTable Dense="true" Hover="true" Striped="true">
+            <thead>
+                <tr><th>Property</th><th>Value</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Endpoint</td><td>@(_status.OpenClaw.Endpoint ?? "—")</td></tr>
+                <tr><td>Registered Agents</td><td>@_status.OpenClaw.RegisteredAgents</td></tr>
+                <tr><td>Active Bindings</td><td>@_status.OpenClaw.ActiveBindings</td></tr>
+                @if (_status.OpenClaw.LastError is not null)
+                {
+                    <tr><td>Last Error</td><td class="mud-error-text">@_status.OpenClaw.LastError</td></tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+}
+
+<MudPaper Class="pa-4 mt-4" Elevation="2">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+        <MudText Typo="Typo.h6">Recent Activity</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small" />
+    </MudStack>
+    @if (_events.Count == 0)
+    {
+        <MudText Color="Color.Secondary">No recent activity. Events will appear here in real-time.</MudText>
+    }
+    else
+    {
+        <MudList T="ActivityEvent" Dense="true">
+            @foreach (var evt in _events.TakeLast(20).Reverse())
+            {
+                <MudListItem T="ActivityEvent" Icon="@Icons.Material.Filled.Circle" IconColor="Color.Info" IconSize="Size.Small">
+                    <MudStack Row="true" Spacing="2">
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default">@evt.EventType</MudChip>
+                        <MudText>@evt.Message</MudText>
+                        <MudSpacer />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@evt.Timestamp.LocalDateTime.ToString("HH:mm:ss")</MudText>
+                    </MudStack>
+                </MudListItem>
+            }
+        </MudList>
+    }
+</MudPaper>
+
+@code {
+    private GatewayStatus? _status;
+    private readonly List<ActivityEvent> _events = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        SignalR.OnActivityEvent += evt =>
+        {
+            _events.Add(evt);
+            if (_events.Count > 100) _events.RemoveAt(0);
+            InvokeAsync(StateHasChanged);
+        };
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try { _status = await Api.GetStatusAsync(); }
+        catch { _status = null; }
+    }
+}

@@ -1,0 +1,181 @@
+@page "/channels"
+@inject GatewayApiClient Api
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Channels - JD.AI Dashboard</PageTitle>
+
+<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">Channel Management</MudText>
+    <MudStack Row="true" Spacing="2">
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Sync"
+                   OnClick="SyncOpenClawAsync">Sync OpenClaw</MudButton>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" />
+    </MudStack>
+</MudStack>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_channels is null || _channels.Length == 0)
+{
+    <MudAlert Severity="Severity.Info">No channels configured. Check your Gateway configuration.</MudAlert>
+}
+else
+{
+    <MudGrid>
+        @foreach (var channel in _channels)
+        {
+            <MudItem xs="12" md="6" lg="4">
+                <MudCard Elevation="2">
+                    <MudCardHeader>
+                        <CardHeaderAvatar>
+                            <MudAvatar Color="@(channel.Connected ? Color.Success : Color.Default)" Size="Size.Small">
+                                <MudIcon Icon="@GetChannelIcon(channel.Type)" />
+                            </MudAvatar>
+                        </CardHeaderAvatar>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">@channel.Name</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@channel.Type</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudChip T="string" Size="Size.Small"
+                                     Color="@(channel.Connected ? Color.Success : channel.Enabled ? Color.Warning : Color.Default)">
+                                @(channel.Connected ? "Connected" : channel.Enabled ? "Enabled" : "Disabled")
+                            </MudChip>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudSimpleTable Dense="true">
+                            <tbody>
+                                <tr>
+                                    <td><MudText Typo="Typo.caption">Agent</MudText></td>
+                                    <td><MudText>@(channel.AssignedAgentId ?? "default")</MudText></td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.caption">Model</MudText></td>
+                                    <td><MudText>@(channel.Model ?? "—")</MudText></td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.caption">Routing</MudText></td>
+                                    <td>
+                                        <MudChip T="string" Size="Size.Small" Color="@GetRoutingColor(channel.RoutingMode)">
+                                            @(channel.RoutingMode ?? "Passthrough")
+                                        </MudChip>
+                                    </td>
+                                </tr>
+                                @if (channel.LastActivity.HasValue)
+                                {
+                                    <tr>
+                                        <td><MudText Typo="Typo.caption">Last Activity</MudText></td>
+                                        <td><MudText>@channel.LastActivity.Value.LocalDateTime.ToString("g")</MudText></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </MudSimpleTable>
+                    </MudCardContent>
+                    <MudCardActions>
+                        @if (channel.Connected)
+                        {
+                            <MudButton Size="Size.Small" Color="Color.Warning" OnClick="@(() => DisconnectAsync(channel.Type))">
+                                Disconnect
+                            </MudButton>
+                        }
+                        else if (channel.Enabled)
+                        {
+                            <MudButton Size="Size.Small" Color="Color.Success" OnClick="@(() => ConnectAsync(channel.Type))">
+                                Connect
+                            </MudButton>
+                        }
+                        <MudSpacer />
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Edit"
+                                   OnClick="@(() => EditOverrideAsync(channel))">
+                            Override
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private ChannelInfo[]? _channels;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try { _channels = await Api.GetChannelsAsync(); }
+        catch { _channels = null; }
+        _loading = false;
+    }
+
+    private async Task ConnectAsync(string type)
+    {
+        try
+        {
+            await Api.ConnectChannelAsync(type);
+            Snackbar.Add($"{type} channel connected", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex) { Snackbar.Add($"Failed: {ex.Message}", Severity.Error); }
+    }
+
+    private async Task DisconnectAsync(string type)
+    {
+        try
+        {
+            await Api.DisconnectChannelAsync(type);
+            Snackbar.Add($"{type} channel disconnected", Severity.Warning);
+            await LoadAsync();
+        }
+        catch (Exception ex) { Snackbar.Add($"Failed: {ex.Message}", Severity.Error); }
+    }
+
+    private async Task EditOverrideAsync(ChannelInfo channel)
+    {
+        var parameters = new DialogParameters<OverrideDialog>
+        {
+            { x => x.Channel, channel },
+            { x => x.Api, Api }
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<OverrideDialog>("Edit Channel Override", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+            await LoadAsync();
+    }
+
+    private async Task SyncOpenClawAsync()
+    {
+        try
+        {
+            await Api.SyncOpenClawAsync();
+            Snackbar.Add("OpenClaw sync complete", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex) { Snackbar.Add($"Sync failed: {ex.Message}", Severity.Error); }
+    }
+
+    private static string GetChannelIcon(string type) => type.ToLowerInvariant() switch
+    {
+        "discord" => Icons.Material.Filled.Forum,
+        "signal" => Icons.Material.Filled.Security,
+        "slack" => Icons.Material.Filled.Tag,
+        "telegram" => Icons.Material.Filled.Send,
+        "web" => Icons.Material.Filled.Language,
+        _ => Icons.Material.Filled.Cable
+    };
+
+    private static Color GetRoutingColor(string? mode) => mode?.ToLowerInvariant() switch
+    {
+        "sidecar" => Color.Warning,
+        "intercept" => Color.Error,
+        _ => Color.Info
+    };
+}

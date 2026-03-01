@@ -1,0 +1,82 @@
+@page "/providers"
+@inject GatewayApiClient Api
+
+<PageTitle>Providers - JD.AI Dashboard</PageTitle>
+
+<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">Model Providers</MudText>
+    <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" />
+</MudStack>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_providers is null || _providers.Length == 0)
+{
+    <MudAlert Severity="Severity.Info">No providers configured.</MudAlert>
+}
+else
+{
+    <MudGrid>
+        @foreach (var provider in _providers)
+        {
+            <MudItem xs="12" md="6">
+                <MudCard Elevation="2">
+                    <MudCardHeader>
+                        <CardHeaderAvatar>
+                            <MudAvatar Color="@(provider.IsAvailable ? Color.Success : Color.Error)" Size="Size.Small">
+                                <MudIcon Icon="@Icons.Material.Filled.Hub" />
+                            </MudAvatar>
+                        </CardHeaderAvatar>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">@provider.Name</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @(provider.IsAvailable ? $"{provider.Models.Length} models" : provider.StatusMessage ?? "Unavailable")
+                            </MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudChip T="string" Size="Size.Small" Color="@(provider.IsAvailable ? Color.Success : Color.Error)">
+                                @(provider.IsAvailable ? "Online" : "Offline")
+                            </MudChip>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    @if (provider.Models.Length > 0)
+                    {
+                        <MudCardContent>
+                            <MudSimpleTable Dense="true" Hover="true">
+                                <thead>
+                                    <tr><th>Model ID</th><th>Display Name</th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var model in provider.Models)
+                                    {
+                                        <tr>
+                                            <td><MudText Typo="Typo.body2"><code>@model.Id</code></MudText></td>
+                                            <td><MudText Typo="Typo.body2">@model.DisplayName</MudText></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </MudSimpleTable>
+                        </MudCardContent>
+                    }
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private ProviderInfo[]? _providers;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try { _providers = await Api.GetProvidersAsync(); }
+        catch { _providers = null; }
+        _loading = false;
+    }
+}
