@@ -76,4 +76,11 @@ public sealed class AgentRouter
         lock (_lock)
             return new Dictionary<string, string>(_channelAgentMap);
     }
+
+    /// <summary>Get the agent ID currently mapped to a channel, or null.</summary>
+    public string? GetAgentForChannel(string channelId)
+    {
+        lock (_lock)
+            return _channelAgentMap.TryGetValue(channelId, out var agentId) ? agentId : null;
+    }
 }

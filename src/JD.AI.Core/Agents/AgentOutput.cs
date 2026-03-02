@@ -1,5 +1,8 @@
 namespace JD.AI.Core.Agents;
 
+/// <summary>Metrics collected during a single agent turn.</summary>
+public sealed record TurnMetrics(long ElapsedMs, int TokensOut, long BytesReceived);
+
 /// <summary>
 /// Abstraction for agent output rendering — allows Core agent logic to emit
 /// UI messages without depending on Spectre.Console or any specific TUI framework.
@@ -15,6 +18,12 @@ public interface IAgentOutput
     void BeginStreaming();
     void WriteStreamingChunk(string text);
     void EndStreaming();
+
+    /// <summary>Called when a turn starts (before first LLM call). Show a spinner.</summary>
+    void BeginTurn() { }
+
+    /// <summary>Called when a turn completes. Render elapsed time, tokens, data size.</summary>
+    void EndTurn(TurnMetrics metrics) { }
 }
 
 /// <summary>
@@ -43,4 +52,6 @@ public sealed class NullAgentOutput : IAgentOutput
     public void BeginStreaming() { }
     public void WriteStreamingChunk(string text) { }
     public void EndStreaming() { }
+    public void BeginTurn() { }
+    public void EndTurn(TurnMetrics metrics) { }
 }

@@ -93,6 +93,8 @@ public sealed class AgentLoop
 
         var sw = Stopwatch.StartNew();
         var output = AgentOutput.Current;
+        output.BeginTurn();
+        long totalBytes = 0;
 
         try
         {
@@ -117,11 +119,14 @@ public sealed class AgentLoop
                     }
                     output.WriteThinkingChunk(reasonText);
                     thinkingCapture.Append(reasonText);
+                    totalBytes += System.Text.Encoding.UTF8.GetByteCount(reasonText);
                     continue;
                 }
 
                 if (chunk.Content is not { Length: > 0 } text)
                     continue;
+
+                totalBytes += System.Text.Encoding.UTF8.GetByteCount(text);
 
                 // Parse chunk for <think> tags and classify segments
                 foreach (var seg in parser.ProcessChunk(text))
@@ -201,6 +206,9 @@ public sealed class AgentLoop
                 .EstimateTokens(response);
 
             var thinkingText = thinkingCapture.Length > 0 ? thinkingCapture.ToString() : null;
+
+            output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, tokenEstimate, totalBytes));
+
             await _session.RecordAssistantTurnAsync(
                 response, thinkingText,
                 durationMs: sw.ElapsedMilliseconds,
@@ -211,11 +219,15 @@ public sealed class AgentLoop
         catch (OperationCanceledException)
         {
             output.EndStreaming();
+            sw.Stop();
+            output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, 0, totalBytes));
             throw; // Let caller handle cancellation
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             output.EndStreaming();
+            sw.Stop();
+            output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, 0, totalBytes));
             var errorMsg = $"Error: {ex.Message}";
             AgentOutput.Current.RenderError(errorMsg);
 

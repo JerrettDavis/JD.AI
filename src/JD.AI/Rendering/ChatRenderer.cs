@@ -201,4 +201,24 @@ public static class ChatRenderer
     {
         Console.WriteLine();
     }
+
+    // ── Turn metrics rendering ──────────────────────────────
+
+    /// <summary>Render a turn completion metrics line.</summary>
+    public static void RenderTurnMetrics(long elapsedMs, int tokens, long bytes)
+    {
+        var elapsed = elapsedMs >= 60_000
+            ? $"{elapsedMs / 60_000}m {elapsedMs % 60_000 / 1000}s"
+            : $"{elapsedMs / 1000.0:F1}s";
+
+        var size = bytes switch
+        {
+            >= 1_048_576 => $"{bytes / 1_048_576.0:F1} MB",
+            >= 1_024 => $"{bytes / 1_024.0:F1} KB",
+            _ => $"{bytes} B"
+        };
+
+        AnsiConsole.MarkupLine(
+            $"[dim]  ── {Markup.Escape(elapsed)} │ {tokens:N0} tokens │ {Markup.Escape(size)} ──[/]");
+    }
 }

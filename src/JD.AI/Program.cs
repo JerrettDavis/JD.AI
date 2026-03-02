@@ -362,7 +362,7 @@ TurnInputMonitor? activeTurnMonitor = null;
 
 Console.CancelKeyPress += (_, e) =>
 {
-    e.Cancel = true; // Always suppress default termination
+    e.Cancel = true; // Suppress default termination by default
 
     // If there's an active turn, cancel it (like single ESC)
     var monitor = Volatile.Read(ref activeTurnMonitor);
@@ -383,6 +383,7 @@ Console.CancelKeyPress += (_, e) =>
     var now = DateTime.UtcNow;
     if (now - lastCtrlCTime <= ctrlCWindow)
     {
+        e.Cancel = false; // Let the OS terminate — input read is blocking
         try { appCts.Cancel(); }
 #pragma warning disable CA1031
         catch { /* already disposed/cancelled */ }
