@@ -3,7 +3,7 @@
 
 Output docs/images/demo-sessions.gif
 
-Set Shell "pwsh"
+Set Shell "bash"
 Set FontSize 14
 Set Width 1200
 Set Height 600
