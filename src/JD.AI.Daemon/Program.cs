@@ -79,7 +79,7 @@ rootCommand.Subcommands.Add(statusCommand);
 
 // ── update ─────────────────────────────────────────────────────────
 var updateCommand = new Command("update", "Check for and apply updates from NuGet");
-var checkOnlyOption = new Option<bool>("--check-only", "Only check — don't apply the update");
+var checkOnlyOption = new Option<bool>("--check-only") { Description = "Only check — don't apply the update" };
 updateCommand.Options.Add(checkOnlyOption);
 updateCommand.SetAction(async parseResult =>
 {
