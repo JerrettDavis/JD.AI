@@ -12,9 +12,7 @@ public sealed class SqliteVectorStore : IVectorStore, IDisposable
 
     public SqliteVectorStore(string? dbPath = null)
     {
-        dbPath ??= Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".jdai", "memory.db");
+        dbPath ??= Config.DataDirectories.VectorsDb;
         Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
         _connection = new SqliteConnection($"Data Source={dbPath}");
         _connection.Open();

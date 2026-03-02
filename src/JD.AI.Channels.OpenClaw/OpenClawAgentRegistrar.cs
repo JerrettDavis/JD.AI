@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using JD.AI.Core.Config;
 using Microsoft.Extensions.Logging;
 
 namespace JD.AI.Channels.OpenClaw;
@@ -352,9 +353,7 @@ public sealed class OpenClawAgentRegistrar
         {
             ["id"] = agent.Id,
             ["name"] = string.IsNullOrEmpty(agent.Name) ? $"JD.AI: {agent.Id}" : agent.Name,
-            ["workspace"] = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                ".jdai", "openclaw-workspaces", agent.Id),
+            ["workspace"] = DataDirectories.OpenClawWorkspace(agent.Id),
             ["identity"] = new JsonObject
             {
                 ["name"] = string.IsNullOrEmpty(agent.Name) ? agent.Id : agent.Name,
@@ -374,9 +373,7 @@ public sealed class OpenClawAgentRegistrar
 
     private void EnsureWorkspaceDirectory(JdAiAgentDefinition agent)
     {
-        var workspacePath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".jdai", "openclaw-workspaces", agent.Id);
+        var workspacePath = DataDirectories.OpenClawWorkspace(agent.Id);
 
         if (Directory.Exists(workspacePath))
             return;

@@ -2,6 +2,7 @@ using JD.AI.Channels.OpenClaw;
 using JD.AI.Channels.OpenClaw.Routing;
 using JD.AI.Core.Channels;
 using JD.AI.Core.Commands;
+using JD.AI.Core.Config;
 using JD.AI.Core.Events;
 using JD.AI.Core.Memory;
 using JD.AI.Core.Plugins;
@@ -42,9 +43,7 @@ builder.Services.AddSingleton<IProviderDetector, OllamaDetector>();
 builder.Services.AddSingleton<IProviderRegistry>(sp =>
     new ProviderRegistry(sp.GetServices<IProviderDetector>()));
 builder.Services.AddSingleton<SessionStore>(_ =>
-    new SessionStore(Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-        ".jdai", "sessions.db")));
+    new SessionStore(DataDirectories.SessionsDb));
 builder.Services.AddSingleton<AgentPoolService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<AgentPoolService>());
 
@@ -72,9 +71,7 @@ builder.Services.AddSingleton<ICommandRegistry>(sp =>
     return registry;
 });
 builder.Services.AddSingleton<IVectorStore>(_ =>
-    new SqliteVectorStore(Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-        ".jdai", "vectors.db")));
+    new SqliteVectorStore(DataDirectories.VectorsDb));
 
 // --- Channel factory & orchestrator ---
 builder.Services.AddSingleton<ChannelFactory>();

@@ -22,6 +22,7 @@ public sealed class SystemdServiceManager : IServiceManager
 
         var user = Environment.UserName;
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var dataDir = Core.Config.DataDirectories.Root;
 
         var unitContent = $"""
             [Unit]
@@ -39,10 +40,11 @@ public sealed class SystemdServiceManager : IServiceManager
             RestartSec=5
             Environment=DOTNET_ENVIRONMENT=Production
             Environment=HOME={home}
+            Environment=JDAI_DATA_DIR={dataDir}
 
             # Hardening
             ProtectSystem=strict
-            ReadWritePaths={home}/.jdai
+            ReadWritePaths={dataDir}
             PrivateTmp=true
             NoNewPrivileges=true
 

@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using JD.AI.Core.Config;
 
 namespace JD.AI;
 
@@ -16,8 +17,7 @@ public static class UpdateChecker
     private static readonly TimeSpan CacheExpiry = TimeSpan.FromHours(24);
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
-    private static string CacheDir =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".jdai");
+    private static string CacheDir => DataDirectories.UpdateCacheDir;
 
     private static string CacheFile => Path.Combine(CacheDir, "update-check.json");
 

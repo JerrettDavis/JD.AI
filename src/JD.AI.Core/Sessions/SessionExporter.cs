@@ -50,8 +50,5 @@ public static class SessionExporter
         return Directory.GetFiles(dir, "*.json");
     }
 
-    private static string GetDefaultBasePath() =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".jdai");
+    private static string GetDefaultBasePath() => Config.DataDirectories.Root;
 }
