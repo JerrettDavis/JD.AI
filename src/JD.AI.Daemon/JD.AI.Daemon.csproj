@@ -10,6 +10,10 @@
     <Description>All-in-one system service for JD.AI — REST API, SignalR, Blazor dashboard, agent pool, and auto-updates as a Windows Service or systemd unit.</Description>
     <PackageTags>ai;daemon;service;gateway;dashboard;systemd</PackageTags>
     <InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.AspNetCore.OpenApi.Generated</InterceptorsNamespaces>
+    <!-- Allow Daemon's appsettings.json to win over Gateway's transitive copy -->
+    <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
+    <!-- Suppress NU5100: content DLLs from WebAssembly.Server are expected for dotnet tools -->
+    <NoWarn>$(NoWarn);NU5100</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
