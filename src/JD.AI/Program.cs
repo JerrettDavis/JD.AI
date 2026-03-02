@@ -1,6 +1,7 @@
 using JD.AI;
 using JD.AI.Agent;
 using JD.AI.Commands;
+using JD.AI.Core.Agents;
 using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Agents.Orchestration;
 using JD.AI.Core.Providers;
@@ -354,6 +355,7 @@ if (pendingUpdate is not null)
 }
 
 // 12. Main interaction loop
+AgentOutput.Current = new SpectreAgentOutput();
 var agentLoop = new AgentLoop(session);
 var appCts = new CancellationTokenSource();
 var lastCtrlCTime = DateTime.MinValue;
