@@ -177,6 +177,15 @@ public sealed class AgentPoolService : IHostedService
         return false;
     }
 
+    public void ClearHistory(string agentId)
+    {
+        if (_agents.TryGetValue(agentId, out var agent))
+        {
+            agent.History.Clear();
+            agent.TurnCount = 0;
+        }
+    }
+
     public void StopAgent(string agentId)
     {
         _agents.TryRemove(agentId, out _);

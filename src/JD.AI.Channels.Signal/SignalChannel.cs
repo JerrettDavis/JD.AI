@@ -1,20 +1,26 @@
 using System.Diagnostics;
 using System.Text.Json;
 using JD.AI.Core.Channels;
+using JD.AI.Core.Commands;
 
 namespace JD.AI.Channels.Signal;
 
 /// <summary>
 /// Signal channel adapter that bridges to signal-cli via JSON-RPC over stdin/stdout.
 /// Requires signal-cli to be installed and registered with a phone number.
+/// Supports prefix-based commands via <see cref="ICommandAwareChannel"/>.
 /// </summary>
-public sealed class SignalChannel : IChannel
+public sealed class SignalChannel : IChannel, ICommandAwareChannel
 {
     private readonly string _signalCliPath;
     private readonly string _account;
     private Process? _daemon;
     private StreamWriter? _writer;
     private CancellationTokenSource? _cts;
+    private ICommandRegistry? _commandRegistry;
+
+    /// <summary>Prefix for Signal commands (e.g., "!jdai-help").</summary>
+    public const string CommandPrefix = "!jdai-";
 
     public SignalChannel(string account, string? signalCliPath = null)
     {
@@ -27,6 +33,13 @@ public sealed class SignalChannel : IChannel
     public bool IsConnected => _daemon is not null && !_daemon.HasExited;
 
     public event Func<ChannelMessage, Task>? MessageReceived;
+
+    /// <inheritdoc />
+    public Task RegisterCommandsAsync(ICommandRegistry registry, CancellationToken ct = default)
+    {
+        _commandRegistry = registry;
+        return Task.CompletedTask;
+    }
 
     public async Task ConnectAsync(CancellationToken ct = default)
     {
@@ -106,21 +119,33 @@ public sealed class SignalChannel : IChannel
                     && p.TryGetProperty("envelope", out var envelope)
                     && envelope.TryGetProperty("dataMessage", out var data))
                 {
+                    var content = data.TryGetProperty("message", out var msg2)
+                        ? msg2.GetString() ?? ""
+                        : "";
+
+                    var senderId = envelope.TryGetProperty("source", out var sender)
+                        ? sender.GetString() ?? "unknown"
+                        : "unknown";
+
+                    var senderName = envelope.TryGetProperty("sourceName", out var name)
+                        ? name.GetString()
+                        : null;
+
+                    // Check for command prefix
+                    if (content.StartsWith(CommandPrefix, StringComparison.OrdinalIgnoreCase)
+                        && _commandRegistry is not null)
+                    {
+                        await HandleCommandAsync(content, senderId, senderName);
+                        continue;
+                    }
+
                     var msg = new ChannelMessage
                     {
                         Id = Guid.NewGuid().ToString("N"),
-                        ChannelId = envelope.TryGetProperty("source", out var src)
-                            ? src.GetString() ?? "unknown"
-                            : "unknown",
-                        SenderId = envelope.TryGetProperty("source", out var sender)
-                            ? sender.GetString() ?? "unknown"
-                            : "unknown",
-                        SenderDisplayName = envelope.TryGetProperty("sourceName", out var name)
-                            ? name.GetString()
-                            : null,
-                        Content = data.TryGetProperty("message", out var msg2)
-                            ? msg2.GetString() ?? ""
-                            : "",
+                        ChannelId = senderId,
+                        SenderId = senderId,
+                        SenderDisplayName = senderName,
+                        Content = content,
                         Timestamp = DateTimeOffset.UtcNow
                     };
 
@@ -132,6 +157,54 @@ public sealed class SignalChannel : IChannel
             catch { /* skip malformed lines */ }
 #pragma warning restore CA1031
         }
+    }
+
+    private async Task HandleCommandAsync(string content, string senderId, string? senderName)
+    {
+        if (_commandRegistry is null) return;
+
+        // Parse "!jdai-help arg1 arg2" → command="help", args
+        var withoutPrefix = content[CommandPrefix.Length..];
+        var parts = withoutPrefix.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return;
+
+        var commandName = parts[0];
+        var command = _commandRegistry.GetCommand(commandName);
+
+        if (command is null)
+        {
+            await SendMessageAsync(senderId, $"Unknown command: {commandName}. Use !jdai-help to see available commands.");
+            return;
+        }
+
+        // Simple positional argument mapping
+        var args = new Dictionary<string, string>();
+        for (var i = 1; i < parts.Length && i - 1 < command.Parameters.Count; i++)
+        {
+            args[command.Parameters[i - 1].Name] = parts[i];
+        }
+
+        var context = new CommandContext
+        {
+            CommandName = commandName,
+            InvokerId = senderId,
+            InvokerDisplayName = senderName,
+            ChannelId = senderId,
+            ChannelType = ChannelType,
+            Arguments = args
+        };
+
+        try
+        {
+            var result = await command.ExecuteAsync(context);
+            await SendMessageAsync(senderId, result.Content);
+        }
+#pragma warning disable CA1031
+        catch (Exception ex)
+        {
+            await SendMessageAsync(senderId, $"Command error: {ex.Message}");
+        }
+#pragma warning restore CA1031
     }
 
     public ValueTask DisposeAsync()
