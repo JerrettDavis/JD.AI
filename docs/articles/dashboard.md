@@ -19,7 +19,7 @@ The top-right corner shows a **LIVE** indicator when the dashboard is connected 
 
 The Overview page provides a high-level summary of the Gateway state, including active agents, channels, sessions, and OpenClaw bridge status.
 
-![Gateway Overview](../screenshots/dashboard-overview.png)
+![Gateway Overview](../images/dashboard/dashboard-overview.png)
 
 Key metrics displayed:
 
@@ -36,7 +36,7 @@ The **OpenClaw Bridge** section shows whether the bridge is enabled and which ag
 
 The Chat page provides a built-in web interface for communicating with agents directly from the dashboard.
 
-![Web Chat](../screenshots/dashboard-chat.png)
+![Web Chat](../images/dashboard/dashboard-chat.png)
 
 Features:
 
@@ -51,7 +51,7 @@ Messages are sent to the Gateway's `AgentHub` and streamed back as chunked respo
 
 The Channels page shows all configured communication channels and their connection status.
 
-![Channels](../screenshots/dashboard-channels.png)
+![Channels](../images/dashboard/dashboard-channels.png)
 
 Each channel card displays:
 
@@ -66,7 +66,7 @@ The **Sync OpenClaw** button synchronizes channel configuration with the OpenCla
 
 The Agents page lists all currently running agent instances with the ability to spawn new ones or stop existing agents.
 
-![Agents](../screenshots/dashboard-agents.png)
+![Agents](../images/dashboard/dashboard-agents.png)
 
 The table shows:
 
@@ -84,7 +84,7 @@ Click **+ Spawn Agent** to create a new agent instance. Use the trash icon to st
 
 The Providers page shows all configured AI providers, their connection status, and available models.
 
-![Providers](../screenshots/settings-providers.png)
+![Providers](../images/dashboard/settings-providers.png)
 
 Each provider card shows:
 
@@ -100,7 +100,7 @@ The Settings page provides a comprehensive WYSIWYG editor for all Gateway config
 
 ### Server Tab
 
-![Server Settings](../screenshots/dashboard-settings.png)
+![Server Settings](../images/dashboard/dashboard-settings.png)
 
 Configure core server parameters:
 
@@ -111,7 +111,7 @@ Configure core server parameters:
 
 ### Providers Tab
 
-![Provider Settings](../screenshots/settings-providers.png)
+![Provider Settings](../images/dashboard/settings-providers.png)
 
 Manage AI provider configurations:
 
@@ -121,7 +121,7 @@ Manage AI provider configurations:
 
 ### Agents Tab
 
-![Agent Settings](../screenshots/settings-agents.png)
+![Agent Settings](../images/dashboard/settings-agents.png)
 
 Define agent configurations with:
 
