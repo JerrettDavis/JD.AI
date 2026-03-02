@@ -20,6 +20,16 @@ public sealed class PluginLoader
         _logger = logger;
     }
 
+    /// <summary>Strip control characters to prevent log forging.</summary>
+    private static string SanitizeLogValue(string? value) =>
+        value is null
+            ? string.Empty
+            : string.Create(value.Length, value, static (span, src) =>
+            {
+                for (var i = 0; i < src.Length; i++)
+                    span[i] = char.IsControl(src[i]) ? '_' : src[i];
+            });
+
     /// <summary>Load all plugins from a directory.</summary>
     public async Task<IReadOnlyList<LoadedPlugin>> LoadFromDirectoryAsync(
         string directory, IPluginContext context, CancellationToken ct = default)
@@ -44,7 +54,7 @@ public sealed class PluginLoader
 #pragma warning disable CA1031 // non-fatal: log and continue loading other plugins
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load plugin from {Path}", dll);
+                _logger.LogError(ex, "Failed to load plugin from {Path}", SanitizeLogValue(dll));
             }
 #pragma warning restore CA1031
         }
@@ -69,7 +79,7 @@ public sealed class PluginLoader
 
         if (pluginTypes.Count == 0)
         {
-            _logger.LogDebug("No IJdAiPlugin types found in {Path}", assemblyPath);
+            _logger.LogDebug("No IJdAiPlugin types found in {Path}", SanitizeLogValue(assemblyPath));
             return null;
         }
 
@@ -90,7 +100,7 @@ public sealed class PluginLoader
             LoadedAt: DateTimeOffset.UtcNow);
 
         _logger.LogInformation("Loaded plugin: {Name} v{Version} from {Path}",
-            loaded.Name, loaded.Version, assemblyPath);
+            SanitizeLogValue(loaded.Name), loaded.Version, SanitizeLogValue(assemblyPath));
 
         return loaded;
     }
@@ -112,7 +122,7 @@ public sealed class PluginLoader
         await target.Plugin.ShutdownAsync(ct).ConfigureAwait(false);
         target.LoadContext.Unload();
 
-        _logger.LogInformation("Unloaded plugin: {Name}", name);
+        _logger.LogInformation("Unloaded plugin: {Name}", SanitizeLogValue(name));
     }
 
     /// <summary>Get all loaded plugins.</summary>
