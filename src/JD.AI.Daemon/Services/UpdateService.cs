@@ -45,8 +45,15 @@ public sealed class UpdateService : BackgroundService
     {
         _logger.LogInformation("Update service started (check interval: {Interval})", _config.CheckInterval);
 
-        // Initial delay — let the gateway stabilize
-        await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+        try
+        {
+            // Initial delay — let the gateway stabilize
+            await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            return;
+        }
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -74,7 +81,14 @@ public sealed class UpdateService : BackgroundService
                 _logger.LogWarning(ex, "Update check cycle failed");
             }
 
-            await Task.Delay(_config.CheckInterval, stoppingToken);
+            try
+            {
+                await Task.Delay(_config.CheckInterval, stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
         }
     }
 

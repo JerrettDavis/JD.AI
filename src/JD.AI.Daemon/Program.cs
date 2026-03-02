@@ -129,7 +129,15 @@ static IServiceManager CreateServiceManager()
 
 static void RunDaemon(string[] args)
 {
-    var builder = WebApplication.CreateBuilder(args);
+    // When running as a dotnet global tool, the working directory won't contain
+    // appsettings.json or wwwroot. Set content root to the assembly's directory.
+    var assemblyDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+    var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+    {
+        Args = args,
+        ContentRootPath = assemblyDir,
+        WebRootPath = Path.Combine(assemblyDir, "wwwroot"),
+    });
 
     // Ensure Blazor WASM static assets resolve in all environments (not just Development)
     if (!builder.Environment.IsDevelopment())
