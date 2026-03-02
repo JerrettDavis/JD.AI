@@ -316,8 +316,7 @@ static void RunDaemon(string[] args)
         app.UseMiddleware<RateLimitMiddleware>();
 
     // --- Blazor WASM Dashboard (static files at root) ---
-    app.UseBlazorFrameworkFiles();
-    app.UseStaticFiles();
+    app.MapStaticAssets();
 
     if (app.Environment.IsDevelopment())
         app.MapOpenApi();

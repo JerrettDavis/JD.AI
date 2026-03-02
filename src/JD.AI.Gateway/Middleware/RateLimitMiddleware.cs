@@ -12,7 +12,19 @@ public sealed class RateLimitMiddleware(RequestDelegate next, IRateLimiter rateL
         var path = context.Request.Path.Value ?? "";
 
         if (path.StartsWith("/health", StringComparison.OrdinalIgnoreCase) ||
-            path.StartsWith("/ready", StringComparison.OrdinalIgnoreCase))
+            path.StartsWith("/ready", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/_framework", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/_content", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/css", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/js", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".js", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".css", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".wasm", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".json", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".ico", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(path, "/", StringComparison.Ordinal))
         {
             await next(context);
             return;
