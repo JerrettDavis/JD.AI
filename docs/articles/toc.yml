@@ -32,6 +32,8 @@
   href: dashboard.md
 - name: OpenClaw Integration
   href: openclaw-integration.md
+- name: Service Deployment
+  href: service-deployment.md
 - name: Skills, Plugins, and Hooks
   href: skills-and-plugins.md
 - name: Clipboard and Input

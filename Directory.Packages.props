@@ -45,6 +45,7 @@
   <ItemGroup>
     <PackageVersion Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.3" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Systemd" Version="10.0.3" />
+    <PackageVersion Include="System.CommandLine" Version="2.0.3" />
   </ItemGroup>
   <!-- Testing -->
   <ItemGroup>
