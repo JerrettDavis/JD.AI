@@ -1,5 +1,7 @@
 using JD.AI.Daemon.Config;
 using JD.AI.Daemon.Services;
+using Microsoft.Extensions.DependencyInjection;
+using DaemonUpdateChecker = JD.AI.Daemon.Services.UpdateChecker;
 using DaemonUpdateInfo = JD.AI.Daemon.Services.UpdateInfo;
 
 namespace JD.AI.Tests;
@@ -145,5 +147,90 @@ public sealed class DaemonServiceTests
         Assert.True(
             status.State is ServiceState.NotInstalled or ServiceState.Unknown,
             $"Expected NotInstalled or Unknown, got {status.State}");
+    }
+
+    // ── UpdateChecker version comparison ───────────────────────────
+    [Fact]
+    public void UpdateChecker_CurrentVersion_ReturnsNonNull()
+    {
+        var services = new ServiceCollection();
+        services.Configure<UpdateConfig>(_ => { });
+        services.AddHttpClient("NuGet");
+        services.AddLogging();
+        services.AddSingleton<DaemonUpdateChecker>();
+        using var sp = services.BuildServiceProvider();
+
+        var checker = sp.GetRequiredService<DaemonUpdateChecker>();
+        Assert.NotNull(checker.CurrentVersion);
+    }
+
+    [Fact]
+    public async Task UpdateChecker_CheckForUpdate_HandlesInvalidFeedGracefully()
+    {
+        var services = new ServiceCollection();
+        services.Configure<UpdateConfig>(c => c.NuGetFeedUrl = "https://invalid.example.com/");
+        services.AddHttpClient("NuGet");
+        services.AddLogging();
+        services.AddSingleton<DaemonUpdateChecker>();
+        using var sp = services.BuildServiceProvider();
+
+        var checker = sp.GetRequiredService<DaemonUpdateChecker>();
+        var result = await checker.CheckForUpdateAsync();
+
+        // Should return null gracefully, not throw
+        Assert.Null(result);
+    }
+
+    // ── UpdateService draining state ───────────────────────────────
+    [Fact]
+    public void UpdateService_InitialState_NotDraining()
+    {
+        var services = new ServiceCollection();
+        services.Configure<UpdateConfig>(_ => { });
+        services.AddHttpClient("NuGet");
+        services.AddLogging();
+        services.AddSingleton<DaemonUpdateChecker>();
+        services.AddSingleton<JD.AI.Core.Events.IEventBus, JD.AI.Core.Events.InProcessEventBus>();
+        services.AddSingleton<Microsoft.Extensions.Hosting.IHostApplicationLifetime>(
+            NSubstitute.Substitute.For<Microsoft.Extensions.Hosting.IHostApplicationLifetime>());
+        services.AddSingleton<UpdateService>();
+        using var sp = services.BuildServiceProvider();
+
+        var svc = sp.GetRequiredService<UpdateService>();
+        Assert.False(svc.IsDraining);
+        Assert.Null(svc.PendingUpdate);
+    }
+
+    // ── ServiceResult record equality ──────────────────────────────
+    [Fact]
+    public void ServiceResult_RecordEquality()
+    {
+        var a = new ServiceResult(true, "OK");
+        var b = new ServiceResult(true, "OK");
+        Assert.Equal(a, b);
+        Assert.NotEqual(a, new ServiceResult(false, "OK"));
+    }
+
+    [Fact]
+    public void ServiceStatus_RecordEquality()
+    {
+        var a = new ServiceStatus(ServiceState.Running, "1.0.0", null, null);
+        var b = new ServiceStatus(ServiceState.Running, "1.0.0", null, null);
+        Assert.Equal(a, b);
+    }
+
+    // ── Windows ServiceManager logs ────────────────────────────────
+    [Fact]
+    public async Task WindowsServiceManager_ShowLogs_DoesNotThrow()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        var mgr = new WindowsServiceManager();
+        var result = await mgr.ShowLogsAsync(10);
+
+        // Should return a result regardless of whether event log has entries
+        Assert.NotNull(result);
+        Assert.NotNull(result.Message);
     }
 }
