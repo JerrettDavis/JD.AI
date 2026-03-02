@@ -43,33 +43,33 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
         return cmd switch
         {
-            "/HELP" => GetHelp(),
-            "/MODELS" => await ListModelsAsync(ct).ConfigureAwait(false),
-            "/MODEL" => await SwitchModelAsync(arg, ct).ConfigureAwait(false),
-            "/PROVIDERS" => await ListProvidersAsync(ct).ConfigureAwait(false),
-            "/PROVIDER" => GetCurrentProvider(),
-            "/CLEAR" => ClearHistory(),
-            "/COMPACT" => await CompactAsync(ct).ConfigureAwait(false),
-            "/COST" => GetCost(),
-            "/AUTORUN" => ToggleAutoRun(arg),
-            "/PERMISSIONS" => TogglePermissions(arg),
-            "/SESSIONS" => await ListSessionsAsync(ct).ConfigureAwait(false),
-            "/RESUME" => await ResumeSessionAsync(arg, ct).ConfigureAwait(false),
-            "/NAME" => NameSession(arg),
-            "/HISTORY" => ShowHistory(),
-            "/EXPORT" => await ExportSessionAsync(ct).ConfigureAwait(false),
-            "/UPDATE" => await CheckUpdateAsync(ct).ConfigureAwait(false),
-            "/INSTRUCTIONS" => ShowInstructions(),
-            "/PLUGINS" => ShowPlugins(),
-            "/CHECKPOINT" => await HandleCheckpointAsync(arg, ct).ConfigureAwait(false),
-            "/SANDBOX" => ShowSandboxInfo(),
-            "/QUIT" or "/EXIT" => null, // Signal exit
+            "/HELP" or "/JDAI-HELP" => GetHelp(),
+            "/MODELS" or "/JDAI-MODELS" => await ListModelsAsync(ct).ConfigureAwait(false),
+            "/MODEL" or "/JDAI-MODEL" => await SwitchModelAsync(arg, ct).ConfigureAwait(false),
+            "/PROVIDERS" or "/JDAI-PROVIDERS" => await ListProvidersAsync(ct).ConfigureAwait(false),
+            "/PROVIDER" or "/JDAI-PROVIDER" => GetCurrentProvider(),
+            "/CLEAR" or "/JDAI-CLEAR" => ClearHistory(),
+            "/COMPACT" or "/JDAI-COMPACT" => await CompactAsync(ct).ConfigureAwait(false),
+            "/COST" or "/JDAI-COST" => GetCost(),
+            "/AUTORUN" or "/JDAI-AUTORUN" => ToggleAutoRun(arg),
+            "/PERMISSIONS" or "/JDAI-PERMISSIONS" => TogglePermissions(arg),
+            "/SESSIONS" or "/JDAI-SESSIONS" => await ListSessionsAsync(ct).ConfigureAwait(false),
+            "/RESUME" or "/JDAI-RESUME" => await ResumeSessionAsync(arg, ct).ConfigureAwait(false),
+            "/NAME" or "/JDAI-NAME" => NameSession(arg),
+            "/HISTORY" or "/JDAI-HISTORY" => ShowHistory(),
+            "/EXPORT" or "/JDAI-EXPORT" => await ExportSessionAsync(ct).ConfigureAwait(false),
+            "/UPDATE" or "/JDAI-UPDATE" => await CheckUpdateAsync(ct).ConfigureAwait(false),
+            "/INSTRUCTIONS" or "/JDAI-INSTRUCTIONS" => ShowInstructions(),
+            "/PLUGINS" or "/JDAI-PLUGINS" => ShowPlugins(),
+            "/CHECKPOINT" or "/JDAI-CHECKPOINT" => await HandleCheckpointAsync(arg, ct).ConfigureAwait(false),
+            "/SANDBOX" or "/JDAI-SANDBOX" => ShowSandboxInfo(),
+            "/QUIT" or "/EXIT" or "/JDAI-QUIT" or "/JDAI-EXIT" => null, // Signal exit
             _ => $"Unknown command: {parts[0]}. Type /help for available commands.",
         };
     }
 
     private static string GetHelp() => """
-        Available commands:
+        Available commands (all accept /jdai- prefix, e.g. /jdai-config):
           /help           — Show this help
           /models         — Browse and switch models interactively
           /model [id]     — Switch model (interactive picker or by name)
