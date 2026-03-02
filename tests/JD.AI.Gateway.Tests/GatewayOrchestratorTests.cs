@@ -26,7 +26,7 @@ public sealed class GatewayOrchestratorTests
         _events = new InProcessEventBus();
 
         var providerRegistry = Substitute.For<IProviderRegistry>();
-        _pool = new AgentPoolService(providerRegistry, _events);
+        _pool = new AgentPoolService(providerRegistry, _events, NullLogger<AgentPoolService>.Instance);
         _router = new AgentRouter(_pool, _channels, _events, NullLogger<AgentRouter>.Instance);
 
         var sp = Substitute.For<IServiceProvider>();

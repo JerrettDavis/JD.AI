@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using JD.AI.Core.Events;
 using JD.AI.Core.Providers;
 using JD.AI.Gateway.Config;
+using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
@@ -16,12 +17,22 @@ public sealed class AgentPoolService : IHostedService
 {
     private readonly IProviderRegistry _providers;
     private readonly IEventBus _eventBus;
+    private readonly ILogger<AgentPoolService> _logger;
     private readonly ConcurrentDictionary<string, AgentInstance> _agents = new();
 
-    public AgentPoolService(IProviderRegistry providers, IEventBus eventBus)
+    /// <summary>Maximum retry attempts for transient Ollama errors.</summary>
+    internal const int MaxRetries = 3;
+
+    /// <summary>Base delay between retries (doubles each attempt).</summary>
+    internal static readonly TimeSpan BaseRetryDelay = TimeSpan.FromSeconds(2);
+
+    public AgentPoolService(
+        IProviderRegistry providers, IEventBus eventBus,
+        ILogger<AgentPoolService> logger)
     {
         _providers = providers;
         _eventBus = eventBus;
+        _logger = logger;
     }
 
     public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -76,9 +87,11 @@ public sealed class AgentPoolService : IHostedService
 
         agent.History.AddUserMessage(message);
         var chat = agent.Kernel.GetRequiredService<IChatCompletionService>();
-
         var settings = BuildExecutionSettings(agent.Parameters);
-        var response = await chat.GetChatMessageContentAsync(agent.History, settings, cancellationToken: ct);
+
+        var response = await SendWithRetryAsync(
+            chat, agent, settings, ct).ConfigureAwait(false);
+
         agent.History.AddAssistantMessage(response.Content ?? "");
         agent.TurnCount++;
 
@@ -87,6 +100,81 @@ public sealed class AgentPoolService : IHostedService
                 new { Turn = agent.TurnCount }), ct);
 
         return response.Content;
+    }
+
+    /// <summary>
+    /// Sends a chat completion request with exponential-backoff retry for
+    /// transient Ollama errors (model runner crash, 500s, connection resets).
+    /// </summary>
+    internal async Task<ChatMessageContent> SendWithRetryAsync(
+        IChatCompletionService chat, AgentInstance agent,
+        OpenAIPromptExecutionSettings settings, CancellationToken ct)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                return await chat.GetChatMessageContentAsync(
+                    agent.History, settings, cancellationToken: ct).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (attempt < MaxRetries && IsTransientOllamaError(ex) && !ct.IsCancellationRequested)
+            {
+                var delay = BaseRetryDelay * Math.Pow(2, attempt);
+                _logger.LogWarning(
+                    "Ollama transient error on attempt {Attempt}/{MaxRetries}: {Error}. Retrying in {Delay}s...",
+                    attempt + 1, MaxRetries, ex.Message, delay.TotalSeconds);
+
+                await _eventBus.PublishAsync(
+                    new GatewayEvent("agent.retry", agent.Id, DateTimeOffset.UtcNow,
+                        new { Attempt = attempt + 1, MaxRetries, Reason = ex.Message }), ct);
+
+                await Task.Delay(delay, ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Determines whether an exception represents a transient Ollama error
+    /// that is likely to succeed on retry (model runner crash, resource limits,
+    /// connection reset, timeout).
+    /// </summary>
+    internal static bool IsTransientOllamaError(Exception ex)
+    {
+        // Walk the exception chain for inner causes
+        for (var current = ex; current is not null; current = current.InnerException)
+        {
+            var msg = current.Message;
+
+            // Ollama model runner crash (500 with specific message)
+            if (msg.Contains("model runner", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            // Resource-related crashes
+            if (msg.Contains("resource limitations", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            // Generic 500 from Ollama
+            if (msg.Contains("500", StringComparison.Ordinal) &&
+                msg.Contains("error", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            // Connection reset / refused (Ollama process restarting)
+            if (current is HttpRequestException hrex &&
+                (hrex.StatusCode == System.Net.HttpStatusCode.InternalServerError ||
+                 hrex.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable ||
+                 hrex.StatusCode == System.Net.HttpStatusCode.BadGateway))
+                return true;
+
+            // Socket-level errors (ECONNRESET, ECONNREFUSED)
+            if (current is System.Net.Sockets.SocketException)
+                return true;
+
+            // I/O errors during streaming
+            if (current is IOException)
+                return true;
+        }
+
+        return false;
     }
 
     public void StopAgent(string agentId)
@@ -124,7 +212,7 @@ public sealed class AgentPoolService : IHostedService
         return settings;
     }
 
-    private sealed class AgentInstance(
+    internal sealed class AgentInstance(
         string id, string provider, string model,
         Kernel kernel, ChatHistory history,
         ModelParameters? parameters = null)
