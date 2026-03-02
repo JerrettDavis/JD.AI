@@ -213,6 +213,23 @@ static void RunDaemon(string[] args)
         registry.Register(new AgentsCommand(
             sp.GetRequiredService<AgentPoolService>(),
             sp.GetRequiredService<AgentRouter>()));
+        registry.Register(new RouteCommand(
+            sp.GetRequiredService<AgentRouter>(),
+            sp.GetRequiredService<AgentPoolService>()));
+        registry.Register(new RoutesCommand(
+            sp.GetRequiredService<AgentRouter>(),
+            sp.GetRequiredService<AgentPoolService>()));
+        registry.Register(new ProvidersCommand(
+            sp.GetRequiredService<IProviderRegistry>()));
+        registry.Register(new ProviderCommand(
+            sp.GetRequiredService<AgentRouter>(),
+            sp.GetRequiredService<AgentPoolService>(),
+            sp.GetRequiredService<IProviderRegistry>()));
+        registry.Register(new ConfigCommand(
+            sp.GetRequiredService<AgentRouter>(),
+            sp.GetRequiredService<AgentPoolService>(),
+            sp.GetRequiredService<IChannelRegistry>(),
+            sp.GetRequiredService<IProviderRegistry>()));
         return registry;
     });
     builder.Services.AddSingleton<IVectorStore>(_ =>
