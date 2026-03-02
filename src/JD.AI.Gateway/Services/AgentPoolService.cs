@@ -97,7 +97,7 @@ public sealed class AgentPoolService : IHostedService
     public IProviderDetector? GetDetector(string provider) =>
         _providers.GetDetector(provider);
 
-    private static OpenAIPromptExecutionSettings BuildExecutionSettings(ModelParameters? p)
+    internal static OpenAIPromptExecutionSettings BuildExecutionSettings(ModelParameters? p)
     {
         var settings = new OpenAIPromptExecutionSettings
         {

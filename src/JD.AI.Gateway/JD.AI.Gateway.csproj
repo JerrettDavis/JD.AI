@@ -12,6 +12,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="JD.AI.Gateway.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\JD.AI.Core\JD.AI.Core.csproj" />
     <ProjectReference Include="..\JD.AI.Plugins.SDK\JD.AI.Plugins.SDK.csproj" />
     <ProjectReference Include="..\JD.AI.Channels.Discord\JD.AI.Channels.Discord.csproj" />
