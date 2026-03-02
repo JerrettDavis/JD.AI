@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.SignalR.Client;
 using JD.AI.Dashboard.Wasm.Models;
+using Microsoft.AspNetCore.SignalR.Client;
 
 namespace JD.AI.Dashboard.Wasm.Services;
 
