@@ -26,7 +26,7 @@ public static class ServiceCollectionExtensions
         if (string.IsNullOrEmpty(config.DeviceId))
         {
             var stateDir = config.OpenClawStateDir
-                ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".openclaw");
+                ?? ResolveOpenClawStateDir();
 
             LoadDeviceIdentity(config, stateDir);
         }
@@ -124,5 +124,49 @@ public static class ServiceCollectionExtensions
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Resolves the OpenClaw state directory, scanning user profiles when
+    /// running as a service account (LocalSystem, root, etc.).
+    /// </summary>
+    private static string ResolveOpenClawStateDir()
+    {
+        var userHome = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (!string.IsNullOrEmpty(userHome))
+        {
+            var candidate = Path.Combine(userHome, ".openclaw");
+            if (Directory.Exists(candidate))
+                return candidate;
+        }
+
+        // Scan user profiles (same logic as DataDirectories)
+        string? profilesRoot = null;
+        if (OperatingSystem.IsWindows())
+        {
+            var systemDrive = Environment.GetEnvironmentVariable("SystemDrive") ?? "C:";
+            profilesRoot = Path.Combine(systemDrive, "Users");
+        }
+        else if (OperatingSystem.IsLinux())
+            profilesRoot = "/home";
+        else if (OperatingSystem.IsMacOS())
+            profilesRoot = "/Users";
+
+        if (profilesRoot is not null && Directory.Exists(profilesRoot))
+        {
+            try
+            {
+                foreach (var dir in Directory.EnumerateDirectories(profilesRoot))
+                {
+                    var candidate = Path.Combine(dir, ".openclaw");
+                    if (Directory.Exists(candidate))
+                        return candidate;
+                }
+            }
+            catch (UnauthorizedAccessException) { }
+        }
+
+        // Fallback to current user's home
+        return Path.Combine(userHome ?? ".", ".openclaw");
     }
 }

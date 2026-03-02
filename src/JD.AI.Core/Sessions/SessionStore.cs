@@ -18,10 +18,7 @@ public sealed class SessionStore : IDisposable
         _connectionString = $"Data Source={dbPath}";
     }
 
-    private static string GetDefaultDbPath() =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".jdai", "sessions.db");
+    private static string GetDefaultDbPath() => Config.DataDirectories.SessionsDb;
 
     private async Task<SqliteConnection> GetConnectionAsync()
     {

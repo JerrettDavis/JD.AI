@@ -3,6 +3,7 @@ using JD.AI.Channels.OpenClaw;
 using JD.AI.Channels.OpenClaw.Routing;
 using JD.AI.Gateway.Config;
 using JD.AI.Core.Channels;
+using JD.AI.Core.Config;
 using JD.AI.Core.Commands;
 using JD.AI.Core.Events;
 using JD.AI.Core.Memory;
@@ -141,6 +142,14 @@ static void RunDaemon(string[] args)
     });
     builder.Services.AddSystemd();
 
+    // --- Data directory (resolve before other services reference it) ---
+    var configuredDataDir = builder.Configuration["DataDir"];
+    if (!string.IsNullOrWhiteSpace(configuredDataDir))
+        DataDirectories.SetRoot(configuredDataDir);
+
+    var logger = LoggerFactory.Create(lb => lb.AddConsole()).CreateLogger("Startup");
+    logger.LogInformation("Data directory: {DataDir}", DataDirectories.Root);
+
     // Update configuration
     builder.Services.Configure<UpdateConfig>(
         builder.Configuration.GetSection("Updates"));
@@ -171,9 +180,7 @@ static void RunDaemon(string[] args)
     builder.Services.AddSingleton<IProviderRegistry>(sp =>
         new ProviderRegistry(sp.GetServices<IProviderDetector>()));
     builder.Services.AddSingleton<SessionStore>(_ =>
-        new SessionStore(Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".jdai", "sessions.db")));
+        new SessionStore(DataDirectories.SessionsDb));
     builder.Services.AddSingleton<AgentPoolService>();
     builder.Services.AddHostedService(sp => sp.GetRequiredService<AgentPoolService>());
 
@@ -201,9 +208,7 @@ static void RunDaemon(string[] args)
         return registry;
     });
     builder.Services.AddSingleton<IVectorStore>(_ =>
-        new SqliteVectorStore(Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".jdai", "vectors.db")));
+        new SqliteVectorStore(DataDirectories.VectorsDb));
 
     // --- Channel factory & orchestrator ---
     builder.Services.AddSingleton<ChannelFactory>();
