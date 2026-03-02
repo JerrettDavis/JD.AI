@@ -62,19 +62,15 @@ public sealed class SlashCommandRouterTests
     }
 
     [Fact]
-    public async Task Models_ListsAvailableModels()
+    public async Task Models_NoModels_ReturnsTextFallback()
     {
         _registry.GetModelsAsync(Arg.Any<CancellationToken>())
-            .Returns([
-                new ProviderModelInfo("m1", "Model One", "Provider1"),
-                new ProviderModelInfo("m2", "Model Two", "Provider2"),
-            ]);
+            .Returns(new List<ProviderModelInfo>());
 
         var result = await _router.ExecuteAsync("/models");
 
         Assert.NotNull(result);
-        Assert.Contains("m1", result);
-        Assert.Contains("m2", result);
+        Assert.Contains("No models", result);
     }
 
     [Fact]
@@ -117,12 +113,15 @@ public sealed class SlashCommandRouterTests
     }
 
     [Fact]
-    public async Task Model_RequiresArgument()
+    public async Task Model_NoArgs_NoModels_ReturnsMessage()
     {
+        _registry.GetModelsAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<ProviderModelInfo>());
+
         var result = await _router.ExecuteAsync("/model");
 
         Assert.NotNull(result);
-        Assert.Contains("Usage", result);
+        Assert.Contains("No models", result);
     }
 
     [Fact]

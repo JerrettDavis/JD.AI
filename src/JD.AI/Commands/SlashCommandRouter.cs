@@ -3,6 +3,7 @@ using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Sessions;
+using JD.AI.Rendering;
 
 namespace JD.AI.Commands;
 
@@ -70,8 +71,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private static string GetHelp() => """
         Available commands:
           /help           — Show this help
-          /models         — List available models
-          /model <id>     — Switch to a model
+          /models         — Browse and switch models interactively
+          /model [id]     — Switch model (interactive picker or by name)
           /providers      — List detected providers
           /provider       — Show current provider
           /clear          — Clear chat history
@@ -100,30 +101,47 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             return "No models available. Check provider authentication.";
         }
 
-        var lines = models.Select(m =>
+        var selected = ModelPicker.Pick(models, _session.CurrentModel);
+        if (selected != null && !string.Equals(selected.Id, _session.CurrentModel?.Id, StringComparison.Ordinal))
         {
-            var active = string.Equals(m.Id, _session.CurrentModel?.Id, StringComparison.Ordinal)
-                ? " ◄ active" : "";
-            return $"  [{m.ProviderName}] {m.Id}{active}";
-        });
+            _session.SwitchModel(selected);
+            return $"Switched to {selected.DisplayName} ({selected.ProviderName})";
+        }
 
-        return $"Available models:\n{string.Join('\n', lines)}";
+        return selected != null
+            ? $"Current model: {selected.DisplayName} ({selected.ProviderName})"
+            : "No model selected.";
     }
 
     private async Task<string> SwitchModelAsync(string? modelId, CancellationToken ct)
     {
+        var models = await _registry.GetModelsAsync(ct).ConfigureAwait(false);
+
+        // No argument: show interactive picker
         if (string.IsNullOrWhiteSpace(modelId))
         {
-            return "Usage: /model <model-id>";
+            if (models.Count == 0)
+            {
+                return "No models available. Check provider authentication.";
+            }
+
+            var selected = ModelPicker.Pick(models, _session.CurrentModel);
+            if (selected != null)
+            {
+                _session.SwitchModel(selected);
+                return $"Switched to {selected.DisplayName} ({selected.ProviderName})";
+            }
+
+            return "Model selection cancelled.";
         }
 
-        var models = await _registry.GetModelsAsync(ct).ConfigureAwait(false);
+        // With argument: fuzzy match like before
         var model = models.FirstOrDefault(m =>
             m.Id.Contains(modelId, StringComparison.OrdinalIgnoreCase));
 
         if (model is null)
         {
-            return $"Model '{modelId}' not found. Use /models to see available models.";
+            return $"Model '{modelId}' not found. Use /models to browse interactively.";
         }
 
         _session.SwitchModel(model);
