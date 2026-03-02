@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using JD.AI.Core.Commands;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -24,6 +25,7 @@ public sealed class OpenClawRoutingService : BackgroundService
     private readonly OpenClawRoutingConfig _routingConfig;
     private readonly Dictionary<OpenClawRoutingMode, IOpenClawModeHandler> _handlers;
     private readonly Func<string, string, Task<string?>> _messageProcessor;
+    private readonly ICommandRegistry? _commandRegistry;
     private readonly ILogger<OpenClawRoutingService> _logger;
 
     /// <summary>
@@ -37,18 +39,23 @@ public sealed class OpenClawRoutingService : BackgroundService
     /// <summary>Stores recent events for diagnostic inspection.</summary>
     private readonly ConcurrentQueue<(DateTimeOffset Time, string EventName, string Summary)> _recentEvents = new();
 
+    /// <summary>Command prefix for JD.AI commands routed through OpenClaw.</summary>
+    private const string JdaiCommandPrefix = "/jdai-";
+
     public OpenClawRoutingService(
         OpenClawBridgeChannel bridge,
         IOptions<OpenClawRoutingConfig> routingConfig,
         IEnumerable<IOpenClawModeHandler> handlers,
         Func<string, string, Task<string?>> messageProcessor,
-        ILogger<OpenClawRoutingService> logger)
+        ILogger<OpenClawRoutingService> logger,
+        ICommandRegistry? commandRegistry = null)
     {
         _bridge = bridge;
         _routingConfig = routingConfig.Value;
         _handlers = handlers.ToDictionary(h => h.Mode);
         _messageProcessor = messageProcessor;
         _logger = logger;
+        _commandRegistry = commandRegistry;
     }
 
     /// <summary>Gets recent events for diagnostic inspection.</summary>
@@ -212,6 +219,10 @@ public sealed class OpenClawRoutingService : BackgroundService
             userMessage.Length > 80 ? userMessage[..80] + "..." : userMessage,
             sessionKey);
 
+        // Intercept /jdai- commands before they reach the mode handler
+        if (await TryHandleJdaiCommandAsync(userMessage, sessionKey, ct))
+            return;
+
         // Determine channel from session key or cache
         var channelName = ResolveChannelName(sessionKey);
 
@@ -269,6 +280,94 @@ public sealed class OpenClawRoutingService : BackgroundService
         }
 
         await handler.HandleAsync(evt, channelName, routeConfig, _bridge, _messageProcessor, ct);
+    }
+
+    /// <summary>
+    /// Intercepts /jdai- prefixed commands, aborts OpenClaw's agent, executes the
+    /// gateway command, and injects the result back into the OpenClaw session.
+    /// Returns true if the message was a command and was handled.
+    /// </summary>
+    private async Task<bool> TryHandleJdaiCommandAsync(string message, string sessionKey, CancellationToken ct)
+    {
+        if (_commandRegistry is null)
+            return false;
+
+        if (!message.StartsWith(JdaiCommandPrefix, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        // Parse "/jdai-config arg1 arg2" → commandName="config", args=["arg1","arg2"]
+        var withoutPrefix = message[JdaiCommandPrefix.Length..];
+        var parts = withoutPrefix.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0)
+            return false;
+
+        var commandName = parts[0];
+        var command = _commandRegistry.GetCommand(commandName);
+        if (command is null)
+        {
+            _logger.LogDebug("[Command] Unknown jdai command: {Name}", commandName);
+            var errorMsg = $"Unknown jdai command: {commandName}. Use /jdai-help to see available commands.";
+            await AbortAndInjectAsync(sessionKey, errorMsg, ct);
+            return true;
+        }
+
+        _logger.LogInformation("[Command] Executing /jdai-{Name} for session '{Session}'", commandName, sessionKey);
+
+        // Map positional arguments
+        var args = new Dictionary<string, string>();
+        for (var i = 1; i < parts.Length && i - 1 < command.Parameters.Count; i++)
+        {
+            args[command.Parameters[i - 1].Name] = parts[i];
+        }
+
+        var context = new CommandContext
+        {
+            CommandName = commandName,
+            InvokerId = sessionKey,
+            InvokerDisplayName = "OpenClaw User",
+            ChannelId = $"openclaw-{sessionKey}",
+            ChannelType = "openclaw",
+            Arguments = args,
+        };
+
+        try
+        {
+            // Abort OpenClaw's own agent so it doesn't also respond
+            await AbortAndInjectAsync(sessionKey, null, ct);
+
+            var result = await command.ExecuteAsync(context, ct);
+            await _bridge.InjectMessageAsync(sessionKey, result.Content, ct);
+
+            _logger.LogInformation("[Command] /jdai-{Name} completed for session '{Session}'", commandName, sessionKey);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[Command] Error executing /jdai-{Name}", commandName);
+            await _bridge.InjectMessageAsync(sessionKey, $"Command error: {ex.Message}", ct);
+        }
+
+        return true;
+    }
+
+    /// <summary>Aborts the OpenClaw agent and optionally injects a message.</summary>
+    private async Task AbortAndInjectAsync(string sessionKey, string? message, CancellationToken ct)
+    {
+        if (_bridge.IsConnected)
+        {
+            try
+            {
+                await _bridge.AbortSessionAsync(sessionKey, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to abort agent for '{Session}'", sessionKey);
+            }
+        }
+
+        if (message != null && _bridge.IsConnected)
+        {
+            await _bridge.InjectMessageAsync(sessionKey, message, ct);
+        }
     }
 
     /// <summary>
