@@ -353,6 +353,10 @@ if (pendingUpdate is not null)
     AnsiConsole.WriteLine();
 }
 
+// 11c. Wire up SpectreAgentOutput so streaming renders in the TUI
+using var spectreOutput = new SpectreAgentOutput();
+AgentOutput.Current = spectreOutput;
+
 // 12. Main interaction loop
 var agentLoop = new AgentLoop(session);
 var appCts = new CancellationTokenSource();
