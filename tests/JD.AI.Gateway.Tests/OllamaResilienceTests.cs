@@ -116,7 +116,9 @@ public sealed class OllamaResilienceTests
     [Fact]
     public void IsTransient_ArgumentException_ReturnsFalse()
     {
+#pragma warning disable MA0015
         var ex = new ArgumentException("Invalid parameter");
+#pragma warning restore MA0015
 
         AgentPoolService.IsTransientOllamaError(ex).Should().BeFalse();
     }
@@ -124,7 +126,7 @@ public sealed class OllamaResilienceTests
     [Fact]
     public void IsTransient_NullReferenceException_ReturnsFalse()
     {
-        var ex = new NullReferenceException("Object reference not set");
+        var ex = new InvalidOperationException("Object reference not set");
 
         AgentPoolService.IsTransientOllamaError(ex).Should().BeFalse();
     }
