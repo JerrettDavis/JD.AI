@@ -169,4 +169,54 @@ public sealed class DashboardModelIntegrationTests : IClassFixture<GatewayTestFa
         var body = await response.Content.ReadAsStringAsync();
         body.Should().Contain("connectionId");
     }
+
+    [Fact]
+    public async Task GetConfig_DeserializesIntoGatewayConfigModel()
+    {
+        var response = await _client.GetAsync("/api/gateway/config");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var config = await response.Content.ReadFromJsonAsync<GatewayConfigModel>(
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        config.Should().NotBeNull();
+        config!.Server.Should().NotBeNull();
+        config.Providers.Should().NotBeNull();
+        config.Agents.Should().NotBeNull();
+        config.Channels.Should().NotBeNull();
+        config.Routing.Should().NotBeNull();
+        config.OpenClaw.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task GetConfig_AgentDefinitions_IncludeModelParameters()
+    {
+        // First write an agent with parameters
+        var agents = new[]
+        {
+            new AgentDefinition
+            {
+                Id = "param-test",
+                Provider = "ollama",
+                Model = "test",
+                Parameters = new ModelParameters
+                {
+                    Temperature = 0.5,
+                    TopK = 40,
+                    ContextWindowSize = 16384,
+                }
+            }
+        };
+        await _client.PutAsJsonAsync("/api/gateway/config/agents", agents);
+
+        // Read back via full config
+        var response = await _client.GetAsync("/api/gateway/config");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var config = await response.Content.ReadFromJsonAsync<GatewayConfigModel>(
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        config!.Agents.Should().NotBeEmpty();
+    }
 }

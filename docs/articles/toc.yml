@@ -28,6 +28,8 @@
   href: channels.md
 - name: Plugin SDK
   href: plugins.md
+- name: Admin Dashboard
+  href: dashboard.md
 - name: OpenClaw Integration
   href: openclaw-integration.md
 - name: Skills, Plugins, and Hooks
