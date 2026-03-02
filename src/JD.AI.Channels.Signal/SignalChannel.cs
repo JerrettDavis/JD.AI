@@ -22,6 +22,9 @@ public sealed class SignalChannel : IChannel, ICommandAwareChannel
     /// <summary>Prefix for Signal commands (e.g., "!jdai-help").</summary>
     public const string CommandPrefix = "!jdai-";
 
+    /// <summary>Alternate slash prefix (e.g., "/jdai-help").</summary>
+    public const string SlashPrefix = "/jdai-";
+
     public SignalChannel(string account, string? signalCliPath = null)
     {
         _account = account;
@@ -131,9 +134,10 @@ public sealed class SignalChannel : IChannel, ICommandAwareChannel
                         ? name.GetString()
                         : null;
 
-                    // Check for command prefix
-                    if (content.StartsWith(CommandPrefix, StringComparison.OrdinalIgnoreCase)
-                        && _commandRegistry is not null)
+                    // Check for command prefix (!jdai- or /jdai-)
+                    if (_commandRegistry is not null &&
+                        (content.StartsWith(CommandPrefix, StringComparison.OrdinalIgnoreCase) ||
+                         content.StartsWith(SlashPrefix, StringComparison.OrdinalIgnoreCase)))
                     {
                         await HandleCommandAsync(content, senderId, senderName);
                         continue;
@@ -163,8 +167,10 @@ public sealed class SignalChannel : IChannel, ICommandAwareChannel
     {
         if (_commandRegistry is null) return;
 
-        // Parse "!jdai-help arg1 arg2" → command="help", args
-        var withoutPrefix = content[CommandPrefix.Length..];
+        // Strip whichever prefix was used (!jdai- or /jdai-)
+        var withoutPrefix = content.StartsWith(CommandPrefix, StringComparison.OrdinalIgnoreCase)
+            ? content[CommandPrefix.Length..]
+            : content[SlashPrefix.Length..];
         var parts = withoutPrefix.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length == 0) return;
 
