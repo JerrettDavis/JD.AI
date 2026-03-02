@@ -132,6 +132,47 @@ Show current sandbox/execution mode information.
 
 Exit JD.AI. Unsaved sessions are auto-saved.
 
+## Gateway Channel Commands
+
+The Gateway exposes commands natively on each connected channel. These work differently per platform:
+
+- **Discord**: Registered as native slash commands (e.g., `/jdai-help`)
+- **Signal**: Prefix commands (e.g., `!jdai-help`)
+- **Slack**: Native slash commands (e.g., `/jdai-help`)
+
+### `jdai-help`
+
+Lists all available gateway commands and their usage.
+
+### `jdai-usage`
+
+Shows current usage statistics — uptime, active agents, total turns, and per-agent breakdown.
+
+### `jdai-status`
+
+Shows agent and channel health status — connected channels and running agents with uptime.
+
+### `jdai-models`
+
+Lists available providers, configured agent models, and currently running agents.
+
+### `jdai-switch <model> [provider]`
+
+Spawns a new agent with the specified model. Provider defaults to the current agent's provider if omitted.
+
+```text
+jdai-switch gpt-4
+jdai-switch llama3.2:latest Ollama
+```
+
+### `jdai-clear [agent]`
+
+Clears conversation history for an agent (first 8 chars of ID). Clears all agents if omitted.
+
+### `jdai-agents`
+
+Lists all running agents, their models, turn counts, uptime, and routing table mappings.
+
 ## Quick Reference
 
 | Command | Description |
@@ -156,3 +197,15 @@ Exit JD.AI. Unsaved sessions are auto-saved.
 | `/checkpoint` | Manage checkpoints |
 | `/sandbox` | Sandbox info |
 | `/quit` | Exit |
+
+### Gateway Commands (Discord / Signal / Slack)
+
+| Command | Description |
+|---|---|
+| `jdai-help` | Show gateway commands |
+| `jdai-usage` | Usage statistics |
+| `jdai-status` | Agent/channel health |
+| `jdai-models` | List models/providers |
+| `jdai-switch <model>` | Switch agent model |
+| `jdai-clear [agent]` | Clear history |
+| `jdai-agents` | List running agents |

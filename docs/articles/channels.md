@@ -46,6 +46,27 @@ public interface IChannel : IAsyncDisposable
 | `SendMessageAsync` | Sends an outbound message to a specific conversation |
 | `MessageReceived` | Event raised when an inbound message arrives |
 
+## Command-Aware Channels
+
+Channels that support native command registration implement the `ICommandAwareChannel` interface:
+
+```csharp
+public interface ICommandAwareChannel
+{
+    Task RegisterCommandsAsync(ICommandRegistry registry, CancellationToken ct = default);
+}
+```
+
+The Gateway orchestrator automatically registers all `ICommandRegistry` commands with command-aware channels after connection. Currently, Discord, Signal, and Slack support this:
+
+| Channel | Command Style | Example |
+|---------|--------------|---------|
+| Discord | Native slash commands | `/jdai-help` |
+| Signal | Prefix commands | `!jdai-help` |
+| Slack | Native slash commands | `/jdai-help` |
+
+See the [Commands Reference](commands-reference.md#gateway-channel-commands) for the full list of gateway commands.
+
 ## ChannelMessage format
 
 All inbound messages are normalized into a `ChannelMessage` record:
