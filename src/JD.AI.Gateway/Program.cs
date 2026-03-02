@@ -1,12 +1,14 @@
 using JD.AI.Channels.OpenClaw;
 using JD.AI.Channels.OpenClaw.Routing;
 using JD.AI.Core.Channels;
+using JD.AI.Core.Commands;
 using JD.AI.Core.Events;
 using JD.AI.Core.Memory;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Security;
 using JD.AI.Core.Sessions;
+using JD.AI.Gateway.Commands;
 using JD.AI.Gateway.Config;
 using JD.AI.Gateway.Endpoints;
 using JD.AI.Gateway.Hubs;
@@ -49,6 +51,26 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<AgentPoolService>(
 // --- Plugin loader ---
 builder.Services.AddSingleton<PluginLoader>();
 builder.Services.AddSingleton<AgentRouter>();
+
+// --- Command system ---
+builder.Services.AddSingleton<ICommandRegistry>(sp =>
+{
+    var registry = new CommandRegistry();
+    registry.Register(new HelpCommand(registry));
+    registry.Register(new UsageCommand(sp.GetRequiredService<AgentPoolService>()));
+    registry.Register(new StatusCommand(
+        sp.GetRequiredService<AgentPoolService>(),
+        sp.GetRequiredService<IChannelRegistry>()));
+    registry.Register(new ModelsCommand(
+        sp.GetRequiredService<AgentPoolService>(),
+        sp.GetRequiredService<GatewayConfig>()));
+    registry.Register(new SwitchCommand(sp.GetRequiredService<AgentPoolService>()));
+    registry.Register(new ClearCommand(sp.GetRequiredService<AgentPoolService>()));
+    registry.Register(new AgentsCommand(
+        sp.GetRequiredService<AgentPoolService>(),
+        sp.GetRequiredService<AgentRouter>()));
+    return registry;
+});
 builder.Services.AddSingleton<IVectorStore>(_ =>
     new SqliteVectorStore(Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),

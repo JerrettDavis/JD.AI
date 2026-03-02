@@ -1,5 +1,6 @@
 using JD.AI.Channels.OpenClaw;
 using JD.AI.Core.Channels;
+using JD.AI.Core.Commands;
 using JD.AI.Core.Events;
 using JD.AI.Gateway.Config;
 
@@ -21,6 +22,7 @@ public sealed class GatewayOrchestrator : IHostedService
     private readonly ILogger<GatewayOrchestrator> _logger;
     private readonly OpenClawAgentRegistrar? _agentRegistrar;
     private readonly OpenClawBridgeChannel? _openClawBridge;
+    private readonly ICommandRegistry? _commandRegistry;
 
     // Track spawned agent IDs from config (definition.Id → pool agentId)
     private readonly Dictionary<string, string> _spawnedAgents = new(StringComparer.OrdinalIgnoreCase);
@@ -34,7 +36,8 @@ public sealed class GatewayOrchestrator : IHostedService
         IEventBus events,
         ILogger<GatewayOrchestrator> logger,
         OpenClawAgentRegistrar? agentRegistrar = null,
-        OpenClawBridgeChannel? openClawBridge = null)
+        OpenClawBridgeChannel? openClawBridge = null,
+        ICommandRegistry? commandRegistry = null)
     {
         _config = config;
         _channelFactory = channelFactory;
@@ -45,6 +48,7 @@ public sealed class GatewayOrchestrator : IHostedService
         _logger = logger;
         _agentRegistrar = agentRegistrar;
         _openClawBridge = openClawBridge;
+        _commandRegistry = commandRegistry;
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -63,10 +67,13 @@ public sealed class GatewayOrchestrator : IHostedService
         // Phase 4: Auto-connect channels marked for auto-connect
         await AutoConnectChannelsAsync(cancellationToken);
 
-        // Phase 5: Wire MessageReceived events to the router
+        // Phase 5: Register commands with command-aware channels
+        await RegisterChannelCommandsAsync(cancellationToken);
+
+        // Phase 6: Wire MessageReceived events to the router
         WireMessageRouting();
 
-        // Phase 6: Register JD.AI agents with OpenClaw
+        // Phase 7: Register JD.AI agents with OpenClaw
         await RegisterOpenClawAgentsAsync(cancellationToken);
 
         await _events.PublishAsync(
@@ -229,6 +236,30 @@ public sealed class GatewayOrchestrator : IHostedService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to auto-connect channel '{Type}'", channel.ChannelType);
+            }
+        }
+    }
+
+    private async Task RegisterChannelCommandsAsync(CancellationToken ct)
+    {
+        if (_commandRegistry is null || _commandRegistry.Commands.Count == 0) return;
+
+        foreach (var channel in _channels.Channels)
+        {
+            if (channel is ICommandAwareChannel commandChannel)
+            {
+                try
+                {
+                    await commandChannel.RegisterCommandsAsync(_commandRegistry, ct);
+                    _logger.LogInformation(
+                        "Registered {Count} commands with {Channel}",
+                        _commandRegistry.Commands.Count, channel.ChannelType);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to register commands with channel '{Type}'",
+                        channel.ChannelType);
+                }
             }
         }
     }
