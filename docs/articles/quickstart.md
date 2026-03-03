@@ -13,7 +13,7 @@ Get productive with JD.AI in under five minutes. This guide walks through a typi
 Make sure you have:
 
 - **JD.AI installed** — `dotnet tool install -g JD.AI`
-- **At least one provider configured** — Claude Code, GitHub Copilot, or Ollama
+- **At least one provider configured** — Claude Code, GitHub Copilot, OpenAI Codex, Ollama, or a local GGUF model
 
 See [Getting Started](getting-started.md) for full installation and provider setup instructions.
 

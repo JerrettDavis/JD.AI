@@ -1,5 +1,5 @@
 ---
-description: "All 20 slash commands — model switching, sessions, context management, teams, and more."
+description: "All 23+ slash commands — model switching, sessions, context management, local models, workflows, teams, and more."
 ---
 
 # Commands Reference
@@ -196,6 +196,14 @@ Lists all running agents, their models, turn counts, uptime, and routing table m
 | `/instructions` | Show instructions |
 | `/checkpoint` | Manage checkpoints |
 | `/sandbox` | Sandbox info |
+| `/local list` | List local models |
+| `/local add <path>` | Register model |
+| `/local scan` | Scan for models |
+| `/local search <q>` | Search HuggingFace |
+| `/local download <repo>` | Download model |
+| `/local remove <id>` | Remove model |
+| `/spinner [style]` | Change spinner |
+| `/workflow` | List workflows |
 | `/quit` | Exit |
 
 ### Gateway Commands (Discord / Signal / Slack)
