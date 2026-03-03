@@ -1,5 +1,5 @@
 ---
-description: "Connect to Claude Code, GitHub Copilot, and Ollama — auto-detected on startup with no manual configuration."
+description: "Connect to Claude Code, GitHub Copilot, OpenAI Codex, Ollama, or run models locally via LLamaSharp — auto-detected on startup with no manual configuration."
 ---
 
 # AI Providers
@@ -12,7 +12,9 @@ On startup, JD.AI checks for available providers in this order:
 
 1. **Claude Code** — checks for a local CLI session
 2. **GitHub Copilot** — checks for GitHub authentication
-3. **Ollama** — checks for a local server at `localhost:11434`
+3. **OpenAI Codex** — checks for Codex CLI authentication or `OPENAI_API_KEY`
+4. **Ollama** — checks for a local server at `localhost:11434`
+5. **Local (LLamaSharp)** — scans `~/.jdai/models/` for GGUF model files
 
 The first provider with a valid connection becomes the default. Results are shown on startup:
 
@@ -70,6 +72,43 @@ The first provider with a valid connection becomes the default. Results are show
 > [!TIP]
 > **Best for:** Offline usage, privacy, fast iteration, and experimentation.
 
+## OpenAI Codex
+
+**Setup:**
+
+1. Install the Codex CLI: `npm install -g @openai/codex`
+2. Authenticate: `codex auth login` (or set `OPENAI_API_KEY` environment variable)
+3. JD.AI detects the session automatically.
+
+**How it works:**
+
+- Uses the Codex CLI's OAuth token exchange for API access.
+- Credential resolution: API key → access token → `OPENAI_API_KEY` env → `CODEX_TOKEN` env → `~/.codex/auth.json` → device code login.
+- Supports all OpenAI chat models (GPT-4o, GPT-4.1, o3, etc.).
+
+> [!TIP]
+> **Best for:** Teams using OpenAI models who want the Codex CLI's authentication flow.
+
+## Local models (LLamaSharp)
+
+**Setup:**
+
+1. Place `.gguf` model files in `~/.jdai/models/` (or any directory).
+2. JD.AI detects them automatically on startup.
+3. Or download directly: `/local download TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF`
+
+**How it works:**
+
+- Loads GGUF models in-process via [LLamaSharp](https://github.com/SciSharp/LLamaSharp) (C# bindings for llama.cpp).
+- Auto-detects GPU hardware (CUDA, Metal) and falls back to CPU.
+- No external service or internet connection required.
+- Manage models with `/local` commands: list, add, scan, search, download, remove.
+
+> [!TIP]
+> **Best for:** Air-gapped environments, privacy-sensitive workloads, and fully standalone operation.
+>
+> See [Local Models](local-models.md) for the full guide.
+
 ## Switching providers and models
 
 Use slash commands to manage providers and models at any time during a session:
@@ -83,23 +122,29 @@ Use slash commands to manage providers and models at any time during a session:
 
 ## Provider comparison
 
-| Feature | Claude Code | GitHub Copilot | Ollama |
-|---|:-:|:-:|:-:|
-| **Setup** | CLI auth | GitHub auth | Local install |
-| **Internet required** | Yes | Yes | No |
-| **Cost** | Claude subscription | Copilot subscription | Free (local) |
-| **Model variety** | Claude family | Multi-family | Open source |
-| **Speed** | Fast | Fast | Depends on hardware |
-| **Privacy** | Cloud | Cloud | Fully local |
-| **Embedding support** | Yes | Limited | Yes |
+| Feature | Claude Code | GitHub Copilot | OpenAI Codex | Ollama | Local (LLamaSharp) |
+|---|:-:|:-:|:-:|:-:|:-:|
+| **Setup** | CLI auth | GitHub auth | CLI auth / API key | Local install | Drop in `.gguf` files |
+| **Internet required** | Yes | Yes | Yes | No | No |
+| **Cost** | Claude subscription | Copilot subscription | OpenAI subscription | Free (local) | Free (local) |
+| **Model variety** | Claude family | Multi-family | OpenAI family | Open source | Any GGUF model |
+| **Speed** | Fast | Fast | Fast | Depends on hardware | Depends on hardware |
+| **Privacy** | Cloud | Cloud | Cloud | Fully local | Fully local |
+| **Embedding support** | Yes | Limited | Yes | Yes | No |
 
 ## Environment variables
 
 | Variable | Description | Default |
 |---|---|---|
 | `OLLAMA_ENDPOINT` | Ollama API URL | `http://localhost:11434` |
+| `OPENAI_API_KEY` | OpenAI / Codex API key (if not using CLI auth) | — |
+| `CODEX_TOKEN` | Codex CLI access token override | — |
+| `JDAI_MODELS_DIR` | Local model storage directory | `~/.jdai/models/` |
+| `HF_HOME` | HuggingFace cache directory | `~/.cache/huggingface/` |
+| `HF_TOKEN` | HuggingFace API token | — |
 
 ## See also
 
 - [Overview](overview.md)
 - [Quickstart](quickstart.md)
+- [Local Models](local-models.md)
