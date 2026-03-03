@@ -188,8 +188,12 @@ kernel.Plugins.AddFromType<ThinkTools>("think");
 kernel.Plugins.AddFromType<EnvironmentTools>("environment");
 kernel.Plugins.AddFromType<NotebookTools>("notebook");
 kernel.Plugins.AddFromType<ClipboardTools>("clipboard");
+kernel.Plugins.AddFromType<DiffTools>("diff");
+kernel.Plugins.AddFromType<BatchEditTools>("batchEdit");
 kernel.Plugins.AddFromObject(new MemoryTools(), "memory");
 kernel.Plugins.AddFromObject(new TaskTools(), "tasks");
+var usageTools = new UsageTools();
+kernel.Plugins.AddFromObject(usageTools, "usage");
 kernel.Plugins.AddFromObject(
     new QuestionTools(req => QuestionnaireSession.Run(req)), "questions");
 
