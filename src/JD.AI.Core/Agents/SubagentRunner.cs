@@ -56,7 +56,7 @@ public sealed class SubagentRunner
             }
 
             var result = fullResponse.Length > 0 ? fullResponse.ToString() : "(no response)";
-            AgentOutput.Current.RenderInfo($"  ✅ {type} subagent complete ({result.Length} chars)");
+            AgentOutput.Current.RenderInfo($"  ✓ {type} subagent complete ({result.Length} chars)");
             return result;
         }
         catch (OperationCanceledException)
