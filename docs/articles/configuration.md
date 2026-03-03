@@ -71,7 +71,22 @@ JD.AI stores local state in `~/.jdai/`:
 ~/.jdai/
 ├── sessions.db          # SQLite session database
 ├── update-check.json    # NuGet update cache
-└── exports/             # Exported session JSON files
+├── exports/             # Exported session JSON files
+└── models/              # Local GGUF models and registry
+    └── registry.json    # Model manifest
+```
+
+## Data directories
+
+JD.AI stores local state and models in the following directories:
+
+```text
+~/.jdai/
+├── sessions.db          # SQLite session database
+├── update-check.json    # NuGet update cache
+├── exports/             # Exported session JSON files
+└── models/              # Local GGUF models and registry
+    └── registry.json    # Model manifest
 ```
 
 ## Skills, plugins, and hooks

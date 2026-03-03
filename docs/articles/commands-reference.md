@@ -114,6 +114,10 @@ Check for new versions of JD.AI on NuGet and optionally apply the update.
 
 Show all loaded project instructions (from `JDAI.md`, `CLAUDE.md`, `AGENTS.md`, etc.).
 
+### `/plugins`
+
+List all loaded plugins with their names, descriptions, and source paths.
+
 ### `/checkpoint`
 
 Manage git checkpoints for safe rollback:
@@ -127,6 +131,101 @@ Manage git checkpoints for safe rollback:
 ### `/sandbox`
 
 Show current sandbox/execution mode information.
+
+## Local Model Management
+
+### `/local list`
+
+List all registered local GGUF models with their ID, display name, quantization, parameter size, and file size.
+
+### `/local add <path>`
+
+Register a model file or directory. If `path` is a directory, it is recursively scanned for `.gguf` files.
+
+```text
+/local add ~/models/mistral-7b.Q4_K_M.gguf
+/local add /path/to/models-folder/
+```
+
+### `/local scan [path]`
+
+Scan a directory for `.gguf` files and merge discovered models into the registry. Without a path, scans the default model directory (`~/.jdai/models/`).
+
+```text
+/local scan
+/local scan /opt/llm-models/
+```
+
+### `/local search <query>`
+
+Query the HuggingFace Hub API for GGUF-tagged model repositories matching the search terms. Results include repository ID and download count.
+
+```text
+/local search llama 7b
+/local search mistral instruct
+```
+
+> [!TIP]
+> Set the `HF_TOKEN` environment variable for higher rate limits and access to gated repositories.
+
+### `/local download <repo-id>`
+
+Download a GGUF model from a HuggingFace repository. Prefers Q4_K_M quantization by default. Downloads support resume — if interrupted, re-run the command to continue.
+
+```text
+/local download TheBloke/Mistral-7B-Instruct-v0.2-GGUF
+```
+
+### `/local remove <model-id>`
+
+Remove a model from the registry. The file on disk is not deleted.
+
+See [Local Models](local-models.md) for the full guide.
+
+## Customization
+
+### `/spinner [style]`
+
+Change the TUI loading/thinking spinner animation style. Without an argument, cycles through available styles. Available styles:
+
+| Style | Description |
+|---|---|
+| `none` | No animation or progress display |
+| `minimal` | Single dot with elapsed time only |
+| `normal` | Braille spinner with elapsed time and token count (default) |
+| `rich` | Spinner with progress bar, tokens, bytes, and throughput |
+| `nerdy` | All statistics including model name, time-to-first-token, and internals |
+
+```text
+/spinner normal
+/spinner nerdy
+```
+
+## Workflow Management
+
+### `/workflow`
+
+List all captured workflows. Workflows are recorded automatically during multi-step agent executions and can be replayed.
+
+### `/workflow list`
+
+Show the workflow catalog with IDs, descriptions, step counts, and when they were last run.
+
+### `/workflow show <id>`
+
+Display the steps of a specific workflow including tool calls, data flow, and dependencies.
+
+### `/workflow export <id>`
+
+Export a workflow to a reusable JSON file.
+
+### `/workflow replay <id>`
+
+Re-execute a previously captured workflow, optionally with modified parameters.
+
+### `/workflow refine <id>`
+
+Open a workflow for interactive editing — add, remove, or reorder steps before replaying.
 
 ### `/quit` or `/exit`
 
@@ -194,6 +293,7 @@ Lists all running agents, their models, turn counts, uptime, and routing table m
 | `/export` | Export to JSON |
 | `/update` | Check for updates |
 | `/instructions` | Show instructions |
+| `/plugins` | List loaded plugins |
 | `/checkpoint` | Manage checkpoints |
 | `/sandbox` | Sandbox info |
 | `/local list` | List local models |

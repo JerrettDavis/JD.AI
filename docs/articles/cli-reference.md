@@ -17,7 +17,7 @@ jdai [options]
 | `--force-update-check` | Force NuGet update check on startup |
 | `--dangerously-skip-permissions` | Skip all tool confirmation prompts |
 | `--gateway` | Start in gateway mode (HTTP/SignalR control plane) |
-| `--gateway-port <port>` | Port for gateway API (default: `18789`) |
+| `--gateway-port <port>` | Port for gateway API (default: `5100`) |
 
 ## Examples
 ```bash
@@ -63,6 +63,7 @@ jdai --gateway --gateway-port 9090
 |------|---------|
 | `~/.jdai/sessions.db` | SQLite session database |
 | `~/.jdai/exports/` | Exported session JSON files |
+| `~/.jdai/models/` | Local GGUF models and registry |
 | `~/.jdai/update-check.json` | Update check cache (24h) |
 | `~/.dotnet/tools/jdai` | Tool binary location |
 

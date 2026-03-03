@@ -127,7 +127,7 @@ See [Local Models](local-models.md) for the full guide.
 | `--force-update-check` | Force NuGet update check |
 | `--dangerously-skip-permissions` | Skip all tool confirmations |
 | `--gateway` | Start in gateway mode |
-| `--gateway-port <port>` | Port for gateway API (default: `18789`) |
+| `--gateway-port <port>` | Port for gateway API (default: `5100`) |
 
 ## What's next
 
