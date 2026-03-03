@@ -324,3 +324,198 @@ public class WorkflowCaptureTests
         capture.Events.Should().Contain(e => e.Error == "boom");
     }
 }
+
+public class InMemoryWorkflowCatalogTests
+{
+    private readonly InMemoryWorkflowCatalog _catalog = new();
+
+    [Fact]
+    public async Task SaveAndGet_RoundTrips()
+    {
+        var def = new AgentWorkflowDefinition
+        {
+            Name = "test", Version = "1.0",
+            Steps = [AgentStepDefinition.RunSkill("s1")],
+        };
+
+        await _catalog.SaveAsync(def);
+        var loaded = await _catalog.GetAsync("test", "1.0");
+
+        loaded.Should().NotBeNull();
+        loaded!.Name.Should().Be("test");
+    }
+
+    [Fact]
+    public async Task GetLatest_ReturnsHighestVersion()
+    {
+        await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "v", Version = "1.0" });
+        await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "v", Version = "2.0" });
+        await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "v", Version = "10.0" });
+
+        var latest = await _catalog.GetAsync("v");
+        latest.Should().NotBeNull();
+        latest!.Version.Should().Be("10.0", "10.0 > 9.0 > 2.0 with numeric ordering");
+    }
+
+    [Fact]
+    public async Task List_ReturnsLatestPerName()
+    {
+        await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "a", Version = "1.0" });
+        await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "a", Version = "2.0" });
+        await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "b", Version = "1.0" });
+
+        var all = await _catalog.ListAsync();
+        all.Should().HaveCount(2);
+        all.Should().Contain(w => w.Name == "a" && w.Version == "2.0");
+        all.Should().Contain(w => w.Name == "b" && w.Version == "1.0");
+    }
+
+    [Fact]
+    public async Task Delete_ByVersion_RemovesOnly()
+    {
+        await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "d", Version = "1.0" });
+        await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "d", Version = "2.0" });
+
+        var deleted = await _catalog.DeleteAsync("d", "1.0");
+        deleted.Should().BeTrue();
+
+        var remaining = await _catalog.GetAsync("d", "1.0");
+        remaining.Should().BeNull();
+
+        var v2 = await _catalog.GetAsync("d", "2.0");
+        v2.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Delete_AllVersions_RemovesEntry()
+    {
+        await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "e", Version = "1.0" });
+        await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "e", Version = "2.0" });
+
+        var deleted = await _catalog.DeleteAsync("e");
+        deleted.Should().BeTrue();
+
+        var result = await _catalog.GetAsync("e");
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SaveExistingVersion_Replaces()
+    {
+        await _catalog.SaveAsync(new AgentWorkflowDefinition
+        {
+            Name = "r", Version = "1.0", Description = "old",
+        });
+        await _catalog.SaveAsync(new AgentWorkflowDefinition
+        {
+            Name = "r", Version = "1.0", Description = "new",
+        });
+
+        var loaded = await _catalog.GetAsync("r", "1.0");
+        loaded!.Description.Should().Be("new");
+    }
+
+    [Fact]
+    public async Task Get_CaseInsensitiveName()
+    {
+        await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "MyWorkflow", Version = "1.0" });
+
+        var loaded = await _catalog.GetAsync("myworkflow", "1.0");
+        loaded.Should().NotBeNull();
+    }
+}
+
+public class WorkflowMatcherTests
+{
+    [Fact]
+    public async Task ExactNameMatch_ReturnsHighScore()
+    {
+        var catalog = new InMemoryWorkflowCatalog();
+        await catalog.SaveAsync(new AgentWorkflowDefinition
+        {
+            Name = "App.NextJs.Todo", Version = "1.0", Tags = ["nextjs"],
+            Steps = [AgentStepDefinition.RunSkill("s1")],
+        });
+
+        var matcher = new WorkflowMatcher(catalog);
+        var match = await matcher.MatchAsync(new AgentRequest("create App.NextJs.Todo application"));
+
+        match.Should().NotBeNull();
+        match!.Score.Should().Be(1.0f);
+        match.MatchReason.Should().Be("exact");
+    }
+
+    [Fact]
+    public async Task TagMatch_ReturnsTags()
+    {
+        var catalog = new InMemoryWorkflowCatalog();
+        await catalog.SaveAsync(new AgentWorkflowDefinition
+        {
+            Name = "CodeReview", Version = "1.0", Tags = ["review", "code"],
+            Steps = [AgentStepDefinition.RunSkill("s1")],
+        });
+
+        var matcher = new WorkflowMatcher(catalog);
+        var match = await matcher.MatchAsync(new AgentRequest("please review the code changes"));
+
+        match.Should().NotBeNull();
+        match!.MatchReason.Should().Be("tags");
+    }
+
+    [Fact]
+    public async Task PrefersExact_OverTags()
+    {
+        var catalog = new InMemoryWorkflowCatalog();
+        await catalog.SaveAsync(new AgentWorkflowDefinition
+        {
+            Name = "App.NextJs.Todo", Version = "1.0", Tags = [],
+            Steps = [AgentStepDefinition.RunSkill("s1")],
+        });
+        await catalog.SaveAsync(new AgentWorkflowDefinition
+        {
+            Name = "Other", Version = "1.0", Tags = ["nextjs"],
+            Steps = [AgentStepDefinition.RunSkill("s1")],
+        });
+
+        var matcher = new WorkflowMatcher(catalog);
+        var match = await matcher.MatchAsync(
+            new AgentRequest("I want to work on App.NextJs.Todo with nextjs"));
+
+        match.Should().NotBeNull();
+        match!.MatchReason.Should().Be("exact");
+        match.Definition.Name.Should().Be("App.NextJs.Todo");
+    }
+
+    [Fact]
+    public async Task EmptyTags_DoNotCauseSpuriousMatch()
+    {
+        var catalog = new InMemoryWorkflowCatalog();
+        await catalog.SaveAsync(new AgentWorkflowDefinition
+        {
+            Name = "W", Version = "1.0",
+            Tags = ["", "   "],
+            Steps = [AgentStepDefinition.RunSkill("s1")],
+        });
+
+        var matcher = new WorkflowMatcher(catalog);
+        var match = await matcher.MatchAsync(new AgentRequest("completely unrelated message here"));
+
+        match.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task NoMatch_ReturnsNull()
+    {
+        var catalog = new InMemoryWorkflowCatalog();
+        await catalog.SaveAsync(new AgentWorkflowDefinition
+        {
+            Name = "Deploy", Version = "1.0", Tags = ["deploy"],
+            Steps = [AgentStepDefinition.RunSkill("s1")],
+        });
+
+        var matcher = new WorkflowMatcher(catalog);
+        var match = await matcher.MatchAsync(new AgentRequest("do something completely unrelated"));
+
+        match.Should().BeNull();
+    }
+}
