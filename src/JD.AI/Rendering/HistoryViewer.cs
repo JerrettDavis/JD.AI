@@ -89,7 +89,7 @@ public static class HistoryViewer
             else
                 Console.ForegroundColor = ConsoleColor.Gray;
 
-            var tools = turn.ToolCalls.Count > 0 ? $" [{turn.ToolCalls.Count}🔧]" : "";
+            var tools = turn.ToolCalls.Count > 0 ? $" [{turn.ToolCalls.Count} tools]" : "";
             Console.WriteLine($"{prefix}{turn.TurnIndex}. {role} {preview}{tools}");
         }
 
