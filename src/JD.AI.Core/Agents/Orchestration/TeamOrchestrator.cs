@@ -57,7 +57,7 @@ public sealed class TeamOrchestrator
 
             sw.Stop();
             AgentOutput.Current.RenderInfo(
-                $"  ✅ Team complete ({strategy.Name}): {result.AgentResults.Count} agents, " +
+                $"  ✓ Team complete ({strategy.Name}): {result.AgentResults.Count} agents, " +
                 $"{result.TotalTokens} tokens, {sw.Elapsed.TotalSeconds:F1}s");
 
             return result;
