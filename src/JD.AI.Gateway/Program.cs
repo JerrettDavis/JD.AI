@@ -4,6 +4,7 @@ using JD.AI.Core.Channels;
 using JD.AI.Core.Commands;
 using JD.AI.Core.Config;
 using JD.AI.Core.Events;
+using JD.AI.Core.LocalModels;
 using JD.AI.Core.Memory;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
@@ -41,6 +42,8 @@ builder.Services.AddSingleton<IProviderDetector, ClaudeCodeDetector>();
 builder.Services.AddSingleton<IProviderDetector, CopilotDetector>();
 builder.Services.AddSingleton<IProviderDetector, OpenAICodexDetector>();
 builder.Services.AddSingleton<IProviderDetector, OllamaDetector>();
+builder.Services.AddSingleton<IProviderDetector>(sp =>
+    new LocalModelDetector(logger: sp.GetService<Microsoft.Extensions.Logging.ILogger<LocalModelDetector>>()));
 builder.Services.AddSingleton<IProviderRegistry>(sp =>
     new ProviderRegistry(sp.GetServices<IProviderDetector>()));
 builder.Services.AddSingleton<SessionStore>(_ =>
