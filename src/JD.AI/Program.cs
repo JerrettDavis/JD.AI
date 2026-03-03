@@ -3,9 +3,11 @@ using JD.AI.Agent;
 using JD.AI.Commands;
 using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Agents.Orchestration;
+using JD.AI.Core.Config;
 using JD.AI.Core.Providers;
 using JD.AI.Rendering;
 using JD.AI.Tools;
+using JD.AI.Workflows;
 using JD.SemanticKernel.Extensions.Compaction;
 using JD.SemanticKernel.Extensions.Hooks;
 using JD.SemanticKernel.Extensions.Plugins;
@@ -302,7 +304,8 @@ if (instructions.HasInstructions)
 session.History.AddSystemMessage(systemPrompt);
 
 // 9. Set up slash commands
-var commandRouter = new SlashCommandRouter(session, registry, instructions, checkpointStrategy);
+var workflowCatalog = new FileWorkflowCatalog(Path.Combine(DataDirectories.Root, "workflows"));
+var commandRouter = new SlashCommandRouter(session, registry, instructions, checkpointStrategy, workflowCatalog: workflowCatalog);
 
 // 10. Build interactive input with command completions
 var completionProvider = new CompletionProvider();
@@ -326,6 +329,7 @@ completionProvider.Register("/instructions", "Show loaded project instructions")
 completionProvider.Register("/plugins", "List loaded plugins");
 completionProvider.Register("/checkpoint", "List, restore, or clear checkpoints");
 completionProvider.Register("/sandbox", "Show or change sandbox mode");
+completionProvider.Register("/workflow", "Manage workflows (list|show|export|replay|refine)");
 completionProvider.Register("/quit", "Exit jdai");
 completionProvider.Register("/exit", "Exit jdai");
 var interactiveInput = new InteractiveInput(completionProvider);
