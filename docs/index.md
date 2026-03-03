@@ -41,9 +41,9 @@ JD.AI auto-detects available providers. No manual configuration needed.
 
 | Feature | Description |
 |---------|-------------|
-| **Multi-provider** | [Claude Code, GitHub Copilot, Ollama](articles/providers.md) — auto-detected on startup |
-| **20 slash commands** | [Model switching, sessions, context management](articles/commands-reference.md) |
-| **8 tool categories** | [Files, search, shell, git, web, memory, subagents](articles/tools-reference.md) |
+| **Multi-provider** | [Claude Code, GitHub Copilot, Ollama, OpenAI Codex, Local Models](articles/providers.md) — auto-detected on startup |
+| **25+ slash commands** | [Model switching, sessions, context management](articles/commands-reference.md) |
+| **13 tool categories** | [Files, search, shell, git, web, memory, subagents, think, environment, tasks, code execution, clipboard, questions](articles/tools-reference.md) |
 | **5 subagent types** | [Explore, task, plan, review, general-purpose](articles/subagents.md) |
 | **Team orchestration** | [Sequential, fan-out, supervisor, debate](articles/orchestration.md) strategies |
 | **Session persistence** | [Save, load, export conversations](articles/persistence.md) across sessions |
@@ -71,7 +71,7 @@ JD.AI auto-detects available providers. No manual configuration needed.
 ### Reference
 
 - [Tools Reference](articles/tools-reference.md) — All tools with parameters and examples
-- [Commands Reference](articles/commands-reference.md) — All 20 slash commands
+- [Commands Reference](articles/commands-reference.md) — All 25+ slash commands
 - [CLI Reference](articles/cli-reference.md) — Flags, environment variables, exit codes
 - [AI Providers](articles/providers.md) — Provider setup and comparison
 
