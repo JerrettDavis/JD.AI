@@ -23,6 +23,11 @@ using Spectre.Console;
 //  jdai — Semantic Kernel TUI Agent
 // ──────────────────────────────────────────────────────────
 
+// Ensure console uses UTF-8 so Unicode glyphs (Braille spinners, box-drawing,
+// checkmarks, etc.) render correctly on all platforms.
+Console.OutputEncoding = System.Text.Encoding.UTF8;
+Console.InputEncoding = System.Text.Encoding.UTF8;
+
 // Parse CLI flags
 var skipPermissions = args.Contains("--dangerously-skip-permissions");
 var forceUpdateCheck = args.Contains("--force-update-check");
@@ -72,7 +77,7 @@ var registry = new ProviderRegistry(detectors);
 var providers = await registry.DetectProvidersAsync().ConfigureAwait(false);
 foreach (var p in providers)
 {
-    var icon = p.IsAvailable ? "✅" : "❌";
+    var icon = p.IsAvailable ? "[green]✓[/]" : "[red]✗[/]";
     AnsiConsole.MarkupLine($"  {icon} [bold]{Markup.Escape(p.Name)}[/]: {Markup.Escape(p.StatusMessage ?? "Unknown")}");
 }
 

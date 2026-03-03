@@ -84,8 +84,8 @@ public static class ChatRenderer
     public static void RenderToolCall(string toolName, string? args, string result)
     {
         var header = string.IsNullOrWhiteSpace(args)
-            ? $"🔧 {toolName}"
-            : $"🔧 {toolName}({args})";
+            ? $"» {toolName}"
+            : $"» {toolName}({args})";
 
         // Truncate long results
         var displayResult = result.Length > 2000
