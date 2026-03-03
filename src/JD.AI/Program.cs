@@ -303,9 +303,20 @@ if (instructions.HasInstructions)
 
 session.History.AddSystemMessage(systemPrompt);
 
-// 9. Set up slash commands
+// 9. Wire up SpectreAgentOutput so streaming renders in the TUI
+var tuiSettings = TuiSettings.Load();
+using var spectreOutput = new SpectreAgentOutput(
+    tuiSettings.SpinnerStyle,
+    session.CurrentModel?.Id);
+AgentOutput.Current = spectreOutput;
+
+// 10. Set up slash commands
 var workflowCatalog = new FileWorkflowCatalog(Path.Combine(DataDirectories.Root, "workflows"));
-var commandRouter = new SlashCommandRouter(session, registry, instructions, checkpointStrategy, workflowCatalog: workflowCatalog);
+var commandRouter = new SlashCommandRouter(
+    session, registry, instructions, checkpointStrategy,
+    workflowCatalog: workflowCatalog,
+    getSpinnerStyle: () => spectreOutput.Style,
+    onSpinnerStyleChanged: style => spectreOutput.Style = style);
 
 // 10. Build interactive input with command completions
 var completionProvider = new CompletionProvider();
@@ -330,6 +341,7 @@ completionProvider.Register("/plugins", "List loaded plugins");
 completionProvider.Register("/checkpoint", "List, restore, or clear checkpoints");
 completionProvider.Register("/sandbox", "Show or change sandbox mode");
 completionProvider.Register("/workflow", "Manage workflows (list|show|export|replay|refine)");
+completionProvider.Register("/spinner", "Set progress style (none|minimal|normal|rich|nerdy)");
 completionProvider.Register("/quit", "Exit jdai");
 completionProvider.Register("/exit", "Exit jdai");
 var interactiveInput = new InteractiveInput(completionProvider);
@@ -375,10 +387,6 @@ if (pendingUpdate is not null)
     AnsiConsole.MarkupLine(UpdatePrompter.FormatNotification(pendingUpdate));
     AnsiConsole.WriteLine();
 }
-
-// 11c. Wire up SpectreAgentOutput so streaming renders in the TUI
-using var spectreOutput = new SpectreAgentOutput();
-AgentOutput.Current = spectreOutput;
 
 // 12. Main interaction loop
 var agentLoop = new AgentLoop(session);
@@ -473,7 +481,7 @@ while (!appCts.IsCancellationRequested)
     }
 
     // Regular chat message → streaming agent loop with steering
-    ChatRenderer.RenderUserMessage(input);
+    ChatRenderer.DimInputLine(input);
     string? currentMessage = input;
 
     while (currentMessage != null && !appCts.IsCancellationRequested)
@@ -521,6 +529,7 @@ while (!appCts.IsCancellationRequested)
     }
 
     // Status bar
+    spectreOutput.ModelName = session.CurrentModel?.Id;
     ChatRenderer.RenderStatusBar(
         session.CurrentModel?.ProviderName ?? "?",
         session.CurrentModel?.Id ?? "?",

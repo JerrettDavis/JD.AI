@@ -1,5 +1,6 @@
 using JD.AI.Commands;
 using JD.AI.Core.Agents;
+using JD.AI.Core.Config;
 using JD.AI.Core.Providers;
 using Microsoft.SemanticKernel;
 using NSubstitute;
@@ -311,6 +312,97 @@ public sealed class SlashCommandRouterTests
         Assert.Contains("/history", result);
         Assert.Contains("/export", result);
         Assert.Contains("/update", result);
+    }
+
+    [Fact]
+    public async Task Help_IncludesSpinnerCommand()
+    {
+        var result = await _router.ExecuteAsync("/help");
+
+        Assert.NotNull(result);
+        Assert.Contains("/spinner", result);
+    }
+
+    [Fact]
+    public async Task Spinner_NoCallbacks_ReportsNotConfigurable()
+    {
+        var result = await _router.ExecuteAsync("/spinner");
+
+        Assert.NotNull(result);
+        Assert.Contains("not configurable", result);
+    }
+
+    [Fact]
+    public async Task Spinner_ShowsCurrent()
+    {
+        var router = CreateRouterWithSpinner(SpinnerStyle.Normal);
+
+        var result = await router.ExecuteAsync("/spinner");
+
+        Assert.NotNull(result);
+        Assert.Contains("normal", result);
+        Assert.Contains("Available", result);
+    }
+
+    [Fact]
+    public async Task Spinner_SetsStyle()
+    {
+        var currentStyle = SpinnerStyle.Normal;
+        var router = CreateRouterWithSpinner(
+            currentStyle,
+            style => currentStyle = style);
+
+        var result = await router.ExecuteAsync("/spinner rich");
+
+        Assert.NotNull(result);
+        Assert.Contains("rich", result);
+        Assert.Equal(SpinnerStyle.Rich, currentStyle);
+    }
+
+    [Fact]
+    public async Task Spinner_InvalidStyle_ReportsError()
+    {
+        var router = CreateRouterWithSpinner(SpinnerStyle.Normal);
+
+        var result = await router.ExecuteAsync("/spinner fancy");
+
+        Assert.NotNull(result);
+        Assert.Contains("Unknown style", result);
+        Assert.Contains("fancy", result);
+    }
+
+    [Theory]
+    [InlineData("/spinner none", SpinnerStyle.None)]
+    [InlineData("/spinner minimal", SpinnerStyle.Minimal)]
+    [InlineData("/spinner normal", SpinnerStyle.Normal)]
+    [InlineData("/spinner rich", SpinnerStyle.Rich)]
+    [InlineData("/spinner nerdy", SpinnerStyle.Nerdy)]
+    [InlineData("/jdai-spinner rich", SpinnerStyle.Rich)]
+    public async Task Spinner_AllStyles_SetCorrectly(string command, SpinnerStyle expected)
+    {
+        var currentStyle = SpinnerStyle.Normal;
+        var router = CreateRouterWithSpinner(
+            currentStyle,
+            style => currentStyle = style);
+
+        await router.ExecuteAsync(command);
+
+        Assert.Equal(expected, currentStyle);
+    }
+
+    private SlashCommandRouter CreateRouterWithSpinner(
+        SpinnerStyle initial,
+        Action<SpinnerStyle>? onChanged = null)
+    {
+        var style = initial;
+        return new SlashCommandRouter(
+            _session, _registry,
+            getSpinnerStyle: () => style,
+            onSpinnerStyleChanged: s =>
+            {
+                style = s;
+                onChanged?.Invoke(s);
+            });
     }
 
     [Fact]
