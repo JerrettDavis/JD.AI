@@ -43,7 +43,7 @@ JD.AI auto-detects available providers. No manual configuration needed.
 |---------|-------------|
 | **Multi-provider** | [Claude Code, GitHub Copilot, Ollama, OpenAI Codex, Local Models](articles/providers.md) — auto-detected on startup |
 | **25+ slash commands** | [Model switching, sessions, context management](articles/commands-reference.md) |
-| **13 tool categories** | [Files, search, shell, git, web, memory, subagents, think, environment, tasks, code execution, clipboard, questions](articles/tools-reference.md) |
+| **16 tool categories** | [Files, search, shell, git, web, memory, subagents, think, environment, tasks, code execution, clipboard, questions, diff/patch, batch edit, usage tracking](articles/tools-reference.md) |
 | **5 subagent types** | [Explore, task, plan, review, general-purpose](articles/subagents.md) |
 | **Team orchestration** | [Sequential, fan-out, supervisor, debate](articles/orchestration.md) strategies |
 | **Session persistence** | [Save, load, export conversations](articles/persistence.md) across sessions |

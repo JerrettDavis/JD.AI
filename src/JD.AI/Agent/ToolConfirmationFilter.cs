@@ -34,6 +34,8 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["list_tasks"] = SafetyTier.AutoApprove,
             ["export_tasks"] = SafetyTier.AutoApprove,
             ["read_clipboard"] = SafetyTier.AutoApprove,
+            ["get_usage"] = SafetyTier.AutoApprove,
+            ["create_patch"] = SafetyTier.AutoApprove,
 
             // Write ops — confirm once per session
             ["write_file"] = SafetyTier.ConfirmOnce,
@@ -51,6 +53,9 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["write_clipboard"] = SafetyTier.ConfirmOnce,
             ["spawn_agent"] = SafetyTier.ConfirmOnce,
             ["spawn_team"] = SafetyTier.ConfirmOnce,
+            ["apply_patch"] = SafetyTier.ConfirmOnce,
+            ["batch_edit_files"] = SafetyTier.ConfirmOnce,
+            ["reset_usage"] = SafetyTier.ConfirmOnce,
 
             // Dangerous — always confirm
             ["run_command"] = SafetyTier.AlwaysConfirm,
