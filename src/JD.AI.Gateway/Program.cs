@@ -42,6 +42,7 @@ builder.Services.AddSingleton<IProviderDetector, ClaudeCodeDetector>();
 builder.Services.AddSingleton<IProviderDetector, CopilotDetector>();
 builder.Services.AddSingleton<IProviderDetector, OpenAICodexDetector>();
 builder.Services.AddSingleton<IProviderDetector, OllamaDetector>();
+builder.Services.AddSingleton<IProviderDetector, FoundryLocalDetector>();
 builder.Services.AddSingleton<IProviderDetector>(sp =>
     new LocalModelDetector(logger: sp.GetService<Microsoft.Extensions.Logging.ILogger<LocalModelDetector>>()));
 builder.Services.AddSingleton<IProviderRegistry>(sp =>
