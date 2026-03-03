@@ -65,7 +65,7 @@ Program.cs
 ├── ProviderRegistry (detect + build kernels)
 ├── AgentSession (kernel, chat history, tools)
 ├── AgentLoop (streaming + tool calling loop)
-├── SlashCommandRouter (20 commands)
+├── SlashCommandRouter (25+ commands)
 ├── ChatRenderer (Spectre.Console TUI)
 ├── InteractiveInput (readline + completions)
 ├── SessionStore (SQLite persistence)

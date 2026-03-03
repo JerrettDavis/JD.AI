@@ -68,4 +68,4 @@ jdai --gateway --gateway-port 9090
 | `~/.dotnet/tools/jdai` | Tool binary location |
 
 ## Slash commands
-See [Commands Reference](commands-reference.md) for the full list of 20 interactive commands.
+See [Commands Reference](commands-reference.md) for the full list of interactive commands.
