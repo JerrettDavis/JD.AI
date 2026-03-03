@@ -116,3 +116,4 @@ This mapping lets the same skill and hook files work in both Claude Code and JD.
 | `JD.SemanticKernel.Extensions` | Core parsing and registration of skills, plugins, and hooks |
 | `JD.SemanticKernel.Connectors.ClaudeCode` | Claude Code authentication provider |
 | `JD.SemanticKernel.Connectors.GitHubCopilot` | GitHub Copilot authentication provider |
+| `JD.SemanticKernel.Connectors.OpenAICodex` | OpenAI Codex authentication provider |

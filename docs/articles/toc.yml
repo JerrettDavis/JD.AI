@@ -10,6 +10,8 @@
   href: common-workflows.md
 - name: AI Providers
   href: providers.md
+- name: Local Models
+  href: local-models.md
 - name: Tools Reference
   href: tools-reference.md
 - name: Commands Reference
