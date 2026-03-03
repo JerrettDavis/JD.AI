@@ -13,6 +13,7 @@
     <PackageVersion Include="JD.SemanticKernel.Extensions" Version="0.1.40" />
     <PackageVersion Include="JD.SemanticKernel.Connectors.ClaudeCode" Version="0.1.22" />
     <PackageVersion Include="JD.SemanticKernel.Connectors.GitHubCopilot" Version="0.1.14" />
+    <PackageVersion Include="JD.SemanticKernel.Connectors.OpenAICodex" Version="0.1.2" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.3" />
     <PackageVersion Include="Microsoft.SemanticKernel" Version="1.72.0" />
     <PackageVersion Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.72.0" />
