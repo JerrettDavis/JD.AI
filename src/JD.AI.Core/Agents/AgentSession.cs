@@ -34,6 +34,19 @@ public sealed class AgentSession
     /// Set via --dangerously-skip-permissions or /permissions off.
     /// </summary>
     public bool SkipPermissions { get; set; }
+
+    /// <summary>
+    /// When true, the agent operates in plan-only mode (read/explore, no file writes).
+    /// Toggled via the /plan slash command.
+    /// </summary>
+    public bool PlanMode { get; set; }
+
+    /// <summary>
+    /// When true, emit verbose diagnostics (tool calls, arguments) to stderr.
+    /// Set via --verbose CLI flag.
+    /// </summary>
+    public bool Verbose { get; set; }
+
     public long TotalTokens { get; set; }
 
     public Kernel Kernel => _kernel;
@@ -193,6 +206,51 @@ public sealed class AgentSession
 
         _kernel = newKernel;
         CurrentModel = model;
+    }
+
+    /// <summary>
+    /// Fork the current session: clone history into a new session.
+    /// </summary>
+    public async Task<SessionInfo?> ForkSessionAsync(string? forkName = null)
+    {
+        if (SessionInfo == null || Store == null) return null;
+
+        var forked = new SessionInfo
+        {
+            ProjectPath = SessionInfo.ProjectPath,
+            ProjectHash = SessionInfo.ProjectHash,
+            ModelId = CurrentModel?.Id,
+            ProviderName = CurrentModel?.ProviderName,
+            Name = forkName ?? $"fork of {SessionInfo.Name ?? SessionInfo.Id}",
+        };
+        await Store.CreateSessionAsync(forked).ConfigureAwait(false);
+
+        // Copy turns
+        var idx = 0;
+        foreach (var turn in SessionInfo.Turns)
+        {
+            var clone = new TurnRecord
+            {
+                SessionId = forked.Id,
+                TurnIndex = idx++,
+                Role = turn.Role,
+                Content = turn.Content,
+                ThinkingText = turn.ThinkingText,
+                ModelId = turn.ModelId,
+                ProviderName = turn.ProviderName,
+                TokensIn = turn.TokensIn,
+                TokensOut = turn.TokensOut,
+                DurationMs = turn.DurationMs,
+            };
+            forked.Turns.Add(clone);
+            await Store.SaveTurnAsync(clone).ConfigureAwait(false);
+        }
+
+        forked.MessageCount = SessionInfo.MessageCount;
+        forked.TotalTokens = SessionInfo.TotalTokens;
+        await Store.UpdateSessionAsync(forked).ConfigureAwait(false);
+
+        return forked;
     }
 
     /// <summary>
