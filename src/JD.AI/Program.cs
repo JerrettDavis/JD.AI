@@ -53,6 +53,61 @@ if (firstNonOptionIndex >= 0 && string.Equals(args[firstNonOptionIndex], "mcp", 
     var mcpArgs = args.Skip(firstNonOptionIndex + 1).ToArray();
     return await McpCliHandler.RunAsync(mcpArgs).ConfigureAwait(false);
 }
+// Print mode: non-interactive, query → stdout → exit
+var printMode = args.Contains("-p") || args.Contains("--print");
+var printQuery = printMode
+    ? args.SkipWhile(a => !string.Equals(a, "-p", StringComparison.OrdinalIgnoreCase) &&
+                          !string.Equals(a, "--print", StringComparison.OrdinalIgnoreCase))
+        .Skip(1).FirstOrDefault()
+    : null;
+
+// Continue most recent session
+var continueSession = args.Contains("-c") || args.Contains("--continue");
+
+// System prompt overrides
+var systemPromptOverride = args.SkipWhile(a => !string.Equals(a, "--system-prompt", StringComparison.OrdinalIgnoreCase))
+    .Skip(1).FirstOrDefault();
+var appendSystemPrompt = args.SkipWhile(a => !string.Equals(a, "--append-system-prompt", StringComparison.OrdinalIgnoreCase))
+    .Skip(1).FirstOrDefault();
+var systemPromptFile = args.SkipWhile(a => !string.Equals(a, "--system-prompt-file", StringComparison.OrdinalIgnoreCase))
+    .Skip(1).FirstOrDefault();
+var appendSystemPromptFile = args.SkipWhile(a => !string.Equals(a, "--append-system-prompt-file", StringComparison.OrdinalIgnoreCase))
+    .Skip(1).FirstOrDefault();
+
+// Output format for print mode
+var outputFormat = args.SkipWhile(a => !string.Equals(a, "--output-format", StringComparison.OrdinalIgnoreCase))
+    .Skip(1).FirstOrDefault() ?? "text";
+
+// Max turns limit
+var maxTurnsStr = args.SkipWhile(a => !string.Equals(a, "--max-turns", StringComparison.OrdinalIgnoreCase))
+    .Skip(1).FirstOrDefault();
+int? maxTurns = int.TryParse(maxTurnsStr, out var mt) ? mt : null;
+
+// Verbose mode
+var verboseMode = args.Contains("--verbose");
+
+// Additional working directories
+var addDirs = new List<string>();
+for (var i = 0; i < args.Length; i++)
+{
+    if (string.Equals(args[i], "--add-dir", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+    {
+        addDirs.Add(args[++i]);
+    }
+}
+
+// Tool filtering
+var allowedTools = args.SkipWhile(a => !string.Equals(a, "--allowedTools", StringComparison.OrdinalIgnoreCase))
+    .Skip(1).FirstOrDefault()?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+var disallowedTools = args.SkipWhile(a => !string.Equals(a, "--disallowedTools", StringComparison.OrdinalIgnoreCase))
+    .Skip(1).FirstOrDefault()?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+// Read piped stdin if available (e.g. `cat file | jdai -p "query"`)
+string? pipedInput = null;
+if (Console.IsInputRedirected)
+{
+    pipedInput = await Console.In.ReadToEndAsync().ConfigureAwait(false);
+}
 
 // --gateway: start the Gateway as an embedded ASP.NET host alongside the TUI
 Microsoft.AspNetCore.Builder.WebApplication? gatewayHost = null;
@@ -68,13 +123,19 @@ if (gatewayMode)
 
     gatewayHost = gwApp;
     _ = gwApp.StartAsync();
-    AnsiConsole.MarkupLine($"[dim]Gateway started on http://localhost:{port}[/]");
+    if (!printMode)
+    {
+        AnsiConsole.MarkupLine($"[dim]Gateway started on http://localhost:{port}[/]");
+    }
 }
 
 // Fire background update check immediately (non-blocking)
 var updateCheckTask = UpdateChecker.CheckAsync(forceUpdateCheck);
 
-AnsiConsole.MarkupLine("[dim]Detecting providers...[/]");
+if (!printMode)
+{
+    AnsiConsole.MarkupLine("[dim]Detecting providers...[/]");
+}
 
 // 1. Build provider registry with all detectors
 var detectors = new IProviderDetector[]
@@ -89,18 +150,20 @@ var registry = new ProviderRegistry(detectors);
 
 // 2. Detect available providers and show status
 var providers = await registry.DetectProvidersAsync().ConfigureAwait(false);
-foreach (var p in providers)
+if (!printMode)
 {
-    var icon = p.IsAvailable ? "[green]✓[/]" : "[red]✗[/]";
-    AnsiConsole.MarkupLine($"  {icon} [bold]{Markup.Escape(p.Name)}[/]: {Markup.Escape(p.StatusMessage ?? "Unknown")}");
+    foreach (var p in providers)
+    {
+        var icon = p.IsAvailable ? "[green]✓[/]" : "[red]✗[/]";
+        AnsiConsole.MarkupLine($"  {icon} [bold]{Markup.Escape(p.Name)}[/]: {Markup.Escape(p.StatusMessage ?? "Unknown")}");
+    }
 }
 
 var allModels = await registry.GetModelsAsync().ConfigureAwait(false);
 
 if (allModels.Count == 0)
 {
-    AnsiConsole.MarkupLine("[red]No AI providers available.[/]");
-    AnsiConsole.MarkupLine("Ensure at least one of: Claude Code session, GitHub Copilot, or Ollama is running.");
+    Console.Error.WriteLine("No AI providers available.");
     return 1;
 }
 
@@ -138,7 +201,7 @@ else if (cliProvider != null)
         return 1;
     }
 
-    selectedModel = candidates.Count == 1
+    selectedModel = candidates.Count == 1 || printMode
         ? candidates[0]
         : AnsiConsole.Prompt(
             new SelectionPrompt<ProviderModelInfo>()
@@ -147,7 +210,7 @@ else if (cliProvider != null)
                 .UseConverter(m => Markup.Escape($"[{m.ProviderName}] {m.DisplayName}"))
                 .AddChoices(candidates));
 }
-else if (allModels.Count == 1)
+else if (allModels.Count == 1 || printMode)
 {
     selectedModel = allModels[0];
 }
@@ -171,17 +234,36 @@ var session = new AgentSession(registry, kernel, selectedModel);
 if (skipPermissions)
 {
     session.SkipPermissions = true;
-    ChatRenderer.RenderWarning("--dangerously-skip-permissions: ALL tool confirmations disabled.");
+    if (!printMode) ChatRenderer.RenderWarning("--dangerously-skip-permissions: ALL tool confirmations disabled.");
+}
+if (verboseMode)
+{
+    session.Verbose = true;
 }
 
 // Initialize session persistence
 var projectPath = Directory.GetCurrentDirectory();
 if (!isNewSession)
 {
+    // --continue: auto-resume the most recent session for this project
+    if (continueSession && resumeId == null)
+    {
+        await session.InitializePersistenceAsync(projectPath).ConfigureAwait(false);
+        if (session.Store != null)
+        {
+            var projectHash = JD.AI.Core.Sessions.ProjectHasher.Hash(projectPath);
+            var recentSessions = await session.Store.ListSessionsAsync(projectHash, 1).ConfigureAwait(false);
+            if (recentSessions.Count > 0)
+            {
+                resumeId = recentSessions[0].Id;
+            }
+        }
+    }
+
     await session.InitializePersistenceAsync(projectPath, resumeId).ConfigureAwait(false);
     if (resumeId != null && session.SessionInfo != null)
     {
-        ChatRenderer.RenderInfo($"Resumed session: {session.SessionInfo.Name ?? session.SessionInfo.Id} ({session.SessionInfo.Turns.Count} turns)");
+        if (!printMode) ChatRenderer.RenderInfo($"Resumed session: {session.SessionInfo.Name ?? session.SessionInfo.Id} ({session.SessionInfo.Turns.Count} turns)");
     }
 }
 else
@@ -234,19 +316,19 @@ foreach (var dir in skillDirs.Where(Directory.Exists))
         {
             if (kernel.Plugins.TryGetPlugin(plugin.Name, out _))
             {
-                ChatRenderer.RenderWarning($"  Skipped duplicate skill plugin '{plugin.Name}' from {dir}");
+                if (!printMode) ChatRenderer.RenderWarning($"  Skipped duplicate skill plugin '{plugin.Name}' from {dir}");
                 continue;
             }
 
             kernel.Plugins.Add(plugin);
         }
 
-        ChatRenderer.RenderInfo($"  Loaded skills from {dir}");
+        if (!printMode) ChatRenderer.RenderInfo($"  Loaded skills from {dir}");
     }
 #pragma warning disable CA1031 // non-fatal
     catch (Exception ex)
     {
-        ChatRenderer.RenderWarning($"  Failed to load skills from {dir}: {ex.Message}");
+        if (!printMode) ChatRenderer.RenderWarning($"  Failed to load skills from {dir}: {ex.Message}");
     }
 #pragma warning restore CA1031
 }
@@ -269,19 +351,19 @@ foreach (var dir in pluginDirs.Where(Directory.Exists))
         {
             if (kernel.Plugins.TryGetPlugin(plugin.Name, out _))
             {
-                ChatRenderer.RenderWarning($"  Skipped duplicate plugin '{plugin.Name}' from {dir}");
+                if (!printMode) ChatRenderer.RenderWarning($"  Skipped duplicate plugin '{plugin.Name}' from {dir}");
                 continue;
             }
 
             kernel.Plugins.Add(plugin);
         }
 
-        ChatRenderer.RenderInfo($"  Loaded plugins from {dir}");
+        if (!printMode) ChatRenderer.RenderInfo($"  Loaded plugins from {dir}");
     }
 #pragma warning disable CA1031
     catch (Exception ex)
     {
-        ChatRenderer.RenderWarning($"  Failed to load plugins from {dir}: {ex.Message}");
+        if (!printMode) ChatRenderer.RenderWarning($"  Failed to load plugins from {dir}: {ex.Message}");
     }
 #pragma warning restore CA1031
 }
@@ -293,7 +375,7 @@ kernel.AutoFunctionInvocationFilters.Add(new ToolConfirmationFilter(session));
 var instructions = InstructionsLoader.Load();
 if (instructions.HasInstructions)
 {
-    ChatRenderer.RenderInfo($"  Loaded {instructions.Files.Count} instruction file(s)");
+    if (!printMode) ChatRenderer.RenderInfo($"  Loaded {instructions.Files.Count} instruction file(s)");
 }
 
 // 8c. Set up subagent runner and register tools
@@ -308,27 +390,81 @@ ICheckpointStrategy checkpointStrategy = Directory.Exists(Path.Combine(Directory
 // 8e. Register web search tools
 kernel.ImportPluginFromObject(new WebSearchTools(), "WebSearchTools");
 
-// 9. Add system prompt
-var systemPrompt = """
-    You are jdai, a helpful AI coding assistant running in a terminal.
-    You have access to tools for file operations, code search, shell commands,
-    git operations, web fetching, web search, semantic memory, and subagents.
-
-    When helping with code tasks:
-    - Read relevant files before making changes
-    - Use search tools to find code patterns
-    - Make minimal, surgical edits
-    - Verify changes with builds/tests when appropriate
-    - Store important decisions and facts in memory for future recall
-    - Use subagents for specialized work (explore for analysis, task for commands, plan for planning, review for code review)
-
-    Be concise and direct. Use tools proactively when they'll help answer the question.
-    """;
-
-// Append project instructions if found
-if (instructions.HasInstructions)
+// 8f. Tool filtering (--allowedTools / --disallowedTools)
+if (allowedTools is { Length: > 0 })
 {
-    systemPrompt += "\n\n" + instructions.ToSystemPrompt();
+    var allowed = new HashSet<string>(allowedTools, StringComparer.OrdinalIgnoreCase);
+    var toRemove = kernel.Plugins
+        .SelectMany(p => p.Select(f => (Plugin: p, Function: f)))
+        .Where(pf => !allowed.Contains(pf.Function.Name) && !allowed.Contains($"{pf.Plugin.Name}-{pf.Function.Name}"))
+        .Select(pf => pf.Plugin.Name)
+        .Distinct()
+        .ToList();
+    foreach (var name in toRemove)
+    {
+        if (!allowed.Contains(name))
+            kernel.Plugins.Remove(kernel.Plugins[name]);
+    }
+}
+if (disallowedTools is { Length: > 0 })
+{
+    var disallowed = new HashSet<string>(disallowedTools, StringComparer.OrdinalIgnoreCase);
+    var toRemove = kernel.Plugins.Where(p => disallowed.Contains(p.Name)).Select(p => p.Name).ToList();
+    foreach (var name in toRemove)
+    {
+        kernel.Plugins.Remove(kernel.Plugins[name]);
+    }
+}
+
+// 9. Build system prompt
+string systemPrompt;
+if (systemPromptOverride != null)
+{
+    systemPrompt = systemPromptOverride;
+}
+else if (systemPromptFile != null && File.Exists(systemPromptFile))
+{
+    systemPrompt = await File.ReadAllTextAsync(systemPromptFile).ConfigureAwait(false);
+}
+else
+{
+    systemPrompt = """
+        You are jdai, a helpful AI coding assistant running in a terminal.
+        You have access to tools for file operations, code search, shell commands,
+        git operations, web fetching, web search, semantic memory, and subagents.
+
+        When helping with code tasks:
+        - Read relevant files before making changes
+        - Use search tools to find code patterns
+        - Make minimal, surgical edits
+        - Verify changes with builds/tests when appropriate
+        - Store important decisions and facts in memory for future recall
+        - Use subagents for specialized work (explore for analysis, task for commands, plan for planning, review for code review)
+
+        Be concise and direct. Use tools proactively when they'll help answer the question.
+        """;
+
+    // Append project instructions
+    if (instructions.HasInstructions)
+    {
+        systemPrompt += "\n\n" + instructions.ToSystemPrompt();
+    }
+}
+
+// Append additional prompt text
+if (appendSystemPrompt != null)
+{
+    systemPrompt += "\n\n" + appendSystemPrompt;
+}
+if (appendSystemPromptFile != null && File.Exists(appendSystemPromptFile))
+{
+    systemPrompt += "\n\n" + await File.ReadAllTextAsync(appendSystemPromptFile).ConfigureAwait(false);
+}
+
+// Plan mode injection
+if (session.PlanMode)
+{
+    systemPrompt += "\n\nYou are in plan mode. DO NOT make changes to files. Only read, explore, and plan.";
 }
 
 session.History.AddSystemMessage(systemPrompt);
@@ -373,6 +509,13 @@ completionProvider.Register("/sandbox", "Show or change sandbox mode");
 completionProvider.Register("/workflow", "Manage workflows (list|show|export|replay|refine)");
 completionProvider.Register("/spinner", "Set progress style (none|minimal|normal|rich|nerdy)");
 completionProvider.Register("/mcp", "Manage MCP servers (list|add|remove|enable|disable)");
+completionProvider.Register("/context", "Show context window usage");
+completionProvider.Register("/copy", "Copy last response to clipboard");
+completionProvider.Register("/diff", "Show uncommitted changes");
+completionProvider.Register("/init", "Initialize JDAI.md project file");
+completionProvider.Register("/plan", "Toggle plan mode (explore only)");
+completionProvider.Register("/doctor", "Run self-diagnostics");
+completionProvider.Register("/fork", "Fork conversation to new session");
 completionProvider.Register("/quit", "Exit jdai");
 completionProvider.Register("/exit", "Exit jdai");
 var interactiveInput = new InteractiveInput(completionProvider);
@@ -406,17 +549,77 @@ interactiveInput.OnDoubleEscape += (sender, e) =>
 };
 
 // 11. Render welcome banner
-ChatRenderer.RenderBanner(
-    selectedModel.DisplayName,
-    selectedModel.ProviderName,
-    allModels.Count);
+if (!printMode)
+{
+    ChatRenderer.RenderBanner(
+        selectedModel.DisplayName,
+        selectedModel.ProviderName,
+        allModels.Count);
+}
 
 // 11b. Show update notification if background check completed
 var pendingUpdate = await updateCheckTask.ConfigureAwait(false);
-if (pendingUpdate is not null)
+if (pendingUpdate is not null && !printMode)
 {
     AnsiConsole.MarkupLine(UpdatePrompter.FormatNotification(pendingUpdate));
     AnsiConsole.WriteLine();
+}
+
+// Print mode: non-interactive execution
+if (printMode)
+{
+    var query = new System.Text.StringBuilder();
+    if (pipedInput != null)
+    {
+        query.AppendLine(pipedInput);
+        query.AppendLine("---");
+    }
+    if (printQuery != null)
+    {
+        query.Append(printQuery);
+    }
+    else if (pipedInput == null)
+    {
+        Console.Error.WriteLine("Error: --print requires a query argument or piped input.");
+        return 1;
+    }
+
+    var printAgentLoop = new AgentLoop(session);
+    var turnCount = 0;
+    string lastResponse = "";
+    string? currentPrintMessage = query.ToString();
+
+    while (currentPrintMessage != null)
+    {
+        turnCount++;
+        if (maxTurns.HasValue && turnCount > maxTurns.Value)
+        {
+            Console.Error.WriteLine($"Error: max turns ({maxTurns.Value}) exceeded.");
+            return 1;
+        }
+
+        lastResponse = await printAgentLoop.RunTurnAsync(currentPrintMessage).ConfigureAwait(false);
+        currentPrintMessage = null;
+    }
+
+    if (string.Equals(outputFormat, "json", StringComparison.OrdinalIgnoreCase))
+    {
+        var jsonResult = new
+        {
+            result = lastResponse,
+            model = selectedModel.Id,
+            provider = selectedModel.ProviderName,
+            turns = turnCount,
+        };
+        Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(jsonResult,
+            JsonOptions.Indented));
+    }
+    else
+    {
+        Console.Write(lastResponse);
+    }
+
+    return 0;
 }
 
 // 12. Main interaction loop
@@ -489,6 +692,40 @@ while (!appCts.IsCancellationRequested)
 
     // Slash command? (only check the typed text, not assembled)
     var typedText = inputResult.TypedText;
+
+    // ! bash mode: run command directly, add output to context
+    if (typedText.StartsWith('!'))
+    {
+        var bashCmd = typedText[1..].Trim();
+        if (!string.IsNullOrEmpty(bashCmd))
+        {
+            ChatRenderer.RenderInfo($"$ {bashCmd}");
+            try
+            {
+                var bashResult = await ShellTools.RunCommandAsync(bashCmd).ConfigureAwait(false);
+                Console.WriteLine(bashResult);
+                session.History.AddUserMessage($"[Shell command: {bashCmd}]\n{bashResult}");
+            }
+#pragma warning disable CA1031 // non-fatal shell error
+            catch (Exception ex)
+            {
+                ChatRenderer.RenderWarning($"Command failed: {ex.Message}");
+            }
+#pragma warning restore CA1031
+        }
+        continue;
+    }
+
+    // @ file mentions: inject file contents into the message
+    if (input.Contains('@'))
+    {
+        var expanded = FileMentionExpander.Expand(input);
+        if (!string.Equals(expanded, input, StringComparison.Ordinal))
+        {
+            input = expanded;
+        }
+    }
+
     if (inputResult.Attachments.Count == 0 && commandRouter.IsSlashCommand(typedText))
     {
         if (typedText.TrimStart().StartsWith("/quit", StringComparison.OrdinalIgnoreCase) ||
@@ -576,3 +813,14 @@ if (gatewayHost is not null)
 }
 
 return 0;
+
+/// <summary>Cached JSON serializer options to satisfy CA1869.</summary>
+#pragma warning disable MA0047 // file-scoped types in top-level programs have no namespace
+file static class JsonOptions
+#pragma warning restore MA0047
+{
+    public static readonly System.Text.Json.JsonSerializerOptions Indented = new()
+    {
+        WriteIndented = true,
+    };
+}
