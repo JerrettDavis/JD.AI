@@ -1,3 +1,7 @@
+using JD.SemanticKernel.Extensions.Mcp;
+using JD.SemanticKernel.Extensions.Mcp.Discovery;
+using JD.SemanticKernel.Extensions.Mcp.Registry;
+
 namespace JD.AI.Core.Mcp;
 
 /// <summary>
@@ -7,7 +11,7 @@ namespace JD.AI.Core.Mcp;
 /// </summary>
 public sealed class McpManager
 {
-    private readonly IReadOnlyList<IMcpDiscoveryProvider> _providers;
+    private readonly IMcpRegistry _registry;
     private readonly JdAiMcpDiscoveryProvider? _jdAiProvider;
     private readonly Dictionary<string, McpServerStatus> _statusCache =
         new(StringComparer.OrdinalIgnoreCase);
@@ -15,53 +19,39 @@ public sealed class McpManager
 
     /// <summary>
     /// Creates an <see cref="McpManager"/> using the default provider set:
-    /// Claude Code user + project configs and the JD.AI-managed config.
+    /// Claude Code, Claude Desktop, VS Code, Codex, Copilot, and the JD.AI-managed config.
     /// </summary>
     public McpManager()
-        : this(CreateDefaultProviders(out var jdAiProvider), jdAiProvider)
+        : this(CreateDefaultRegistry(out var jdAiProvider), jdAiProvider)
     {
     }
 
-    private static IReadOnlyList<IMcpDiscoveryProvider> CreateDefaultProviders(
-        out JdAiMcpDiscoveryProvider jdAiProvider)
+    /// <summary>Creates an <see cref="McpManager"/> with a custom registry and optional write provider.</summary>
+    public McpManager(IMcpRegistry registry, JdAiMcpDiscoveryProvider? jdAiProvider = null)
     {
-        jdAiProvider = new JdAiMcpDiscoveryProvider();
-        return
-        [
-            new ClaudeCodeUserMcpDiscoveryProvider(),
-            jdAiProvider,
-            new ClaudeCodeProjectMcpDiscoveryProvider(),
-        ];
-    }
-
-    /// <summary>Creates an <see cref="McpManager"/> with a custom provider list.</summary>
-    public McpManager(
-        IReadOnlyList<IMcpDiscoveryProvider> providers,
-        JdAiMcpDiscoveryProvider? jdAiProvider = null)
-    {
-        _providers = providers;
+        _registry = registry;
         _jdAiProvider = jdAiProvider;
     }
 
-    /// <summary>
-    /// Discovers and merges servers from all providers.
-    /// Precedence: Project &gt; User &gt; BuiltIn.
-    /// Within the same scope, later providers (higher index) override earlier ones.
-    /// </summary>
-    public async Task<IReadOnlyList<McpServerDefinition>> GetAllServersAsync(
-        CancellationToken ct = default)
+    private static McpRegistry CreateDefaultRegistry(out JdAiMcpDiscoveryProvider jdAiProvider)
     {
-        var all = new List<McpServerDefinition>();
-
-        foreach (var provider in _providers)
-        {
-            ct.ThrowIfCancellationRequested();
-            var discovered = await provider.DiscoverAsync(ct).ConfigureAwait(false);
-            all.AddRange(discovered);
-        }
-
-        return Merge(all);
+        jdAiProvider = new JdAiMcpDiscoveryProvider();
+        var cwd = Directory.GetCurrentDirectory();
+        IReadOnlyList<IMcpDiscoveryProvider> providers =
+        [
+            new ClaudeCodeMcpDiscoveryProvider(cwd),
+            new ClaudeDesktopMcpDiscoveryProvider(),
+            new VsCodeMcpDiscoveryProvider(cwd),
+            new CodexMcpDiscoveryProvider(cwd),
+            new CopilotMcpDiscoveryProvider(),
+            jdAiProvider,
+        ];
+        return new McpRegistry(providers);
     }
+
+    /// <summary>Discovers and merges servers from all providers via the registry.</summary>
+    public Task<IReadOnlyList<McpServerDefinition>> GetAllServersAsync(CancellationToken ct = default)
+        => _registry.GetAllAsync(ct);
 
     /// <summary>
     /// Returns the cached status for a server, or <see cref="McpServerStatus.Default"/>
@@ -115,35 +105,6 @@ public sealed class McpManager
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Merges definitions applying scope precedence: Project &gt; User &gt; BuiltIn.
-    /// Within the same scope the last definition seen wins (later providers override earlier ones).
-    /// </summary>
-    internal static IReadOnlyList<McpServerDefinition> Merge(
-        IEnumerable<McpServerDefinition> all)
-    {
-        var byName = new Dictionary<string, McpServerDefinition>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var def in all)
-        {
-            if (!byName.TryGetValue(def.Name, out var existing) ||
-                ScopePriority(def.Scope) >= ScopePriority(existing.Scope))
-            {
-                byName[def.Name] = def;
-            }
-        }
-
-        return [.. byName.Values.OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase)];
-    }
-
-    private static int ScopePriority(McpScope scope) => scope switch
-    {
-        McpScope.BuiltIn => 0,
-        McpScope.User    => 1,
-        McpScope.Project => 2,
-        _                => -1,
-    };
 
     private void EnsureJdAiProvider()
     {

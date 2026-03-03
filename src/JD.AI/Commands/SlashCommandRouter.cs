@@ -7,6 +7,7 @@ using JD.AI.Core.Providers;
 using JD.AI.Core.Sessions;
 using JD.AI.Rendering;
 using JD.AI.Workflows;
+using JD.SemanticKernel.Extensions.Mcp;
 
 namespace JD.AI.Commands;
 
@@ -798,32 +799,31 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             return McpAddUsage();
 
         var transportStr = tokens[transportIdx + 1];
-        McpTransport transport;
         McpServerDefinition server;
 
         if (string.Equals(transportStr, "http", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(transportStr, "https", StringComparison.OrdinalIgnoreCase))
         {
-            transport = McpTransport.Http;
             var urlIdx = transportIdx + 2;
             if (urlIdx >= tokens.Length)
                 return "Usage: /mcp add <name> --transport http <url>";
 
             var url = tokens[urlIdx];
-            server = new McpServerDefinition
-            {
-                Name = name,
-                DisplayName = name,
-                Transport = transport,
-                Url = url,
-                Scope = McpScope.User,
-                SourceProvider = "JD.AI",
-                IsEnabled = true,
-            };
+            server = new McpServerDefinition(
+                name: name,
+                displayName: name,
+                transport: McpTransportType.Http,
+                scope: McpScope.User,
+                sourceProvider: "JD.AI",
+                sourcePath: null,
+                url: Uri.TryCreate(url, UriKind.Absolute, out var parsedUrl) ? parsedUrl : null,
+                command: null,
+                args: null,
+                env: null,
+                isEnabled: true);
         }
         else if (string.Equals(transportStr, "stdio", StringComparison.OrdinalIgnoreCase))
         {
-            transport = McpTransport.Stdio;
             var cmdIdx = Array.FindIndex(tokens, t =>
                 string.Equals(t, "--command", StringComparison.OrdinalIgnoreCase));
 
@@ -839,17 +839,18 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                 ? tokens[(argStartIdx + 1)..].ToList()
                 : (IReadOnlyList<string>)[];
 
-            server = new McpServerDefinition
-            {
-                Name = name,
-                DisplayName = name,
-                Transport = transport,
-                Command = command,
-                Args = serverArgs,
-                Scope = McpScope.User,
-                SourceProvider = "JD.AI",
-                IsEnabled = true,
-            };
+            server = new McpServerDefinition(
+                name: name,
+                displayName: name,
+                transport: McpTransportType.Stdio,
+                scope: McpScope.User,
+                sourceProvider: "JD.AI",
+                sourcePath: null,
+                url: null,
+                command: command,
+                args: serverArgs,
+                env: null,
+                isEnabled: true);
         }
         else
         {

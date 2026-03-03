@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using JD.AI.Core.Mcp;
+using JD.SemanticKernel.Extensions.Mcp;
 
 namespace JD.AI.Commands;
 
@@ -58,7 +59,7 @@ internal static class McpCliHandler
                 s.IsEnabled,
                 s.Command,
                 s.Args,
-                s.Url));
+                s.Url?.ToString()));
 
             Console.WriteLine(JsonSerializer.Serialize(list, JsonOpts));
             return 0;
@@ -151,12 +152,18 @@ internal static class McpCliHandler
                 return 1;
             }
 
-            server = new McpServerDefinition
-            {
-                Name = name, DisplayName = name,
-                Transport = McpTransport.Http, Url = url,
-                Scope = McpScope.User, SourceProvider = "JD.AI", IsEnabled = true,
-            };
+            server = new McpServerDefinition(
+                name: name,
+                displayName: name,
+                transport: McpTransportType.Http,
+                scope: McpScope.User,
+                sourceProvider: "JD.AI",
+                sourcePath: null,
+                url: Uri.TryCreate(url, UriKind.Absolute, out var parsedUrl) ? parsedUrl : null,
+                command: null,
+                args: null,
+                env: null,
+                isEnabled: true);
         }
         else if (string.Equals(transportStr, "stdio", StringComparison.OrdinalIgnoreCase))
         {
@@ -179,12 +186,18 @@ internal static class McpCliHandler
                 ? (IReadOnlyList<string>)args[(argFlagIdx + 1)..].ToList()
                 : [];
 
-            server = new McpServerDefinition
-            {
-                Name = name, DisplayName = name,
-                Transport = McpTransport.Stdio, Command = command, Args = serverArgs,
-                Scope = McpScope.User, SourceProvider = "JD.AI", IsEnabled = true,
-            };
+            server = new McpServerDefinition(
+                name: name,
+                displayName: name,
+                transport: McpTransportType.Stdio,
+                scope: McpScope.User,
+                sourceProvider: "JD.AI",
+                sourcePath: null,
+                url: null,
+                command: command,
+                args: serverArgs,
+                env: null,
+                isEnabled: true);
         }
         else
         {
@@ -279,7 +292,7 @@ internal static class McpCliHandler
         string? SourcePath,
         bool IsEnabled,
         string? Command,
-        IReadOnlyList<string> Args,
+        IReadOnlyList<string>? Args,
         string? Url);
 
     private static int ScopePriority(McpScope scope) => scope switch

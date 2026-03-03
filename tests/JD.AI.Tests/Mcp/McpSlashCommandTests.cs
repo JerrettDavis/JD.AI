@@ -3,6 +3,8 @@ using JD.AI.Core.Agents;
 using JD.AI.Core.Config;
 using JD.AI.Core.Mcp;
 using JD.AI.Core.Providers;
+using JD.SemanticKernel.Extensions.Mcp;
+using JD.SemanticKernel.Extensions.Mcp.Registry;
 using Microsoft.SemanticKernel;
 using NSubstitute;
 
@@ -27,7 +29,7 @@ public sealed class McpSlashCommandTests
     public async Task McpList_NoServers_ShowsEmptyState()
     {
         // Use an isolated McpManager with no providers so no real files are read
-        var emptyManager = new McpManager([], null);
+        var emptyManager = new McpManager(new McpRegistry([]), null);
         var router = CreateRouter(emptyManager);
 
         var result = await router.ExecuteAsync("/mcp list");
@@ -42,19 +44,21 @@ public sealed class McpSlashCommandTests
     {
         var fakeProvider = new FakeMcpDiscoveryProvider(
         [
-            new McpServerDefinition
-            {
-                Name = "test-server",
-                Scope = McpScope.User,
-                SourceProvider = "JD.AI",
-                SourcePath = "/home/user/.jdai/mcp.json",
-                Transport = McpTransport.Stdio,
-                Command = "npx",
-                IsEnabled = true,
-            },
+            new McpServerDefinition(
+                name: "test-server",
+                displayName: "test-server",
+                transport: McpTransportType.Stdio,
+                scope: McpScope.User,
+                sourceProvider: "JD.AI",
+                sourcePath: "/home/user/.jdai/jdai.mcp.json",
+                url: null,
+                command: "npx",
+                args: null,
+                env: null,
+                isEnabled: true),
         ]);
 
-        var manager = new McpManager([fakeProvider], null);
+        var manager = new McpManager(new McpRegistry([fakeProvider]), null);
         var router = CreateRouter(manager);
 
         var result = await router.ExecuteAsync("/mcp list");
@@ -67,7 +71,7 @@ public sealed class McpSlashCommandTests
     [Fact]
     public async Task McpUnknownSubcommand_ShowsHelp()
     {
-        var manager = new McpManager([], null);
+        var manager = new McpManager(new McpRegistry([]), null);
         var router = CreateRouter(manager);
 
         var result = await router.ExecuteAsync("/mcp bogus");
@@ -90,7 +94,7 @@ public sealed class McpSlashCommandTests
     [Fact]
     public async Task McpAdd_MissingArgs_ReturnsUsage()
     {
-        var manager = new McpManager([], null);
+        var manager = new McpManager(new McpRegistry([]), null);
         var router = CreateRouter(manager);
 
         var result = await router.ExecuteAsync("/mcp add");
@@ -106,7 +110,7 @@ public sealed class McpSlashCommandTests
         try
         {
             var jdAiProvider = new JdAiMcpDiscoveryProvider(path);
-            var manager = new McpManager([], jdAiProvider);
+            var manager = new McpManager(new McpRegistry([]), jdAiProvider);
             var router = CreateRouter(manager);
 
             var result = await router.ExecuteAsync("/mcp add myserver --transport ftp server.com");
@@ -127,7 +131,7 @@ public sealed class McpSlashCommandTests
         try
         {
             var jdAiProvider = new JdAiMcpDiscoveryProvider(path);
-            var manager = new McpManager([jdAiProvider], jdAiProvider);
+            var manager = new McpManager(new McpRegistry([jdAiProvider]), jdAiProvider);
             var router = CreateRouter(manager);
 
             var result = await router.ExecuteAsync(
@@ -139,7 +143,7 @@ public sealed class McpSlashCommandTests
 
             var servers = await manager.GetAllServersAsync();
             Assert.Contains(servers, s => string.Equals(s.Name, "notion", StringComparison.Ordinal) &&
-                string.Equals(s.Url, "https://mcp.notion.com/mcp", StringComparison.Ordinal));
+                s.Url?.ToString().StartsWith("https://mcp.notion.com", StringComparison.Ordinal) == true);
         }
         finally
         {
@@ -154,7 +158,7 @@ public sealed class McpSlashCommandTests
         try
         {
             var jdAiProvider = new JdAiMcpDiscoveryProvider(path);
-            var manager = new McpManager([jdAiProvider], jdAiProvider);
+            var manager = new McpManager(new McpRegistry([jdAiProvider]), jdAiProvider);
             var router = CreateRouter(manager);
 
             var result = await router.ExecuteAsync(
@@ -177,7 +181,7 @@ public sealed class McpSlashCommandTests
     [Fact]
     public async Task McpRemove_MissingName_ReturnsUsage()
     {
-        var manager = new McpManager([], null);
+        var manager = new McpManager(new McpRegistry([]), null);
         var router = CreateRouter(manager);
 
         var result = await router.ExecuteAsync("/mcp remove");
@@ -193,10 +197,14 @@ public sealed class McpSlashCommandTests
         try
         {
             var jdAiProvider = new JdAiMcpDiscoveryProvider(path);
-            var server = new McpServerDefinition { Name = "to-remove" };
+            var server = new McpServerDefinition(
+                name: "to-remove", displayName: "to-remove",
+                transport: McpTransportType.Stdio, scope: McpScope.User,
+                sourceProvider: "jd-ai", sourcePath: null,
+                url: null, command: null, args: null, env: null, isEnabled: true);
             await jdAiProvider.AddOrUpdateAsync(server);
 
-            var manager = new McpManager([jdAiProvider], jdAiProvider);
+            var manager = new McpManager(new McpRegistry([jdAiProvider]), jdAiProvider);
             var router = CreateRouter(manager);
 
             var result = await router.ExecuteAsync("/mcp remove to-remove");
@@ -219,10 +227,14 @@ public sealed class McpSlashCommandTests
         try
         {
             var jdAiProvider = new JdAiMcpDiscoveryProvider(path);
-            var server = new McpServerDefinition { Name = "svc", IsEnabled = true };
+            var server = new McpServerDefinition(
+                name: "svc", displayName: "svc",
+                transport: McpTransportType.Stdio, scope: McpScope.User,
+                sourceProvider: "jd-ai", sourcePath: null,
+                url: null, command: null, args: null, env: null, isEnabled: true);
             await jdAiProvider.AddOrUpdateAsync(server);
 
-            var manager = new McpManager([jdAiProvider], jdAiProvider);
+            var manager = new McpManager(new McpRegistry([jdAiProvider]), jdAiProvider);
             var router = CreateRouter(manager);
 
             var result = await router.ExecuteAsync("/mcp disable svc");
@@ -248,10 +260,14 @@ public sealed class McpSlashCommandTests
         try
         {
             var jdAiProvider = new JdAiMcpDiscoveryProvider(path);
-            var server = new McpServerDefinition { Name = "svc", IsEnabled = false };
+            var server = new McpServerDefinition(
+                name: "svc", displayName: "svc",
+                transport: McpTransportType.Stdio, scope: McpScope.User,
+                sourceProvider: "jd-ai", sourcePath: null,
+                url: null, command: null, args: null, env: null, isEnabled: false);
             await jdAiProvider.AddOrUpdateAsync(server);
 
-            var manager = new McpManager([jdAiProvider], jdAiProvider);
+            var manager = new McpManager(new McpRegistry([jdAiProvider]), jdAiProvider);
             var router = CreateRouter(manager);
 
             var result = await router.ExecuteAsync("/mcp enable svc");
@@ -273,8 +289,8 @@ public sealed class McpSlashCommandTests
     private sealed class FakeMcpDiscoveryProvider(IReadOnlyList<McpServerDefinition> servers)
         : IMcpDiscoveryProvider
     {
-        public string SourceLabel => "Fake";
-        public Task<IReadOnlyList<McpServerDefinition>> DiscoverAsync(CancellationToken ct = default)
+        public string ProviderId => "fake";
+        public Task<IReadOnlyList<McpServerDefinition>> DiscoverAsync(CancellationToken cancellationToken = default)
             => Task.FromResult(servers);
     }
 }

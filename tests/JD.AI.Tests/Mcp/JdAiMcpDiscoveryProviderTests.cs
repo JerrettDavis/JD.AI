@@ -1,4 +1,5 @@
 using JD.AI.Core.Mcp;
+using JD.SemanticKernel.Extensions.Mcp;
 
 namespace JD.AI.Tests.Mcp;
 
@@ -6,6 +7,26 @@ public sealed class JdAiMcpDiscoveryProviderTests
 {
     private static string TempConfigPath() =>
         Path.Combine(Path.GetTempPath(), $"jdai-mcp-{Guid.NewGuid():N}.json");
+
+    private static McpServerDefinition MakeServer(
+        string name,
+        McpTransportType transport = McpTransportType.Stdio,
+        string? command = null,
+        IReadOnlyList<string>? args = null,
+        Uri? url = null,
+        bool isEnabled = true)
+        => new(
+            name: name,
+            displayName: name,
+            transport: transport,
+            scope: McpScope.User,
+            sourceProvider: "jd-ai",
+            sourcePath: null,
+            url: url,
+            command: command,
+            args: args,
+            env: null,
+            isEnabled: isEnabled);
 
     [Fact]
     public async Task DiscoverAsync_ReturnsEmptyWhenFileAbsent()
@@ -22,14 +43,7 @@ public sealed class JdAiMcpDiscoveryProviderTests
         try
         {
             var provider = new JdAiMcpDiscoveryProvider(path);
-            var server = new McpServerDefinition
-            {
-                Name = "test-server",
-                Transport = McpTransport.Stdio,
-                Command = "npx",
-                Args = ["-y", "some-package"],
-                IsEnabled = true,
-            };
+            var server = MakeServer("test-server", McpTransportType.Stdio, "npx", ["-y", "some-package"]);
 
             await provider.AddOrUpdateAsync(server);
             var results = await provider.DiscoverAsync();
@@ -37,7 +51,7 @@ public sealed class JdAiMcpDiscoveryProviderTests
             Assert.Single(results);
             Assert.Equal("test-server", results[0].Name);
             Assert.Equal("npx", results[0].Command);
-            Assert.Equal(["-y", "some-package"], results[0].Args.ToList());
+            Assert.Equal(["-y", "some-package"], results[0].Args!.ToList());
         }
         finally
         {
@@ -53,13 +67,10 @@ public sealed class JdAiMcpDiscoveryProviderTests
         {
             var provider = new JdAiMcpDiscoveryProvider(path);
 
-            var original = new McpServerDefinition
-            {
-                Name = "server1", Transport = McpTransport.Stdio, Command = "old-cmd",
-            };
+            var original = MakeServer("server1", McpTransportType.Stdio, "old-cmd");
             await provider.AddOrUpdateAsync(original);
 
-            var updated = original with { Command = "new-cmd" };
+            var updated = MakeServer("server1", McpTransportType.Stdio, "new-cmd");
             await provider.AddOrUpdateAsync(updated);
 
             var results = await provider.DiscoverAsync();
@@ -79,7 +90,7 @@ public sealed class JdAiMcpDiscoveryProviderTests
         try
         {
             var provider = new JdAiMcpDiscoveryProvider(path);
-            var server = new McpServerDefinition { Name = "to-remove" };
+            var server = MakeServer("to-remove");
             await provider.AddOrUpdateAsync(server);
 
             await provider.RemoveAsync("to-remove");
@@ -100,7 +111,7 @@ public sealed class JdAiMcpDiscoveryProviderTests
         try
         {
             var provider = new JdAiMcpDiscoveryProvider(path);
-            var server = new McpServerDefinition { Name = "keeper" };
+            var server = MakeServer("keeper");
             await provider.AddOrUpdateAsync(server);
 
             // Should not throw or modify anything
@@ -122,7 +133,7 @@ public sealed class JdAiMcpDiscoveryProviderTests
         try
         {
             var provider = new JdAiMcpDiscoveryProvider(path);
-            var server = new McpServerDefinition { Name = "svc", IsEnabled = true };
+            var server = MakeServer("svc", isEnabled: true);
             await provider.AddOrUpdateAsync(server);
 
             await provider.SetEnabledAsync("svc", false);
@@ -143,7 +154,7 @@ public sealed class JdAiMcpDiscoveryProviderTests
         try
         {
             var provider = new JdAiMcpDiscoveryProvider(path);
-            var server = new McpServerDefinition { Name = "svc", IsEnabled = false };
+            var server = MakeServer("svc", isEnabled: false);
             await provider.AddOrUpdateAsync(server);
 
             await provider.SetEnabledAsync("svc", true);
@@ -164,10 +175,10 @@ public sealed class JdAiMcpDiscoveryProviderTests
         try
         {
             var provider = new JdAiMcpDiscoveryProvider(path);
-            await provider.AddOrUpdateAsync(new McpServerDefinition { Name = "s" });
+            await provider.AddOrUpdateAsync(MakeServer("s"));
 
             var results = await provider.DiscoverAsync();
-            Assert.Equal("JD.AI", results[0].SourceProvider);
+            Assert.Equal("jd-ai", results[0].SourceProvider);
             Assert.Equal(McpScope.User, results[0].Scope);
             Assert.Equal(path, results[0].SourcePath);
         }
@@ -184,7 +195,7 @@ public sealed class JdAiMcpDiscoveryProviderTests
         try
         {
             var provider = new JdAiMcpDiscoveryProvider(path);
-            await provider.AddOrUpdateAsync(new McpServerDefinition { Name = "server", IsEnabled = true });
+            await provider.AddOrUpdateAsync(MakeServer("server", isEnabled: true));
 
             // Should not throw and should not change the file
             await provider.SetEnabledAsync("nonexistent", false);
@@ -205,7 +216,7 @@ public sealed class JdAiMcpDiscoveryProviderTests
         try
         {
             var provider = new JdAiMcpDiscoveryProvider(path);
-            await provider.AddOrUpdateAsync(new McpServerDefinition { Name = "server", IsEnabled = true });
+            await provider.AddOrUpdateAsync(MakeServer("server", isEnabled: true));
 
             var modifiedBefore = File.GetLastWriteTimeUtc(path);
             await Task.Delay(10); // ensure time advances
