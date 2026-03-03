@@ -1,12 +1,12 @@
 ---
-description: "All built-in tools — file operations, search, shell, git, web, memory, and subagent spawning — with parameters and examples."
+description: "All built-in tools — file operations, search, shell, git, web, memory, subagent, think, environment, tasks, code execution, clipboard, and questions — with parameters and examples."
 ---
 
 # Tools reference
 
 JD.AI provides a set of built-in tools that the AI agent invokes automatically during conversations. Each tool call is confirmed before execution unless overridden by [`/autorun`](common-workflows.md), [`/permissions`](common-workflows.md), or the `--dangerously-skip-permissions` CLI flag.
 
-Tools are grouped into eight categories: **File**, **Search**, **Shell**, **Git**, **Web**, **Web Search**, **Memory**, and **Subagent**.
+Tools are grouped into thirteen categories: **File**, **Search**, **Shell**, **Git**, **Web**, **Web Search**, **Memory**, **Subagent**, **Think**, **Environment**, **Tasks**, **Code Execution**, **Clipboard**, and **Questions**.
 
 ![Tool execution showing file reading and grep](../images/demo-tools.png)
 
@@ -77,6 +77,11 @@ Tools are grouped into eight categories: **File**, **Search**, **Shell**, **Git*
 | `git_diff` | Show differences between commits, index, or working tree. |
 | `git_log` | Display recent commit history. |
 | `git_commit` | Stage all changes and create a commit. |
+| `git_push` | Push commits to the remote repository. |
+| `git_pull` | Pull changes from the remote repository. |
+| `git_branch` | List, create, or delete branches. |
+| `git_checkout` | Switch branches or restore working tree files. |
+| `git_stash` | Stash or restore uncommitted changes. |
 
 ### Parameters
 
@@ -84,12 +89,23 @@ Tools are grouped into eight categories: **File**, **Search**, **Shell**, **Git*
 - **`git_diff`** — `target` (string?, e.g. `"main"`, `"--staged"`), `path` (string?).
 - **`git_log`** — `count` (int, default `10`), `path` (string?).
 - **`git_commit`** — `message` (string), `path` (string?).
+- **`git_push`** — `remote` (string, default `"origin"`), `branch` (string?, default current branch), `path` (string?).
+- **`git_pull`** — `remote` (string, default `"origin"`), `branch` (string?, default current branch), `path` (string?).
+- **`git_branch`** — `name` (string?, omit to list), `delete` (bool, default `false`), `path` (string?).
+- **`git_checkout`** — `target` (string, branch/SHA/file), `createNew` (bool, default `false`), `path` (string?).
+- **`git_stash`** — `action` (string: `"push"`, `"pop"`, `"list"`, `"drop"`, default `"push"`), `message` (string?, optional), `path` (string?).
 
 ### Example
 
 ```text
-> show me what changed since main
-⚡ Tool: git_diff(target: "main")
+> push the changes to origin
+⚡ Tool: git_push(remote: "origin")
+
+> create a new feature branch
+⚡ Tool: git_checkout(target: "feat/new-feature", createNew: true)
+
+> stash my current changes
+⚡ Tool: git_stash(action: "push", message: "WIP before refactor")
 ```
 
 ## Web tools
@@ -161,15 +177,143 @@ Tools are grouped into eight categories: **File**, **Search**, **Shell**, **Git*
 ⚡ Tool: spawn_agent(type: "review", prompt: "Review the staged changes", mode: "single")
 ```
 
+## Think tools
+
+| Function | Description |
+|----------|-------------|
+| `think` | Scratchpad for reasoning — no side effects. |
+
+The think tool lets the agent plan, reason through trade-offs, or organize multi-step approaches without executing any actions. It simply returns the thought back as a structured note.
+
+### Parameters
+
+- **`think`** — `thought` (string).
+
+### Example
+
+```text
+⚡ Tool: think(thought: "The user wants to refactor auth. I should first check the current implementation, then propose changes.")
+```
+
+## Environment tools
+
+| Function | Description |
+|----------|-------------|
+| `get_environment` | Returns OS, architecture, runtime, disk space, and tooling versions. |
+
+### Parameters
+
+- **`get_environment`** — `includeEnvVars` (bool, default `false`). When `true`, includes environment variables with secrets automatically masked.
+
+### Example
+
+```text
+> what system am I running on?
+⚡ Tool: get_environment(includeEnvVars: false)
+```
+
+## Task tools
+
+| Function | Description |
+|----------|-------------|
+| `create_task` | Create a tracked work item with priority. |
+| `list_tasks` | List tasks, optionally filtered by status. |
+| `update_task` | Update a task's status, title, or description. |
+| `complete_task` | Mark a task as done. |
+| `export_tasks` | Export all tasks as JSON. |
+
+### Parameters
+
+- **`create_task`** — `title` (string), `description` (string?, optional), `priority` (`"low"` / `"medium"` / `"high"`, default `"medium"`).
+- **`list_tasks`** — `status` (string?, filter: `"pending"`, `"in_progress"`, `"done"`, `"blocked"`).
+- **`update_task`** — `id` (string, e.g. `"task-1"`), `status` (string?), `title` (string?), `description` (string?).
+- **`complete_task`** — `id` (string).
+- **`export_tasks`** — no parameters.
+
+### Example
+
+```text
+> track the remaining work
+⚡ Tool: create_task(title: "Add unit tests for AuthService", priority: "high")
+⚡ Tool: create_task(title: "Update README with new endpoints", priority: "medium")
+⚡ Tool: list_tasks()
+```
+
+## Code execution tools
+
+| Function | Description |
+|----------|-------------|
+| `execute_code` | Run a code snippet in C#, Python, Node.js, Bash, or PowerShell. |
+
+### Parameters
+
+- **`execute_code`** — `language` (string: `"csharp"`, `"python"`, `"node"`, `"bash"`, `"powershell"`), `code` (string), `timeoutSeconds` (int, default `30`, max `300`).
+
+Temporary files are created in the system temp directory and automatically cleaned up after execution. Processes that exceed the timeout are killed.
+
+### Example
+
+```text
+> test this regex in python
+⚡ Tool: execute_code(language: "python", code: "import re; print(re.findall(r'\\d+', 'abc 123 def 456'))")
+```
+
+## Clipboard tools
+
+| Function | Description |
+|----------|-------------|
+| `read_clipboard` | Read text from the system clipboard. |
+| `write_clipboard` | Write text to the system clipboard. |
+
+Cross-platform support: uses PowerShell/clip on Windows, pbcopy/pbpaste on macOS, and xclip/xsel on Linux.
+
+### Parameters
+
+- **`read_clipboard`** — no parameters.
+- **`write_clipboard`** — `text` (string).
+
+### Example
+
+```text
+> paste what's on my clipboard
+⚡ Tool: read_clipboard()
+```
+
+## Question tools
+
+| Function | Description |
+|----------|-------------|
+| `ask_questions` | Present a structured questionnaire to the user and collect validated answers. |
+
+### Parameters
+
+- **`ask_questions`** — `questionsJson` (string, JSON). The JSON should contain an `AskQuestionsRequest` with `title`, `context`, `questions[]` (each with `key`, `prompt`, `type`, `required`, `options[]`, `validation`), `allowCancel`, and `submitLabel`.
+
+### Supported question types
+
+| Type | Description |
+|------|-------------|
+| `text` | Free-form text input |
+| `confirm` | Yes/no confirmation |
+| `singleSelect` | Pick one option from a list |
+| `multiSelect` | Pick multiple options from a list |
+| `number` | Numeric input with optional min/max bounds |
+
+### Example
+
+```text
+⚡ Tool: ask_questions(questionsJson: "{\"title\":\"Project Setup\",\"questions\":[{\"key\":\"name\",\"prompt\":\"Project name?\",\"type\":\"text\",\"required\":true}]}")
+```
+
 ## Tool safety tiers
 
 Every tool belongs to a safety tier that controls how confirmation is handled:
 
 | Tier | Behavior | Tools |
 |------|----------|-------|
-| **Auto-approve** | Runs without confirmation | `read_file`, `grep`, `glob`, `list_directory`, `git_status`, `git_log`, `memory_search` |
-| **Confirm once** | Asks once per session | `web_fetch`, `web_search` |
-| **Always confirm** | Asks every invocation | `write_file`, `edit_file`, `run_command`, `git_commit` |
+| **Auto-approve** | Runs without confirmation | `read_file`, `grep`, `glob`, `list_directory`, `git_status`, `git_diff`, `git_log`, `git_branch`, `memory_search`, `web_fetch`, `ask_questions`, `think`, `get_environment`, `list_tasks`, `export_tasks`, `read_clipboard` |
+| **Confirm once** | Asks once per session | `write_file`, `edit_file`, `git_commit`, `git_push`, `git_pull`, `git_checkout`, `git_stash`, `memory_store`, `memory_forget`, `create_task`, `update_task`, `complete_task`, `write_clipboard`, `spawn_agent`, `spawn_team` |
+| **Always confirm** | Asks every invocation | `run_command`, `web_search`, `execute_code` |
 
 ## Controlling tool permissions
 
