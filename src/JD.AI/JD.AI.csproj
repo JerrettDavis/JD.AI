@@ -18,6 +18,7 @@
   <!-- SK + Extensions -->
   <ItemGroup>
     <PackageReference Include="JD.SemanticKernel.Extensions" />
+    <PackageReference Include="JD.SemanticKernel.Extensions.Mcp" />
     <PackageReference Include="Microsoft.SemanticKernel" />
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" />
   </ItemGroup>
