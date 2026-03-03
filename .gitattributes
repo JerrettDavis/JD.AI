@@ -1,0 +1,16 @@
+# Ensure consistent line endings across platforms
+# .editorconfig requires CRLF for C# files
+*.cs text eol=crlf
+*.csproj text eol=crlf
+*.slnx text eol=crlf
+*.sln text eol=crlf
+*.props text eol=crlf
+*.targets text eol=crlf
+*.json text eol=crlf
+*.xml text eol=crlf
+*.md text eol=crlf
+*.yml text eol=crlf
+*.yaml text eol=crlf
+
+# Shell scripts always LF
+*.sh text eol=lf

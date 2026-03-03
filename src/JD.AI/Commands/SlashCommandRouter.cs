@@ -4,6 +4,7 @@ using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Sessions;
 using JD.AI.Rendering;
+using JD.AI.Workflows;
 
 namespace JD.AI.Commands;
 
@@ -17,19 +18,24 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private readonly InstructionsResult? _instructions;
     private readonly ICheckpointStrategy? _checkpointStrategy;
     private readonly PluginLoader? _pluginLoader;
+    private readonly IWorkflowCatalog? _workflowCatalog;
+    private readonly WorkflowEmitter _workflowEmitter;
 
     public SlashCommandRouter(
         AgentSession session,
         IProviderRegistry registry,
         InstructionsResult? instructions = null,
         ICheckpointStrategy? checkpointStrategy = null,
-        PluginLoader? pluginLoader = null)
+        PluginLoader? pluginLoader = null,
+        IWorkflowCatalog? workflowCatalog = null)
     {
         _session = session;
         _registry = registry;
         _instructions = instructions;
         _checkpointStrategy = checkpointStrategy;
         _pluginLoader = pluginLoader;
+        _workflowCatalog = workflowCatalog;
+        _workflowEmitter = new WorkflowEmitter();
     }
 
     public bool IsSlashCommand(string input) =>
@@ -63,6 +69,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/PLUGINS" or "/JDAI-PLUGINS" => ShowPlugins(),
             "/CHECKPOINT" or "/JDAI-CHECKPOINT" => await HandleCheckpointAsync(arg, ct).ConfigureAwait(false),
             "/SANDBOX" or "/JDAI-SANDBOX" => ShowSandboxInfo(),
+            "/WORKFLOW" or "/JDAI-WORKFLOW" => await HandleWorkflowAsync(arg, ct).ConfigureAwait(false),
             "/QUIT" or "/EXIT" or "/JDAI-QUIT" or "/JDAI-EXIT" => null, // Signal exit
             _ => $"Unknown command: {parts[0]}. Type /help for available commands.",
         };
@@ -90,6 +97,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /plugins        — List loaded plugins
           /checkpoint     — List, restore, or clear checkpoints
           /sandbox        — Show sandbox mode info
+          /workflow       — Manage workflows (list|show|export|replay|refine)
           /quit           — Exit jdai
         """;
 
@@ -389,4 +397,119 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private static string ShowSandboxInfo() =>
         $"Sandbox modes: none (default), restricted, container.\n" +
         $"Configure via JDAI.md: `sandbox: restricted`";
+
+    // ── Workflow commands ─────────────────────────────────
+
+    private async Task<string> HandleWorkflowAsync(string? arg, CancellationToken ct)
+    {
+        if (_workflowCatalog is null)
+            return "Workflow catalog not configured.";
+
+        var subCmd = arg?.Trim().Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var action = subCmd is { Length: > 0 } ? subCmd[0].ToUpperInvariant() : "LIST";
+        var param = subCmd is { Length: > 1 } ? subCmd[1] : null;
+
+        return action switch
+        {
+            "LIST" or "" => await ListWorkflowsAsync(ct).ConfigureAwait(false),
+            "SHOW" when param is not null => await ShowWorkflowAsync(param, ct).ConfigureAwait(false),
+            "SHOW" => "Usage: /workflow show <name>",
+            "EXPORT" when param is not null => await ExportWorkflowAsync(param, ct).ConfigureAwait(false),
+            "EXPORT" => "Usage: /workflow export <name> [json|csharp|mermaid]",
+            "REPLAY" when param is not null => await ReplayWorkflowAsync(param, ct).ConfigureAwait(false),
+            "REPLAY" => "Usage: /workflow replay <name> [version]",
+            "REFINE" when param is not null => RefineWorkflowInfo(param),
+            "REFINE" => "Usage: /workflow refine <name>",
+            _ => "Usage: /workflow [list|show <name>|export <name> [format]|replay <name> [version]|refine <name>]",
+        };
+    }
+
+    private async Task<string> ListWorkflowsAsync(CancellationToken ct)
+    {
+        var workflows = await _workflowCatalog!.ListAsync(ct).ConfigureAwait(false);
+        if (workflows.Count == 0)
+            return "No workflows in catalog. Workflows are captured automatically during multi-step executions.";
+
+        var lines = workflows.Select(w =>
+        {
+            var tags = w.Tags.Count > 0 ? $" [{string.Join(", ", w.Tags)}]" : "";
+            return $"  {w.Name} v{w.Version}{tags} — {w.Description}";
+        });
+        return $"Workflows ({workflows.Count}):\n{string.Join('\n', lines)}";
+    }
+
+    private async Task<string> ShowWorkflowAsync(string name, CancellationToken ct)
+    {
+        var workflow = await _workflowCatalog!.GetAsync(name, ct: ct).ConfigureAwait(false);
+        if (workflow is null)
+            return $"Workflow '{name}' not found.";
+
+        var artifact = _workflowEmitter.Emit(workflow, WorkflowExportFormat.Json);
+        return $"Workflow: {workflow.Name} v{workflow.Version}\n{artifact.Content}";
+    }
+
+    private async Task<string> ExportWorkflowAsync(string param, CancellationToken ct)
+    {
+        var parts = param.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var name = parts[0];
+        var formatStr = parts.Length > 1 ? parts[1].ToUpperInvariant() : "JSON";
+
+        var format = formatStr switch
+        {
+            "CSHARP" or "CS" => WorkflowExportFormat.CSharp,
+            "MERMAID" => WorkflowExportFormat.Mermaid,
+            _ => WorkflowExportFormat.Json,
+        };
+
+        var workflow = await _workflowCatalog!.GetAsync(name, ct: ct).ConfigureAwait(false);
+        if (workflow is null)
+            return $"Workflow '{name}' not found.";
+
+        var artifact = _workflowEmitter.Emit(workflow, format);
+        return $"# {workflow.Name} v{workflow.Version} ({format})\n\n{artifact.Content}";
+    }
+
+    private async Task<string> ReplayWorkflowAsync(string param, CancellationToken ct)
+    {
+        var parts = param.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var name = parts[0];
+        var version = parts.Length > 1 ? parts[1] : null;
+
+        var workflow = await _workflowCatalog!.GetAsync(name, version, ct).ConfigureAwait(false);
+        if (workflow is null)
+            return version is not null
+                ? $"Workflow '{name}' v{version} not found."
+                : $"Workflow '{name}' not found.";
+
+        var steps = FlattenSteps(workflow.Steps, indent: 0);
+        return $"Replay plan for {workflow.Name} v{workflow.Version}:\n{steps}\n\n" +
+               "(Dry-run mode — pass the prompt to the agent to execute live.)";
+    }
+
+    private static string RefineWorkflowInfo(string name) =>
+        $"To refine '{name}', export it (e.g. /workflow export {name} csharp), " +
+        "edit the steps, then save a new version via the agent.";
+
+    private static string FlattenSteps(IEnumerable<AgentStepDefinition> steps, int indent)
+    {
+        var sb = new System.Text.StringBuilder();
+        var pad = new string(' ', indent * 2);
+        foreach (var step in steps)
+        {
+            var prefix = step.Kind switch
+            {
+                AgentStepKind.Skill => "▶ Skill",
+                AgentStepKind.Tool => "🔧 Tool",
+                AgentStepKind.Nested => "📦 Nested",
+                AgentStepKind.Loop => "🔁 Loop",
+                AgentStepKind.Conditional => "❖ If",
+                _ => "•",
+            };
+            sb.AppendLine($"{pad}{prefix}: {step.Name}");
+            if (step.SubSteps.Count > 0)
+                sb.Append(FlattenSteps(step.SubSteps, indent + 1));
+        }
+
+        return sb.ToString();
+    }
 }
