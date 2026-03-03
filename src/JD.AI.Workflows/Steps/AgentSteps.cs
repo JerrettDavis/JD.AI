@@ -13,7 +13,7 @@ public class AgentWorkflowData
     public string Prompt { get; set; } = string.Empty;
 
     /// <summary>Accumulated outputs from each step keyed by step name.</summary>
-    public Dictionary<string, string> StepOutputs { get; } = new(StringComparer.Ordinal);
+    public IDictionary<string, string> StepOutputs { get; } = new Dictionary<string, string>(StringComparer.Ordinal);
 
     /// <summary>The final aggregated result.</summary>
     public string? FinalResult { get; set; }
@@ -86,17 +86,17 @@ public sealed class InvokeToolStep : IStep<AgentWorkflowData>
 {
     private readonly string _pluginName;
     private readonly string _functionName;
-    private readonly Dictionary<string, string> _arguments;
+    private readonly IDictionary<string, string> _arguments;
 
     public string Name { get; }
 
     public InvokeToolStep(string name, string pluginName, string functionName,
-        Dictionary<string, string>? arguments = null)
+        IDictionary<string, string>? arguments = null)
     {
         Name = name;
         _pluginName = pluginName;
         _functionName = functionName;
-        _arguments = arguments ?? [];
+        _arguments = arguments ?? new Dictionary<string, string>(StringComparer.Ordinal);
     }
 
     public async Task ExecuteAsync(IWorkflowContext<AgentWorkflowData> context)
