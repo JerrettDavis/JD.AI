@@ -144,6 +144,7 @@ var detectors = new IProviderDetector[]
     new CopilotDetector(),
     new OpenAICodexDetector(),
     new OllamaDetector(),
+    new FoundryLocalDetector(),
     new LocalModelDetector(),
 };
 var registry = new ProviderRegistry(detectors);
