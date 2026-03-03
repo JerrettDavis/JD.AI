@@ -29,10 +29,10 @@ internal static class McpCliHandler
 
         return sub switch
         {
-            "list"    => await ListAsync(args[1..]).ConfigureAwait(false),
-            "add"     => await AddAsync(args[1..]).ConfigureAwait(false),
-            "remove"  => await RemoveAsync(args[1..]).ConfigureAwait(false),
-            "enable"  => await SetEnabledAsync(args[1..], true).ConfigureAwait(false),
+            "list" => await ListAsync(args[1..]).ConfigureAwait(false),
+            "add" => await AddAsync(args[1..]).ConfigureAwait(false),
+            "remove" => await RemoveAsync(args[1..]).ConfigureAwait(false),
+            "enable" => await SetEnabledAsync(args[1..], true).ConfigureAwait(false),
             "disable" => await SetEnabledAsync(args[1..], false).ConfigureAwait(false),
             "--help" or "-h" or "help" => PrintHelp(),
             _ => PrintUnknown(sub),
@@ -86,7 +86,7 @@ internal static class McpCliHandler
             {
                 McpScope.Project => $"  Project MCPs ({path ?? provider})",
                 McpScope.BuiltIn => "  Built-in MCPs (always available)",
-                _                => $"  User MCPs ({path ?? provider})",
+                _ => $"  User MCPs ({path ?? provider})",
             };
             Console.WriteLine(label);
 
@@ -298,8 +298,8 @@ internal static class McpCliHandler
     private static int ScopePriority(McpScope scope) => scope switch
     {
         McpScope.BuiltIn => 0,
-        McpScope.User    => 1,
+        McpScope.User => 1,
         McpScope.Project => 2,
-        _                => -1,
+        _ => -1,
     };
 }

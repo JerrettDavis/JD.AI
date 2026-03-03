@@ -18,11 +18,11 @@ public sealed record McpServerStatus
     /// <summary>Returns a display icon matching the current state.</summary>
     public string Icon => State switch
     {
-        McpConnectionState.Connected  => "✔",
-        McpConnectionState.Failed     => "✘",
+        McpConnectionState.Connected => "✔",
+        McpConnectionState.Failed => "✘",
         McpConnectionState.Connecting => "…",
-        McpConnectionState.Disabled   => "○",
-        _                             => "?",
+        McpConnectionState.Disabled => "○",
+        _ => "?",
     };
 
     /// <summary>A pre-built <see cref="McpServerStatus"/> for the <c>Unknown</c> state.</summary>

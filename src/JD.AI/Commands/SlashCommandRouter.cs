@@ -735,12 +735,12 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
         return sub switch
         {
-            "list"    => await McpListAsync(ct).ConfigureAwait(false),
-            "add"     => await McpAddAsync(rest, ct).ConfigureAwait(false),
-            "remove"  => await McpRemoveAsync(rest, ct).ConfigureAwait(false),
-            "enable"  => await McpSetEnabledAsync(rest, true, ct).ConfigureAwait(false),
+            "list" => await McpListAsync(ct).ConfigureAwait(false),
+            "add" => await McpAddAsync(rest, ct).ConfigureAwait(false),
+            "remove" => await McpRemoveAsync(rest, ct).ConfigureAwait(false),
+            "enable" => await McpSetEnabledAsync(rest, true, ct).ConfigureAwait(false),
             "disable" => await McpSetEnabledAsync(rest, false, ct).ConfigureAwait(false),
-            _         => McpHelp(),
+            _ => McpHelp(),
         };
     }
 
@@ -773,7 +773,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             {
                 McpScope.Project => $"Project MCPs ({path ?? provider})",
                 McpScope.BuiltIn => "Built-in MCPs (always available)",
-                _                => $"User MCPs ({path ?? provider})",
+                _ => $"User MCPs ({path ?? provider})",
             };
             sb.AppendLine($"  {label}");
 
@@ -915,9 +915,9 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private static int ScopePriority(McpScope scope) => scope switch
     {
         McpScope.BuiltIn => 0,
-        McpScope.User    => 1,
+        McpScope.User => 1,
         McpScope.Project => 2,
-        _                => -1,
+        _ => -1,
     };
     // ── New parity commands ─────────────────────────────────
 
