@@ -9,6 +9,7 @@
     <ProjectReference Include="..\..\src\JD.AI\JD.AI.csproj" />
     <ProjectReference Include="..\..\src\JD.AI.Channels.OpenClaw\JD.AI.Channels.OpenClaw.csproj" />
     <ProjectReference Include="..\..\src\JD.AI.Daemon\JD.AI.Daemon.csproj" />
+    <ProjectReference Include="..\..\src\JD.AI.Workflows\JD.AI.Workflows.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -16,6 +17,7 @@
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="NSubstitute" />
+    <PackageReference Include="WorkflowFramework" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
   </ItemGroup>
