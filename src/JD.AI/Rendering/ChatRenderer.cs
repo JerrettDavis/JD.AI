@@ -1,3 +1,4 @@
+using JD.AI.Core.Config;
 using Spectre.Console;
 
 namespace JD.AI.Rendering;
@@ -32,6 +33,27 @@ public static class ChatRenderer
     {
         AnsiConsole.Markup("[bold cyan]❯[/] ");
         AnsiConsole.MarkupLine($"[dim]{Markup.Escape(text)}[/]");
+    }
+
+    /// <summary>
+    /// Dim the already-visible user input line in-place.
+    /// Moves the cursor up to the prompt line, rewrites it in dim,
+    /// then returns to the next line for output.
+    /// </summary>
+    public static void DimInputLine(string text)
+    {
+        try
+        {
+            // Move up one line (the cursor is at the start of the next line after Enter)
+            // Erase the line, rewrite in dim with the same "> " prefix
+            Console.Write("\x1b[1A\x1b[2K\r\x1b[2m> ");
+            Console.Write(text);
+            Console.Write("\x1b[0m\n");
+        }
+        catch (ObjectDisposedException)
+        {
+            // Console torn down during shutdown
+        }
     }
 
     /// <summary>Render an assistant text response.</summary>
@@ -204,21 +226,79 @@ public static class ChatRenderer
 
     // ── Turn metrics rendering ──────────────────────────────
 
-    /// <summary>Render a turn completion metrics line.</summary>
-    public static void RenderTurnMetrics(long elapsedMs, int tokens, long bytes)
+    /// <summary>Render a turn completion metrics line, styled per <paramref name="style"/>.</summary>
+    public static void RenderTurnMetrics(
+        long elapsedMs, int tokens, long bytes,
+        SpinnerStyle style = SpinnerStyle.Normal,
+        long? ttftMs = null, string? model = null)
     {
-        var elapsed = elapsedMs >= 60_000
-            ? $"{elapsedMs / 60_000}m {elapsedMs % 60_000 / 1000}s"
-            : $"{elapsedMs / 1000.0:F1}s";
+        if (style == SpinnerStyle.None)
+            return;
 
-        var size = bytes switch
+        var elapsed = FormatElapsedMetric(elapsedMs);
+        var size = FormatBytes(bytes);
+
+        var line = style switch
+        {
+            SpinnerStyle.Minimal =>
+                $"[dim]  ── {Markup.Escape(elapsed)} ──[/]",
+
+            SpinnerStyle.Normal =>
+                $"[dim]  ── {Markup.Escape(elapsed)} │ {tokens:N0} tokens │ {Markup.Escape(size)} ──[/]",
+
+            SpinnerStyle.Rich =>
+                FormatRichMetrics(elapsed, tokens, size, elapsedMs),
+
+            SpinnerStyle.Nerdy =>
+                FormatNerdyMetrics(elapsed, tokens, size, elapsedMs, ttftMs, model),
+
+            _ =>
+                $"[dim]  ── {Markup.Escape(elapsed)} │ {tokens:N0} tokens │ {Markup.Escape(size)} ──[/]",
+        };
+
+        AnsiConsole.MarkupLine(line);
+    }
+
+    private static string FormatRichMetrics(
+        string elapsed, int tokens, string size, long elapsedMs)
+    {
+        var tokPerSec = elapsedMs > 0
+            ? $"{tokens / (elapsedMs / 1000.0):F1} tok/s"
+            : "—";
+
+        return $"[dim]  ── {Markup.Escape(elapsed)} │ {tokens:N0} tokens │ " +
+               $"{Markup.Escape(size)} │ {Markup.Escape(tokPerSec)} ──[/]";
+    }
+
+    private static string FormatNerdyMetrics(
+        string elapsed, int tokens, string size, long elapsedMs,
+        long? ttftMs, string? model)
+    {
+        var tokPerSec = elapsedMs > 0
+            ? $"{tokens / (elapsedMs / 1000.0):F1} tok/s"
+            : "—";
+        var ttft = ttftMs.HasValue
+            ? $"ttft: {ttftMs.Value / 1000.0:F2}s"
+            : "ttft: —";
+        var modelPart = !string.IsNullOrEmpty(model)
+            ? $" │ [yellow]{Markup.Escape(model)}[/]"
+            : "";
+
+        return $"[dim]  ── {Markup.Escape(elapsed)} │ {tokens:N0} tok │ " +
+               $"{Markup.Escape(size)} │ {Markup.Escape(tokPerSec)} │ " +
+               $"{Markup.Escape(ttft)}{modelPart} ──[/]";
+    }
+
+    private static string FormatElapsedMetric(long ms) =>
+        ms >= 60_000
+            ? $"{ms / 60_000}m {ms % 60_000 / 1000}s"
+            : $"{ms / 1000.0:F1}s";
+
+    private static string FormatBytes(long bytes) =>
+        bytes switch
         {
             >= 1_048_576 => $"{bytes / 1_048_576.0:F1} MB",
             >= 1_024 => $"{bytes / 1_024.0:F1} KB",
-            _ => $"{bytes} B"
+            _ => $"{bytes} B",
         };
-
-        AnsiConsole.MarkupLine(
-            $"[dim]  ── {Markup.Escape(elapsed)} │ {tokens:N0} tokens │ {Markup.Escape(size)} ──[/]");
-    }
 }

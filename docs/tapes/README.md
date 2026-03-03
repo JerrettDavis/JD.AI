@@ -49,3 +49,5 @@ Generated files are saved to `docs/images/` and referenced by documentation arti
 | `demo-orchestration.tape` | `demo-orchestration.gif` | Team execution with progress panel |
 | `demo-sessions.tape` | `demo-sessions.gif` | /save, /sessions, /resume |
 | `demo-update.tape` | `demo-update.gif` | Update check and /update |
+| `demo-spinner.tape` | `demo-spinner.gif` | /spinner command and style switching |
+| `demo-thinking.tape` | `demo-thinking.gif` | Animated thinking indicator and turn metrics |
