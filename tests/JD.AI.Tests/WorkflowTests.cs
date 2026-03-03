@@ -133,8 +133,8 @@ public class FileWorkflowCatalogTests : IDisposable
             Steps = [AgentStepDefinition.RunSkill("s1")],
         };
 
-        await _catalog.SaveAsync(def).ConfigureAwait(false);
-        var loaded = await _catalog.GetAsync("roundtrip", "1.0").ConfigureAwait(false);
+        await _catalog.SaveAsync(def);
+        var loaded = await _catalog.GetAsync("roundtrip", "1.0");
 
         loaded.Should().NotBeNull();
         loaded!.Name.Should().Be("roundtrip");
@@ -146,11 +146,11 @@ public class FileWorkflowCatalogTests : IDisposable
     public async Task GetLatest_ReturnsNewestVersion()
     {
         await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "versioned", Version = "1.0" })
-            .ConfigureAwait(false);
+;
         await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "versioned", Version = "2.0" })
-            .ConfigureAwait(false);
+;
 
-        var latest = await _catalog.GetAsync("versioned").ConfigureAwait(false);
+        var latest = await _catalog.GetAsync("versioned");
         latest.Should().NotBeNull();
         latest!.Version.Should().Be("2.0");
     }
@@ -159,11 +159,11 @@ public class FileWorkflowCatalogTests : IDisposable
     public async Task List_ReturnsAll()
     {
         await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "a", Version = "1.0" })
-            .ConfigureAwait(false);
+;
         await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "b", Version = "1.0" })
-            .ConfigureAwait(false);
+;
 
-        var all = await _catalog.ListAsync().ConfigureAwait(false);
+        var all = await _catalog.ListAsync();
         all.Should().HaveCount(2);
     }
 
@@ -171,26 +171,26 @@ public class FileWorkflowCatalogTests : IDisposable
     public async Task Delete_RemovesEntry()
     {
         await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "del", Version = "1.0" })
-            .ConfigureAwait(false);
+;
 
-        var deleted = await _catalog.DeleteAsync("del", "1.0").ConfigureAwait(false);
+        var deleted = await _catalog.DeleteAsync("del", "1.0");
         deleted.Should().BeTrue();
 
-        var result = await _catalog.GetAsync("del", "1.0").ConfigureAwait(false);
+        var result = await _catalog.GetAsync("del", "1.0");
         result.Should().BeNull();
     }
 
     [Fact]
     public async Task Delete_NonExistent_ReturnsFalse()
     {
-        var result = await _catalog.DeleteAsync("nope", "1.0").ConfigureAwait(false);
+        var result = await _catalog.DeleteAsync("nope", "1.0");
         result.Should().BeFalse();
     }
 
     [Fact]
     public async Task Get_NonExistent_ReturnsNull()
     {
-        var result = await _catalog.GetAsync("nope", "1.0").ConfigureAwait(false);
+        var result = await _catalog.GetAsync("nope", "1.0");
         result.Should().BeNull();
     }
 }
@@ -217,20 +217,22 @@ public class TagWorkflowMatcherTests : IDisposable
     {
         await _catalog.SaveAsync(new AgentWorkflowDefinition
         {
-            Name = "review", Tags = ["review", "code", "pr"],
+            Name = "review",
+            Tags = ["review", "code", "pr"],
             Steps = [AgentStepDefinition.RunSkill("s1")],
-        }).ConfigureAwait(false);
+        });
 
         await _catalog.SaveAsync(new AgentWorkflowDefinition
         {
-            Name = "deploy", Tags = ["deploy", "release"],
+            Name = "deploy",
+            Tags = ["deploy", "release"],
             Steps = [AgentStepDefinition.RunSkill("s1")],
-        }).ConfigureAwait(false);
+        });
 
         var matcher = new TagWorkflowMatcher(_catalog);
 
         var match = await matcher.MatchAsync(new AgentRequest("please review the code changes"))
-            .ConfigureAwait(false);
+;
         match.Should().NotBeNull();
         match!.Definition.Name.Should().Be("review");
     }
@@ -240,13 +242,14 @@ public class TagWorkflowMatcherTests : IDisposable
     {
         await _catalog.SaveAsync(new AgentWorkflowDefinition
         {
-            Name = "deploy", Tags = ["deploy", "release"],
+            Name = "deploy",
+            Tags = ["deploy", "release"],
             Steps = [AgentStepDefinition.RunSkill("s1")],
-        }).ConfigureAwait(false);
+        });
 
         var matcher = new TagWorkflowMatcher(_catalog);
         var match = await matcher.MatchAsync(new AgentRequest("hello world foo bar baz"))
-            .ConfigureAwait(false);
+;
         match.Should().BeNull();
     }
 
@@ -255,7 +258,7 @@ public class TagWorkflowMatcherTests : IDisposable
     {
         var matcher = new TagWorkflowMatcher(_catalog);
         var match = await matcher.MatchAsync(new AgentRequest("review the code"))
-            .ConfigureAwait(false);
+;
         match.Should().BeNull();
     }
 }
@@ -269,7 +272,7 @@ public class ValidateStepTests
         var data = new AgentWorkflowData { Prompt = "hello world" };
         var ctx = new WorkflowContext<AgentWorkflowData>(data);
 
-        await step.ExecuteAsync(ctx).ConfigureAwait(false);
+        await step.ExecuteAsync(ctx);
 
         ctx.IsAborted.Should().BeFalse();
         ctx.Errors.Should().BeEmpty();
@@ -282,7 +285,7 @@ public class ValidateStepTests
         var data = new AgentWorkflowData { Prompt = "hi" };
         var ctx = new WorkflowContext<AgentWorkflowData>(data);
 
-        await step.ExecuteAsync(ctx).ConfigureAwait(false);
+        await step.ExecuteAsync(ctx);
 
         ctx.IsAborted.Should().BeTrue();
         ctx.Errors.Should().ContainSingle(e => e.StepName == "check");
@@ -334,7 +337,8 @@ public class InMemoryWorkflowCatalogTests
     {
         var def = new AgentWorkflowDefinition
         {
-            Name = "test", Version = "1.0",
+            Name = "test",
+            Version = "1.0",
             Steps = [AgentStepDefinition.RunSkill("s1")],
         };
 
@@ -404,11 +408,15 @@ public class InMemoryWorkflowCatalogTests
     {
         await _catalog.SaveAsync(new AgentWorkflowDefinition
         {
-            Name = "r", Version = "1.0", Description = "old",
+            Name = "r",
+            Version = "1.0",
+            Description = "old",
         });
         await _catalog.SaveAsync(new AgentWorkflowDefinition
         {
-            Name = "r", Version = "1.0", Description = "new",
+            Name = "r",
+            Version = "1.0",
+            Description = "new",
         });
 
         var loaded = await _catalog.GetAsync("r", "1.0");
@@ -433,7 +441,9 @@ public class WorkflowMatcherTests
         var catalog = new InMemoryWorkflowCatalog();
         await catalog.SaveAsync(new AgentWorkflowDefinition
         {
-            Name = "App.NextJs.Todo", Version = "1.0", Tags = ["nextjs"],
+            Name = "App.NextJs.Todo",
+            Version = "1.0",
+            Tags = ["nextjs"],
             Steps = [AgentStepDefinition.RunSkill("s1")],
         });
 
@@ -451,7 +461,9 @@ public class WorkflowMatcherTests
         var catalog = new InMemoryWorkflowCatalog();
         await catalog.SaveAsync(new AgentWorkflowDefinition
         {
-            Name = "CodeReview", Version = "1.0", Tags = ["review", "code"],
+            Name = "CodeReview",
+            Version = "1.0",
+            Tags = ["review", "code"],
             Steps = [AgentStepDefinition.RunSkill("s1")],
         });
 
@@ -468,12 +480,16 @@ public class WorkflowMatcherTests
         var catalog = new InMemoryWorkflowCatalog();
         await catalog.SaveAsync(new AgentWorkflowDefinition
         {
-            Name = "App.NextJs.Todo", Version = "1.0", Tags = [],
+            Name = "App.NextJs.Todo",
+            Version = "1.0",
+            Tags = [],
             Steps = [AgentStepDefinition.RunSkill("s1")],
         });
         await catalog.SaveAsync(new AgentWorkflowDefinition
         {
-            Name = "Other", Version = "1.0", Tags = ["nextjs"],
+            Name = "Other",
+            Version = "1.0",
+            Tags = ["nextjs"],
             Steps = [AgentStepDefinition.RunSkill("s1")],
         });
 
@@ -492,7 +508,8 @@ public class WorkflowMatcherTests
         var catalog = new InMemoryWorkflowCatalog();
         await catalog.SaveAsync(new AgentWorkflowDefinition
         {
-            Name = "W", Version = "1.0",
+            Name = "W",
+            Version = "1.0",
             Tags = ["", "   "],
             Steps = [AgentStepDefinition.RunSkill("s1")],
         });
@@ -509,7 +526,9 @@ public class WorkflowMatcherTests
         var catalog = new InMemoryWorkflowCatalog();
         await catalog.SaveAsync(new AgentWorkflowDefinition
         {
-            Name = "Deploy", Version = "1.0", Tags = ["deploy"],
+            Name = "Deploy",
+            Version = "1.0",
+            Tags = ["deploy"],
             Steps = [AgentStepDefinition.RunSkill("s1")],
         });
 
