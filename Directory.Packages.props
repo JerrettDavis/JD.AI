@@ -10,7 +10,8 @@
   </ItemGroup>
   <!-- Application -->
   <ItemGroup>
-    <PackageVersion Include="JD.SemanticKernel.Extensions" Version="0.1.40" />
+    <PackageVersion Include="JD.SemanticKernel.Extensions" Version="0.1.41" />
+    <PackageVersion Include="JD.SemanticKernel.Extensions.Mcp" Version="0.1.41" />
     <PackageVersion Include="JD.SemanticKernel.Connectors.ClaudeCode" Version="0.1.22" />
     <PackageVersion Include="JD.SemanticKernel.Connectors.GitHubCopilot" Version="0.1.14" />
     <PackageVersion Include="JD.SemanticKernel.Connectors.OpenAICodex" Version="0.1.2" />
