@@ -69,6 +69,7 @@ var detectors = new IProviderDetector[]
 {
     new ClaudeCodeDetector(),
     new CopilotDetector(),
+    new OpenAICodexDetector(),
     new OllamaDetector(),
 };
 var registry = new ProviderRegistry(detectors);

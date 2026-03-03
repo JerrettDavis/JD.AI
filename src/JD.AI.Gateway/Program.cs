@@ -39,6 +39,7 @@ builder.Services.AddSingleton<IEventBus, InProcessEventBus>();
 builder.Services.AddSingleton<IChannelRegistry, ChannelRegistry>();
 builder.Services.AddSingleton<IProviderDetector, ClaudeCodeDetector>();
 builder.Services.AddSingleton<IProviderDetector, CopilotDetector>();
+builder.Services.AddSingleton<IProviderDetector, OpenAICodexDetector>();
 builder.Services.AddSingleton<IProviderDetector, OllamaDetector>();
 builder.Services.AddSingleton<IProviderRegistry>(sp =>
     new ProviderRegistry(sp.GetServices<IProviderDetector>()));
