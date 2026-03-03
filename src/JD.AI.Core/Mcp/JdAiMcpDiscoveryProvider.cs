@@ -104,15 +104,31 @@ public sealed class JdAiMcpDiscoveryProvider : IMcpDiscoveryProvider
         await SaveFileAsync(file with { Servers = updated }, ct).ConfigureAwait(false);
     }
 
-    /// <summary>Enables or disables a server by name. No-op if not found.</summary>
+    /// <summary>Enables or disables a server by name. No-op if not found or already in the desired state.</summary>
     public async Task SetEnabledAsync(string name, bool enabled, CancellationToken ct = default)
     {
         var file = await LoadFileAsync(ct).ConfigureAwait(false);
+
+        var found = false;
+        var changed = false;
         var updated = file.Servers
-            .Select(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase)
-                ? s with { IsEnabled = enabled }
-                : s)
+            .Select(s =>
+            {
+                if (!string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase))
+                    return s;
+
+                found = true;
+
+                if (s.IsEnabled == enabled)
+                    return s;
+
+                changed = true;
+                return s with { IsEnabled = enabled };
+            })
             .ToList();
+
+        if (!found || !changed)
+            return;
 
         await SaveFileAsync(file with { Servers = updated }, ct).ConfigureAwait(false);
     }

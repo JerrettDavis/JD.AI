@@ -20,8 +20,8 @@ public sealed class McpManager
     public McpManager()
         : this(
             [
-                new JdAiMcpDiscoveryProvider(),
                 new ClaudeCodeUserMcpDiscoveryProvider(),
+                new JdAiMcpDiscoveryProvider(),
                 new ClaudeCodeProjectMcpDiscoveryProvider(),
             ],
             new JdAiMcpDiscoveryProvider()) { }

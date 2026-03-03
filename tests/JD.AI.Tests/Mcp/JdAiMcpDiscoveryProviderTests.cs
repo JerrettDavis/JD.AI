@@ -176,4 +176,49 @@ public sealed class JdAiMcpDiscoveryProviderTests
             File.Delete(path);
         }
     }
+
+    [Fact]
+    public async Task SetEnabledAsync_NoOp_WhenNameNotFound()
+    {
+        var path = TempConfigPath();
+        try
+        {
+            var provider = new JdAiMcpDiscoveryProvider(path);
+            await provider.AddOrUpdateAsync(new McpServerDefinition { Name = "server", IsEnabled = true });
+
+            // Should not throw and should not change the file
+            await provider.SetEnabledAsync("nonexistent", false);
+
+            var results = await provider.DiscoverAsync();
+            Assert.True(results[0].IsEnabled); // unchanged
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task SetEnabledAsync_NoOp_WhenAlreadyInDesiredState()
+    {
+        var path = TempConfigPath();
+        try
+        {
+            var provider = new JdAiMcpDiscoveryProvider(path);
+            await provider.AddOrUpdateAsync(new McpServerDefinition { Name = "server", IsEnabled = true });
+
+            var modifiedBefore = File.GetLastWriteTimeUtc(path);
+            await Task.Delay(10); // ensure time advances
+
+            // Calling with the already-current value should be a true no-op (no file write)
+            await provider.SetEnabledAsync("server", true);
+
+            var modifiedAfter = File.GetLastWriteTimeUtc(path);
+            Assert.Equal(modifiedBefore, modifiedAfter);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
 }
