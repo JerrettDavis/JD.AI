@@ -185,6 +185,8 @@ kernel.Plugins.AddFromType<ShellTools>("shell");
 kernel.Plugins.AddFromType<GitTools>("git");
 kernel.Plugins.AddFromType<WebTools>("web");
 kernel.Plugins.AddFromObject(new MemoryTools(), "memory");
+kernel.Plugins.AddFromObject(
+    new QuestionTools(req => QuestionnaireSession.Run(req)), "questions");
 
 // 7. Load Claude Code skills, plugins, and hooks if available
 var skillDirs = new[]

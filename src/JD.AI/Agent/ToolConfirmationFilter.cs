@@ -26,6 +26,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["git_log"] = SafetyTier.AutoApprove,
             ["memory_search"] = SafetyTier.AutoApprove,
             ["web_fetch"] = SafetyTier.AutoApprove,
+            ["ask_questions"] = SafetyTier.AutoApprove,
 
             ["write_file"] = SafetyTier.ConfirmOnce,
             ["edit_file"] = SafetyTier.ConfirmOnce,
