@@ -184,15 +184,28 @@ var skillDirs = new[]
     Path.Combine(Directory.GetCurrentDirectory(), ".jdai", "skills"),
 };
 
+var skillIndex = 0;
 foreach (var dir in skillDirs.Where(Directory.Exists))
 {
     try
     {
+        // Each directory gets a unique plugin name to avoid duplicate key errors
+        var suffix = skillIndex == 0 ? "" : $"_{skillIndex}";
+        var pluginName = $"Skills{suffix}";
+        skillIndex++;
+
         var builder = Kernel.CreateBuilder();
-        JD.SemanticKernel.Extensions.Skills.KernelBuilderExtensions.UseSkills(builder, dir);
+        JD.SemanticKernel.Extensions.Skills.KernelBuilderExtensions.UseSkills(
+            builder, dir, opts => opts.PluginName = pluginName);
         var skillKernel = builder.Build();
         foreach (var plugin in skillKernel.Plugins)
         {
+            if (kernel.Plugins.TryGetPlugin(plugin.Name, out _))
+            {
+                ChatRenderer.RenderWarning($"  Skipped duplicate skill plugin '{plugin.Name}' from {dir}");
+                continue;
+            }
+
             kernel.Plugins.Add(plugin);
         }
 
@@ -222,6 +235,12 @@ foreach (var dir in pluginDirs.Where(Directory.Exists))
         var pluginKernel = builder.Build();
         foreach (var plugin in pluginKernel.Plugins)
         {
+            if (kernel.Plugins.TryGetPlugin(plugin.Name, out _))
+            {
+                ChatRenderer.RenderWarning($"  Skipped duplicate plugin '{plugin.Name}' from {dir}");
+                continue;
+            }
+
             kernel.Plugins.Add(plugin);
         }
 
