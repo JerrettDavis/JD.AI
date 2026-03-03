@@ -117,8 +117,10 @@ public sealed class QuestionnaireSession
 
             if (line is null)
             {
-                // EOF / Ctrl+C
-                return allowCancel ? null : string.Empty;
+                if (allowCancel) return null;
+                if (!question.Required) return string.Empty;
+                AnsiConsole.MarkupLine("[red]A value is required. Please try again.[/]");
+                continue;
             }
 
             if (string.IsNullOrWhiteSpace(line))
@@ -152,7 +154,12 @@ public sealed class QuestionnaireSession
             var line = Console.ReadLine();
 
             if (line is null)
-                return allowCancel ? null : string.Empty;
+            {
+                if (allowCancel) return null;
+                if (!question.Required) return string.Empty;
+                AnsiConsole.MarkupLine("[red]A value is required. Please try again.[/]");
+                continue;
+            }
 
             if (string.IsNullOrWhiteSpace(line))
             {
@@ -287,62 +294,66 @@ public sealed class QuestionnaireSession
     /// </summary>
     private static bool ShowReviewScreen(AskQuestionsRequest request, Dictionary<string, string> answers)
     {
-        AnsiConsole.WriteLine();
-
-        var grid = new Grid();
-        grid.AddColumn(new GridColumn().NoWrap());
-        grid.AddColumn();
-
-        foreach (var question in request.Questions)
+        while (true)
         {
-            var answerText = answers.TryGetValue(question.Key, out var a) ? a : "[dim](no answer)[/]";
-            grid.AddRow(
-                $"[dim]{Markup.Escape(question.Prompt)}[/]",
-                Markup.Escape(answerText));
-        }
+            AnsiConsole.WriteLine();
 
-        var summaryPanel = new Panel(grid)
-            .Header("[bold]Review your answers[/]")
-            .Border(BoxBorder.Rounded)
-            .BorderColor(Color.Green)
-            .Padding(1, 0);
+            var grid = new Grid();
+            grid.AddColumn(new GridColumn().NoWrap());
+            grid.AddColumn();
 
-        AnsiConsole.Write(summaryPanel);
-        AnsiConsole.WriteLine();
-
-        var choice = AnsiConsole.Prompt(
-            new SelectionPrompt<string>()
-                .Title(string.Empty)
-                .AddChoices(request.SubmitLabel, "Edit answers", "Cancel"));
-
-        if (string.Equals(choice, "Cancel", StringComparison.Ordinal))
-            return false;
-
-        if (string.Equals(choice, "Edit answers", StringComparison.Ordinal))
-        {
-            // Let user pick which question to re-answer
-            var keys = request.Questions.Select(q => q.Prompt).ToList();
-            var toEdit = AnsiConsole.Prompt(
-                new SelectionPrompt<string>()
-                    .Title("Which question would you like to edit?")
-                    .AddChoices(keys));
-
-            var questionToEdit = request.Questions.FirstOrDefault(q =>
-                string.Equals(q.Prompt, toEdit, StringComparison.Ordinal));
-
-            if (questionToEdit is not null)
+            foreach (var question in request.Questions)
             {
-                AnsiConsole.WriteLine();
-                var newAnswer = AskQuestion(questionToEdit, allowCancel: true);
-                if (newAnswer is not null)
-                    answers[questionToEdit.Key] = newAnswer;
+                var answerCell = answers.TryGetValue(question.Key, out var a)
+                    ? Markup.Escape(a)
+                    : "[dim](no answer)[/]";
+                grid.AddRow(
+                    $"[dim]{Markup.Escape(question.Prompt)}[/]",
+                    answerCell);
             }
 
-            // Recurse to show updated review
-            return ShowReviewScreen(request, answers);
-        }
+            var summaryPanel = new Panel(grid)
+                .Header("[bold]Review your answers[/]")
+                .Border(BoxBorder.Rounded)
+                .BorderColor(Color.Green)
+                .Padding(1, 0);
 
-        return true;
+            AnsiConsole.Write(summaryPanel);
+            AnsiConsole.WriteLine();
+
+            var choice = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title(string.Empty)
+                    .AddChoices(request.SubmitLabel, "Edit answers", "Cancel"));
+
+            if (string.Equals(choice, "Cancel", StringComparison.Ordinal))
+                return false;
+
+            if (string.Equals(choice, "Edit answers", StringComparison.Ordinal))
+            {
+                var labels = request.Questions.Select(q => $"{q.Key}: {q.Prompt}").ToList();
+                var toEdit = AnsiConsole.Prompt(
+                    new SelectionPrompt<string>()
+                        .Title("Which question would you like to edit?")
+                        .AddChoices(labels));
+
+                var selectedKey = toEdit.Split(':', 2)[0];
+                var questionToEdit = request.Questions.FirstOrDefault(q =>
+                    string.Equals(q.Key, selectedKey, StringComparison.Ordinal));
+
+                if (questionToEdit is not null)
+                {
+                    AnsiConsole.WriteLine();
+                    var newAnswer = AskQuestion(questionToEdit, allowCancel: true);
+                    if (newAnswer is not null)
+                        answers[questionToEdit.Key] = newAnswer;
+                }
+
+                continue; // Loop back to show updated review
+            }
+
+            return true;
+        }
     }
 
     // ── Validation helpers ───────────────────────────────────────────────────
@@ -354,8 +365,22 @@ public sealed class QuestionnaireSession
         if (v.MaxLength.HasValue && value.Length > v.MaxLength.Value)
             return v.ErrorMessage ?? $"Answer must be at most {v.MaxLength.Value} characters.";
 
-        if (v.Pattern is { Length: > 0 } && !System.Text.RegularExpressions.Regex.IsMatch(value, v.Pattern))
-            return v.ErrorMessage ?? $"Answer must match the pattern: {v.Pattern}";
+        if (v.Pattern is { Length: > 0 })
+        {
+            try
+            {
+                if (!System.Text.RegularExpressions.Regex.IsMatch(
+                    value, v.Pattern, System.Text.RegularExpressions.RegexOptions.None,
+                    TimeSpan.FromSeconds(2)))
+                {
+                    return v.ErrorMessage ?? $"Answer must match the pattern: {v.Pattern}";
+                }
+            }
+            catch (System.Text.RegularExpressions.RegexMatchTimeoutException)
+            {
+                return "Validation timed out. Please try a simpler answer.";
+            }
+        }
 
         return null;
     }
