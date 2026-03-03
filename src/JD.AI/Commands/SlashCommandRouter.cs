@@ -78,6 +78,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/SANDBOX" or "/JDAI-SANDBOX" => ShowSandboxInfo(),
             "/WORKFLOW" or "/JDAI-WORKFLOW" => await HandleWorkflowAsync(arg, ct).ConfigureAwait(false),
             "/SPINNER" or "/JDAI-SPINNER" => HandleSpinner(arg),
+            "/LOCAL" or "/JDAI-LOCAL" => await HandleLocalModelAsync(arg, ct).ConfigureAwait(false),
             "/QUIT" or "/EXIT" or "/JDAI-QUIT" or "/JDAI-EXIT" => null, // Signal exit
             _ => $"Unknown command: {parts[0]}. Type /help for available commands.",
         };
@@ -107,6 +108,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /sandbox        — Show sandbox mode info
           /workflow       — Manage workflows (list|show|export|replay|refine)
           /spinner [style] — Set progress style (none|minimal|normal|rich|nerdy)
+          /local <cmd>    — Manage local models (list|add|scan|remove|search|download)
           /quit           — Exit jdai
         """;
 
@@ -556,5 +558,148 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 #pragma warning restore CA1031
 
         return $"Spinner style set to: {style.ToString().ToLowerInvariant()}";
+    }
+
+    private async Task<string> HandleLocalModelAsync(string? arg, CancellationToken ct)
+    {
+        var parts = (arg ?? "").Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var subCommand = parts.Length > 0 ? parts[0].ToUpperInvariant() : "HELP";
+        var subArg = parts.Length > 1 ? parts[1] : null;
+
+        // Find the LocalModelDetector in our registry
+        var providers = await _registry.DetectProvidersAsync(ct).ConfigureAwait(false);
+        var localProvider = providers.FirstOrDefault(p =>
+            string.Equals(p.Name, "Local", StringComparison.OrdinalIgnoreCase));
+
+        return subCommand switch
+        {
+            "LIST" => FormatLocalModelList(localProvider),
+            "ADD" => await AddLocalModelAsync(subArg, ct).ConfigureAwait(false),
+            "SCAN" => await ScanLocalModelsAsync(subArg, ct).ConfigureAwait(false),
+            "REMOVE" => RemoveLocalModel(subArg),
+            "SEARCH" => await SearchHuggingFaceAsync(subArg, ct).ConfigureAwait(false),
+            "DOWNLOAD" => await DownloadModelAsync(subArg, ct).ConfigureAwait(false),
+            _ => """
+                /local commands:
+                  /local list              — List registered local models
+                  /local add <path>        — Register a GGUF file or directory
+                  /local scan [dir]        — Scan directory for GGUF files
+                  /local remove <id>       — Remove a model from the registry
+                  /local search <query>    — Search HuggingFace for GGUF models
+                  /local download <repo>   — Download a model from HuggingFace
+                """,
+        };
+    }
+
+    private static string FormatLocalModelList(Core.Providers.ProviderInfo? localProvider)
+    {
+        if (localProvider is null || !localProvider.IsAvailable || localProvider.Models.Count == 0)
+            return "No local models registered. Use /local add <path> or /local download <repo>.";
+
+        var lines = new System.Text.StringBuilder();
+        lines.AppendLine($"Local models ({localProvider.Models.Count}):");
+        foreach (var m in localProvider.Models)
+        {
+            lines.AppendLine($"  • {m.Id} — {m.DisplayName}");
+        }
+
+        return lines.ToString().TrimEnd();
+    }
+
+    private async Task<string> AddLocalModelAsync(string? path, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return "Usage: /local add <path-to-gguf-file-or-directory>";
+
+        var detector = FindLocalDetector();
+        if (detector is null) return "Local model provider not available.";
+
+        if (Directory.Exists(path))
+        {
+            await detector.Registry.ScanDirectoryAsync(path, ct).ConfigureAwait(false);
+        }
+        else if (File.Exists(path))
+        {
+            await detector.Registry.AddFileAsync(path, ct).ConfigureAwait(false);
+        }
+        else
+        {
+            return $"Path not found: {path}";
+        }
+
+        await detector.Registry.SaveAsync(ct).ConfigureAwait(false);
+        return $"Added models from: {path}. Use /models to select one.";
+    }
+
+    private async Task<string> ScanLocalModelsAsync(string? dir, CancellationToken ct)
+    {
+        var detector = FindLocalDetector();
+        if (detector is null) return "Local model provider not available.";
+
+        await detector.Registry.ScanDirectoryAsync(dir, ct).ConfigureAwait(false);
+        await detector.Registry.SaveAsync(ct).ConfigureAwait(false);
+        return $"Scanned {dir ?? detector.Registry.ModelsDirectory}. Found {detector.Registry.Models.Count} model(s).";
+    }
+
+    private string RemoveLocalModel(string? id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            return "Usage: /local remove <model-id>";
+
+        var detector = FindLocalDetector();
+        if (detector is null) return "Local model provider not available.";
+
+        return detector.Registry.Remove(id)
+            ? $"Removed model: {id}"
+            : $"Model not found: {id}";
+    }
+
+    private static async Task<string> SearchHuggingFaceAsync(string? query, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+            return "Usage: /local search <query> (e.g., /local search llama 7b)";
+
+        var source = new Core.LocalModels.Sources.HuggingFaceModelSource(string.Empty);
+        var results = await source.SearchAsync(query, limit: 10, ct: ct).ConfigureAwait(false);
+
+        if (results.Count == 0)
+            return "No GGUF models found on HuggingFace for that query.";
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"HuggingFace GGUF models for '{query}':");
+        foreach (var r in results)
+        {
+            sb.AppendLine($"  • {r.Id ?? r.ModelId} ({r.Downloads:N0} downloads)");
+        }
+
+        sb.AppendLine("Use /local download <repo-id> to download.");
+        return sb.ToString().TrimEnd();
+    }
+
+    private async Task<string> DownloadModelAsync(string? repoId, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(repoId))
+            return "Usage: /local download <repo-id> (e.g., /local download TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF)";
+
+        var detector = FindLocalDetector();
+        if (detector is null) return "Local model provider not available.";
+
+        var downloader = new Core.LocalModels.ModelDownloader(detector.Registry.ModelsDirectory);
+
+        var model = await downloader.DownloadFromHuggingFaceAsync(repoId, ct: ct).ConfigureAwait(false);
+        detector.Registry.Add(model);
+        await detector.Registry.SaveAsync(ct).ConfigureAwait(false);
+
+        return $"Downloaded: {model.DisplayName} ({model.FileSizeBytes / (1024.0 * 1024.0):F1} MB). Use /models to select it.";
+    }
+
+    private Core.LocalModels.LocalModelDetector? FindLocalDetector()
+    {
+        if (_registry is ProviderRegistry pr)
+        {
+            return pr.GetDetector("Local") as Core.LocalModels.LocalModelDetector;
+        }
+
+        return null;
     }
 }

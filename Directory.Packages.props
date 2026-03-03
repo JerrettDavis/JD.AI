@@ -20,6 +20,8 @@
     <PackageVersion Include="Spectre.Console" Version="0.54.0" />
     <PackageVersion Include="WorkflowFramework" Version="0.15.0" />
     <PackageVersion Include="HtmlAgilityPack" Version="1.12.4" />
+    <PackageVersion Include="LLamaSharp" Version="0.26.0" />
+    <PackageVersion Include="LLamaSharp.Backend.Cpu" Version="0.26.0" />
   </ItemGroup>
   <!-- Gateway -->
   <ItemGroup>
