@@ -63,7 +63,7 @@ public sealed class TeamProgressPanel : IDisposable
 
         foreach (var (name, agentResult) in result.AgentResults)
         {
-            var status = agentResult.Success ? "[green]✅ OK[/]" : "[red]❌ Failed[/]";
+            var status = agentResult.Success ? "[green]✓ OK[/]" : "[red]✗ Failed[/]";
             table.AddRow(
                 new Markup(Markup.Escape(name)),
                 new Markup(status),
@@ -82,14 +82,14 @@ public sealed class TeamProgressPanel : IDisposable
 
     private static string GetStatusIcon(SubagentStatus status) => status switch
     {
-        SubagentStatus.Pending => "⏸",
-        SubagentStatus.Started => "🔀",
-        SubagentStatus.Thinking => "💭",
-        SubagentStatus.ExecutingTool => "⚙️",
-        SubagentStatus.Completed => "✅",
-        SubagentStatus.Failed => "❌",
-        SubagentStatus.Cancelled => "🚫",
-        _ => "❓",
+        SubagentStatus.Pending => "○",
+        SubagentStatus.Started => "◐",
+        SubagentStatus.Thinking => "◑",
+        SubagentStatus.ExecutingTool => "◒",
+        SubagentStatus.Completed => "●",
+        SubagentStatus.Failed => "✗",
+        SubagentStatus.Cancelled => "⊘",
+        _ => "?",
     };
 
     private static string GetStatusColor(SubagentStatus status) => status switch

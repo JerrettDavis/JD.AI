@@ -198,8 +198,8 @@ public sealed class SlashCommandRouterTests
         Assert.NotNull(result);
         Assert.Contains("Claude Code", result);
         Assert.Contains("Ollama", result);
-        Assert.Contains("✅", result);
-        Assert.Contains("❌", result);
+        Assert.Contains("✓", result);
+        Assert.Contains("✗", result);
     }
 
     [Fact]
