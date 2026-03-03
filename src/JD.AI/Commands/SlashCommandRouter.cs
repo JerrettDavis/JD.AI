@@ -170,7 +170,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         var providers = await _registry.DetectProvidersAsync(ct).ConfigureAwait(false);
         var lines = providers.Select(p =>
         {
-            var status = p.IsAvailable ? "✅" : "❌";
+            var status = p.IsAvailable ? "✓" : "✗";
             return $"  {status} {p.Name}: {p.StatusMessage}";
         });
 
@@ -508,9 +508,9 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             var prefix = step.Kind switch
             {
                 AgentStepKind.Skill => "▶ Skill",
-                AgentStepKind.Tool => "🔧 Tool",
-                AgentStepKind.Nested => "📦 Nested",
-                AgentStepKind.Loop => "🔁 Loop",
+                AgentStepKind.Tool => "» Tool",
+                AgentStepKind.Nested => "» Nested",
+                AgentStepKind.Loop => "↻ Loop",
                 AgentStepKind.Conditional => "❖ If",
                 _ => "•",
             };
