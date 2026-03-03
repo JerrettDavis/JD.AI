@@ -6,6 +6,7 @@ namespace JD.AI.Core.Providers;
 
 /// <summary>
 /// Detects a local Claude Code session and exposes its models.
+/// When running as a Windows service, scans user profiles for credentials.
 /// When the session token is expired, attempts a silent refresh via the Claude CLI.
 /// </summary>
 public sealed class ClaudeCodeDetector : IProviderDetector
@@ -16,8 +17,10 @@ public sealed class ClaudeCodeDetector : IProviderDetector
     {
         try
         {
+            // Build options with credential path resolution for service accounts
+            var options = BuildSessionOptions();
             var provider = new ClaudeCodeSessionProvider(
-                Options.Create(new ClaudeCodeSessionOptions()),
+                Options.Create(options),
                 NullLogger<ClaudeCodeSessionProvider>.Instance);
 
             var isAuth = await provider.IsAuthenticatedAsync(ct).ConfigureAwait(false);
@@ -28,10 +31,9 @@ public sealed class ClaudeCodeDetector : IProviderDetector
                 var refreshed = await TryRefreshAuthAsync(ct).ConfigureAwait(false);
                 if (refreshed)
                 {
-                    // Re-create provider to pick up refreshed credentials
                     provider.Dispose();
                     provider = new ClaudeCodeSessionProvider(
-                        Options.Create(new ClaudeCodeSessionOptions()),
+                        Options.Create(options),
                         NullLogger<ClaudeCodeSessionProvider>.Instance);
                     isAuth = await provider.IsAuthenticatedAsync(ct).ConfigureAwait(false);
                 }
@@ -74,9 +76,34 @@ public sealed class ClaudeCodeDetector : IProviderDetector
 
     public Kernel BuildKernel(ProviderModelInfo model)
     {
+        var options = BuildSessionOptions();
         var builder = Kernel.CreateBuilder();
-        builder.UseClaudeCodeChatCompletion(modelId: model.Id);
+        builder.UseClaudeCodeChatCompletion(
+            modelId: model.Id,
+            configure: opts => opts.CredentialsPath = options.CredentialsPath);
         return builder.Build();
+    }
+
+    /// <summary>
+    /// Builds session options, scanning user profiles for credentials when
+    /// running as a service account (LocalSystem, NetworkService, etc.).
+    /// </summary>
+    private static ClaudeCodeSessionOptions BuildSessionOptions()
+    {
+        var options = new ClaudeCodeSessionOptions();
+
+        // Check if the default path would resolve to a service account home
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (!string.IsNullOrEmpty(home) && !UserProfileScanner.IsServiceAccount(home))
+            return options;
+
+        // Scan real user profiles for Claude credentials
+        var credPath = UserProfileScanner.FindInUserProfiles(
+            Path.Combine(".claude", ".credentials.json"));
+        if (credPath is not null)
+            options.CredentialsPath = credPath;
+
+        return options;
     }
 
     /// <summary>
