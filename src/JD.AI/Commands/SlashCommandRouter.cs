@@ -1,5 +1,6 @@
 using JD.AI.Agent;
 using JD.AI.Core.Agents.Checkpointing;
+using JD.AI.Core.Config;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Sessions;
@@ -20,6 +21,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private readonly PluginLoader? _pluginLoader;
     private readonly IWorkflowCatalog? _workflowCatalog;
     private readonly WorkflowEmitter _workflowEmitter;
+    private readonly Action<SpinnerStyle>? _onSpinnerStyleChanged;
+    private readonly Func<SpinnerStyle>? _getSpinnerStyle;
 
     public SlashCommandRouter(
         AgentSession session,
@@ -27,7 +30,9 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         InstructionsResult? instructions = null,
         ICheckpointStrategy? checkpointStrategy = null,
         PluginLoader? pluginLoader = null,
-        IWorkflowCatalog? workflowCatalog = null)
+        IWorkflowCatalog? workflowCatalog = null,
+        Func<SpinnerStyle>? getSpinnerStyle = null,
+        Action<SpinnerStyle>? onSpinnerStyleChanged = null)
     {
         _session = session;
         _registry = registry;
@@ -36,6 +41,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         _pluginLoader = pluginLoader;
         _workflowCatalog = workflowCatalog;
         _workflowEmitter = new WorkflowEmitter();
+        _getSpinnerStyle = getSpinnerStyle;
+        _onSpinnerStyleChanged = onSpinnerStyleChanged;
     }
 
     public bool IsSlashCommand(string input) =>
@@ -70,6 +77,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/CHECKPOINT" or "/JDAI-CHECKPOINT" => await HandleCheckpointAsync(arg, ct).ConfigureAwait(false),
             "/SANDBOX" or "/JDAI-SANDBOX" => ShowSandboxInfo(),
             "/WORKFLOW" or "/JDAI-WORKFLOW" => await HandleWorkflowAsync(arg, ct).ConfigureAwait(false),
+            "/SPINNER" or "/JDAI-SPINNER" => HandleSpinner(arg),
             "/QUIT" or "/EXIT" or "/JDAI-QUIT" or "/JDAI-EXIT" => null, // Signal exit
             _ => $"Unknown command: {parts[0]}. Type /help for available commands.",
         };
@@ -98,6 +106,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /checkpoint     — List, restore, or clear checkpoints
           /sandbox        — Show sandbox mode info
           /workflow       — Manage workflows (list|show|export|replay|refine)
+          /spinner [style] — Set progress style (none|minimal|normal|rich|nerdy)
           /quit           — Exit jdai
         """;
 
@@ -511,5 +520,41 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         }
 
         return sb.ToString();
+    }
+
+    // ── Spinner/progress style ──────────────────────────────
+
+    private string HandleSpinner(string? arg)
+    {
+        if (_onSpinnerStyleChanged is null || _getSpinnerStyle is null)
+            return "Spinner style is not configurable in this context.";
+
+        if (string.IsNullOrWhiteSpace(arg))
+        {
+            var current = _getSpinnerStyle();
+            var styles = string.Join(", ", Enum.GetNames<SpinnerStyle>()
+                .Select(s => s.ToLowerInvariant()));
+            return $"Current spinner style: {current.ToString().ToLowerInvariant()}\n" +
+                   $"Available: {styles}\n" +
+                   "Usage: /spinner <style>";
+        }
+
+        if (!Enum.TryParse<SpinnerStyle>(arg.Trim(), ignoreCase: true, out var style))
+        {
+            var styles = string.Join(", ", Enum.GetNames<SpinnerStyle>()
+                .Select(s => s.ToLowerInvariant()));
+            return $"Unknown style: '{arg}'. Available: {styles}";
+        }
+
+        _onSpinnerStyleChanged(style);
+
+        // Persist to settings file
+        var settings = new TuiSettings { SpinnerStyle = style };
+        try { settings.Save(); }
+#pragma warning disable CA1031 // Best-effort save
+        catch { /* non-critical — persist is best-effort */ }
+#pragma warning restore CA1031
+
+        return $"Spinner style set to: {style.ToString().ToLowerInvariant()}";
     }
 }

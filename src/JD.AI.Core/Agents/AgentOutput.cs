@@ -1,7 +1,12 @@
 namespace JD.AI.Core.Agents;
 
 /// <summary>Metrics collected during a single agent turn.</summary>
-public sealed record TurnMetrics(long ElapsedMs, int TokensOut, long BytesReceived);
+public sealed record TurnMetrics(
+    long ElapsedMs,
+    int TokensOut,
+    long BytesReceived,
+    long? TimeToFirstTokenMs = null,
+    string? ModelName = null);
 
 /// <summary>
 /// Abstraction for agent output rendering — allows Core agent logic to emit
