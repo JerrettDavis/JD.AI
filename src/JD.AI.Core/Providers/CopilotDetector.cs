@@ -6,6 +6,7 @@ namespace JD.AI.Core.Providers;
 
 /// <summary>
 /// Detects a local GitHub Copilot session and enumerates its models.
+/// When running as a Windows service, scans user profiles for credentials.
 /// When authentication fails, attempts a silent refresh via the <c>gh</c> CLI.
 /// </summary>
 public sealed class CopilotDetector : IProviderDetector
@@ -16,8 +17,9 @@ public sealed class CopilotDetector : IProviderDetector
     {
         try
         {
+            var options = BuildSessionOptions();
             var provider = new CopilotSessionProvider(
-                Options.Create(new CopilotSessionOptions()),
+                Options.Create(options),
                 NullLogger<CopilotSessionProvider>.Instance);
 
             var isAuth = await provider.IsAuthenticatedAsync(ct).ConfigureAwait(false);
@@ -28,10 +30,9 @@ public sealed class CopilotDetector : IProviderDetector
                 var refreshed = await TryRefreshAuthAsync(ct).ConfigureAwait(false);
                 if (refreshed)
                 {
-                    // Re-create provider to pick up refreshed credentials
                     provider.Dispose();
                     provider = new CopilotSessionProvider(
-                        Options.Create(new CopilotSessionOptions()),
+                        Options.Create(options),
                         NullLogger<CopilotSessionProvider>.Instance);
                     isAuth = await provider.IsAuthenticatedAsync(ct).ConfigureAwait(false);
                 }
@@ -91,9 +92,47 @@ public sealed class CopilotDetector : IProviderDetector
 
     public Kernel BuildKernel(ProviderModelInfo model)
     {
+        var options = BuildSessionOptions();
         var builder = Kernel.CreateBuilder();
-        builder.UseCopilotChatCompletion(modelId: model.Id);
+        builder.UseCopilotChatCompletion(
+            modelId: model.Id,
+            configure: opts => opts.TokenFilePath = options.TokenFilePath);
         return builder.Build();
+    }
+
+    /// <summary>
+    /// Builds session options, scanning user profiles for credentials when
+    /// running as a service account.
+    /// </summary>
+    private static CopilotSessionOptions BuildSessionOptions()
+    {
+        var options = new CopilotSessionOptions();
+
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (!string.IsNullOrEmpty(home) && !UserProfileScanner.IsServiceAccount(home))
+            return options;
+
+        // On Windows, Copilot stores tokens in %LOCALAPPDATA%\github-copilot\
+        if (OperatingSystem.IsWindows())
+        {
+            var tokenPath = UserProfileScanner.FindInUserLocalAppData(
+                Path.Combine("github-copilot", "apps.json"))
+                ?? UserProfileScanner.FindInUserLocalAppData(
+                    Path.Combine("github-copilot", "hosts.json"));
+            if (tokenPath is not null)
+                options.TokenFilePath = tokenPath;
+        }
+        else
+        {
+            var tokenPath = UserProfileScanner.FindInUserProfiles(
+                Path.Combine(".config", "github-copilot", "apps.json"))
+                ?? UserProfileScanner.FindInUserProfiles(
+                    Path.Combine(".config", "github-copilot", "hosts.json"));
+            if (tokenPath is not null)
+                options.TokenFilePath = tokenPath;
+        }
+
+        return options;
     }
 
     /// <summary>
