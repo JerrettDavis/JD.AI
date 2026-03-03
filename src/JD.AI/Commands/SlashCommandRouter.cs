@@ -4,6 +4,7 @@ using JD.AI.Core.Config;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Sessions;
+using JD.AI.Core.Tools;
 using JD.AI.Rendering;
 using JD.AI.Workflows;
 
@@ -79,6 +80,13 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/WORKFLOW" or "/JDAI-WORKFLOW" => await HandleWorkflowAsync(arg, ct).ConfigureAwait(false),
             "/SPINNER" or "/JDAI-SPINNER" => HandleSpinner(arg),
             "/LOCAL" or "/JDAI-LOCAL" => await HandleLocalModelAsync(arg, ct).ConfigureAwait(false),
+            "/CONTEXT" or "/JDAI-CONTEXT" => GetContextUsage(),
+            "/COPY" or "/JDAI-COPY" => await CopyLastResponseInstanceAsync().ConfigureAwait(false),
+            "/DIFF" or "/JDAI-DIFF" => await ShowDiffAsync(ct).ConfigureAwait(false),
+            "/INIT" or "/JDAI-INIT" => await InitProjectFileAsync(ct).ConfigureAwait(false),
+            "/PLAN" or "/JDAI-PLAN" => TogglePlanMode(),
+            "/DOCTOR" or "/JDAI-DOCTOR" => await RunDoctorAsync(ct).ConfigureAwait(false),
+            "/FORK" or "/JDAI-FORK" => await ForkSessionAsync(parts, ct).ConfigureAwait(false),
             "/QUIT" or "/EXIT" or "/JDAI-QUIT" or "/JDAI-EXIT" => null, // Signal exit
             _ => $"Unknown command: {parts[0]}. Type /help for available commands.",
         };
@@ -109,6 +117,13 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /workflow       — Manage workflows (list|show|export|replay|refine)
           /spinner [style] — Set progress style (none|minimal|normal|rich|nerdy)
           /local <cmd>    — Manage local models (list|add|scan|remove|search|download)
+          /context        — Show context window usage
+          /copy           — Copy last response to clipboard
+          /diff           — Show uncommitted changes
+          /init           — Initialize JDAI.md project file
+          /plan           — Toggle plan mode (explore only)
+          /doctor         — Run self-diagnostics
+          /fork [name]    — Fork conversation to new session
           /quit           — Exit jdai
         """;
 
@@ -701,5 +716,143 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         }
 
         return null;
+    }
+
+    // ── New parity commands ─────────────────────────────────
+
+    private string GetContextUsage()
+    {
+        var used = JD.SemanticKernel.Extensions.Compaction.TokenEstimator.EstimateTokens(_session.History);
+        var max = 128000;
+        var pct = (double)used / max * 100;
+        var filledCount = (int)(pct / 2);
+        if (filledCount > 50) filledCount = 50;
+        var bar = new string('█', filledCount) + new string('░', 50 - filledCount);
+        return $"Context: [{bar}] {used:N0}/{max:N0} tokens ({pct:F1}%)";
+    }
+
+    private async Task<string> CopyLastResponseInstanceAsync()
+    {
+        var lastAssistant = _session.History
+            .Where(m => m.Role == Microsoft.SemanticKernel.ChatCompletion.AuthorRole.Assistant)
+            .LastOrDefault();
+        if (lastAssistant != null)
+        {
+            var text = lastAssistant.Content ?? "";
+            await ClipboardTools.WriteClipboardAsync(text).ConfigureAwait(false);
+            return $"Copied {text.Length} characters to clipboard.";
+        }
+
+        return "No assistant response to copy.";
+    }
+
+    private static async Task<string?> ShowDiffAsync(CancellationToken ct)
+    {
+        _ = ct;
+        var diffOutput = await ShellTools.RunCommandAsync("git diff").ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(diffOutput) || diffOutput.Contains("Exit code: 1", StringComparison.Ordinal))
+        {
+            diffOutput = await ShellTools.RunCommandAsync("git diff --cached").ConfigureAwait(false);
+        }
+
+        if (string.IsNullOrWhiteSpace(diffOutput) || string.Equals(diffOutput.Trim(), "Exit code: 0", StringComparison.Ordinal))
+        {
+            return "No uncommitted changes.";
+        }
+
+        return diffOutput;
+    }
+
+    private static async Task<string> InitProjectFileAsync(CancellationToken ct)
+    {
+        _ = ct;
+        var jdaiPath = Path.Combine(Directory.GetCurrentDirectory(), "JDAI.md");
+        if (File.Exists(jdaiPath))
+        {
+            return $"JDAI.md already exists at {jdaiPath}";
+        }
+
+        var template = """
+            # Project Instructions
+
+            <!-- jdai reads this file to understand your project. -->
+
+            ## Conventions
+
+            -
+
+            ## Architecture
+
+            -
+
+            ## Testing
+
+            -
+            """;
+        await File.WriteAllTextAsync(jdaiPath, template, ct).ConfigureAwait(false);
+        return $"Created {jdaiPath} — edit it to guide jdai.";
+    }
+
+    private string TogglePlanMode()
+    {
+        _session.PlanMode = !_session.PlanMode;
+        return _session.PlanMode
+            ? "Plan mode ON — jdai will explore and plan without making changes."
+            : "Plan mode OFF — normal mode restored.";
+    }
+
+    private async Task<string> RunDoctorAsync(CancellationToken ct)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("=== jdai Doctor ===");
+        sb.AppendLine($"Version: {typeof(SlashCommandRouter).Assembly.GetName().Version}");
+        sb.AppendLine($"Runtime: {System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}");
+        sb.AppendLine($"OS: {System.Runtime.InteropServices.RuntimeInformation.OSDescription}");
+        sb.AppendLine($"CWD: {Directory.GetCurrentDirectory()}");
+
+        var providers = await _registry.DetectProvidersAsync(ct).ConfigureAwait(false);
+        var providerList = providers.ToList();
+        sb.AppendLine($"Providers: {providerList.Count(p => p.IsAvailable)} available / {providerList.Count} total");
+
+        var allModels = await _registry.GetModelsAsync(ct).ConfigureAwait(false);
+        sb.AppendLine($"Models: {allModels.Count}");
+        sb.AppendLine($"Current: {_session.CurrentModel?.ProviderName ?? "?"} / {_session.CurrentModel?.Id ?? "?"}");
+        sb.AppendLine($"Plugins: {_session.Kernel.Plugins.Count}");
+        sb.AppendLine($"Tools: {_session.Kernel.Plugins.SelectMany(p => p).Count()}");
+        sb.AppendLine($"Instructions: {(_instructions?.HasInstructions == true ? $"{_instructions.Files.Count} file(s)" : "none")}");
+        sb.AppendLine($"Session: {_session.SessionInfo?.Id ?? "none"}");
+
+        try
+        {
+            var gitVer = await ShellTools.RunCommandAsync("git --version").ConfigureAwait(false);
+            sb.AppendLine($"Git: {gitVer.Trim()}");
+        }
+#pragma warning disable CA1031
+        catch { sb.AppendLine("Git: not found"); }
+#pragma warning restore CA1031
+
+        try
+        {
+            var dotnetVer = await ShellTools.RunCommandAsync("dotnet --version").ConfigureAwait(false);
+            sb.AppendLine($".NET CLI: {dotnetVer.Trim()}");
+        }
+#pragma warning disable CA1031
+        catch { sb.AppendLine(".NET CLI: not found"); }
+#pragma warning restore CA1031
+
+        return sb.ToString();
+    }
+
+    private async Task<string> ForkSessionAsync(string[] cmdParts, CancellationToken ct)
+    {
+        _ = ct;
+        if (_session.Store == null || _session.SessionInfo == null)
+        {
+            return "No active session to fork.";
+        }
+
+        var forkName = cmdParts.Length > 1 ? string.Join(' ', cmdParts.Skip(1)) : null;
+        var forkedSession = await _session.ForkSessionAsync(forkName).ConfigureAwait(false);
+        return $"Forked to new session: {forkedSession?.Id ?? "failed"}";
     }
 }
