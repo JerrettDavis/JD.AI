@@ -5,6 +5,7 @@ using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Agents.Orchestration;
 using JD.AI.Core.Config;
 using JD.AI.Core.LocalModels;
+using JD.AI.Core.Mcp;
 using JD.AI.Core.Providers;
 using JD.AI.Rendering;
 using JD.AI.Tools;
@@ -42,6 +43,12 @@ var cliProvider = args.SkipWhile(a => !string.Equals(a, "--provider", StringComp
 var gatewayMode = args.Contains("--gateway");
 var gatewayPort = args.SkipWhile(a => !string.Equals(a, "--gateway-port", StringComparison.OrdinalIgnoreCase))
     .Skip(1).FirstOrDefault();
+
+// Handle 'mcp' subcommand early (before provider detection)
+if (args.Length >= 1 && string.Equals(args[0], "mcp", StringComparison.OrdinalIgnoreCase))
+{
+    return await McpCliHandler.RunAsync(args[1..]).ConfigureAwait(false);
+}
 
 // --gateway: start the Gateway as an embedded ASP.NET host alongside the TUI
 Microsoft.AspNetCore.Builder.WebApplication? gatewayHost = null;
@@ -361,6 +368,7 @@ completionProvider.Register("/checkpoint", "List, restore, or clear checkpoints"
 completionProvider.Register("/sandbox", "Show or change sandbox mode");
 completionProvider.Register("/workflow", "Manage workflows (list|show|export|replay|refine)");
 completionProvider.Register("/spinner", "Set progress style (none|minimal|normal|rich|nerdy)");
+completionProvider.Register("/mcp", "Manage MCP servers (list|add|remove|enable|disable)");
 completionProvider.Register("/quit", "Exit jdai");
 completionProvider.Register("/exit", "Exit jdai");
 var interactiveInput = new InteractiveInput(completionProvider);

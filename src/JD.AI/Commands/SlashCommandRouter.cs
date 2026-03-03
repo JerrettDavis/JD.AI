@@ -1,6 +1,7 @@
 using JD.AI.Agent;
 using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Config;
+using JD.AI.Core.Mcp;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Sessions;
@@ -23,6 +24,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private readonly WorkflowEmitter _workflowEmitter;
     private readonly Action<SpinnerStyle>? _onSpinnerStyleChanged;
     private readonly Func<SpinnerStyle>? _getSpinnerStyle;
+    private readonly McpManager _mcpManager;
 
     public SlashCommandRouter(
         AgentSession session,
@@ -32,7 +34,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         PluginLoader? pluginLoader = null,
         IWorkflowCatalog? workflowCatalog = null,
         Func<SpinnerStyle>? getSpinnerStyle = null,
-        Action<SpinnerStyle>? onSpinnerStyleChanged = null)
+        Action<SpinnerStyle>? onSpinnerStyleChanged = null,
+        McpManager? mcpManager = null)
     {
         _session = session;
         _registry = registry;
@@ -43,6 +46,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         _workflowEmitter = new WorkflowEmitter();
         _getSpinnerStyle = getSpinnerStyle;
         _onSpinnerStyleChanged = onSpinnerStyleChanged;
+        _mcpManager = mcpManager ?? new McpManager();
     }
 
     public bool IsSlashCommand(string input) =>
@@ -79,6 +83,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/WORKFLOW" or "/JDAI-WORKFLOW" => await HandleWorkflowAsync(arg, ct).ConfigureAwait(false),
             "/SPINNER" or "/JDAI-SPINNER" => HandleSpinner(arg),
             "/LOCAL" or "/JDAI-LOCAL" => await HandleLocalModelAsync(arg, ct).ConfigureAwait(false),
+            "/MCP" or "/JDAI-MCP" => await HandleMcpAsync(arg, ct).ConfigureAwait(false),
             "/QUIT" or "/EXIT" or "/JDAI-QUIT" or "/JDAI-EXIT" => null, // Signal exit
             _ => $"Unknown command: {parts[0]}. Type /help for available commands.",
         };
@@ -109,6 +114,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /workflow       — Manage workflows (list|show|export|replay|refine)
           /spinner [style] — Set progress style (none|minimal|normal|rich|nerdy)
           /local <cmd>    — Manage local models (list|add|scan|remove|search|download)
+          /mcp [cmd]      — Manage MCP servers (list|add|remove|enable|disable)
           /quit           — Exit jdai
         """;
 
@@ -702,4 +708,187 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
         return null;
     }
+
+    // ── /mcp ─────────────────────────────────────────────────────────────────
+
+    private async Task<string> HandleMcpAsync(string? arg, CancellationToken ct)
+    {
+        var parts = arg?.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries) ?? [];
+        var sub = parts.Length > 0 ? parts[0].ToLowerInvariant() : "list";
+        var rest = parts.Length > 1 ? parts[1] : null;
+
+        return sub switch
+        {
+            "list"    => await McpListAsync(ct).ConfigureAwait(false),
+            "add"     => await McpAddAsync(rest, ct).ConfigureAwait(false),
+            "remove"  => await McpRemoveAsync(rest, ct).ConfigureAwait(false),
+            "enable"  => await McpSetEnabledAsync(rest, true, ct).ConfigureAwait(false),
+            "disable" => await McpSetEnabledAsync(rest, false, ct).ConfigureAwait(false),
+            _         => McpHelp(),
+        };
+    }
+
+    private async Task<string> McpListAsync(CancellationToken ct)
+    {
+        var servers = await _mcpManager.GetAllServersAsync(ct).ConfigureAwait(false);
+
+        if (servers.Count == 0)
+        {
+            return """
+                No MCP servers configured.
+                Add one with: /mcp add <name> --transport stdio --command <cmd> [--args <arg1> <arg2>]
+                           or: /mcp add <name> --transport http <url>
+                """;
+        }
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"MCP servers ({servers.Count}):");
+        sb.AppendLine();
+
+        // Group by scope+source
+        var groups = servers
+            .GroupBy(s => (s.Scope, s.SourceProvider, s.SourcePath))
+            .OrderBy(g => g.Key.Scope);
+
+        foreach (var group in groups)
+        {
+            var (scope, provider, path) = group.Key;
+            var label = scope switch
+            {
+                McpScope.Project => $"Project MCPs ({path ?? provider})",
+                McpScope.BuiltIn => "Built-in MCPs (always available)",
+                _                => $"User MCPs ({path ?? provider})",
+            };
+            sb.AppendLine($"  {label}");
+
+            foreach (var s in group)
+            {
+                var status = _mcpManager.GetStatus(s.Name);
+                var enabledTag = s.IsEnabled ? string.Empty : " [disabled]";
+                sb.AppendLine($"    {s.Name} · {status.Icon} {status.State.ToString().ToLowerInvariant()}{enabledTag}");
+            }
+
+            sb.AppendLine();
+        }
+
+        sb.Append("Use /mcp add|remove|enable|disable for management.");
+        return sb.ToString();
+    }
+
+    private async Task<string> McpAddAsync(string? args, CancellationToken ct)
+    {
+        // Usage: add <name> --transport stdio --command <cmd> [--args arg1 arg2...]
+        //        add <name> --transport http <url>
+        if (string.IsNullOrWhiteSpace(args))
+            return McpAddUsage();
+
+        var tokens = args.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (tokens.Length < 3)
+            return McpAddUsage();
+
+        var name = tokens[0];
+        var transportIdx = Array.FindIndex(tokens, t =>
+            string.Equals(t, "--transport", StringComparison.OrdinalIgnoreCase));
+
+        if (transportIdx < 0 || transportIdx + 1 >= tokens.Length)
+            return McpAddUsage();
+
+        var transportStr = tokens[transportIdx + 1];
+        McpTransport transport;
+        McpServerDefinition server;
+
+        if (string.Equals(transportStr, "http", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(transportStr, "https", StringComparison.OrdinalIgnoreCase))
+        {
+            transport = McpTransport.Http;
+            var urlIdx = transportIdx + 2;
+            if (urlIdx >= tokens.Length)
+                return "Usage: /mcp add <name> --transport http <url>";
+
+            var url = tokens[urlIdx];
+            server = new McpServerDefinition
+            {
+                Name = name,
+                DisplayName = name,
+                Transport = transport,
+                Url = url,
+                Scope = McpScope.User,
+                SourceProvider = "JD.AI",
+                IsEnabled = true,
+            };
+        }
+        else if (string.Equals(transportStr, "stdio", StringComparison.OrdinalIgnoreCase))
+        {
+            transport = McpTransport.Stdio;
+            var cmdIdx = Array.FindIndex(tokens, t =>
+                string.Equals(t, "--command", StringComparison.OrdinalIgnoreCase));
+
+            if (cmdIdx < 0 || cmdIdx + 1 >= tokens.Length)
+                return "Usage: /mcp add <name> --transport stdio --command <cmd> [--args arg1 arg2...]";
+
+            var command = tokens[cmdIdx + 1];
+
+            var argStartIdx = Array.FindIndex(tokens, t =>
+                string.Equals(t, "--args", StringComparison.OrdinalIgnoreCase));
+
+            var serverArgs = argStartIdx >= 0
+                ? tokens[(argStartIdx + 1)..].ToList()
+                : (IReadOnlyList<string>)[];
+
+            server = new McpServerDefinition
+            {
+                Name = name,
+                DisplayName = name,
+                Transport = transport,
+                Command = command,
+                Args = serverArgs,
+                Scope = McpScope.User,
+                SourceProvider = "JD.AI",
+                IsEnabled = true,
+            };
+        }
+        else
+        {
+            return $"Unknown transport '{transportStr}'. Use stdio or http.";
+        }
+
+        await _mcpManager.AddOrUpdateAsync(server, ct).ConfigureAwait(false);
+        return $"Added MCP server '{name}' ({transportStr}).";
+    }
+
+    private async Task<string> McpRemoveAsync(string? name, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "Usage: /mcp remove <name>";
+
+        await _mcpManager.RemoveAsync(name.Trim(), ct).ConfigureAwait(false);
+        return $"Removed MCP server '{name.Trim()}' (if it existed in JD.AI config).";
+    }
+
+    private async Task<string> McpSetEnabledAsync(string? name, bool enabled, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return $"Usage: /mcp {(enabled ? "enable" : "disable")} <name>";
+
+        await _mcpManager.SetEnabledAsync(name.Trim(), enabled, ct).ConfigureAwait(false);
+        return $"MCP server '{name.Trim()}' {(enabled ? "enabled" : "disabled")}.";
+    }
+
+    private static string McpHelp() => """
+        /mcp commands:
+          /mcp list                    — List all configured MCP servers
+          /mcp add <name> --transport stdio --command <cmd> [--args ...]
+                                       — Add a stdio MCP server
+          /mcp add <name> --transport http <url>
+                                       — Add an HTTP MCP server
+          /mcp remove <name>           — Remove a JD.AI-managed MCP server
+          /mcp enable <name>           — Enable a JD.AI-managed MCP server
+          /mcp disable <name>          — Disable a JD.AI-managed MCP server
+        """;
+
+    private static string McpAddUsage() => """
+        Usage:
+          /mcp add <name> --transport stdio --command <cmd> [--args arg1 arg2...]
+          /mcp add <name> --transport http <url>
+        """;
 }
