@@ -126,4 +126,19 @@ public sealed class McpManagerMergeTests
 
         Assert.Equal(McpConnectionState.Connected, retrieved.State);
     }
+
+    [Fact]
+    public void McpServerDefinition_DisplayName_FallsBackToName()
+    {
+        var def = new McpServerDefinition { Name = "my-server" };
+        // DisplayName not explicitly set — should fall back to Name
+        Assert.Equal("my-server", def.DisplayName);
+    }
+
+    [Fact]
+    public void McpServerDefinition_DisplayName_UsesExplicitValueWhenSet()
+    {
+        var def = new McpServerDefinition { Name = "my-server", DisplayName = "My Server" };
+        Assert.Equal("My Server", def.DisplayName);
+    }
 }

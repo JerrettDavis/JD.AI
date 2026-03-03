@@ -76,7 +76,7 @@ internal static class McpCliHandler
 
         var groups = servers
             .GroupBy(s => (s.Scope, s.SourceProvider, s.SourcePath))
-            .OrderBy(g => g.Key.Scope);
+            .OrderByDescending(g => ScopePriority(g.Key.Scope));
 
         foreach (var group in groups)
         {
@@ -92,8 +92,12 @@ internal static class McpCliHandler
             foreach (var s in group)
             {
                 var status = manager.GetStatus(s.Name);
-                var enabledTag = s.IsEnabled ? string.Empty : " [disabled]";
-                Console.WriteLine($"    {s.Name} · {status.Icon} {status.State.ToString().ToLowerInvariant()}{enabledTag}");
+                // If disabled, always show the disabled icon/state regardless of cached status.
+                var icon = s.IsEnabled ? status.Icon : "○";
+                var stateText = s.IsEnabled
+                    ? status.State.ToString().ToLowerInvariant()
+                    : "disabled";
+                Console.WriteLine($"    {s.Name} · {icon} {stateText}");
             }
 
             Console.WriteLine();
@@ -277,4 +281,12 @@ internal static class McpCliHandler
         string? Command,
         IReadOnlyList<string> Args,
         string? Url);
+
+    private static int ScopePriority(McpScope scope) => scope switch
+    {
+        McpScope.BuiltIn => 0,
+        McpScope.User    => 1,
+        McpScope.Project => 2,
+        _                => -1,
+    };
 }

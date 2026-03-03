@@ -141,8 +141,10 @@ public sealed class JdAiMcpDiscoveryProvider : IMcpDiscoveryProvider
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_configPath)!);
 
-        // Write to a temp file first, then atomic-rename to avoid data loss
-        var tmp = _configPath + ".tmp";
+        // Write to a uniquely-named temp file first, then atomic-rename.
+        // Using a GUID suffix prevents concurrent jdai processes from colliding
+        // on the same temp file and losing updates.
+        var tmp = _configPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
         var json = JsonSerializer.Serialize(file, JsonOpts);
         await File.WriteAllTextAsync(tmp, json, ct).ConfigureAwait(false);
         File.Move(tmp, _configPath, overwrite: true);

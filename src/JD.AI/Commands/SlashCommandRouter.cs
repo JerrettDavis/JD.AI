@@ -745,10 +745,10 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         sb.AppendLine($"MCP servers ({servers.Count}):");
         sb.AppendLine();
 
-        // Group by scope+source
+        // Group by scope+source; order Project → User → BuiltIn (higher precedence first)
         var groups = servers
             .GroupBy(s => (s.Scope, s.SourceProvider, s.SourcePath))
-            .OrderBy(g => g.Key.Scope);
+            .OrderByDescending(g => ScopePriority(g.Key.Scope));
 
         foreach (var group in groups)
         {
@@ -764,8 +764,12 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             foreach (var s in group)
             {
                 var status = _mcpManager.GetStatus(s.Name);
-                var enabledTag = s.IsEnabled ? string.Empty : " [disabled]";
-                sb.AppendLine($"    {s.Name} · {status.Icon} {status.State.ToString().ToLowerInvariant()}{enabledTag}");
+                // If disabled, always show the disabled icon/state regardless of cached status.
+                var displayIcon = s.IsEnabled ? status.Icon : "○";
+                var displayState = s.IsEnabled
+                    ? status.State.ToString().ToLowerInvariant()
+                    : "disabled";
+                sb.AppendLine($"    {s.Name} · {displayIcon} {displayState}");
             }
 
             sb.AppendLine();
@@ -891,4 +895,12 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /mcp add <name> --transport stdio --command <cmd> [--args arg1 arg2...]
           /mcp add <name> --transport http <url>
         """;
+
+    private static int ScopePriority(McpScope scope) => scope switch
+    {
+        McpScope.BuiltIn => 0,
+        McpScope.User    => 1,
+        McpScope.Project => 2,
+        _                => -1,
+    };
 }

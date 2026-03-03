@@ -8,8 +8,14 @@ public sealed record McpServerDefinition
     /// <summary>Stable key used for look-up, persistence and CLI references.</summary>
     public required string Name { get; init; }
 
+    private readonly string? _displayName;
+
     /// <summary>Human-readable display name (defaults to <see cref="Name"/>).</summary>
-    public string DisplayName { get; init; } = string.Empty;
+    public string DisplayName
+    {
+        get => string.IsNullOrEmpty(_displayName) ? Name : _displayName;
+        init => _displayName = value;
+    }
 
     /// <summary>How the server is reached.</summary>
     public McpTransport Transport { get; init; } = McpTransport.Stdio;
