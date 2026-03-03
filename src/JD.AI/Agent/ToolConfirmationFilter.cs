@@ -17,6 +17,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
     private static readonly Dictionary<string, SafetyTier> ToolTiers =
         new(StringComparer.OrdinalIgnoreCase)
         {
+            // Read-only / no side effects
             ["read_file"] = SafetyTier.AutoApprove,
             ["list_directory"] = SafetyTier.AutoApprove,
             ["grep"] = SafetyTier.AutoApprove,
@@ -24,20 +25,37 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["git_status"] = SafetyTier.AutoApprove,
             ["git_diff"] = SafetyTier.AutoApprove,
             ["git_log"] = SafetyTier.AutoApprove,
+            ["git_branch"] = SafetyTier.AutoApprove,
             ["memory_search"] = SafetyTier.AutoApprove,
             ["web_fetch"] = SafetyTier.AutoApprove,
             ["ask_questions"] = SafetyTier.AutoApprove,
+            ["think"] = SafetyTier.AutoApprove,
+            ["get_environment"] = SafetyTier.AutoApprove,
+            ["list_tasks"] = SafetyTier.AutoApprove,
+            ["export_tasks"] = SafetyTier.AutoApprove,
+            ["read_clipboard"] = SafetyTier.AutoApprove,
 
+            // Write ops — confirm once per session
             ["write_file"] = SafetyTier.ConfirmOnce,
             ["edit_file"] = SafetyTier.ConfirmOnce,
             ["git_commit"] = SafetyTier.ConfirmOnce,
+            ["git_push"] = SafetyTier.ConfirmOnce,
+            ["git_pull"] = SafetyTier.ConfirmOnce,
+            ["git_checkout"] = SafetyTier.ConfirmOnce,
+            ["git_stash"] = SafetyTier.ConfirmOnce,
             ["memory_store"] = SafetyTier.ConfirmOnce,
             ["memory_forget"] = SafetyTier.ConfirmOnce,
-
-            ["run_command"] = SafetyTier.AlwaysConfirm,
-            ["web_search"] = SafetyTier.AlwaysConfirm,
+            ["create_task"] = SafetyTier.ConfirmOnce,
+            ["update_task"] = SafetyTier.ConfirmOnce,
+            ["complete_task"] = SafetyTier.ConfirmOnce,
+            ["write_clipboard"] = SafetyTier.ConfirmOnce,
             ["spawn_agent"] = SafetyTier.ConfirmOnce,
             ["spawn_team"] = SafetyTier.ConfirmOnce,
+
+            // Dangerous — always confirm
+            ["run_command"] = SafetyTier.AlwaysConfirm,
+            ["web_search"] = SafetyTier.AlwaysConfirm,
+            ["execute_code"] = SafetyTier.AlwaysConfirm,
         };
 
     public ToolConfirmationFilter(AgentSession session)

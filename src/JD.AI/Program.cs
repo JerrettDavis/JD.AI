@@ -184,7 +184,12 @@ kernel.Plugins.AddFromType<SearchTools>("search");
 kernel.Plugins.AddFromType<ShellTools>("shell");
 kernel.Plugins.AddFromType<GitTools>("git");
 kernel.Plugins.AddFromType<WebTools>("web");
+kernel.Plugins.AddFromType<ThinkTools>("think");
+kernel.Plugins.AddFromType<EnvironmentTools>("environment");
+kernel.Plugins.AddFromType<NotebookTools>("notebook");
+kernel.Plugins.AddFromType<ClipboardTools>("clipboard");
 kernel.Plugins.AddFromObject(new MemoryTools(), "memory");
+kernel.Plugins.AddFromObject(new TaskTools(), "tasks");
 kernel.Plugins.AddFromObject(
     new QuestionTools(req => QuestionnaireSession.Run(req)), "questions");
 

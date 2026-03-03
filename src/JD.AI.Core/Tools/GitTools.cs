@@ -49,6 +49,72 @@ public sealed class GitTools
         return await RunGitAsync($"commit -m \"{escaped}\"", path).ConfigureAwait(false);
     }
 
+    [KernelFunction("git_push")]
+    [Description("Push commits to the remote repository.")]
+    public static async Task<string> GitPushAsync(
+        [Description("Remote name (default 'origin')")] string remote = "origin",
+        [Description("Branch name (default: current branch)")] string? branch = null,
+        [Description("Repository path (defaults to cwd)")] string? path = null)
+    {
+        var args = string.IsNullOrWhiteSpace(branch) ? $"push {remote}" : $"push {remote} {branch}";
+        return await RunGitAsync(args, path).ConfigureAwait(false);
+    }
+
+    [KernelFunction("git_pull")]
+    [Description("Pull changes from the remote repository.")]
+    public static async Task<string> GitPullAsync(
+        [Description("Remote name (default 'origin')")] string remote = "origin",
+        [Description("Branch name (default: current branch)")] string? branch = null,
+        [Description("Repository path (defaults to cwd)")] string? path = null)
+    {
+        var args = string.IsNullOrWhiteSpace(branch) ? $"pull {remote}" : $"pull {remote} {branch}";
+        return await RunGitAsync(args, path).ConfigureAwait(false);
+    }
+
+    [KernelFunction("git_branch")]
+    [Description("List, create, or delete branches.")]
+    public static async Task<string> GitBranchAsync(
+        [Description("Branch name to create (omit to list branches)")] string? name = null,
+        [Description("Delete the branch instead of creating it")] bool delete = false,
+        [Description("Repository path (defaults to cwd)")] string? path = null)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return await RunGitAsync("branch -a", path).ConfigureAwait(false);
+        }
+
+        var args = delete ? $"branch -d {name}" : $"branch {name}";
+        return await RunGitAsync(args, path).ConfigureAwait(false);
+    }
+
+    [KernelFunction("git_checkout")]
+    [Description("Switch branches or restore working tree files.")]
+    public static async Task<string> GitCheckoutAsync(
+        [Description("Branch name, commit SHA, or file path to checkout")] string target,
+        [Description("Create a new branch (-b flag)")] bool createNew = false,
+        [Description("Repository path (defaults to cwd)")] string? path = null)
+    {
+        var args = createNew ? $"checkout -b {target}" : $"checkout {target}";
+        return await RunGitAsync(args, path).ConfigureAwait(false);
+    }
+
+    [KernelFunction("git_stash")]
+    [Description("Stash or restore uncommitted changes.")]
+    public static async Task<string> GitStashAsync(
+        [Description("Stash action: 'push' (default), 'pop', 'list', 'drop'")] string action = "push",
+        [Description("Optional message for stash push")] string? message = null,
+        [Description("Repository path (defaults to cwd)")] string? path = null)
+    {
+        var args = action.ToUpperInvariant() switch
+        {
+            "POP" => "stash pop",
+            "LIST" => "stash list",
+            "DROP" => "stash drop",
+            _ => string.IsNullOrWhiteSpace(message) ? "stash push" : $"stash push -m \"{message}\"",
+        };
+        return await RunGitAsync(args, path).ConfigureAwait(false);
+    }
+
     private static async Task<string> RunGitAsync(string args, string? path)
     {
         var workDir = path ?? Directory.GetCurrentDirectory();
