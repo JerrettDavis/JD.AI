@@ -1,5 +1,5 @@
 ---
-description: "Install JD.AI and connect to Claude Code, GitHub Copilot, or Ollama in minutes."
+description: "Install JD.AI and connect to Claude Code, GitHub Copilot, OpenAI Codex, Ollama, or local models in minutes."
 ---
 
 # Getting Started
@@ -66,6 +66,19 @@ You need at least one AI provider. JD.AI auto-detects all available providers.
    Or sign in through the VS Code GitHub Copilot extension.
 2. JD.AI detects available Copilot models automatically.
 
+### OpenAI Codex
+
+1. Install the Codex CLI:
+   ```bash
+   npm install -g @openai/codex
+   ```
+2. Authenticate:
+   ```bash
+   codex auth login
+   ```
+   Or set the `OPENAI_API_KEY` environment variable directly.
+3. JD.AI detects the session automatically on next launch.
+
 ### Ollama (local, free)
 
 1. Install Ollama from [ollama.com](https://ollama.com)
@@ -81,6 +94,20 @@ You need at least one AI provider. JD.AI auto-detects all available providers.
    ```bash
    ollama pull all-minilm
    ```
+
+### Local models (fully standalone)
+
+No external service needed — run GGUF models directly in-process via LLamaSharp:
+
+1. Place `.gguf` model files in `~/.jdai/models/` (or any directory).
+2. JD.AI detects them automatically on startup.
+3. Or use the interactive commands to search and download:
+   ```text
+   /local search llama 7b
+   /local download TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF
+   ```
+
+See [Local Models](local-models.md) for the full guide.
 
 ## Switching providers and models
 
@@ -99,10 +126,12 @@ You need at least one AI provider. JD.AI auto-detects all available providers.
 | `--new` | Start a fresh session |
 | `--force-update-check` | Force NuGet update check |
 | `--dangerously-skip-permissions` | Skip all tool confirmations |
+| `--gateway` | Start in gateway mode |
+| `--gateway-port <port>` | Port for gateway API (default: `5100`) |
 
 ## What's next
 
 - [Quickstart](quickstart.md) — Walk through your first real task
 - [Best Practices](best-practices.md) — Tips for effective prompting
-- [Commands Reference](commands-reference.md) — All 20 slash commands
+- [Commands Reference](commands-reference.md) — All 23+ slash commands
 - [Providers](providers.md) — Detailed provider documentation

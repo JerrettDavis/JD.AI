@@ -92,7 +92,7 @@ Each provider card shows:
 - Number of available models
 - Model catalog with ID and display name
 
-Supported providers include Claude Code, GitHub Copilot, and Ollama (with 60+ local models).
+Supported providers include Claude Code, GitHub Copilot, OpenAI Codex, Ollama, and local GGUF models (via LLamaSharp).
 
 ## Settings
 

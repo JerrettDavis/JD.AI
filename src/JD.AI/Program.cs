@@ -4,6 +4,7 @@ using JD.AI.Commands;
 using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Agents.Orchestration;
 using JD.AI.Core.Config;
+using JD.AI.Core.LocalModels;
 using JD.AI.Core.Providers;
 using JD.AI.Rendering;
 using JD.AI.Tools;
@@ -71,6 +72,7 @@ var detectors = new IProviderDetector[]
     new CopilotDetector(),
     new OpenAICodexDetector(),
     new OllamaDetector(),
+    new LocalModelDetector(),
 };
 var registry = new ProviderRegistry(detectors);
 

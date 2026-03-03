@@ -413,7 +413,7 @@ await foreach (var evt in connection.StreamAsync<GatewayEvent>(
 | `ChannelRegistry` | Singleton | Thread-safe in-memory registry of all `IChannel` adapters |
 | `InProcessEventBus` | Singleton | Publishes and streams `GatewayEvent` instances |
 | `SessionStore` | Singleton | SQLite-backed session persistence at `~/.jdai/sessions.db` |
-| `ProviderRegistry` | Singleton | Detects Claude Code, GitHub Copilot, and Ollama providers |
+| `ProviderRegistry` | Singleton | Detects Claude Code, GitHub Copilot, OpenAI Codex, Ollama, and Local providers |
 | `ApiKeyAuthProvider` | Singleton | Validates API keys and resolves `GatewayIdentity` |
 | `SlidingWindowRateLimiter` | Singleton | Per-identity sliding-window rate limiter |
 

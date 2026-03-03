@@ -30,6 +30,21 @@
 | No models | Pull a model: `ollama pull llama3.2` |
 | Connection refused | Check if Ollama is running on port 11434 |
 
+### OpenAI Codex
+| Problem | Solution |
+|---------|----------|
+| "Not authenticated" | Run `codex auth login` or set `OPENAI_API_KEY` env var |
+| API key not working | Verify key is valid at https://platform.openai.com/api-keys |
+| "Codex: Not available" | Install: `npm install -g @openai/codex` |
+
+### Local models (LLamaSharp)
+| Problem | Solution |
+|---------|----------|
+| "No models detected" | Add a model: `/local add /path/to/model.gguf` or `/local download TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF` |
+| Model fails to load (OOM) | Use a smaller model or lower quantization (Q4_K_M) |
+| Slow inference | Install CUDA drivers for GPU offload; check startup status shows `[Cuda]` not `[Cpu]` |
+| HuggingFace search fails | Set `HF_TOKEN` env var for authenticated access |
+
 ## Runtime issues
 
 | Problem | Solution |

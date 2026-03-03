@@ -40,7 +40,7 @@ jdai
 > [!NOTE]
 > Requires .NET 10.0 SDK or later and at least one configured AI provider.
 
-JD.AI automatically detects available providers and selects the best one. Choose from **Claude Code**, **GitHub Copilot**, or **Ollama** — or switch on the fly with `/provider`.
+JD.AI automatically detects available providers and selects the best one. Choose from **Claude Code**, **GitHub Copilot**, **OpenAI Codex**, **Ollama**, or **local GGUF models** — or switch on the fly with `/provider`.
 
 ## What you can do
 
@@ -61,9 +61,10 @@ JD.AI ships with a broad set of capabilities out of the box:
 
 | Feature | Summary | Learn more |
 |---|---|---|
-| **Multi-provider support** | Switch between Claude Code, GitHub Copilot, and Ollama | [Providers](providers.md) |
+| **5 AI providers** | Claude Code, Copilot, OpenAI Codex, Ollama, and local GGUF models | [Providers](providers.md) |
+| **Local model inference** | Run GGUF models in-process via LLamaSharp — fully offline | [Local models](local-models.md) |
 | **8 tool categories** | File I/O, shell, search, git, web, and more | [Tools reference](tools-reference.md) |
-| **20 slash commands** | `/help`, `/model`, `/compact`, `/save`, `/load`, and others | [Commands reference](commands-reference.md) |
+| **23+ slash commands** | `/help`, `/model`, `/local`, `/spinner`, `/workflow`, and others | [Commands reference](commands-reference.md) |
 | **5 subagent types** | Specialized agents for explore, code review, testing, and more | [Subagents](subagents.md) |
 | **4 orchestration strategies** | Coordinate teams of agents for complex tasks | [Orchestration](orchestration.md) |
 | **Session persistence** | Save and resume conversations across sessions | [Persistence](persistence.md) |
