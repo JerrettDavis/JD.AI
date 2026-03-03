@@ -44,10 +44,14 @@ var gatewayMode = args.Contains("--gateway");
 var gatewayPort = args.SkipWhile(a => !string.Equals(a, "--gateway-port", StringComparison.OrdinalIgnoreCase))
     .Skip(1).FirstOrDefault();
 
-// Handle 'mcp' subcommand early (before provider detection)
-if (args.Length >= 1 && string.Equals(args[0], "mcp", StringComparison.OrdinalIgnoreCase))
+// Handle 'mcp' subcommand early (before provider detection).
+// Allow global options (starting with '-') to appear before the 'mcp' subcommand,
+// e.g. `jdai --debug mcp list` works the same as `jdai mcp list`.
+var firstNonOptionIndex = Array.FindIndex(args, a => !a.StartsWith('-'));
+if (firstNonOptionIndex >= 0 && string.Equals(args[firstNonOptionIndex], "mcp", StringComparison.OrdinalIgnoreCase))
 {
-    return await McpCliHandler.RunAsync(args[1..]).ConfigureAwait(false);
+    var mcpArgs = args.Skip(firstNonOptionIndex + 1).ToArray();
+    return await McpCliHandler.RunAsync(mcpArgs).ConfigureAwait(false);
 }
 
 // --gateway: start the Gateway as an embedded ASP.NET host alongside the TUI

@@ -18,13 +18,21 @@ public sealed class McpManager
     /// Claude Code user + project configs and the JD.AI-managed config.
     /// </summary>
     public McpManager()
-        : this(
-            [
-                new ClaudeCodeUserMcpDiscoveryProvider(),
-                new JdAiMcpDiscoveryProvider(),
-                new ClaudeCodeProjectMcpDiscoveryProvider(),
-            ],
-            new JdAiMcpDiscoveryProvider()) { }
+        : this(CreateDefaultProviders(out var jdAiProvider), jdAiProvider)
+    {
+    }
+
+    private static IReadOnlyList<IMcpDiscoveryProvider> CreateDefaultProviders(
+        out JdAiMcpDiscoveryProvider jdAiProvider)
+    {
+        jdAiProvider = new JdAiMcpDiscoveryProvider();
+        return
+        [
+            new ClaudeCodeUserMcpDiscoveryProvider(),
+            jdAiProvider,
+            new ClaudeCodeProjectMcpDiscoveryProvider(),
+        ];
+    }
 
     /// <summary>Creates an <see cref="McpManager"/> with a custom provider list.</summary>
     public McpManager(

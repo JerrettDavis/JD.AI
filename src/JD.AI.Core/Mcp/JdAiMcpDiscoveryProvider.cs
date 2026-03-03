@@ -109,28 +109,30 @@ public sealed class JdAiMcpDiscoveryProvider : IMcpDiscoveryProvider
     {
         var file = await LoadFileAsync(ct).ConfigureAwait(false);
 
+        var servers = file.Servers.ToList();
         var found = false;
         var changed = false;
-        var updated = file.Servers
-            .Select(s =>
-            {
-                if (!string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase))
-                    return s;
 
-                found = true;
+        for (var i = 0; i < servers.Count; i++)
+        {
+            var s = servers[i];
 
-                if (s.IsEnabled == enabled)
-                    return s;
+            if (!string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase))
+                continue;
 
-                changed = true;
-                return s with { IsEnabled = enabled };
-            })
-            .ToList();
+            found = true;
+
+            if (s.IsEnabled == enabled)
+                continue;
+
+            changed = true;
+            servers[i] = s with { IsEnabled = enabled };
+        }
 
         if (!found || !changed)
             return;
 
-        await SaveFileAsync(file with { Servers = updated }, ct).ConfigureAwait(false);
+        await SaveFileAsync(file with { Servers = servers }, ct).ConfigureAwait(false);
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
@@ -155,7 +157,9 @@ public sealed class JdAiMcpDiscoveryProvider : IMcpDiscoveryProvider
 
     private async Task SaveFileAsync(JdAiMcpFile file, CancellationToken ct)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(_configPath)!);
+        var dir = Path.GetDirectoryName(_configPath);
+        if (!string.IsNullOrEmpty(dir))
+            Directory.CreateDirectory(dir);
 
         // Write to a uniquely-named temp file first, then atomic-rename.
         // Using a GUID suffix prevents concurrent jdai processes from colliding
