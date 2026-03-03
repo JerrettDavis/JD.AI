@@ -18,7 +18,6 @@ public sealed record TuiSettings
     };
 
     /// <summary>The spinner/progress display style during LLM turns.</summary>
-    [JsonConverter(typeof(JsonStringEnumConverter))]
     public SpinnerStyle SpinnerStyle { get; init; } = SpinnerStyle.Normal;
 
     /// <summary>Load settings from the data directory, returning defaults if not found.</summary>
