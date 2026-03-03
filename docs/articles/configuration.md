@@ -110,3 +110,8 @@ See [Skills and Plugins](skills-and-plugins.md) for details.
 | `OLLAMA_ENDPOINT` | Ollama API URL | `http://localhost:11434` |
 | `OLLAMA_CHAT_MODEL` | Default Ollama chat model | `llama3.2:latest` |
 | `OLLAMA_EMBEDDING_MODEL` | Default embedding model | `all-minilm:latest` |
+| `OPENAI_API_KEY` | OpenAI / Codex API key (if not using CLI auth) | — |
+| `CODEX_TOKEN` | Codex CLI access token override | — |
+| `JDAI_MODELS_DIR` | Local model storage and registry directory | `~/.jdai/models/` |
+| `HF_HOME` | HuggingFace cache directory (for local model scanning) | `~/.cache/huggingface/` |
+| `HF_TOKEN` | HuggingFace API token for authenticated access | — |
