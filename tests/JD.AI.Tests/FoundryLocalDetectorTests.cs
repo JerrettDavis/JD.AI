@@ -27,8 +27,14 @@ public sealed class FoundryLocalDetectorTests
     [Fact]
     public void Constructor_TrimsTrailingSlash()
     {
-        // The ProviderName is consistent regardless of trailing slash in endpoint
         var detector = new FoundryLocalDetector("http://127.0.0.1:64646/");
-        Assert.Equal("Foundry Local", detector.ProviderName);
+        Assert.Equal("http://127.0.0.1:64646", detector.Endpoint);
+    }
+
+    [Fact]
+    public void Constructor_PreservesEndpointWithoutSlash()
+    {
+        var detector = new FoundryLocalDetector("http://127.0.0.1:64646");
+        Assert.Equal("http://127.0.0.1:64646", detector.Endpoint);
     }
 }

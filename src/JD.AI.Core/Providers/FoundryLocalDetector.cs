@@ -20,6 +20,9 @@ public sealed class FoundryLocalDetector : IProviderDetector
 
     public string ProviderName => "Foundry Local";
 
+    /// <summary>The resolved endpoint (trailing slash stripped).</summary>
+    internal string Endpoint => _endpoint;
+
     public async Task<ProviderInfo> DetectAsync(CancellationToken ct = default)
     {
         try
