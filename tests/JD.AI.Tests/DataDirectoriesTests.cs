@@ -2,6 +2,7 @@ using JD.AI.Core.Config;
 
 namespace JD.AI.Tests;
 
+[Collection("DataDirectories")]
 public sealed class DataDirectoriesTests : IDisposable
 {
     private readonly string _tempDir;
