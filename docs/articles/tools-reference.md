@@ -305,14 +305,60 @@ Cross-platform support: uses PowerShell/clip on Windows, pbcopy/pbpaste on macOS
 ⚡ Tool: ask_questions(questionsJson: "{\"title\":\"Project Setup\",\"questions\":[{\"key\":\"name\",\"prompt\":\"Project name?\",\"type\":\"text\",\"required\":true}]}")
 ```
 
+## Diff and patch tools
+
+Create and apply structured text patches across files. The `create_patch` tool generates unified diff output for review, while `apply_patch` performs atomic multi-file text replacements — if any edit fails validation, no files are modified.
+
+### Functions
+
+- **`create_patch`** — `editsJson` (string, JSON array of `{path, oldText, newText}`). Returns a unified diff showing proposed changes without modifying files.
+- **`apply_patch`** — `editsJson` (string, JSON array of `{path, oldText, newText}`). Validates all edits first, then applies atomically. Returns an error if any `oldText` is not found (no files are modified).
+
+### Example
+
+```text
+⚡ Tool: create_patch(editsJson: "[{\"path\":\"src/Config.cs\",\"oldText\":\"Timeout = 30\",\"newText\":\"Timeout = 60\"}]")
+→ --- a/src/Config.cs
+  +++ b/src/Config.cs
+  @@ -12,1 +12,1 @@
+  -Timeout = 30
+  +Timeout = 60
+```
+
+## Batch edit tools
+
+Apply multiple text replacements across one or more files in a single atomic operation. All edits are validated before any files are written — if any `oldText` is not found, no files are modified. Multiple edits to the same file are applied sequentially in order.
+
+### Functions
+
+- **`batch_edit_files`** — `editsJson` (string, JSON array of `{path, oldText, newText}`). Groups edits by file, validates all, then writes atomically.
+
+### Example
+
+```text
+⚡ Tool: batch_edit_files(editsJson: "[{\"path\":\"src/App.cs\",\"oldText\":\"v1\",\"newText\":\"v2\"},{\"path\":\"src/Config.cs\",\"oldText\":\"old\",\"newText\":\"new\"}]")
+→ Applied 2 edit(s) across 2 file(s):
+    src/App.cs: 1 edit(s)
+    src/Config.cs: 1 edit(s)
+```
+
+## Usage tracking tools
+
+Track token usage and estimated costs for the current session. The agent loop can record usage after each turn, and the `get_usage` tool provides a summary with cost estimates across common model pricing tiers.
+
+### Functions
+
+- **`get_usage`** — No parameters. Returns session token counts (prompt, completion, total), tool call count, turn count, and estimated costs for several model pricing tiers.
+- **`reset_usage`** — No parameters. Resets all session usage counters to zero.
+
 ## Tool safety tiers
 
 Every tool belongs to a safety tier that controls how confirmation is handled:
 
 | Tier | Behavior | Tools |
 |------|----------|-------|
-| **Auto-approve** | Runs without confirmation | `read_file`, `grep`, `glob`, `list_directory`, `git_status`, `git_diff`, `git_log`, `git_branch`, `memory_search`, `web_fetch`, `ask_questions`, `think`, `get_environment`, `list_tasks`, `export_tasks`, `read_clipboard` |
-| **Confirm once** | Asks once per session | `write_file`, `edit_file`, `git_commit`, `git_push`, `git_pull`, `git_checkout`, `git_stash`, `memory_store`, `memory_forget`, `create_task`, `update_task`, `complete_task`, `write_clipboard`, `spawn_agent`, `spawn_team` |
+| **Auto-approve** | Runs without confirmation | `read_file`, `grep`, `glob`, `list_directory`, `git_status`, `git_diff`, `git_log`, `git_branch`, `memory_search`, `web_fetch`, `ask_questions`, `think`, `get_environment`, `list_tasks`, `export_tasks`, `read_clipboard`, `get_usage`, `create_patch` |
+| **Confirm once** | Asks once per session | `write_file`, `edit_file`, `git_commit`, `git_push`, `git_pull`, `git_checkout`, `git_stash`, `memory_store`, `memory_forget`, `create_task`, `update_task`, `complete_task`, `write_clipboard`, `spawn_agent`, `spawn_team`, `apply_patch`, `batch_edit_files`, `reset_usage` |
 | **Always confirm** | Asks every invocation | `run_command`, `web_search`, `execute_code` |
 
 ## Controlling tool permissions
