@@ -76,6 +76,18 @@ public sealed class AgentSession
     public bool NoSessionPersistence { get; set; }
 
     /// <summary>
+    /// Per-session budget limit in USD (set via <c>--max-budget-usd</c>).
+    /// When exceeded the agent stops processing turns.
+    /// </summary>
+    public decimal? MaxBudgetUsd { get; set; }
+
+    /// <summary>
+    /// Accumulated estimated spend for this session in USD.
+    /// Updated after each turn by the budget tracker.
+    /// </summary>
+    public decimal SessionSpendUsd { get; set; }
+
+    /// <summary>
     /// When true, the agent operates in plan-only mode (read/explore, no file writes).
     /// Toggled via the /plan slash command.
     /// </summary>
@@ -436,6 +448,29 @@ public sealed class AgentSession
             switchMode));
 
         ModelChanged?.Invoke(this, model);
+    }
+
+    /// <summary>
+    /// Attempts to resolve a model by name/id and switch to it.
+    /// Returns true if the switch succeeded, false if the model was not found.
+    /// </summary>
+    public async Task<bool> TrySwitchModelAsync(string modelNameOrId, CancellationToken ct = default)
+    {
+        var allModels = await _registry.GetModelsAsync(ct).ConfigureAwait(false);
+
+        // Try exact ID match first, then display name, then contains
+        var match = allModels.FirstOrDefault(m =>
+                        string.Equals(m.Id, modelNameOrId, StringComparison.OrdinalIgnoreCase))
+                    ?? allModels.FirstOrDefault(m =>
+                        string.Equals(m.DisplayName, modelNameOrId, StringComparison.OrdinalIgnoreCase))
+                    ?? allModels.FirstOrDefault(m =>
+                        m.Id.Contains(modelNameOrId, StringComparison.OrdinalIgnoreCase));
+
+        if (match is null)
+            return false;
+
+        SwitchModel(match, "fallback");
+        return true;
     }
 
     /// <summary>
