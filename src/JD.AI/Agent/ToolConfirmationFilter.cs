@@ -114,6 +114,13 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["benchmark_regression"] = SafetyTier.AutoApprove,
             ["benchmark_run"] = SafetyTier.ConfirmOnce, // invokes tools
 
+            // MCP transport tools — read-only
+            ["mcp_list_servers"] = SafetyTier.AutoApprove,
+            ["mcp_transport_matrix"] = SafetyTier.AutoApprove,
+            ["mcp_diagnose"] = SafetyTier.AutoApprove,
+            ["mcp_credential_status"] = SafetyTier.AutoApprove,
+            ["mcp_export_config"] = SafetyTier.AutoApprove,
+
             // Write ops — confirm once per session
             ["write_file"] = SafetyTier.ConfirmOnce,
             ["edit_file"] = SafetyTier.ConfirmOnce,
