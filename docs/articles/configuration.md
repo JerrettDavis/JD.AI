@@ -130,3 +130,7 @@ See [Skills and Plugins](skills-and-plugins.md) for details.
 | `JDAI_MODELS_DIR` | Local model storage and registry directory | `~/.jdai/models/` |
 | `HF_HOME` | HuggingFace cache directory (for local model scanning) | `~/.cache/huggingface/` |
 | `HF_TOKEN` | HuggingFace API token for authenticated access | — |
+| `OTEL_SERVICE_NAME` | Override `Gateway:Telemetry:ServiceName` in traces/metrics | `"jdai"` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Activate OTLP exporter and set its endpoint (e.g. `http://localhost:4317`) | — |
+
+See [Observability](observability.md) for full telemetry configuration and exporter options.

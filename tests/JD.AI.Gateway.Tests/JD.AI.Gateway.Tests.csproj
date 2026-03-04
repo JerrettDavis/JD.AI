@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\JD.AI.Gateway\JD.AI.Gateway.csproj" />
+    <ProjectReference Include="..\..\src\JD.AI.Telemetry\JD.AI.Telemetry.csproj" />
     <ProjectReference Include="..\..\src\JD.AI.Dashboard.Wasm\JD.AI.Dashboard.Wasm.csproj" />
   </ItemGroup>
 

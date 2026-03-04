@@ -270,10 +270,14 @@ Content-Type: application/json
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/health` | ASP.NET health check — reports active agent count and uptime |
-| `GET` | `/ready` | Readiness probe — returns `200` when the gateway can accept requests |
+| `GET` | `/health` | Full JSON health report — all registered checks |
+| `GET` | `/health/ready` | Readiness probe — `200` for Healthy/Degraded, `503` for Unhealthy |
+| `GET` | `/health/live` | Liveness probe — always `200` while the process is running |
+| `GET` | `/ready` | Readiness shortcut — same response as `/health/ready` |
 
 These endpoints are not gated by authentication or rate limiting.
+
+See [Observability](observability.md) for the full health check reference, configuration options, and Kubernetes probe examples.
 
 ## SignalR hubs
 

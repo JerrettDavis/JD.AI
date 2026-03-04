@@ -29,5 +29,24 @@ public sealed class HealthEndpointTests : IClassFixture<GatewayTestFactory>
         Assert.Equal("Ready", body?.Status);
     }
 
+    [Fact]
+    public async Task HealthReady_ReturnsOk()
+    {
+        var response = await _client.GetAsync("/health/ready");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task HealthLive_ReturnsOk()
+    {
+        var response = await _client.GetAsync("/health/live");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<LiveResponse>();
+        Assert.Equal("Live", body?.Status);
+    }
+
     private sealed record ReadyResponse(string Status);
+
+    private sealed record LiveResponse(string Status);
 }
