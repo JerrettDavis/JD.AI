@@ -25,6 +25,15 @@ public sealed class InteractiveInput
     /// <summary>Fires when the user double-taps ESC at an empty prompt.</summary>
     public event EventHandler? OnDoubleEscape;
 
+    /// <summary>Fires when the user presses Shift+Tab to toggle plan mode.</summary>
+    public event EventHandler? OnTogglePlanMode;
+
+    /// <summary>Fires when the user presses Alt+T to toggle extended thinking.</summary>
+    public event EventHandler? OnToggleExtendedThinking;
+
+    /// <summary>Fires when the user presses Alt+P to cycle models.</summary>
+    public event EventHandler? OnCycleModel;
+
     /// <summary>When true, use vim-style input editing modes and motions.</summary>
     public bool VimModeEnabled { get; set; }
 
@@ -127,7 +136,11 @@ public sealed class InteractiveInput
                     }
                     break;
 
-                case ConsoleKey.Tab:
+                case ConsoleKey.Tab when key.Modifiers.HasFlag(ConsoleModifiers.Shift):
+                    OnTogglePlanMode?.Invoke(this, EventArgs.Empty);
+                    break;
+
+                case ConsoleKey.Tab when !key.Modifiers.HasFlag(ConsoleModifiers.Shift):
                     if (matches.Count > 0)
                         AcceptCompletion();
                     break;
@@ -224,6 +237,68 @@ public sealed class InteractiveInput
                         RefreshCompletions();
                         RedrawAll();
                     }
+                    break;
+
+                // ── Keyboard shortcuts ──────────────────────────────
+
+                case ConsoleKey.L when key.Modifiers.HasFlag(ConsoleModifiers.Control):
+                    // Ctrl+L: clear screen, redraw prompt
+                    ClearDropdown();
+                    Console.Clear();
+                    inputRow = 0;
+                    RedrawAll();
+                    break;
+
+                case ConsoleKey.U when key.Modifiers.HasFlag(ConsoleModifiers.Control):
+                    // Ctrl+U: clear input line
+                    if (buffer.Count > 0)
+                    {
+                        buffer.Clear();
+                        cursor = 0;
+                        chipRanges.Clear();
+                        DismissCompletions();
+                        RedrawAll();
+                    }
+                    break;
+
+                case ConsoleKey.W when key.Modifiers.HasFlag(ConsoleModifiers.Control):
+                    // Ctrl+W: delete word backward
+                    if (cursor > 0)
+                    {
+                        var wordStart = cursor;
+                        // Skip trailing whitespace
+                        while (wordStart > 0 && buffer[wordStart - 1] == ' ')
+                            wordStart--;
+                        // Skip word chars
+                        while (wordStart > 0 && buffer[wordStart - 1] != ' ')
+                            wordStart--;
+                        buffer.RemoveRange(wordStart, cursor - wordStart);
+                        cursor = wordStart;
+                        RefreshCompletions();
+                        RedrawAll();
+                    }
+                    break;
+
+                case ConsoleKey.R when key.Modifiers.HasFlag(ConsoleModifiers.Control):
+                    // Ctrl+R: reverse incremental history search
+                    var searchResult = RunReverseSearch();
+                    if (searchResult is not null)
+                    {
+                        buffer.Clear();
+                        buffer.AddRange(searchResult);
+                        cursor = buffer.Count;
+                        RedrawAll();
+                    }
+                    break;
+
+                case ConsoleKey.T when key.Modifiers.HasFlag(ConsoleModifiers.Alt):
+                    // Alt+T: toggle extended thinking
+                    OnToggleExtendedThinking?.Invoke(this, EventArgs.Empty);
+                    break;
+
+                case ConsoleKey.P when key.Modifiers.HasFlag(ConsoleModifiers.Alt):
+                    // Alt+P: cycle through recent models
+                    OnCycleModel?.Invoke(this, EventArgs.Empty);
                     break;
 
                 default:
@@ -889,6 +964,130 @@ public sealed class InteractiveInput
             col = Math.Clamp(col, 0, Math.Max(0, Console.BufferWidth - 1));
             row = Math.Clamp(row, 0, Math.Max(0, Console.BufferHeight - 1));
             Console.SetCursorPosition(col, row);
+        }
+    }
+
+    /// <summary>
+    /// Runs an incremental reverse history search (Ctrl+R).
+    /// Returns the matched history entry, or null if cancelled.
+    /// </summary>
+    private string? RunReverseSearch()
+    {
+        if (_history.Count == 0) return null;
+
+        var searchBuffer = new List<char>();
+        var matchIndex = -1;
+        string? currentMatch = null;
+
+        RenderSearchPrompt();
+
+        while (true)
+        {
+            var key = Console.ReadKey(intercept: true);
+
+            switch (key.Key)
+            {
+                case ConsoleKey.Enter:
+                    ClearSearchPrompt();
+                    return currentMatch;
+
+                case ConsoleKey.Escape:
+                case ConsoleKey.G when key.Modifiers.HasFlag(ConsoleModifiers.Control):
+                    ClearSearchPrompt();
+                    return null;
+
+                case ConsoleKey.R when key.Modifiers.HasFlag(ConsoleModifiers.Control):
+                    // Cycle to next match
+                    if (currentMatch is not null)
+                    {
+                        var query = new string(searchBuffer.ToArray());
+                        var nextMatch = FindNextMatch(query, matchIndex);
+                        if (nextMatch.HasValue)
+                        {
+                            matchIndex = nextMatch.Value.Index;
+                            currentMatch = nextMatch.Value.Text;
+                        }
+                    }
+                    RenderSearchPrompt();
+                    break;
+
+                case ConsoleKey.Backspace:
+                    if (searchBuffer.Count > 0)
+                    {
+                        searchBuffer.RemoveAt(searchBuffer.Count - 1);
+                        UpdateSearchMatch();
+                    }
+                    RenderSearchPrompt();
+                    break;
+
+                default:
+                    if (key.KeyChar != '\0' && !char.IsControl(key.KeyChar))
+                    {
+                        searchBuffer.Add(key.KeyChar);
+                        UpdateSearchMatch();
+                        RenderSearchPrompt();
+                    }
+                    break;
+            }
+        }
+
+        void UpdateSearchMatch()
+        {
+            var query = new string(searchBuffer.ToArray());
+            if (string.IsNullOrEmpty(query))
+            {
+                matchIndex = -1;
+                currentMatch = null;
+                return;
+            }
+
+            // Search from end of history (most recent first)
+            var result = FindNextMatch(query, _history.Count);
+            if (result.HasValue)
+            {
+                matchIndex = result.Value.Index;
+                currentMatch = result.Value.Text;
+            }
+            else
+            {
+                matchIndex = -1;
+                currentMatch = null;
+            }
+        }
+
+        (int Index, string Text)? FindNextMatch(string query, int startBefore)
+        {
+            for (var i = Math.Min(startBefore - 1, _history.Count - 1); i >= 0; i--)
+            {
+                if (_history[i].Contains(query, StringComparison.OrdinalIgnoreCase))
+                    return (i, _history[i]);
+            }
+            return null;
+        }
+
+        void RenderSearchPrompt()
+        {
+            var query = new string(searchBuffer.ToArray());
+            var display = currentMatch ?? "";
+
+            // Move cursor to start of current line and clear
+            Console.Write('\r');
+            Console.Write(new string(' ', Math.Max(1, Console.WindowWidth - 1)));
+            Console.Write('\r');
+
+            var fg = Console.ForegroundColor;
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.Write($"(reverse-i-search)`{query}': ");
+            Console.ForegroundColor = fg;
+            Console.Write(display);
+        }
+
+        void ClearSearchPrompt()
+        {
+            Console.Write('\r');
+            Console.Write(new string(' ', Math.Max(1, Console.WindowWidth - 1)));
+            Console.Write('\r');
+            Console.Write("> ");
         }
     }
 
