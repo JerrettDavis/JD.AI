@@ -5,8 +5,9 @@
     <RootNamespace>JD.AI.Core</RootNamespace>
     <Description>Core library for JD.AI — agents, providers, sessions, tools, orchestration, and event bus. Shared by the TUI, Gateway, and channel adapters.</Description>
     <PackageTags>ai;semantic-kernel;agents;gateway</PackageTags>
-    <!-- LLamaSharp.Backend.Cpu ships multiple AVX variants with the same filename; suppress pack warnings -->
-    <NoWarn>$(NoWarn);NU5118;NU5100</NoWarn>
+    <!-- NU5118/NU5100: LLamaSharp.Backend.Cpu ships multiple AVX variants with same filename -->
+    <!-- NU5104: SK connectors for Google, Mistral, Amazon, HuggingFace are intentionally alpha/preview -->
+    <NoWarn>$(NoWarn);NU5118;NU5100;NU5104</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
