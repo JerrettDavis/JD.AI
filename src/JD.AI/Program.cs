@@ -5,14 +5,18 @@ using JD.AI.Core.Agents;
 using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Agents.Orchestration;
 using JD.AI.Core.Config;
+using JD.AI.Core.Governance;
+using JD.AI.Core.Governance.Audit;
 using JD.AI.Core.LocalModels;
 using JD.AI.Core.Mcp;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Providers.Credentials;
+using JD.AI.Core.Providers.Metadata;
 using JD.AI.Core.Providers.ModelSearch;
 using JD.AI.Rendering;
 using JD.AI.Tools;
 using JD.AI.Workflows;
+using JD.AI.Workflows.Store;
 using JD.SemanticKernel.Extensions.Compaction;
 using JD.SemanticKernel.Extensions.Hooks;
 using JD.SemanticKernel.Extensions.Plugins;
@@ -191,7 +195,8 @@ var detectors = new IProviderDetector[]
     new HuggingFaceDetector(providerConfig),
     new OpenAICompatibleDetector(providerConfig),
 };
-var registry = new ProviderRegistry(detectors);
+var metadataProvider = new ModelMetadataProvider();
+var registry = new ProviderRegistry(detectors, metadataProvider);
 
 // 2. Detect available providers and show status
 var providers = await registry.DetectProvidersAsync().ConfigureAwait(false);
@@ -488,6 +493,7 @@ kernel.Plugins.AddFromType<BatchEditTools>("batchEdit");
 kernel.Plugins.AddFromObject(new MemoryTools(), "memory");
 kernel.Plugins.AddFromObject(new TaskTools(), "tasks");
 var usageTools = new UsageTools();
+usageTools.SetModel(selectedModel);
 kernel.Plugins.AddFromObject(usageTools, "usage");
 kernel.Plugins.AddFromObject(
     new QuestionTools(req => QuestionnaireSession.Run(req)), "questions");
@@ -570,8 +576,42 @@ foreach (var dir in pluginDirs.Where(Directory.Exists))
 #pragma warning restore CA1031
 }
 
-// 8. Add tool confirmation filter
-kernel.AutoFunctionInvocationFilters.Add(new ToolConfirmationFilter(session));
+// 8. Load governance policies, audit, and budget
+var policies = PolicyLoader.Load(projectPath);
+IPolicyEvaluator? policyEvaluator = null;
+if (policies.Count > 0)
+{
+    var resolvedSpec = PolicyResolver.Resolve(policies);
+    policyEvaluator = new PolicyEvaluator(resolvedSpec);
+    if (!printMode) ChatRenderer.RenderInfo($"  Loaded {policies.Count} governance policy file(s)");
+}
+
+var auditSinks = new List<IAuditSink>();
+var auditDir = Path.Combine(DataDirectories.Root, "audit");
+using var fileAuditSink = new FileAuditSink(auditDir);
+auditSinks.Add(fileAuditSink);
+
+// If policies define additional audit sinks (ES, webhook), add them here
+var auditPolicy = policies
+    .SelectMany(p => p.Spec.Audit is { } a ? [a] : Array.Empty<AuditPolicy>())
+    .FirstOrDefault();
+if (auditPolicy is not null)
+{
+    if (!string.IsNullOrWhiteSpace(auditPolicy.Endpoint) && !string.IsNullOrWhiteSpace(auditPolicy.Index))
+        auditSinks.Add(new ElasticsearchAuditSink(
+            new HttpClient(), auditPolicy.Endpoint, auditPolicy.Index, auditPolicy.Token));
+    if (!string.IsNullOrWhiteSpace(auditPolicy.Url))
+        auditSinks.Add(new WebhookAuditSink(new HttpClient(), auditPolicy.Url));
+}
+
+var auditService = new AuditService(auditSinks);
+session.AuditService = auditService;
+
+using var budgetTracker = new BudgetTracker();
+
+// 8a. Add tool confirmation filter with governance
+kernel.AutoFunctionInvocationFilters.Add(
+    new ToolConfirmationFilter(session, policyEvaluator, auditService));
 
 // 8b. Load project instructions (JDAI.md, CLAUDE.md, AGENTS.md, etc.)
 var instructions = InstructionsLoader.Load();
@@ -690,7 +730,12 @@ var interactiveInput = new InteractiveInput(completionProvider)
     VimModeEnabled = tuiSettings.VimMode,
 };
 
-// 10a. Set up slash commands
+// 10a. Set up workflow store and slash commands
+var workflowStoreUrl = Environment.GetEnvironmentVariable("JDAI_WORKFLOW_STORE_URL");
+IWorkflowStore workflowStore = !string.IsNullOrWhiteSpace(workflowStoreUrl)
+    ? new GitWorkflowStore(workflowStoreUrl)
+    : new FileWorkflowStore(Path.Combine(DataDirectories.Root, "workflow-store"));
+
 var workflowCatalog = new FileWorkflowCatalog(Path.Combine(DataDirectories.Root, "workflows"));
 using var searchHttp = new HttpClient();
 var modelSearchAggregator = new ModelSearchAggregator(new IRemoteModelSearch[]
@@ -702,11 +747,13 @@ var modelSearchAggregator = new ModelSearchAggregator(new IRemoteModelSearch[]
 var commandRouter = new SlashCommandRouter(
     session, registry, instructions, checkpointStrategy,
     workflowCatalog: workflowCatalog,
+    workflowStore: workflowStore,
     getSpinnerStyle: () => spectreOutput.Style,
     onSpinnerStyleChanged: style => spectreOutput.Style = style,
     providerConfig: providerConfig,
     configStore: configStore,
     modelSearchAggregator: modelSearchAggregator,
+    metadataProvider: metadataProvider,
     getTheme: () => ChatRenderer.CurrentTheme,
     onThemeChanged: ChatRenderer.ApplyTheme,
     getVimMode: () => interactiveInput.VimModeEnabled,
@@ -757,6 +804,30 @@ if (pendingUpdate is not null && !printMode)
 {
     AnsiConsole.MarkupLine(UpdatePrompter.FormatNotification(pendingUpdate));
     AnsiConsole.WriteLine();
+}
+
+// 11c. System prompt budget check
+if (!printMode)
+{
+    var systemPromptTokens = session.SystemPromptTokens;
+    var contextWindow = selectedModel.ContextWindowTokens;
+    var budgetPercent = tuiSettings.SystemPromptBudgetPercent;
+    var budgetTokens = (int)(contextWindow * (budgetPercent / 100.0));
+    var compactionMode = tuiSettings.SystemPromptCompaction;
+
+    var shouldCompact = compactionMode == SystemPromptCompaction.Always
+        || (compactionMode == SystemPromptCompaction.Auto && systemPromptTokens > budgetTokens);
+
+    if (shouldCompact)
+    {
+        ChatRenderer.RenderInfo("Compacting system prompt...");
+        var newSize = await session.CompactSystemPromptAsync(budgetTokens).ConfigureAwait(false);
+        ChatRenderer.RenderInfo($"System prompt compacted: {systemPromptTokens:N0} → {newSize:N0} tokens.");
+    }
+    else if (systemPromptTokens > budgetTokens)
+    {
+        ChatRenderer.RenderSystemPromptWarning(systemPromptTokens, budgetTokens, budgetPercent, contextWindow);
+    }
 }
 
 // Print mode: non-interactive execution

@@ -52,6 +52,13 @@ All environment variables recognized by JD.AI, grouped by category.
 | `OTEL_SERVICE_NAME` | Override service name in OpenTelemetry traces and metrics | `jdai` | `jdai-production` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Activate OTLP exporter and set its endpoint | — | `http://localhost:4317` |
 
+## Governance and workflow store
+
+| Variable | Description | Default | Example |
+|---|---|---|---|
+| `JDAI_ORG_CONFIG` | Path to directory containing organization policy YAML files | — | `/etc/jdai/policies/` |
+| `JDAI_WORKFLOW_STORE_URL` | Git remote URL for shared workflow store (falls back to local file store) | — | `https://github.com/org/jdai-workflows.git` |
+
 ## Gateway runtime
 
 | Variable | Description | Default | Example |
@@ -111,3 +118,4 @@ setx OPENAI_API_KEY sk-proj-abc123
 - [CLI Reference](cli.md) — CLI flags and options
 - [Configuration Reference](configuration.md) — config files and precedence
 - [Observability](../operations/observability.md) — telemetry configuration
+- [Governance & Policies](../user-guide/governance.md) — governance environment variables

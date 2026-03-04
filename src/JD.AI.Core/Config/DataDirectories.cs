@@ -58,6 +58,35 @@ public static class DataDirectories
         Path.Combine(Root, "openclaw-workspaces", agentId);
 
     /// <summary>
+    /// Path to organization config repository. Set via JDAI_ORG_CONFIG environment variable
+    /// or by writing the path to ~/.jdai/org-config-path.
+    /// </summary>
+    public static string? OrgConfigPath
+    {
+        get
+        {
+            var envPath = Environment.GetEnvironmentVariable("JDAI_ORG_CONFIG");
+            if (!string.IsNullOrWhiteSpace(envPath) && Directory.Exists(envPath))
+                return envPath;
+
+            var configFile = Path.Combine(Root, "org-config-path");
+            if (File.Exists(configFile))
+            {
+                try
+                {
+                    var storedPath = File.ReadAllText(configFile).Trim();
+                    if (Directory.Exists(storedPath))
+                        return storedPath;
+                }
+                catch (IOException) { /* Treat unreadable org config as "no org config". */ }
+                catch (UnauthorizedAccessException) { /* Treat permission issues as "no org config". */ }
+            }
+
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Allow runtime override (e.g. from appsettings.json or tests).
     /// Must be called before first access of <see cref="Root"/>.
     /// </summary>

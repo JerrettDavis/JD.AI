@@ -1,16 +1,21 @@
+using System.Diagnostics;
 using JD.AI.Core.Agents;
+using JD.AI.Core.Governance;
+using JD.AI.Core.Governance.Audit;
 using JD.AI.Tools;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Agent;
 
 /// <summary>
-/// SK auto-function-invocation filter that enforces safety tiers
-/// and renders tool calls to the TUI via <see cref="IAgentOutput"/>.
+/// SK auto-function-invocation filter that enforces safety tiers,
+/// policy-based governance, and renders tool calls to the TUI via <see cref="IAgentOutput"/>.
 /// </summary>
 public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
 {
     private readonly AgentSession _session;
+    private readonly IPolicyEvaluator? _policyEvaluator;
+    private readonly AuditService? _auditService;
     private readonly HashSet<string> _confirmedOnce = new(StringComparer.Ordinal);
 
     // Safety tier mappings
@@ -63,9 +68,14 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["execute_code"] = SafetyTier.AlwaysConfirm,
         };
 
-    public ToolConfirmationFilter(AgentSession session)
+    public ToolConfirmationFilter(
+        AgentSession session,
+        IPolicyEvaluator? policyEvaluator = null,
+        AuditService? auditService = null)
     {
         _session = session;
+        _policyEvaluator = policyEvaluator;
+        _auditService = auditService;
     }
 
     public async Task OnAutoFunctionInvocationAsync(
@@ -126,11 +136,31 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
                 return $"{kv.Key}={val}";
             }));
 
+        // ── Policy evaluation ────────────────────────────────
+        PolicyEvaluationResult? policyResult = null;
+        if (_policyEvaluator is not null)
+        {
+            policyResult = _policyEvaluator.EvaluateTool(functionName, new PolicyContext(
+                ProjectPath: _session.SessionInfo?.ProjectPath));
+
+            if (policyResult.Decision == PolicyDecision.Deny)
+            {
+                output.RenderWarning($"Policy blocked: {functionName} — {policyResult.Reason}");
+                context.Result = new FunctionResult(context.Function, $"Blocked by policy: {policyResult.Reason}");
+
+                await EmitAuditEventAsync(functionName, context.Arguments, "denied", policyResult).ConfigureAwait(false);
+                return;
+            }
+        }
+
+        // ── Safety tier confirmation (already computed above via PermissionMode) ──
+
         if (needsConfirm)
         {
             if (!output.ConfirmToolCall(functionName, args))
             {
                 context.Result = new FunctionResult(context.Function, "User denied tool execution.");
+                await EmitAuditEventAsync(functionName, context.Arguments, "user_denied", policyResult).ConfigureAwait(false);
                 return;
             }
 
@@ -149,5 +179,58 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         // Render tool result
         var result = context.Result.GetValue<string>() ?? context.Result.ToString() ?? "";
         output.RenderToolCall(functionName, args, result);
+
+        // ── Audit ────────────────────────────────────────────
+        await EmitAuditEventAsync(functionName, context.Arguments, "ok", policyResult).ConfigureAwait(false);
+    }
+
+    // Argument keys whose values should not be logged in audit events
+    private static readonly HashSet<string> RedactedArgKeys =
+        new(StringComparer.OrdinalIgnoreCase) { "content", "code", "input", "body", "password", "secret", "token" };
+
+    private async Task EmitAuditEventAsync(
+        string toolName, KernelArguments? arguments, string status, PolicyEvaluationResult? policyResult)
+    {
+        if (_auditService is null) return;
+
+        var severity = status switch
+        {
+            "denied" => AuditSeverity.Warning,
+            "user_denied" => AuditSeverity.Info,
+            _ => AuditSeverity.Debug,
+        };
+
+        await _auditService.EmitAsync(new AuditEvent
+        {
+            Action = "tool.invoke",
+            Resource = toolName,
+            SessionId = _session.SessionInfo?.Id,
+            TraceId = Activity.Current?.TraceId.ToString(),
+            Detail = $"status={status}; args={BuildRedactedArgs(arguments)}",
+            PolicyResult = policyResult?.Decision,
+            Severity = severity,
+        }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Builds a redacted argument string from structured KernelArguments.
+    /// Redacts at the key/value level to avoid delimiter-based parsing issues.
+    /// </summary>
+    internal static string BuildRedactedArgs(KernelArguments? arguments)
+    {
+        if (arguments is null || arguments.Count == 0)
+            return "";
+
+        return string.Join(", ", arguments.Select(kv =>
+        {
+            if (RedactedArgKeys.Contains(kv.Key))
+                return $"{kv.Key}=[REDACTED]";
+
+            var val = kv.Value?.ToString() ?? "null";
+            if (val.Length > 80)
+                val = string.Concat(val.AsSpan(0, 77), "...");
+
+            return $"{kv.Key}={val}";
+        }));
     }
 }
