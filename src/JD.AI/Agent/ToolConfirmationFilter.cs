@@ -13,6 +13,8 @@ namespace JD.AI.Agent;
 /// </summary>
 public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
 {
+    private static readonly ActivitySource ToolActivity = new("JD.AI.Tools");
+
     private readonly AgentSession _session;
     private readonly IPolicyEvaluator? _policyEvaluator;
     private readonly AuditService? _auditService;
@@ -174,7 +176,22 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             output.RenderInfo($"  ▸ {functionName}({args})");
         }
 
+        // ── Tool execution with OTel tracing ─────────────────
+        using var activity = ToolActivity.StartActivity("jdai.tool.invoke");
+        activity?.SetTag("jdai.tool.name", functionName);
+        activity?.SetTag("jdai.tool.safety_tier", tier.ToString());
+        activity?.SetTag("jdai.tool.permission_mode", _session.PermissionMode.ToString());
+        var sw = Stopwatch.StartNew();
+
         await next(context).ConfigureAwait(false);
+
+        sw.Stop();
+        activity?.SetTag("jdai.tool.duration_ms", sw.ElapsedMilliseconds);
+        activity?.SetStatus(ActivityStatusCode.Ok);
+
+        // Record metric
+        JD.AI.Telemetry.Meters.ToolCalls.Add(1,
+            new KeyValuePair<string, object?>("jdai.tool.name", functionName));
 
         // Render tool result
         var result = context.Result.GetValue<string>() ?? context.Result.ToString() ?? "";
