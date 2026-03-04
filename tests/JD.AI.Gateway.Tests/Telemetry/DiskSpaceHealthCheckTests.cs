@@ -10,7 +10,7 @@ public sealed class DiskSpaceHealthCheckTests
     [Fact]
     public async Task CheckHealthAsync_WithSufficientSpace_ReturnsHealthy()
     {
-        // Use 1-byte minimum to always pass on any machine
+        // Use 1 MB minimum to always pass on any machine
         var check = new DiskSpaceHealthCheck(Path.GetTempPath(), minimumFreeMegabytes: 1);
 
         var result = await check.CheckHealthAsync(BuildContext());
