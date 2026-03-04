@@ -14,6 +14,7 @@ using JD.AI.Core.Providers;
 using JD.AI.Core.Providers.Credentials;
 using JD.AI.Core.Providers.Metadata;
 using JD.AI.Core.Providers.ModelSearch;
+using JD.AI.Core.Safety;
 using JD.AI.Core.Usage;
 using JD.AI.Rendering;
 using JD.AI.Tools;
@@ -700,11 +701,30 @@ if (governanceBudget is not null)
     budgetPolicy.MaxSessionUsd ??= governanceBudget.MaxSessionUsd;
 }
 
-// 8a. Add tool confirmation filter with governance
-kernel.AutoFunctionInvocationFilters.Add(
-    new ToolConfirmationFilter(session, policyEvaluator, auditService));
+// 8a. Create circuit breaker for tool loop detection
+CircuitBreaker? circuitBreaker = null;
+{
+    var cbPolicy = policies
+        .SelectMany(p => p.Spec.CircuitBreaker is { } cb ? [cb] : Array.Empty<CircuitBreakerPolicy>())
+        .FirstOrDefault();
 
-// 8b. Load project instructions (JDAI.md, CLAUDE.md, AGENTS.md, etc.)
+    var detector = new ToolLoopDetector(
+        windowSize: cbPolicy?.WindowSize ?? 50,
+        repetitionWarningThreshold: cbPolicy?.RepetitionWarningThreshold ?? 3,
+        repetitionHardStopThreshold: cbPolicy?.RepetitionHardStopThreshold ?? 5,
+        pingPongThreshold: cbPolicy?.PingPongThreshold ?? 4);
+
+    circuitBreaker = new CircuitBreaker(
+        detector,
+        cooldownPeriod: TimeSpan.FromSeconds(cbPolicy?.CooldownSeconds ?? 30),
+        hardenedMode: cbPolicy?.Hardened ?? false);
+}
+
+// 8b. Add tool confirmation filter with governance + circuit breaker
+kernel.AutoFunctionInvocationFilters.Add(
+    new ToolConfirmationFilter(session, policyEvaluator, auditService, circuitBreaker));
+
+// 8c. Load project instructions (JDAI.md, CLAUDE.md, AGENTS.md, etc.)
 var instructions = InstructionsLoader.Load();
 if (instructions.HasInstructions)
 {
