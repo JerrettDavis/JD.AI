@@ -1,6 +1,6 @@
 ---
 _layout: landing
-description: "AI-powered terminal assistant built on Microsoft Semantic Kernel. Multi-provider support for Claude Code, GitHub Copilot, and Ollama with tool execution, subagent swarms, and team orchestration."
+description: "AI-powered terminal assistant built on Microsoft Semantic Kernel. 14 AI providers, 17 tool categories, 33+ slash commands, subagent swarms, team orchestration, and 6 channel adapters."
 ---
 
 # JD.AI
@@ -41,13 +41,14 @@ JD.AI auto-detects available providers. No manual configuration needed.
 
 | Feature | Description |
 |---------|-------------|
-| **Multi-provider** | [Claude Code, GitHub Copilot, Ollama, OpenAI Codex, Local Models](articles/providers.md) — auto-detected on startup |
-| **35+ slash commands** | [Model switching, sessions, reviews, memory, profiles, and workflows](articles/commands-reference.md) |
+| **Multi-provider** | [14 AI providers](articles/providers.md) including Claude Code, Copilot, Ollama, OpenAI, Anthropic, Azure, Gemini, Bedrock, Foundry Local, and more — auto-detected on startup |
+| **35+ slash commands** | [Model switching, sessions, reviews, memory, profiles, workflows, and defaults](articles/commands-reference.md) |
 | **17 tool categories** | [Files, search, shell, git, web, web search, memory, subagents, think, environment, tasks, code execution, clipboard, questions, diff/patch, batch edit, usage tracking](articles/tools-reference.md) |
 | **5 subagent types** | [Explore, task, plan, review, general-purpose](articles/subagents.md) |
-| **Team orchestration** | [Sequential, fan-out, supervisor, debate](articles/orchestration.md) strategies |
+| **4 orchestration strategies** | [Sequential, fan-out, supervisor, debate](articles/orchestration.md) team coordination |
+| **6 channel adapters** | [Discord, Signal, Slack, Telegram, Web, OpenClaw](articles/channels.md) |
 | **Session persistence** | [Save, load, export conversations](articles/persistence.md) across sessions |
-| **Project instructions** | [JDAI.md for project-specific context](articles/configuration.md) |
+| **Project instructions** | [JDAI.md and `/default` global config](articles/configuration.md) via AtomicConfigStore |
 | **Git checkpointing** | [Safe rollback with stash/directory/commit](articles/checkpointing.md) strategies |
 | **Skills & plugins** | [Claude Code skills/plugins/hooks](articles/skills-and-plugins.md) integration |
 | **Auto-update** | Check and apply updates via NuGet from your terminal |
@@ -80,10 +81,13 @@ JD.AI auto-detects available providers. No manual configuration needed.
 
 - [Subagents](articles/subagents.md) — Specialized AI instances for scoped tasks
 - [Team Orchestration](articles/orchestration.md) — Multi-agent coordination strategies
+- [Channel Adapters](articles/channels.md) — Discord, Signal, Slack, Telegram, Web, OpenClaw
+- [Observability](articles/observability.md) — OpenTelemetry tracing, metrics, and health checks
+- [Local Models](articles/local-models.md) — In-process GGUF inference with LLamaSharp
 - [Skills, Plugins, and Hooks](articles/skills-and-plugins.md) — Extension system
 - [Extending JD.AI](articles/extending.md) — Writing custom tools and providers
 
 ### Support
 
 - [Troubleshooting](articles/troubleshooting.md) — Common issues and solutions
-- API Reference — Generated API documentation is available under `/api` in the published docs site
+- [API Reference](https://jerrettdavis.github.io/JD.AI/api/) — Generated API documentation
