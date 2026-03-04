@@ -19,5 +19,7 @@
     <Project Path="tests/JD.AI.Tests/JD.AI.Tests.csproj" />
     <Project Path="tests/JD.AI.IntegrationTests/JD.AI.IntegrationTests.csproj" />
     <Project Path="tests/JD.AI.Gateway.Tests/JD.AI.Gateway.Tests.csproj" />
+    <Project Path="tests/JD.AI.Specs/JD.AI.Specs.csproj" />
+    <Project Path="tests/JD.AI.Specs.UI/JD.AI.Specs.UI.csproj" />
   </Folder>
 </Solution>
