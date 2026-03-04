@@ -157,23 +157,66 @@ public static class ChatRenderer
     /// <summary>Render a tool invocation and its result.</summary>
     public static void RenderToolCall(string toolName, string? args, string result)
     {
+        if (CurrentOutputStyle == OutputStyle.Json)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(new
+            {
+                type = "tool_call",
+                tool = toolName,
+                arguments = args,
+                result = result.Length > 2000
+                    ? string.Concat(result.AsSpan(0, 2000), "\n... [truncated]")
+                    : result,
+            }));
+            return;
+        }
+
+        // Claude-style compact tool display
         var header = string.IsNullOrWhiteSpace(args)
-            ? $"» {toolName}"
-            : $"» {toolName}({args})";
+            ? toolName
+            : $"{toolName}({args})";
 
         // Truncate long results
         var displayResult = result.Length > 2000
             ? string.Concat(result.AsSpan(0, 2000), "\n... [truncated]")
             : result;
 
-        var panel = new Panel(Markup.Escape(displayResult))
-            .Header($"[bold]{Markup.Escape(header)}[/]")
-            .Border(BoxBorder.Rounded)
-            .BorderColor(Color.Grey)
-            .Padding(1, 0);
+        var resultLines = displayResult.Split('\n');
+        var lineCount = resultLines.Length;
 
-        AnsiConsole.Write(panel);
-        AnsiConsole.WriteLine();
+        if (CurrentOutputStyle == OutputStyle.Rich)
+        {
+            AnsiConsole.MarkupLine($"  [dim]●[/] [bold]{Markup.Escape(header)}[/]");
+
+            if (lineCount <= 3)
+            {
+                foreach (var line in resultLines)
+                {
+                    AnsiConsole.MarkupLine($"    [dim]{Markup.Escape(line)}[/]");
+                }
+            }
+            else
+            {
+                // Show first line + collapse indicator
+                AnsiConsole.MarkupLine($"    [dim]{Markup.Escape(resultLines[0])}[/]");
+                AnsiConsole.MarkupLine($"    [dim]└ {lineCount} lines...[/]");
+            }
+
+            return;
+        }
+
+        // Plain/Compact: simple prefix
+        Console.WriteLine($"  ● {header}");
+        if (lineCount <= 5)
+        {
+            foreach (var line in resultLines)
+                Console.WriteLine($"    {line}");
+        }
+        else
+        {
+            Console.WriteLine($"    {resultLines[0]}");
+            Console.WriteLine($"    └ {lineCount} lines...");
+        }
     }
 
     /// <summary>Render a system/info message.</summary>

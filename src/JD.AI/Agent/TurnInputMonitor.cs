@@ -1,4 +1,4 @@
-using JD.AI.Rendering;
+using JD.AI.Core.Agents;
 
 namespace JD.AI.Agent;
 
@@ -82,7 +82,7 @@ public sealed class TurnInputMonitor : IDisposable
                     _steeringMessage = new string([.. _steerBuffer]);
                     _steerBuffer.Clear();
                     Console.WriteLine();
-                    ChatRenderer.RenderInfo($"  ▸ Queued: {_steeringMessage}");
+                    AgentOutput.Current.RenderInfo($"  ▸ Queued: {_steeringMessage}");
                     continue;
                 }
 
@@ -117,12 +117,12 @@ public sealed class TurnInputMonitor : IDisposable
         if (_steerBuffer.Count > 0)
         {
             _steerBuffer.Clear();
-            ChatRenderer.RenderInfo("  (input cleared)");
+            AgentOutput.Current.RenderInfo("  (input cleared)");
             return;
         }
 
         Console.WriteLine();
-        ChatRenderer.RenderWarning("Hit ESC again to cancel...");
+        AgentOutput.Current.RenderWarning("Hit ESC again to cancel...");
 
         var deadline = DateTime.UtcNow + _doubleTapWindow;
         while (DateTime.UtcNow < deadline && !_turnCts.IsCancellationRequested)
@@ -136,13 +136,13 @@ public sealed class TurnInputMonitor : IDisposable
             var second = Console.ReadKey(intercept: true);
             if (second.Key == ConsoleKey.Escape)
             {
-                ChatRenderer.RenderWarning("Cancelling...");
+                AgentOutput.Current.RenderWarning("Cancelling...");
                 _turnCts.Cancel();
                 return;
             }
         }
 
-        ChatRenderer.RenderInfo("  (cancel aborted)");
+        AgentOutput.Current.RenderInfo("  (cancel aborted)");
     }
 
     public void Dispose()

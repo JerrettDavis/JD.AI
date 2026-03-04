@@ -29,6 +29,18 @@ public interface IAgentOutput
 
     /// <summary>Called when a turn completes. Render elapsed time, tokens, data size.</summary>
     void EndTurn(TurnMetrics metrics) { }
+
+    /// <summary>
+    /// Render a tool invocation with optional arguments summary and result.
+    /// Pauses any active spinner/progress indicator to avoid interleaved output.
+    /// </summary>
+    void RenderToolCall(string toolName, string? args, string result) { }
+
+    /// <summary>
+    /// Render a tool confirmation prompt. Returns true if the user approves.
+    /// Pauses any active spinner/progress indicator to avoid interleaved output.
+    /// </summary>
+    bool ConfirmToolCall(string toolName, string? args) => true;
 }
 
 /// <summary>
