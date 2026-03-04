@@ -61,13 +61,19 @@ public sealed class SqliteUsageMeterTests : IAsyncLifetime, IDisposable
     {
         await _sut.RecordTurnAsync(new TurnUsageRecord
         {
-            SessionId = "s1", ProviderId = "Claude Code", ModelId = "claude-sonnet-4.6",
-            PromptTokens = 500, CompletionTokens = 200,
+            SessionId = "s1",
+            ProviderId = "Claude Code",
+            ModelId = "claude-sonnet-4.6",
+            PromptTokens = 500,
+            CompletionTokens = 200,
         });
         await _sut.RecordTurnAsync(new TurnUsageRecord
         {
-            SessionId = "s1", ProviderId = "Ollama", ModelId = "llama3",
-            PromptTokens = 1000, CompletionTokens = 400,
+            SessionId = "s1",
+            ProviderId = "Ollama",
+            ModelId = "llama3",
+            PromptTokens = 1000,
+            CompletionTokens = 400,
         });
 
         var usage = await _sut.GetSessionUsageAsync("s1");
@@ -84,13 +90,19 @@ public sealed class SqliteUsageMeterTests : IAsyncLifetime, IDisposable
     {
         await _sut.RecordTurnAsync(new TurnUsageRecord
         {
-            SessionId = "a", ProviderId = "Claude Code", ModelId = "claude-sonnet-4.6",
-            PromptTokens = 100, CompletionTokens = 50,
+            SessionId = "a",
+            ProviderId = "Claude Code",
+            ModelId = "claude-sonnet-4.6",
+            PromptTokens = 100,
+            CompletionTokens = 50,
         });
         await _sut.RecordTurnAsync(new TurnUsageRecord
         {
-            SessionId = "b", ProviderId = "Claude Code", ModelId = "claude-sonnet-4.6",
-            PromptTokens = 200, CompletionTokens = 100,
+            SessionId = "b",
+            ProviderId = "Claude Code",
+            ModelId = "claude-sonnet-4.6",
+            PromptTokens = 200,
+            CompletionTokens = 100,
         });
 
         var total = await _sut.GetTotalUsageAsync();
@@ -105,13 +117,21 @@ public sealed class SqliteUsageMeterTests : IAsyncLifetime, IDisposable
     {
         await _sut.RecordTurnAsync(new TurnUsageRecord
         {
-            SessionId = "s1", ProviderId = "Ollama", ModelId = "llama3",
-            PromptTokens = 500, CompletionTokens = 200, ProjectPath = "/project/a",
+            SessionId = "s1",
+            ProviderId = "Ollama",
+            ModelId = "llama3",
+            PromptTokens = 500,
+            CompletionTokens = 200,
+            ProjectPath = "/project/a",
         });
         await _sut.RecordTurnAsync(new TurnUsageRecord
         {
-            SessionId = "s2", ProviderId = "Ollama", ModelId = "llama3",
-            PromptTokens = 300, CompletionTokens = 100, ProjectPath = "/project/b",
+            SessionId = "s2",
+            ProviderId = "Ollama",
+            ModelId = "llama3",
+            PromptTokens = 300,
+            CompletionTokens = 100,
+            ProjectPath = "/project/b",
         });
 
         var usage = await _sut.GetProjectUsageAsync("/project/a");
@@ -125,8 +145,11 @@ public sealed class SqliteUsageMeterTests : IAsyncLifetime, IDisposable
     {
         await _sut.RecordTurnAsync(new TurnUsageRecord
         {
-            SessionId = "s1", ProviderId = "Claude Code", ModelId = "claude-sonnet-4.6",
-            PromptTokens = 10000, CompletionTokens = 5000,
+            SessionId = "s1",
+            ProviderId = "Claude Code",
+            ModelId = "claude-sonnet-4.6",
+            PromptTokens = 10000,
+            CompletionTokens = 5000,
         });
 
         var status = await _sut.CheckBudgetAsync(BudgetPeriod.Monthly);
@@ -148,8 +171,11 @@ public sealed class SqliteUsageMeterTests : IAsyncLifetime, IDisposable
 
             await meter.RecordTurnAsync(new TurnUsageRecord
             {
-                SessionId = "s1", ProviderId = "Claude Code", ModelId = "claude-opus-4.6",
-                PromptTokens = 100_000, CompletionTokens = 50_000,
+                SessionId = "s1",
+                ProviderId = "Claude Code",
+                ModelId = "claude-opus-4.6",
+                PromptTokens = 100_000,
+                CompletionTokens = 50_000,
             });
 
             var total = await meter.GetTotalUsageAsync();
@@ -175,8 +201,11 @@ public sealed class SqliteUsageMeterTests : IAsyncLifetime, IDisposable
     {
         await _sut.RecordTurnAsync(new TurnUsageRecord
         {
-            SessionId = "s1", ProviderId = "Ollama", ModelId = "llama3",
-            PromptTokens = 100, CompletionTokens = 50,
+            SessionId = "s1",
+            ProviderId = "Ollama",
+            ModelId = "llama3",
+            PromptTokens = 100,
+            CompletionTokens = 50,
         });
 
         var json = await _sut.ExportAsync(UsageExportFormat.Json);
@@ -190,8 +219,11 @@ public sealed class SqliteUsageMeterTests : IAsyncLifetime, IDisposable
     {
         await _sut.RecordTurnAsync(new TurnUsageRecord
         {
-            SessionId = "s1", ProviderId = "Ollama", ModelId = "llama3",
-            PromptTokens = 100, CompletionTokens = 50,
+            SessionId = "s1",
+            ProviderId = "Ollama",
+            ModelId = "llama3",
+            PromptTokens = 100,
+            CompletionTokens = 50,
         });
 
         var csv = await _sut.ExportAsync(UsageExportFormat.Csv);
