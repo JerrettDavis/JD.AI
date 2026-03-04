@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <PackageReference Include="JD.SemanticKernel.Extensions" />
+    <PackageReference Include="JD.SemanticKernel.Extensions.Mcp" />
     <PackageReference Include="JD.SemanticKernel.Connectors.ClaudeCode" />
     <PackageReference Include="JD.SemanticKernel.Connectors.GitHubCopilot" />
     <PackageReference Include="JD.SemanticKernel.Connectors.OpenAICodex" />

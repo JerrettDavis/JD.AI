@@ -5,6 +5,7 @@ using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Agents.Orchestration;
 using JD.AI.Core.Config;
 using JD.AI.Core.LocalModels;
+using JD.AI.Core.Mcp;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Providers.Credentials;
 using JD.AI.Rendering;
@@ -44,6 +45,15 @@ var gatewayMode = args.Contains("--gateway");
 var gatewayPort = args.SkipWhile(a => !string.Equals(a, "--gateway-port", StringComparison.OrdinalIgnoreCase))
     .Skip(1).FirstOrDefault();
 
+// Handle 'mcp' subcommand early (before provider detection).
+// Allow global options (starting with '-') to appear before the 'mcp' subcommand,
+// e.g. `jdai --debug mcp list` works the same as `jdai mcp list`.
+var firstNonOptionIndex = Array.FindIndex(args, a => !a.StartsWith('-'));
+if (firstNonOptionIndex >= 0 && string.Equals(args[firstNonOptionIndex], "mcp", StringComparison.OrdinalIgnoreCase))
+{
+    var mcpArgs = args.Skip(firstNonOptionIndex + 1).ToArray();
+    return await McpCliHandler.RunAsync(mcpArgs).ConfigureAwait(false);
+}
 // Print mode: non-interactive, query → stdout → exit
 var printMode = args.Contains("-p") || args.Contains("--print");
 var printQuery = printMode
@@ -140,6 +150,7 @@ var detectors = new IProviderDetector[]
     new OpenAICodexDetector(),
     // Local providers
     new OllamaDetector(),
+    new FoundryLocalDetector(),
     new LocalModelDetector(),
     // API key providers
     new OpenAIDetector(providerConfig),
@@ -518,6 +529,7 @@ completionProvider.Register("/checkpoint", "List, restore, or clear checkpoints"
 completionProvider.Register("/sandbox", "Show or change sandbox mode");
 completionProvider.Register("/workflow", "Manage workflows (list|show|export|replay|refine)");
 completionProvider.Register("/spinner", "Set progress style (none|minimal|normal|rich|nerdy)");
+completionProvider.Register("/mcp", "Manage MCP servers (list|add|remove|enable|disable)");
 completionProvider.Register("/context", "Show context window usage");
 completionProvider.Register("/copy", "Copy last response to clipboard");
 completionProvider.Register("/diff", "Show uncommitted changes");
