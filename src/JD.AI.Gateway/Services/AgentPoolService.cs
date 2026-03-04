@@ -118,6 +118,12 @@ public sealed class AgentPoolService : IHostedService
             Meters.TurnCount.Add(1, providerTag);
             Meters.TurnDuration.Record(sw.Elapsed.TotalMilliseconds, providerTag);
         }
+        catch (OperationCanceledException)
+        {
+            sw.Stop();
+            turnActivity?.SetStatus(ActivityStatusCode.Error);
+            throw;
+        }
         catch
         {
             sw.Stop();
@@ -179,6 +185,12 @@ public sealed class AgentPoolService : IHostedService
                         new { Attempt = attempt + 1, MaxRetries, Reason = ex.Message }), ct);
 
                 await Task.Delay(delay, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                providerActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                throw;
             }
         }
     }

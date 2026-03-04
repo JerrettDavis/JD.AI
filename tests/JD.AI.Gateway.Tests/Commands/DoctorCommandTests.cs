@@ -3,7 +3,6 @@ using JD.AI.Core.Commands;
 using JD.AI.Gateway.Commands;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using NSubstitute;
 
 namespace JD.AI.Gateway.Tests.Commands;
 

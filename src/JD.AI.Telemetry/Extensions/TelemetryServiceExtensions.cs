@@ -1,5 +1,4 @@
 using JD.AI.Core.Config;
-using JD.AI.Core.Providers;
 using JD.AI.Telemetry.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -124,7 +123,12 @@ public static class TelemetryServiceExtensions
                 });
                 break;
 
-            default: // "console" and all others
+            case "zipkin":
+                // Zipkin does not support metrics; fall back to console exporter.
+                metrics.AddConsoleExporter();
+                break;
+
+            default: // "console" and all other unsupported exporters
                 metrics.AddConsoleExporter();
                 break;
         }
@@ -140,7 +144,11 @@ public static class TelemetryServiceExtensions
         if (Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT") is { Length: > 0 })
             return "otlp";
 
-        return config.Exporter.ToLowerInvariant();
+        var exporter = string.IsNullOrWhiteSpace(config.Exporter)
+            ? "console"
+            : config.Exporter;
+
+        return exporter.ToLowerInvariant();
     }
 
     private static string? ResolveEndpoint(TelemetryConfig config) =>

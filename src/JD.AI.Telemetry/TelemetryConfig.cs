@@ -15,7 +15,8 @@ public sealed class TelemetryConfig
 
     /// <summary>
     /// Logical service name reported in traces and metrics.
-    /// Overrides <c>OTEL_SERVICE_NAME</c> if set.
+    /// Used when <c>OTEL_SERVICE_NAME</c> is not set; if the <c>OTEL_SERVICE_NAME</c>
+    /// environment variable is set, it takes precedence over this value.
     /// Defaults to <c>"jdai"</c>.
     /// </summary>
     public string ServiceName { get; set; } = "jdai";
