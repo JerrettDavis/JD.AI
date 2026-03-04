@@ -1,6 +1,7 @@
 using JD.AI.Commands;
 using JD.AI.Core.Agents;
 using JD.AI.Core.Config;
+using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
 using Microsoft.SemanticKernel;
 using NSubstitute;
@@ -624,6 +625,72 @@ public sealed class SlashCommandRouterTests
             DataDirectories.Reset();
             Directory.Delete(tempDirectory, recursive: true);
         }
+    }
+
+    [Fact]
+    public async Task Plugins_List_WithLifecycleManager_ReturnsInstalledPlugins()
+    {
+        var pluginManager = Substitute.For<IPluginLifecycleManager>();
+        pluginManager.ListAsync(Arg.Any<CancellationToken>()).Returns([
+            new PluginStatusInfo(
+                Id: "sample.plugin",
+                Name: "Sample Plugin",
+                Version: "1.0.0",
+                Enabled: true,
+                Loaded: true,
+                InstallPath: "/plugins/sample",
+                EntryAssemblyPath: "/plugins/sample/Sample.Plugin.dll",
+                Source: "local",
+                InstalledAtUtc: DateTimeOffset.UtcNow,
+                LastEnabledAtUtc: DateTimeOffset.UtcNow,
+                LastError: null),
+        ]);
+
+        var router = new SlashCommandRouter(_session, _registry, pluginManager: pluginManager);
+
+        var result = await router.ExecuteAsync("/plugins");
+
+        Assert.NotNull(result);
+        Assert.Contains("sample.plugin", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("loaded", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Plugins_Install_WithoutSource_ReturnsUsage()
+    {
+        var pluginManager = Substitute.For<IPluginLifecycleManager>();
+        var router = new SlashCommandRouter(_session, _registry, pluginManager: pluginManager);
+
+        var result = await router.ExecuteAsync("/plugins install");
+
+        Assert.NotNull(result);
+        Assert.Contains("Usage", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Plugins_Update_WithoutId_UpdatesAll()
+    {
+        var pluginManager = Substitute.For<IPluginLifecycleManager>();
+        pluginManager.UpdateAllAsync(Arg.Any<CancellationToken>()).Returns([
+            new PluginStatusInfo(
+                Id: "sample.plugin",
+                Name: "Sample Plugin",
+                Version: "1.0.1",
+                Enabled: true,
+                Loaded: true,
+                InstallPath: "/plugins/sample/1.0.1",
+                EntryAssemblyPath: "/plugins/sample/1.0.1/Sample.Plugin.dll",
+                Source: "catalog://sample.plugin",
+                InstalledAtUtc: DateTimeOffset.UtcNow,
+                LastEnabledAtUtc: DateTimeOffset.UtcNow,
+                LastError: null),
+        ]);
+        var router = new SlashCommandRouter(_session, _registry, pluginManager: pluginManager);
+
+        var result = await router.ExecuteAsync("/plugins update");
+
+        Assert.NotNull(result);
+        Assert.Contains("Updated 1 plugin(s)", result, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

@@ -22,6 +22,7 @@
     <PackageReference Include="JD.SemanticKernel.Connectors.GitHubCopilot" />
     <PackageReference Include="JD.SemanticKernel.Connectors.OpenAICodex" />
     <PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
     <PackageReference Include="Microsoft.SemanticKernel" />
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.AzureOpenAI" />
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" />

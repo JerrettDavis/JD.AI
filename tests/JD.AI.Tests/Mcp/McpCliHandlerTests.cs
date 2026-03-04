@@ -39,13 +39,30 @@ public sealed class McpCliHandlerTests : IDisposable
     [Fact]
     public async Task List_EmptyConfig_ReturnsZero()
     {
-        var stdout = await CaptureStdoutAsync(() => McpCliHandler.RunAsync(["list"]));
+        var stdout = await CaptureStdoutAsync(() => McpCliHandler.RunAsync(["list", "--json"]));
 
         Assert.Equal(0, stdout.ExitCode);
-        // Other discovery providers (Claude Code, VS Code, etc.) may contribute
-        // servers from user-level config, so we only verify exit code and that
-        // any JD.AI-managed servers we didn't add are absent.
-        Assert.DoesNotContain("jdai-test-server", stdout.Output);
+
+        using var doc = JsonDocument.Parse(stdout.Output);
+        Assert.Equal(JsonValueKind.Array, doc.RootElement.ValueKind);
+
+        // Other discovery providers may contribute servers from user-level config.
+        // Verify only that no JD.AI-managed server exists before we add any.
+        var jdAiCount = 0;
+        foreach (var entry in doc.RootElement.EnumerateArray())
+        {
+            if (!entry.TryGetProperty("sourceProvider", out var sourceProvider))
+            {
+                continue;
+            }
+
+            if (string.Equals(sourceProvider.GetString(), "JD.AI", StringComparison.OrdinalIgnoreCase))
+            {
+                jdAiCount++;
+            }
+        }
+
+        Assert.Equal(0, jdAiCount);
     }
 
     [Fact]
@@ -171,9 +188,22 @@ public sealed class McpCliHandlerTests : IDisposable
         Assert.True(doc.RootElement.GetArrayLength() >= 2,
             $"Expected at least 2 servers, got {doc.RootElement.GetArrayLength()}");
 
-        var names = doc.RootElement.EnumerateArray()
-            .Select(e => e.GetProperty("name").GetString())
-            .ToList();
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in doc.RootElement.EnumerateArray())
+        {
+            if (!entry.TryGetProperty("name", out var nameProp))
+            {
+                continue;
+            }
+
+            var name = nameProp.GetString();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                continue;
+            }
+
+            names.Add(name);
+        }
         Assert.Contains("notion", names);
         Assert.Contains("azure", names);
     }

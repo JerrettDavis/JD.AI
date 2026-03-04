@@ -38,6 +38,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private readonly InstructionsResult? _instructions;
     private readonly ICheckpointStrategy? _checkpointStrategy;
     private readonly PluginLoader? _pluginLoader;
+    private readonly IPluginLifecycleManager? _pluginManager;
     private readonly IWorkflowCatalog? _workflowCatalog;
     private readonly IWorkflowStore? _workflowStore;
     private readonly WorkflowEmitter _workflowEmitter;
@@ -60,6 +61,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         InstructionsResult? instructions = null,
         ICheckpointStrategy? checkpointStrategy = null,
         PluginLoader? pluginLoader = null,
+        IPluginLifecycleManager? pluginManager = null,
         IWorkflowCatalog? workflowCatalog = null,
         Func<SpinnerStyle>? getSpinnerStyle = null,
         Action<SpinnerStyle>? onSpinnerStyleChanged = null,
@@ -81,6 +83,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         _instructions = instructions;
         _checkpointStrategy = checkpointStrategy;
         _pluginLoader = pluginLoader;
+        _pluginManager = pluginManager;
         _workflowCatalog = workflowCatalog;
         _workflowStore = workflowStore;
         _workflowEmitter = new WorkflowEmitter();
@@ -127,7 +130,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/EXPORT" or "/JDAI-EXPORT" => await ExportSessionAsync(ct).ConfigureAwait(false),
             "/UPDATE" or "/JDAI-UPDATE" => await CheckUpdateAsync(ct).ConfigureAwait(false),
             "/INSTRUCTIONS" or "/JDAI-INSTRUCTIONS" => ShowInstructions(),
-            "/PLUGINS" or "/JDAI-PLUGINS" => ShowPlugins(),
+            "/PLUGINS" or "/JDAI-PLUGINS" => await HandlePluginsAsync(arg, ct).ConfigureAwait(false),
             "/CHECKPOINT" or "/JDAI-CHECKPOINT" => await HandleCheckpointAsync(arg, ct).ConfigureAwait(false),
             "/SANDBOX" or "/JDAI-SANDBOX" => ShowSandboxInfo(),
             "/WORKFLOW" or "/JDAI-WORKFLOW" => await HandleWorkflowAsync(arg, ct).ConfigureAwait(false),
@@ -182,7 +185,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /export         — Export current session to JSON
           /update         — Check for and apply updates
           /instructions   — Show loaded project instructions
-          /plugins        — List loaded plugins
+          /plugins        — Manage plugins (list/install/enable/disable/update/uninstall/info)
           /checkpoint     — List, restore, or clear checkpoints
           /sandbox        — Show sandbox mode info
           /workflow       — Manage workflows (list|show|export|replay|refine|catalog|publish|install|search|versions)
@@ -1059,18 +1062,140 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private string ShowInstructions() =>
         _instructions?.ToSummary() ?? "No project instructions loaded.";
 
-    private string ShowPlugins()
+    private async Task<string> HandlePluginsAsync(string? arg, CancellationToken ct)
     {
-        if (_pluginLoader is null)
-            return "Plugin loader not available.";
+        var tokens = (arg ?? string.Empty).Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var action = tokens.Length == 0 ? "list" : tokens[0].ToLowerInvariant();
+        var rest = tokens.Length > 1 ? tokens[1] : null;
 
-        var plugins = _pluginLoader.GetAll();
+        if (_pluginManager is null)
+        {
+            // Fallback for hosts that only provide in-memory runtime loading.
+            if (action is "list" && _pluginLoader is not null)
+            {
+                var runtimePlugins = _pluginLoader.GetAll();
+                if (runtimePlugins.Count == 0)
+                    return "No plugins loaded.";
+
+                var runtimeLines = runtimePlugins.Select(p =>
+                    $"  ✓ {p.Id} ({p.Name}) v{p.Version} (loaded {p.LoadedAt:g})");
+                return $"Loaded plugins ({runtimePlugins.Count}):\n{string.Join('\n', runtimeLines)}";
+            }
+
+            return "Plugin lifecycle manager not available in this host.";
+        }
+
+        return action switch
+        {
+            "list" => await ListPluginsAsync(ct).ConfigureAwait(false),
+            "install" => await InstallPluginAsync(rest, ct).ConfigureAwait(false),
+            "enable" => await SetPluginEnabledAsync(rest, enabled: true, ct).ConfigureAwait(false),
+            "disable" => await SetPluginEnabledAsync(rest, enabled: false, ct).ConfigureAwait(false),
+            "update" => await UpdatePluginAsync(rest, ct).ConfigureAwait(false),
+            "uninstall" or "remove" => await UninstallPluginAsync(rest, ct).ConfigureAwait(false),
+            "info" => await PluginInfoAsync(rest, ct).ConfigureAwait(false),
+            _ => "Usage: /plugins [list|install <source>|enable <id>|disable <id>|update [id]|uninstall <id>|info <id>]",
+        };
+    }
+
+    private async Task<string> ListPluginsAsync(CancellationToken ct)
+    {
+        var plugins = await _pluginManager!.ListAsync(ct).ConfigureAwait(false);
         if (plugins.Count == 0)
-            return "No plugins loaded.";
+            return "No plugins installed.";
 
         var lines = plugins.Select(p =>
-            $"  ✓ {p.Name} v{p.Version} (loaded {p.LoadedAt:g})");
-        return $"Loaded plugins ({plugins.Count}):\n{string.Join('\n', lines)}";
+            $"  {(p.Enabled ? "✓" : "○")} {p.Id} v{p.Version} ({(p.Loaded ? "loaded" : "not loaded")})");
+        return $"Plugins ({plugins.Count}):\n{string.Join('\n', lines)}";
+    }
+
+    private async Task<string> InstallPluginAsync(string? source, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(source))
+            return "Usage: /plugins install <path-or-url>";
+
+        try
+        {
+            var plugin = await _pluginManager!.InstallAsync(source, enable: true, ct).ConfigureAwait(false);
+            return $"Installed plugin '{plugin.Id}' v{plugin.Version} ({(plugin.Loaded ? "loaded" : "installed")}).";
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return $"Install failed: {ex.Message}";
+        }
+    }
+
+    private async Task<string> SetPluginEnabledAsync(string? id, bool enabled, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            return $"Usage: /plugins {(enabled ? "enable" : "disable")} <id>";
+
+        try
+        {
+            var plugin = enabled
+                ? await _pluginManager!.EnableAsync(id, ct).ConfigureAwait(false)
+                : await _pluginManager!.DisableAsync(id, ct).ConfigureAwait(false);
+            return $"Plugin '{plugin.Id}' {(enabled ? "enabled" : "disabled")}.";
+        }
+        catch (InvalidOperationException)
+        {
+            return $"Plugin '{id}' is not installed.";
+        }
+    }
+
+    private async Task<string> UninstallPluginAsync(string? id, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            return "Usage: /plugins uninstall <id>";
+
+        var removed = await _pluginManager!.UninstallAsync(id, ct).ConfigureAwait(false);
+        return removed
+            ? $"Plugin '{id}' uninstalled."
+            : $"Plugin '{id}' is not installed.";
+    }
+
+    private async Task<string> UpdatePluginAsync(string? id, CancellationToken ct)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                var updated = await _pluginManager!.UpdateAllAsync(ct).ConfigureAwait(false);
+                return $"Updated {updated.Count} plugin(s).";
+            }
+
+            var plugin = await _pluginManager!.UpdateAsync(id, ct).ConfigureAwait(false);
+            return $"Updated plugin '{plugin.Id}' to v{plugin.Version}.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            return ex.Message;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return $"Update failed: {ex.Message}";
+        }
+    }
+
+    private async Task<string> PluginInfoAsync(string? id, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            return "Usage: /plugins info <id>";
+
+        var plugin = await _pluginManager!.GetAsync(id, ct).ConfigureAwait(false);
+        if (plugin is null)
+            return $"Plugin '{id}' is not installed.";
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"Plugin: {plugin.Name} ({plugin.Id})");
+        sb.AppendLine($"Version: {plugin.Version}");
+        sb.AppendLine($"Enabled: {(plugin.Enabled ? "yes" : "no")}");
+        sb.AppendLine($"Loaded: {(plugin.Loaded ? "yes" : "no")}");
+        sb.AppendLine($"Source: {plugin.Source}");
+        sb.AppendLine($"Install path: {plugin.InstallPath}");
+        if (!string.IsNullOrWhiteSpace(plugin.LastError))
+            sb.AppendLine($"Last error: {plugin.LastError}");
+        return sb.ToString().TrimEnd();
     }
 
     private async Task<string> HandleCheckpointAsync(string? arg, CancellationToken ct)

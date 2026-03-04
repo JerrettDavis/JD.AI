@@ -8,62 +8,122 @@ public static class PluginEndpoints
     {
         var group = app.MapGroup("/api/plugins").WithTags("Plugins");
 
-        group.MapGet("/", (PluginLoader loader) =>
+        group.MapGet("/", async (IPluginLifecycleManager manager, CancellationToken ct) =>
         {
-            var plugins = loader.GetAll();
-            return Results.Ok(plugins.Select(p => new
-            {
-                p.Name,
-                p.Version,
-                p.AssemblyPath,
-                p.LoadedAt
-            }));
+            var plugins = await manager.ListAsync(ct).ConfigureAwait(false);
+            return Results.Ok(plugins);
         })
         .WithName("ListPlugins")
-        .WithDescription("List all loaded plugins.");
+        .WithDescription("List installed plugins and their runtime status.");
 
-        group.MapPost("/load", async (LoadPluginRequest request, PluginLoader loader, IServiceProvider sp, CancellationToken ct) =>
+        group.MapGet("/{id}", async (string id, IPluginLifecycleManager manager, CancellationToken ct) =>
         {
-            var context = new GatewayPluginContext(sp);
-            var loaded = await loader.LoadAssemblyAsync(request.Path, context, ct);
-            return loaded is null
-                ? Results.BadRequest(new { Error = "No IJdAiPlugin found in assembly." })
-                : Results.Created($"/api/plugins/{loaded.Name}", new
-                {
-                    loaded.Name,
-                    loaded.Version,
-                    loaded.AssemblyPath,
-                    loaded.LoadedAt
-                });
+            var plugin = await manager.GetAsync(id, ct).ConfigureAwait(false);
+            return plugin is null
+                ? Results.NotFound(new { Error = $"Plugin '{id}' not found." })
+                : Results.Ok(plugin);
         })
-        .WithName("LoadPlugin")
-        .WithDescription("Load a plugin from an assembly path.");
+        .WithName("GetPlugin")
+        .WithDescription("Get plugin status by id.");
 
-        group.MapDelete("/{name}", async (string name, PluginLoader loader, CancellationToken ct) =>
+        group.MapPost("/install", async (PluginInstallRequest request, IPluginLifecycleManager manager, CancellationToken ct) =>
         {
-            await loader.UnloadAsync(name, ct);
-            return Results.NoContent();
+            if (string.IsNullOrWhiteSpace(request.Source))
+            {
+                return Results.BadRequest(new { Error = "source is required." });
+            }
+
+            try
+            {
+                var plugin = await manager.InstallAsync(request.Source, request.Enable, ct).ConfigureAwait(false);
+                return Results.Created($"/api/plugins/{plugin.Id}", plugin);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { Error = ex.Message });
+            }
+        })
+        .WithName("InstallPlugin")
+        .WithDescription("Install a plugin from local path, package file, or URL.");
+
+        group.MapPost("/{id}/enable", async (string id, IPluginLifecycleManager manager, CancellationToken ct) =>
+        {
+            try
+            {
+                var plugin = await manager.EnableAsync(id, ct).ConfigureAwait(false);
+                return Results.Ok(plugin);
+            }
+            catch (InvalidOperationException)
+            {
+                return Results.NotFound(new { Error = $"Plugin '{id}' not found." });
+            }
+        })
+        .WithName("EnablePlugin")
+        .WithDescription("Enable an installed plugin.");
+
+        group.MapPost("/{id}/disable", async (string id, IPluginLifecycleManager manager, CancellationToken ct) =>
+        {
+            try
+            {
+                var plugin = await manager.DisableAsync(id, ct).ConfigureAwait(false);
+                return Results.Ok(plugin);
+            }
+            catch (InvalidOperationException)
+            {
+                return Results.NotFound(new { Error = $"Plugin '{id}' not found." });
+            }
+        })
+        .WithName("DisablePlugin")
+        .WithDescription("Disable an installed plugin.");
+
+        group.MapPost("/{id}/update", async (string id, IPluginLifecycleManager manager, CancellationToken ct) =>
+        {
+            try
+            {
+                var plugin = await manager.UpdateAsync(id, ct).ConfigureAwait(false);
+                return Results.Ok(plugin);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.NotFound(new { Error = ex.Message });
+            }
+            catch (InvalidDataException ex)
+            {
+                return Results.BadRequest(new { Error = ex.Message });
+            }
+        })
+        .WithName("UpdatePlugin")
+        .WithDescription("Update a single plugin from its recorded source.");
+
+        group.MapPost("/update", async (IPluginLifecycleManager manager, CancellationToken ct) =>
+        {
+            try
+            {
+                var plugins = await manager.UpdateAllAsync(ct).ConfigureAwait(false);
+                return Results.Ok(plugins);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { Error = ex.Message });
+            }
+            catch (InvalidDataException ex)
+            {
+                return Results.BadRequest(new { Error = ex.Message });
+            }
+        })
+        .WithName("UpdateAllPlugins")
+        .WithDescription("Update all installed plugins from their recorded sources.");
+
+        group.MapDelete("/{id}", async (string id, IPluginLifecycleManager manager, CancellationToken ct) =>
+        {
+            var removed = await manager.UninstallAsync(id, ct).ConfigureAwait(false);
+            return removed
+                ? Results.NoContent()
+                : Results.NotFound(new { Error = $"Plugin '{id}' not found." });
         })
         .WithName("UnloadPlugin")
-        .WithDescription("Unload a plugin by name.");
+        .WithDescription("Uninstall a plugin.");
     }
 }
 
-public record LoadPluginRequest(string Path);
-
-/// <summary>IPluginContext backed by the gateway's DI container.</summary>
-internal sealed class GatewayPluginContext(IServiceProvider sp) : JD.AI.Plugins.SDK.IPluginContext
-{
-    public Microsoft.SemanticKernel.Kernel Kernel =>
-        sp.GetService<Microsoft.SemanticKernel.Kernel>() ?? new Microsoft.SemanticKernel.Kernel();
-
-    public IReadOnlyDictionary<string, string> Configuration { get; } =
-        new Dictionary<string, string>();
-
-    public void OnEvent(string eventType, Func<object?, Task> handler) { }
-
-    public T? GetService<T>() where T : class => sp.GetService<T>();
-
-    public void Log(JD.AI.Plugins.SDK.PluginLogLevel level, string message) =>
-        sp.GetService<ILogger<GatewayPluginContext>>()?.LogInformation("[Plugin] {Message}", message);
-}
+public sealed record PluginInstallRequest(string Source, bool Enable = true);

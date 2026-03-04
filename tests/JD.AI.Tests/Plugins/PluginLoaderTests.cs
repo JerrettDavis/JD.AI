@@ -2,6 +2,7 @@ using FluentAssertions;
 using JD.AI.Core.Plugins;
 using JD.AI.Plugins.SDK;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.SemanticKernel;
 using NSubstitute;
 
 namespace JD.AI.Tests.Plugins;
@@ -32,5 +33,23 @@ public sealed class PluginLoaderTests
         var act = () => _loader.UnloadAsync("nonexistent-plugin");
 
         await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task LoadAssemblyAsync_RegistersPluginInRuntimeIndex()
+    {
+        var context = Substitute.For<IPluginContext>();
+        context.Kernel.Returns(new Kernel());
+
+        var loaded = await _loader.LoadAssemblyAsync(
+            typeof(PluginLoaderTests).Assembly.Location,
+            context,
+            pluginId: "test.loader");
+
+        loaded.Should().NotBeNull();
+        _loader.GetAll().Should().ContainSingle(p =>
+            string.Equals(p.Id, "test.loader", StringComparison.OrdinalIgnoreCase));
+
+        await _loader.UnloadAsync("test.loader");
     }
 }
