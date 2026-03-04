@@ -122,6 +122,13 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["browser_content"] = SafetyTier.ConfirmOnce,
             ["browser_console"] = SafetyTier.ConfirmOnce,
 
+            // Capability introspection — read-only
+            ["capability_list"] = SafetyTier.AutoApprove,
+            ["capability_detail"] = SafetyTier.AutoApprove,
+            ["capability_usage"] = SafetyTier.AutoApprove,
+            ["capability_gaps"] = SafetyTier.AutoApprove,
+            ["capability_scaffold"] = SafetyTier.AutoApprove,
+
             // Dangerous — always confirm
             ["run_command"] = SafetyTier.AlwaysConfirm,
             ["web_search"] = SafetyTier.AlwaysConfirm,
