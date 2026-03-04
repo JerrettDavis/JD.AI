@@ -194,6 +194,18 @@ See [Checkpointing](checkpointing.md) for details on strategies and configuratio
 /plugins update my-plugin
 ```
 
+## Skills lifecycle
+
+| Command | Description |
+|---------|-------------|
+| `/skills` or `/skills status` | Show active/excluded/shadowed/invalid skill status with reason codes |
+| `/skills reload` | Refresh managed skill state from source directories and config |
+
+```text
+/skills
+/skills reload
+```
+
 ## Customization
 
 | Command | Description |
@@ -230,6 +242,7 @@ See [Checkpointing](checkpointing.md) for details on strategies and configuratio
 | `/checkpoint` | Manage checkpoints |
 | `/local` | Manage local models |
 | `/workflow` | Manage workflows |
+| `/skills` | Show/reload managed skills |
 | `/doctor` | Health diagnostics |
 | `/quit` | Exit |
 

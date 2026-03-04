@@ -19,6 +19,7 @@ JD.AI currently supports 35+ interactive commands:
 - Local models and MCP server management
 - UX customization and persisted config
 - Agent/hook profiles and project memory
+- Skills lifecycle inspection and reload
 - Workflows and checkpoints
 
 ## Discovery and model/provider commands
@@ -350,6 +351,19 @@ Subcommands:
 /plugins uninstall my-plugin
 ```
 
+### `/skills [status|reload]`
+
+Shows managed skill lifecycle state and supports on-demand refresh.
+
+- `/skills` or `/skills status` prints deterministic skill eligibility status (`active`, `excluded`, `shadowed`, `invalid`) with reason codes.
+- `/skills reload` forces a refresh from source directories and `skills.json` config.
+
+```text
+/skills
+/skills status
+/skills reload
+```
+
 ## Profile and memory commands
 
 ### `/agents [list|create|delete|set]`
@@ -442,5 +456,5 @@ Lists active gateway agents and route mappings.
 | `/mcp ...` | MCP server management |
 | `/checkpoint ...`, `/workflow ...` | Checkpointing and workflows |
 | `/theme`, `/vim`, `/spinner`, `/output-style`, `/stats`, `/config` | UX and runtime settings |
-| `/agents`, `/hooks`, `/memory`, `/init`, `/instructions`, `/plugins`, `/doctor`, `/docs` | Project and profile operations |
+| `/agents`, `/hooks`, `/memory`, `/init`, `/instructions`, `/plugins`, `/skills`, `/doctor`, `/docs` | Project and profile operations |
 | `/quit`, `/exit` | Exit session |
