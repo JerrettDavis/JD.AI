@@ -16,4 +16,9 @@ public sealed record ProviderModelInfo(
     string Id,
     string DisplayName,
     string ProviderName,
+    int ContextWindowTokens = 128_000,
+    int MaxOutputTokens = 16_384,
+    decimal InputCostPerToken = 0m,
+    decimal OutputCostPerToken = 0m,
+    bool HasMetadata = false,
     ModelCapabilities Capabilities = ModelCapabilities.Chat | ModelCapabilities.ToolCalling);

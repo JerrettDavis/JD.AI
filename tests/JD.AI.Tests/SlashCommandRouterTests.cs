@@ -281,18 +281,19 @@ public sealed class SlashCommandRouterTests
         var result = await _router.ExecuteAsync("/permissions");
 
         Assert.NotNull(result);
-        Assert.Contains("ON", result);
+        Assert.Contains("Normal", result);
     }
 
     [Fact]
     public async Task Permissions_ShowsOffState()
     {
         _session.SkipPermissions = true;
+        _session.PermissionMode = JD.AI.Core.Agents.PermissionMode.BypassAll;
 
         var result = await _router.ExecuteAsync("/permissions");
 
         Assert.NotNull(result);
-        Assert.Contains("OFF", result);
+        Assert.Contains("BypassAll", result);
     }
 
     [Fact]
@@ -503,6 +504,22 @@ public sealed class SlashCommandRouterTests
         Assert.NotNull(result);
         Assert.Contains("json", result, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(OutputStyle.Json, style);
+    }
+
+    [Fact]
+    public async Task Output_Alias_SetsStyle()
+    {
+        var style = OutputStyle.Json;
+        var router = new SlashCommandRouter(
+            _session, _registry,
+            getOutputStyle: () => style,
+            onOutputStyleChanged: s => style = s);
+
+        var result = await router.ExecuteAsync("/output rich");
+
+        Assert.NotNull(result);
+        Assert.Contains("rich", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(OutputStyle.Rich, style);
     }
 
     [Fact]

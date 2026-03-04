@@ -46,7 +46,7 @@ public sealed class LocalModelDetector : IProviderDetector
                     m.Id,
                     FormatDisplayName(m),
                     ProviderName,
-                    m.Capabilities != ModelCapabilities.None
+                    Capabilities: m.Capabilities != ModelCapabilities.None
                         ? m.Capabilities
                         : ModelCapabilityHeuristics.InferFromName(m.Id)))
                 .ToList();

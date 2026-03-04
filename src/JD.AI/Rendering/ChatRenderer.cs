@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using JD.AI.Core.Config;
 using Spectre.Console;
@@ -86,6 +87,7 @@ public static class ChatRenderer
     /// Moves the cursor up to the prompt line, rewrites it in dim,
     /// then returns to the next line for output.
     /// </summary>
+    [ExcludeFromCodeCoverage]
     public static void DimInputLine(string text)
     {
         try
@@ -157,23 +159,66 @@ public static class ChatRenderer
     /// <summary>Render a tool invocation and its result.</summary>
     public static void RenderToolCall(string toolName, string? args, string result)
     {
+        if (CurrentOutputStyle == OutputStyle.Json)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(new
+            {
+                type = "tool_call",
+                tool = toolName,
+                arguments = args,
+                result = result.Length > 2000
+                    ? string.Concat(result.AsSpan(0, 2000), "\n... [truncated]")
+                    : result,
+            }));
+            return;
+        }
+
+        // Claude-style compact tool display
         var header = string.IsNullOrWhiteSpace(args)
-            ? $"» {toolName}"
-            : $"» {toolName}({args})";
+            ? toolName
+            : $"{toolName}({args})";
 
         // Truncate long results
         var displayResult = result.Length > 2000
             ? string.Concat(result.AsSpan(0, 2000), "\n... [truncated]")
             : result;
 
-        var panel = new Panel(Markup.Escape(displayResult))
-            .Header($"[bold]{Markup.Escape(header)}[/]")
-            .Border(BoxBorder.Rounded)
-            .BorderColor(Color.Grey)
-            .Padding(1, 0);
+        var resultLines = displayResult.Split('\n');
+        var lineCount = resultLines.Length;
 
-        AnsiConsole.Write(panel);
-        AnsiConsole.WriteLine();
+        if (CurrentOutputStyle == OutputStyle.Rich)
+        {
+            AnsiConsole.MarkupLine($"  [dim]●[/] [bold]{Markup.Escape(header)}[/]");
+
+            if (lineCount <= 3)
+            {
+                foreach (var line in resultLines)
+                {
+                    AnsiConsole.MarkupLine($"    [dim]{Markup.Escape(line)}[/]");
+                }
+            }
+            else
+            {
+                // Show first line + collapse indicator
+                AnsiConsole.MarkupLine($"    [dim]{Markup.Escape(resultLines[0])}[/]");
+                AnsiConsole.MarkupLine($"    [dim]└ {lineCount} lines...[/]");
+            }
+
+            return;
+        }
+
+        // Plain/Compact: simple prefix
+        Console.WriteLine($"  ● {header}");
+        if (lineCount <= 5)
+        {
+            foreach (var line in resultLines)
+                Console.WriteLine($"    {line}");
+        }
+        else
+        {
+            Console.WriteLine($"    {resultLines[0]}");
+            Console.WriteLine($"    └ {lineCount} lines...");
+        }
     }
 
     /// <summary>Render a system/info message.</summary>
@@ -198,6 +243,17 @@ public static class ChatRenderer
         }
 
         AnsiConsole.MarkupLine($"[{_palette.WarningColor}]⚠ {Markup.Escape(text)}[/]");
+    }
+
+    /// <summary>Render a system prompt size warning below the welcome banner.</summary>
+    public static void RenderSystemPromptWarning(int actualTokens, int budgetTokens, int budgetPercent, int contextWindow)
+    {
+        var actualK = actualTokens / 1000.0;
+        var budgetK = budgetTokens / 1000.0;
+        AnsiConsole.MarkupLine(
+            $"[yellow]⚠ Large system prompt may degrade performance " +
+            $"({actualK:F1}k tokens exceeds {budgetPercent}%/{budgetK:F0}k budget of {contextWindow / 1000}k context window).[/]");
+        AnsiConsole.WriteLine();
     }
 
     /// <summary>Render an error message.</summary>
@@ -229,6 +285,7 @@ public static class ChatRenderer
     }
 
     /// <summary>Prompt for user input with interactive completions.</summary>
+    [ExcludeFromCodeCoverage]
     public static string? ReadInput(InteractiveInput? input = null)
     {
         AnsiConsole.Markup($"[bold {_palette.PromptColor}]>[/] ");
@@ -240,6 +297,7 @@ public static class ChatRenderer
     }
 
     /// <summary>Prompt for user input, returning structured result with attachments.</summary>
+    [ExcludeFromCodeCoverage]
     public static InputResult? ReadInputStructured(InteractiveInput input)
     {
         AnsiConsole.Markup($"[bold {_palette.PromptColor}]>[/] ");
@@ -247,6 +305,7 @@ public static class ChatRenderer
     }
 
     /// <summary>Ask the user for confirmation.</summary>
+    [ExcludeFromCodeCoverage]
     public static bool Confirm(string message)
     {
         AnsiConsole.Markup($"[{_palette.WarningColor}]{Markup.Escape(message)}[/] [dim]([green]y[/]/[red]n[/])[/] [dim](y)[/]: ");
@@ -419,12 +478,12 @@ public static class ChatRenderer
                $"{Markup.Escape(ttft)}{modelPart} ──[/]";
     }
 
-    private static string FormatElapsedMetric(long ms) =>
+    internal static string FormatElapsedMetric(long ms) =>
         ms >= 60_000
             ? $"{ms / 60_000}m {ms % 60_000 / 1000}s"
             : $"{ms / 1000.0:F1}s";
 
-    private static string FormatBytes(long bytes) =>
+    internal static string FormatBytes(long bytes) =>
         bytes switch
         {
             >= 1_048_576 => $"{bytes / 1_048_576.0:F1} MB",
@@ -432,7 +491,7 @@ public static class ChatRenderer
             _ => $"{bytes} B",
         };
 
-    private static string EscapeJsonString(string value)
+    internal static string EscapeJsonString(string value)
     {
         if (string.IsNullOrEmpty(value))
             return string.Empty;

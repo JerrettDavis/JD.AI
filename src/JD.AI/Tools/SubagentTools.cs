@@ -98,7 +98,7 @@ public sealed class SubagentTools
         return $"Team context query for '{key}' — use spawn_team to run a team with shared context.";
     }
 
-    private static List<SubagentConfig> ParseAgentConfigs(string json)
+    internal static List<SubagentConfig> ParseAgentConfigs(string json)
     {
         using var doc = JsonDocument.Parse(json);
         var configs = new List<SubagentConfig>();

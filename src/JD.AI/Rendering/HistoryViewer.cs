@@ -60,7 +60,7 @@ public static class HistoryViewer
         }
     }
 
-    private static void Render(SessionInfo session, int selected, bool showDetail)
+    internal static void Render(SessionInfo session, int selected, bool showDetail)
     {
         Console.Clear();
         Console.ForegroundColor = ConsoleColor.Cyan;
@@ -102,7 +102,7 @@ public static class HistoryViewer
         }
     }
 
-    private static void RenderDetail(TurnRecord turn)
+    internal static void RenderDetail(TurnRecord turn)
     {
         Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine("  ── Details ──────────────────────────");

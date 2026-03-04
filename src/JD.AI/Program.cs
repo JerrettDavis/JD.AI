@@ -1,18 +1,23 @@
 using JD.AI;
 using JD.AI.Agent;
 using JD.AI.Commands;
+using JD.AI.Core.Agents;
 using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Agents.Orchestration;
 using JD.AI.Core.Config;
+using JD.AI.Core.Governance;
+using JD.AI.Core.Governance.Audit;
 using JD.AI.Core.LocalModels;
 using JD.AI.Core.Mcp;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Providers.Credentials;
+using JD.AI.Core.Providers.Metadata;
 using JD.AI.Core.Providers.ModelSearch;
 using JD.AI.Rendering;
 using JD.AI.Tools;
 using JD.AI.Workflows;
+using JD.AI.Workflows.Store;
 using JD.SemanticKernel.Extensions.Compaction;
 using JD.SemanticKernel.Extensions.Hooks;
 using JD.SemanticKernel.Extensions.Plugins;
@@ -111,6 +116,33 @@ var allowedTools = args.SkipWhile(a => !string.Equals(a, "--allowedTools", Strin
 var disallowedTools = args.SkipWhile(a => !string.Equals(a, "--disallowedTools", StringComparison.OrdinalIgnoreCase))
     .Skip(1).FirstOrDefault()?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
+// Permission mode (plan / acceptEdits / dontAsk / normal)
+var permissionModeStr = args.SkipWhile(a => !string.Equals(a, "--permission-mode", StringComparison.OrdinalIgnoreCase))
+    .Skip(1).FirstOrDefault();
+
+// Fallback model chain
+var fallbackModelStr = args.SkipWhile(a => !string.Equals(a, "--fallback-model", StringComparison.OrdinalIgnoreCase))
+    .Skip(1).FirstOrDefault();
+var fallbackModels = fallbackModelStr?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
+
+// Session management flags
+var cliSessionId = args.SkipWhile(a => !string.Equals(a, "--session-id", StringComparison.OrdinalIgnoreCase))
+    .Skip(1).FirstOrDefault();
+var forkSession = args.Contains("--fork-session");
+var noSessionPersistence = args.Contains("--no-session-persistence");
+
+// Debug logging
+var debugMode = args.Contains("--debug");
+var debugCategories = debugMode
+    ? args.SkipWhile(a => !string.Equals(a, "--debug", StringComparison.OrdinalIgnoreCase))
+        .Skip(1).FirstOrDefault()
+    : null;
+// If --debug value starts with '-' it's a different flag, not categories
+if (debugCategories != null && debugCategories.StartsWith('-'))
+{
+    debugCategories = null;
+}
+
 // Read piped stdin if available (e.g. `cat file | jdai -p "query"`)
 string? pipedInput = null;
 if (Console.IsInputRedirected)
@@ -170,7 +202,8 @@ var detectors = new IProviderDetector[]
     new HuggingFaceDetector(providerConfig),
     new OpenAICompatibleDetector(providerConfig),
 };
-var registry = new ProviderRegistry(detectors);
+var metadataProvider = new ModelMetadataProvider();
+var registry = new ProviderRegistry(detectors, metadataProvider);
 
 // 2. Detect available providers and show status
 var providers = await registry.DetectProvidersAsync().ConfigureAwait(false);
@@ -298,10 +331,65 @@ if (verboseMode)
     session.Verbose = true;
 }
 
+// Apply permission mode
+if (permissionModeStr != null)
+{
+    session.PermissionMode = permissionModeStr.ToUpperInvariant() switch
+    {
+        "PLAN" => JD.AI.Core.Agents.PermissionMode.Plan,
+        "ACCEPTEDITS" => JD.AI.Core.Agents.PermissionMode.AcceptEdits,
+        "DONTASK" => JD.AI.Core.Agents.PermissionMode.BypassAll,
+        "NORMAL" => JD.AI.Core.Agents.PermissionMode.Normal,
+        _ => JD.AI.Core.Agents.PermissionMode.Normal,
+    };
+    if (!printMode)
+    {
+        ChatRenderer.RenderInfo($"Permission mode: {session.PermissionMode}");
+    }
+}
+
+// Apply fallback models
+if (fallbackModels.Length > 0)
+{
+    session.FallbackModels = fallbackModels;
+    if (!printMode)
+    {
+        ChatRenderer.RenderInfo($"Fallback models: {string.Join(" → ", fallbackModels)}");
+    }
+}
+
+// Apply session persistence flag
+if (noSessionPersistence)
+{
+    session.NoSessionPersistence = true;
+}
+
+// Debug logging
+if (debugMode)
+{
+    session.Verbose = true;
+    if (!printMode)
+    {
+        var cats = debugCategories != null ? $" (categories: {debugCategories})" : "";
+        ChatRenderer.RenderInfo($"Debug logging enabled{cats}");
+    }
+}
+
 // Initialize session persistence
 var projectPath = Directory.GetCurrentDirectory();
-if (!isNewSession)
+if (noSessionPersistence)
 {
+    // --no-session-persistence: skip all session I/O
+    if (!printMode) ChatRenderer.RenderInfo("Session persistence disabled.");
+}
+else if (!isNewSession)
+{
+    // Use explicit --session-id if provided
+    if (cliSessionId != null)
+    {
+        resumeId = cliSessionId;
+    }
+
     // --continue: auto-resume the most recent session for this project
     if (continueSession && resumeId == null)
     {
@@ -337,6 +425,9 @@ if (!isNewSession)
                     SessionInfo = session.SessionInfo,
                     SkipPermissions = session.SkipPermissions,
                     Verbose = session.Verbose,
+                    PermissionMode = session.PermissionMode,
+                    FallbackModels = session.FallbackModels,
+                    NoSessionPersistence = session.NoSessionPersistence,
                 };
                 // Re-restore history into the new session's ChatHistory
                 foreach (var turn in session.SessionInfo.Turns)
@@ -365,6 +456,9 @@ if (!isNewSession)
                     SessionInfo = session.SessionInfo,
                     SkipPermissions = session.SkipPermissions,
                     Verbose = session.Verbose,
+                    PermissionMode = session.PermissionMode,
+                    FallbackModels = session.FallbackModels,
+                    NoSessionPersistence = session.NoSessionPersistence,
                 };
                 foreach (var turn in session.SessionInfo.Turns)
                 {
@@ -377,6 +471,13 @@ if (!isNewSession)
             }
         }
         if (!printMode) ChatRenderer.RenderInfo($"Resumed session: {session.SessionInfo.Name ?? session.SessionInfo.Id} ({session.SessionInfo.Turns.Count} turns)");
+
+        // --fork-session: fork from the resumed session
+        if (forkSession)
+        {
+            await session.ForkSessionAsync("CLI fork").ConfigureAwait(false);
+            if (!printMode) ChatRenderer.RenderInfo("Forked session — changes diverge from here.");
+        }
     }
 }
 else
@@ -399,6 +500,7 @@ kernel.Plugins.AddFromType<BatchEditTools>("batchEdit");
 kernel.Plugins.AddFromObject(new MemoryTools(), "memory");
 kernel.Plugins.AddFromObject(new TaskTools(), "tasks");
 var usageTools = new UsageTools();
+usageTools.SetModel(selectedModel);
 kernel.Plugins.AddFromObject(usageTools, "usage");
 kernel.Plugins.AddFromObject(
     new QuestionTools(req => QuestionnaireSession.Run(req)), "questions");
@@ -498,8 +600,42 @@ var pluginManager = new PluginLifecycleManager(
     NullLogger<PluginLifecycleManager>.Instance);
 await pluginManager.LoadEnabledAsync().ConfigureAwait(false);
 
-// 8. Add tool confirmation filter
-kernel.AutoFunctionInvocationFilters.Add(new ToolConfirmationFilter(session));
+// 8. Load governance policies, audit, and budget
+var policies = PolicyLoader.Load(projectPath);
+IPolicyEvaluator? policyEvaluator = null;
+if (policies.Count > 0)
+{
+    var resolvedSpec = PolicyResolver.Resolve(policies);
+    policyEvaluator = new PolicyEvaluator(resolvedSpec);
+    if (!printMode) ChatRenderer.RenderInfo($"  Loaded {policies.Count} governance policy file(s)");
+}
+
+var auditSinks = new List<IAuditSink>();
+var auditDir = Path.Combine(DataDirectories.Root, "audit");
+using var fileAuditSink = new FileAuditSink(auditDir);
+auditSinks.Add(fileAuditSink);
+
+// If policies define additional audit sinks (ES, webhook), add them here
+var auditPolicy = policies
+    .SelectMany(p => p.Spec.Audit is { } a ? [a] : Array.Empty<AuditPolicy>())
+    .FirstOrDefault();
+if (auditPolicy is not null)
+{
+    if (!string.IsNullOrWhiteSpace(auditPolicy.Endpoint) && !string.IsNullOrWhiteSpace(auditPolicy.Index))
+        auditSinks.Add(new ElasticsearchAuditSink(
+            new HttpClient(), auditPolicy.Endpoint, auditPolicy.Index, auditPolicy.Token));
+    if (!string.IsNullOrWhiteSpace(auditPolicy.Url))
+        auditSinks.Add(new WebhookAuditSink(new HttpClient(), auditPolicy.Url));
+}
+
+var auditService = new AuditService(auditSinks);
+session.AuditService = auditService;
+
+using var budgetTracker = new BudgetTracker();
+
+// 8a. Add tool confirmation filter with governance
+kernel.AutoFunctionInvocationFilters.Add(
+    new ToolConfirmationFilter(session, policyEvaluator, auditService));
 
 // 8b. Load project instructions (JDAI.md, CLAUDE.md, AGENTS.md, etc.)
 var instructions = InstructionsLoader.Load();
@@ -618,7 +754,12 @@ var interactiveInput = new InteractiveInput(completionProvider)
     VimModeEnabled = tuiSettings.VimMode,
 };
 
-// 10a. Set up slash commands
+// 10a. Set up workflow store and slash commands
+var workflowStoreUrl = Environment.GetEnvironmentVariable("JDAI_WORKFLOW_STORE_URL");
+IWorkflowStore workflowStore = !string.IsNullOrWhiteSpace(workflowStoreUrl)
+    ? new GitWorkflowStore(workflowStoreUrl)
+    : new FileWorkflowStore(Path.Combine(DataDirectories.Root, "workflow-store"));
+
 var workflowCatalog = new FileWorkflowCatalog(Path.Combine(DataDirectories.Root, "workflows"));
 using var searchHttp = new HttpClient();
 var modelSearchAggregator = new ModelSearchAggregator(new IRemoteModelSearch[]
@@ -632,11 +773,13 @@ var commandRouter = new SlashCommandRouter(
     pluginLoader: pluginLoader,
     pluginManager: pluginManager,
     workflowCatalog: workflowCatalog,
+    workflowStore: workflowStore,
     getSpinnerStyle: () => spectreOutput.Style,
     onSpinnerStyleChanged: style => spectreOutput.Style = style,
     providerConfig: providerConfig,
     configStore: configStore,
     modelSearchAggregator: modelSearchAggregator,
+    metadataProvider: metadataProvider,
     getTheme: () => ChatRenderer.CurrentTheme,
     onThemeChanged: ChatRenderer.ApplyTheme,
     getVimMode: () => interactiveInput.VimModeEnabled,
@@ -687,6 +830,30 @@ if (pendingUpdate is not null && !printMode)
 {
     AnsiConsole.MarkupLine(UpdatePrompter.FormatNotification(pendingUpdate));
     AnsiConsole.WriteLine();
+}
+
+// 11c. System prompt budget check
+if (!printMode)
+{
+    var systemPromptTokens = session.SystemPromptTokens;
+    var contextWindow = selectedModel.ContextWindowTokens;
+    var budgetPercent = tuiSettings.SystemPromptBudgetPercent;
+    var budgetTokens = (int)(contextWindow * (budgetPercent / 100.0));
+    var compactionMode = tuiSettings.SystemPromptCompaction;
+
+    var shouldCompact = compactionMode == SystemPromptCompaction.Always
+        || (compactionMode == SystemPromptCompaction.Auto && systemPromptTokens > budgetTokens);
+
+    if (shouldCompact)
+    {
+        ChatRenderer.RenderInfo("Compacting system prompt...");
+        var newSize = await session.CompactSystemPromptAsync(budgetTokens).ConfigureAwait(false);
+        ChatRenderer.RenderInfo($"System prompt compacted: {systemPromptTokens:N0} → {newSize:N0} tokens.");
+    }
+    else if (systemPromptTokens > budgetTokens)
+    {
+        ChatRenderer.RenderSystemPromptWarning(systemPromptTokens, budgetTokens, budgetPercent, contextWindow);
+    }
 }
 
 // Print mode: non-interactive execution
@@ -763,7 +930,7 @@ Console.CancelKeyPress += (_, e) =>
     {
         try
         {
-            ChatRenderer.RenderWarning("Cancelling...");
+            AgentOutput.Current.RenderWarning("Cancelling...");
             monitor.CancelTurn();
         }
 #pragma warning disable CA1031 // catch broad — best effort during signal handler
@@ -786,7 +953,7 @@ Console.CancelKeyPress += (_, e) =>
 
     lastCtrlCTime = now;
     Console.WriteLine();
-    ChatRenderer.RenderWarning("Press Ctrl+C again to exit...");
+    AgentOutput.Current.RenderWarning("Press Ctrl+C again to exit...");
 };
 
 while (!appCts.IsCancellationRequested)
