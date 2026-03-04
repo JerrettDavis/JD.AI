@@ -3,6 +3,7 @@ using JD.AI.Core.Governance.Audit;
 using JD.AI.Core.PromptCaching;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Sessions;
+using JD.AI.Core.Tracing;
 using JD.SemanticKernel.Extensions.Compaction;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -19,6 +20,9 @@ public sealed class AgentSession
     private readonly List<ForkPoint> _forkPoints = [];
     private Kernel _kernel;
     private int _turnIndex;
+
+    /// <summary>Current turn index (0-based).</summary>
+    public int TurnIndex => _turnIndex;
 
     public AgentSession(
         IProviderRegistry registry,
@@ -99,6 +103,9 @@ public sealed class AgentSession
 
     /// <summary>Current turn being tracked (set by AgentLoop before each turn).</summary>
     public TurnRecord? CurrentTurn { get; set; }
+
+    /// <summary>Execution timeline from the most recent turn, used by <c>/trace</c>.</summary>
+    public ExecutionTimeline? LastTimeline { get; set; }
 
     /// <summary>Record a user message turn and persist.</summary>
     public async Task RecordUserTurnAsync(string content)

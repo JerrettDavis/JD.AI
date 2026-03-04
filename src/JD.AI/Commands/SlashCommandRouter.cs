@@ -154,6 +154,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/OUTPUT" or "/OUTPUT-STYLE" or "/JDAI-OUTPUT-STYLE" => HandleOutputStyle(arg),
             "/DEFAULT" or "/JDAI-DEFAULT" => await HandleDefaultAsync(arg, ct).ConfigureAwait(false),
             "/MODEL-INFO" or "/JDAI-MODEL-INFO" => await HandleModelInfoAsync(arg, ct).ConfigureAwait(false),
+            "/TRACE" or "/JDAI-TRACE" => ShowTrace(arg),
             "/QUIT" or "/EXIT" or "/JDAI-QUIT" or "/JDAI-EXIT" => null, // Signal exit
             _ => $"Unknown command: {parts[0]}. Type /help for available commands.",
         };
@@ -207,6 +208,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /output-style [style] — Set output format (rich|plain|compact|json)
           /default        — Manage default provider/model (global & per-project)
           /model-info [refresh] — Show model metadata (context, cost, capabilities)
+          /trace [N]      — Show execution timeline for the last turn (or turn N)
           /quit           — Exit jdai
         """;
 
@@ -793,6 +795,68 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     {
         var tokens = _session.TotalTokens;
         return $"Token usage: {tokens:N0} total";
+    }
+
+    private string ShowTrace(string? arg)
+    {
+        var timeline = _session.LastTimeline;
+        if (timeline is null || timeline.Entries.Count == 0)
+            return "No trace available. Send a message first, then use /trace.";
+
+        // If arg is a number, look up turn by index from session history
+        if (arg is not null && int.TryParse(arg, System.Globalization.CultureInfo.InvariantCulture, out _))
+            return "Turn-specific traces are recorded per-turn. Currently showing the last turn.";
+
+        var entries = timeline.Entries;
+        var total = timeline.TotalDuration;
+        var sb = new System.Text.StringBuilder();
+
+        sb.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
+            $"  Turn trace ({total.TotalSeconds:F1}s total, {entries.Count} operations)");
+        sb.AppendLine("  ────────────────────────────────────────");
+
+        foreach (var entry in entries)
+        {
+            var prefix = entry.ParentSpanId is null ? "┌" : "├";
+            var status = entry.Status switch
+            {
+                "ok" => "✔",
+                "error" => "✗",
+                "cancelled" => "⊘",
+                "denied" => "⛔",
+                _ => "?",
+            };
+
+            var dur = entry.Duration.TotalMilliseconds > 0
+                ? $"{entry.Duration.TotalMilliseconds,7:F0}ms"
+                : "       ";
+
+            sb.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
+                $"  {entry.StartTime:HH:mm:ss.fff}  {prefix} {entry.Operation,-40} {dur}  {status}");
+
+            if (entry.ErrorMessage is not null)
+                sb.AppendLine($"                    └ {entry.ErrorMessage}");
+        }
+
+        // Summary line
+        var tokensOut = entries
+            .Where(e => e.Attributes.ContainsKey("tokens_out"))
+            .Select(e => long.Parse(e.Attributes["tokens_out"], System.Globalization.CultureInfo.InvariantCulture))
+            .Sum();
+        if (tokensOut > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
+                $"  Tokens out: {tokensOut:N0}");
+        }
+
+        if (_session.CurrentModel is not null)
+        {
+            sb.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
+                $"  Provider: {_session.CurrentModel.ProviderName} | Model: {_session.CurrentModel.Id}");
+        }
+
+        return sb.ToString();
     }
 
     private string ToggleAutoRun(string? arg)
