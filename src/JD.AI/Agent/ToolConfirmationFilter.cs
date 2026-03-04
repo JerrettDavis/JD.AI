@@ -79,6 +79,13 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             // Browser tools — status is read-only
             ["browser_status"] = SafetyTier.AutoApprove,
 
+            // Migration tools — read-only
+            ["migration_scan"] = SafetyTier.AutoApprove,
+            ["migration_analyze"] = SafetyTier.AutoApprove,
+            ["migration_parity"] = SafetyTier.AutoApprove,
+            ["migration_export"] = SafetyTier.AutoApprove,
+            ["migration_convert"] = SafetyTier.ConfirmOnce,
+
             // Write ops — confirm once per session
             ["write_file"] = SafetyTier.ConfirmOnce,
             ["edit_file"] = SafetyTier.ConfirmOnce,
