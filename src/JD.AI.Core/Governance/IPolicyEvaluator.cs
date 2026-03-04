@@ -18,5 +18,9 @@ public interface IPolicyEvaluator
     PolicyEvaluationResult EvaluateTool(string toolName, PolicyContext context);
     PolicyEvaluationResult EvaluateProvider(string providerName, PolicyContext context);
     PolicyEvaluationResult EvaluateModel(string modelId, int? contextWindow, PolicyContext context);
+
+    /// <summary>Evaluates whether the current user can publish workflows.</summary>
+    PolicyEvaluationResult EvaluateWorkflowPublish(PolicyContext context);
+
     PolicySpec GetResolvedPolicy();
 }

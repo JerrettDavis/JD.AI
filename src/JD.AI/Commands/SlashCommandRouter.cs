@@ -7,6 +7,7 @@ using JD.AI.Agent;
 using JD.AI.Core.Agents;
 using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Config;
+using JD.AI.Core.Governance;
 using JD.AI.Core.Mcp;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.PromptCaching;
@@ -43,6 +44,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private readonly IWorkflowCatalog? _workflowCatalog;
     private readonly IWorkflowStore? _workflowStore;
     private readonly WorkflowEmitter _workflowEmitter;
+    private readonly IPolicyEvaluator? _policyEvaluator;
     private readonly Action<SpinnerStyle>? _onSpinnerStyleChanged;
     private readonly Func<SpinnerStyle>? _getSpinnerStyle;
     private readonly McpManager _mcpManager;
@@ -79,7 +81,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         Action<bool>? onVimModeChanged = null,
         Func<OutputStyle>? getOutputStyle = null,
         Action<OutputStyle>? onOutputStyleChanged = null,
-        IUsageMeter? usageMeter = null)
+        IUsageMeter? usageMeter = null,
+        IPolicyEvaluator? policyEvaluator = null)
     {
         _session = session;
         _registry = registry;
@@ -90,6 +93,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         _workflowCatalog = workflowCatalog;
         _workflowStore = workflowStore;
         _workflowEmitter = new WorkflowEmitter();
+        _policyEvaluator = policyEvaluator;
         _getSpinnerStyle = getSpinnerStyle;
         _onSpinnerStyleChanged = onSpinnerStyleChanged;
         _providerConfig = providerConfig;
@@ -1590,6 +1594,15 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
         if (_workflowCatalog is null)
             return "Workflow catalog not configured.";
+
+        // Enforce workflow publish RBAC policy
+        if (_policyEvaluator is not null)
+        {
+            var ctx = new PolicyContext(UserId: Environment.UserName);
+            var rbacResult = _policyEvaluator.EvaluateWorkflowPublish(ctx);
+            if (rbacResult.Decision == PolicyDecision.Deny)
+                return $"⛔ Publish denied: {rbacResult.Reason}";
+        }
 
         var definition = await _workflowCatalog.GetAsync(name, ct: ct).ConfigureAwait(false);
         if (definition is null)
