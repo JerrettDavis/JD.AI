@@ -34,7 +34,7 @@ public sealed class TeamOrchestrator
         {
             return new TeamResult
             {
-                Output = $"Unknown strategy '{strategyName}'. Valid: sequential, fan-out, supervisor, debate.",
+                Output = $"Unknown strategy '{strategyName}'. Valid: sequential, fan-out, supervisor, debate, voting, relay, map-reduce.",
                 Strategy = strategyName,
                 Success = false,
             };
@@ -128,6 +128,9 @@ public sealed class TeamOrchestrator
             "FAN-OUT" or "FANOUT" or "PARALLEL" => new FanOutStrategy(),
             "SUPERVISOR" or "COORDINATOR" => new SupervisorStrategy(),
             "DEBATE" or "ADVERSARIAL" => new DebateStrategy(),
+            "VOTING" or "VOTE" or "CONSENSUS" => new VotingStrategy(),
+            "RELAY" or "REFINE" or "ITERATIVE" => new RelayStrategy(),
+            "MAP-REDUCE" or "MAPREDUCE" => new MapReduceStrategy(),
             _ => null,
         };
 }
