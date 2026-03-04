@@ -505,6 +505,22 @@ public sealed class SlashCommandRouterTests
     }
 
     [Fact]
+    public async Task Output_Alias_SetsStyle()
+    {
+        var style = OutputStyle.Json;
+        var router = new SlashCommandRouter(
+            _session, _registry,
+            getOutputStyle: () => style,
+            onOutputStyleChanged: s => style = s);
+
+        var result = await router.ExecuteAsync("/output rich");
+
+        Assert.NotNull(result);
+        Assert.Contains("rich", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(OutputStyle.Rich, style);
+    }
+
+    [Fact]
     public async Task Config_List_IncludesTheme()
     {
         var result = await _router.ExecuteAsync("/config");
