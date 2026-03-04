@@ -95,6 +95,7 @@ builder.Services.AddSingleton<ICommandRegistry>(sp =>
         sp.GetRequiredService<IProviderRegistry>()));
     registry.Register(new DoctorCommand(
         sp.GetRequiredService<HealthCheckService>()));
+    registry.Register(new DocsCommand());
     return registry;
 });
 builder.Services.AddSingleton<IVectorStore>(_ =>

@@ -152,6 +152,20 @@ Checks:
 
 See [Observability](observability.md) for details on health check configuration.
 
+### `/docs [topic]`
+
+Show links to the JD.AI documentation site. Without a topic, lists all major documentation sections. With a topic, filters to the most relevant article.
+
+```text
+/docs
+/docs observability
+/docs health
+/docs gateway
+/docs config
+```
+
+Available topics: `observability`, `health`, `telemetry`, `gateway`, `config`, `providers`, `channels`, `commands`, `deployment`, `plugins`, `local`, `quickstart`.
+
 ## Local Model Management
 
 ### `/local list`
@@ -317,6 +331,7 @@ Lists all running agents, their models, turn counts, uptime, and routing table m
 | `/checkpoint` | Manage checkpoints |
 | `/sandbox` | Sandbox info |
 | `/doctor` | Run health diagnostics |
+| `/docs [topic]` | Show documentation links |
 | `/local list` | List local models |
 | `/local add <path>` | Register model |
 | `/local scan` | Scan for models |
