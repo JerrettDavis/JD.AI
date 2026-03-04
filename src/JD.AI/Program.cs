@@ -557,7 +557,8 @@ kernel.Plugins.AddFromType<McpTransportTools>("mcp");
 kernel.Plugins.AddFromType<MigrationTools>("migration");
 kernel.Plugins.AddFromType<SkillParityTools>("skillParity");
 kernel.Plugins.AddFromObject(new MemoryTools(), "memory");
-kernel.Plugins.AddFromObject(new TaskTools(), "tasks");
+var taskTools = new TaskTools();
+kernel.Plugins.AddFromObject(taskTools, "tasks");
 var usageTools = new UsageTools();
 usageTools.SetModel(selectedModel);
 kernel.Plugins.AddFromObject(usageTools, "usage");
@@ -566,6 +567,9 @@ kernel.Plugins.AddFromObject(capabilityTools, "capabilities");
 kernel.Plugins.AddFromObject(new BenchmarkTools(kernel), "benchmark");
 kernel.Plugins.AddFromObject(
     new QuestionTools(req => QuestionnaireSession.Run(req)), "questions");
+var webSearchTools = new WebSearchTools();
+kernel.ImportPluginFromObject(webSearchTools, "WebSearchTools");
+kernel.ImportPluginFromObject(new OpenClawCompatibilityTools(taskTools, webSearchTools), "openclaw");
 kernel.Plugins.AddFromObject(new SessionOrchestrationTools(session), "sessions");
 kernel.Plugins.AddFromObject(new SchedulerTools(), "scheduler");
 kernel.Plugins.AddFromObject(
@@ -762,9 +766,6 @@ kernel.ImportPluginFromObject(new SubagentTools(orchestrator), "SubagentTools");
 ICheckpointStrategy checkpointStrategy = Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), ".git"))
     ? new StashCheckpointStrategy()
     : new DirectoryCheckpointStrategy();
-
-// 8e. Register web search tools
-kernel.ImportPluginFromObject(new WebSearchTools(), "WebSearchTools");
 
 // 8f. Tool filtering (--allowedTools / --disallowedTools)
 if (allowedTools is { Length: > 0 })
