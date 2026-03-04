@@ -4,6 +4,7 @@ using JD.AI.Commands;
 using JD.AI.Core.Agents;
 using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Agents.Orchestration;
+using JD.AI.Core.Channels;
 using JD.AI.Core.Config;
 using JD.AI.Core.Governance;
 using JD.AI.Core.Governance.Audit;
@@ -556,6 +557,13 @@ kernel.Plugins.AddFromObject(usageTools, "usage");
 kernel.Plugins.AddFromObject(
     new QuestionTools(req => QuestionnaireSession.Run(req)), "questions");
 kernel.Plugins.AddFromObject(new SessionOrchestrationTools(session), "sessions");
+kernel.Plugins.AddFromObject(new SchedulerTools(), "scheduler");
+kernel.Plugins.AddFromObject(
+    new GatewayOpsTools(Environment.GetEnvironmentVariable("JDAI_GATEWAY_URL")), "gateway");
+
+// Channel ops tools — only registered when a channel registry is available
+var channelRegistry = new ChannelRegistry();
+kernel.Plugins.AddFromObject(new ChannelOpsTools(channelRegistry), "channels");
 
 // 7. Load Claude Code skills, plugins, and hooks if available
 var skillDirs = new[]
