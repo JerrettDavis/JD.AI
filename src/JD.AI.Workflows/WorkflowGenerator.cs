@@ -1,3 +1,7 @@
+using System.Text.Json;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
+
 namespace JD.AI.Workflows;
 
 /// <summary>
@@ -141,6 +145,260 @@ public sealed class WorkflowGenerator
         }
 
         return sb.ToString().TrimEnd();
+    }
+
+    /// <summary>
+    /// Refines an existing workflow using AI-powered analysis. Applies the user's
+    /// natural language feedback to add, remove, reorder, or modify steps.
+    /// Returns a new version of the workflow with the refinements applied.
+    /// </summary>
+    public async Task<WorkflowRefinementResult> RefineAsync(
+        AgentWorkflowDefinition workflow,
+        string feedback,
+        Kernel kernel,
+        CancellationToken ct = default)
+    {
+        var chat = kernel.GetRequiredService<IChatCompletionService>();
+        var history = new ChatHistory();
+
+        var emitter = new WorkflowEmitter();
+        var currentJson = emitter.Emit(workflow, WorkflowExportFormat.Json).Content;
+
+        history.AddSystemMessage(
+            """
+            You are a workflow refinement assistant. You will be given a workflow definition in JSON
+            and user feedback about changes they want. Apply the changes and return ONLY a valid JSON
+            object with this exact schema:
+            {
+              "name": "string",
+              "version": "string",
+              "description": "string",
+              "tags": ["string"],
+              "steps": [
+                {
+                  "name": "string",
+                  "kind": "Tool|Skill|Nested|Loop|Conditional",
+                  "target": "string or null",
+                  "condition": "string or null",
+                  "subSteps": []
+                }
+              ],
+              "changelog": "Brief description of what changed"
+            }
+            Increment the minor version number. Return ONLY the JSON, no markdown fences.
+            """);
+
+        history.AddUserMessage(
+            $"Current workflow:\n{currentJson}\n\nRequested changes:\n{feedback}");
+
+        var result = await chat.GetChatMessageContentAsync(history, cancellationToken: ct)
+            .ConfigureAwait(false);
+
+        var responseText = result.Content?.Trim() ?? "";
+
+        // Strip markdown code fences if present
+        if (responseText.StartsWith("```", StringComparison.Ordinal))
+        {
+            var firstNewline = responseText.IndexOf('\n');
+            var lastFence = responseText.LastIndexOf("```", StringComparison.Ordinal);
+            if (firstNewline >= 0 && lastFence > firstNewline)
+                responseText = responseText[(firstNewline + 1)..lastFence].Trim();
+        }
+
+        try
+        {
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            using var doc = JsonDocument.Parse(responseText);
+            var root = doc.RootElement;
+
+            var refined = new AgentWorkflowDefinition
+            {
+                Name = root.TryGetProperty("name", out var n) ? n.GetString() ?? workflow.Name : workflow.Name,
+                Version = root.TryGetProperty("version", out var v) ? v.GetString() ?? workflow.Version : workflow.Version,
+                Description = root.TryGetProperty("description", out var d)
+                    ? d.GetString() ?? workflow.Description
+                    : workflow.Description,
+                Tags = root.TryGetProperty("tags", out var t)
+                    ? [.. t.EnumerateArray().Select(e => e.GetString() ?? "")]
+                    : [.. workflow.Tags],
+                Steps = root.TryGetProperty("steps", out var s)
+                    ? [.. ParseSteps(s)]
+                    : [.. workflow.Steps],
+                UpdatedAt = DateTime.UtcNow,
+            };
+
+            var changelog = root.TryGetProperty("changelog", out var cl)
+                ? cl.GetString() ?? "Refined"
+                : "Refined";
+
+            return new WorkflowRefinementResult
+            {
+                Success = true,
+                Workflow = refined,
+                Changelog = changelog,
+            };
+        }
+        catch (JsonException ex)
+        {
+            return new WorkflowRefinementResult
+            {
+                Success = false,
+                Workflow = workflow,
+                Changelog = $"Failed to parse AI response: {ex.Message}",
+                RawResponse = responseText,
+            };
+        }
+    }
+
+    /// <summary>
+    /// Extracts a workflow definition from conversation history by analyzing
+    /// the tool calls and user/assistant interactions from the last N turns.
+    /// </summary>
+    public AgentWorkflowDefinition ExtractFromHistory(
+        IReadOnlyList<ChatMessageContent> messages,
+        int turnCount = 10,
+        string? name = null)
+    {
+        var steps = new List<AgentStepDefinition>();
+        var tags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // Take the last N user messages and their responses
+        var userMessages = messages
+            .Where(m => m.Role == AuthorRole.User)
+            .TakeLast(turnCount)
+            .ToList();
+
+        var toolCalls = new List<(string Tool, string? Args)>();
+
+        // Walk through all messages in the window to find tool calls
+        var startIndex = messages.Count > 0 && userMessages.Count > 0
+            ? messages.ToList().IndexOf(userMessages[0])
+            : Math.Max(0, messages.Count - turnCount * 3);
+
+        if (startIndex < 0) startIndex = 0;
+
+        for (var i = startIndex; i < messages.Count; i++)
+        {
+            var msg = messages[i];
+
+            // Check for function call content items
+            foreach (var item in msg.Items)
+            {
+                if (item is FunctionCallContent fcc)
+                {
+                    var toolName = string.IsNullOrEmpty(fcc.PluginName)
+                        ? fcc.FunctionName
+                        : $"{fcc.PluginName}-{fcc.FunctionName}";
+                    var argsStr = fcc.Arguments is not null
+                        ? string.Join(", ", fcc.Arguments.Select(kv => $"{kv.Key}={kv.Value}"))
+                        : null;
+                    toolCalls.Add((toolName, argsStr));
+                }
+            }
+        }
+
+        // Deduplicate consecutive identical tool calls (e.g., repeated read_file)
+        string? lastTool = null;
+        var mergedCalls = new List<(string Tool, string? Args, int Count)>();
+        foreach (var (tool, args) in toolCalls)
+        {
+            if (string.Equals(tool, lastTool, StringComparison.Ordinal) && mergedCalls.Count > 0)
+            {
+                var last = mergedCalls[^1];
+                mergedCalls[^1] = (last.Tool, last.Args, last.Count + 1);
+            }
+            else
+            {
+                mergedCalls.Add((tool, args, 1));
+            }
+            lastTool = tool;
+        }
+
+        // Convert to workflow steps
+        foreach (var (tool, args, count) in mergedCalls)
+        {
+            if (count > 2)
+            {
+                // Repeated tool calls become a loop
+                var bodyStep = AgentStepDefinition.InvokeTool(
+                    DeriveToolStepName(tool),
+                    tool);
+                steps.Add(AgentStepDefinition.LoopUntil(
+                    $"Repeat {DeriveToolStepName(tool)}",
+                    "items_exhausted",
+                    [bodyStep]));
+            }
+            else
+            {
+                steps.Add(AgentStepDefinition.InvokeTool(
+                    DeriveToolStepName(tool),
+                    tool));
+            }
+
+            // Extract tags from tool names
+            if (tool.Contains("git", StringComparison.OrdinalIgnoreCase)) tags.Add("git");
+            if (tool.Contains("test", StringComparison.OrdinalIgnoreCase) ||
+                tool.Contains("build", StringComparison.OrdinalIgnoreCase)) tags.Add("build");
+            if (tool.Contains("grep", StringComparison.OrdinalIgnoreCase) ||
+                tool.Contains("glob", StringComparison.OrdinalIgnoreCase)) tags.Add("search");
+            if (tool.Contains("file", StringComparison.OrdinalIgnoreCase)) tags.Add("files");
+        }
+
+        // Build description from first user message
+        var firstUserMsg = userMessages.FirstOrDefault()?.Content ?? "Extracted workflow";
+        var description = firstUserMsg.Length > 200 ? firstUserMsg[..200] + "..." : firstUserMsg;
+
+        var workflowName = name ?? $"Extracted {DateTime.UtcNow:yyyyMMdd-HHmm}";
+
+        return new AgentWorkflowDefinition
+        {
+            Name = workflowName,
+            Version = "1.0",
+            Description = description,
+            Tags = [.. tags],
+            Steps = steps,
+        };
+    }
+
+    private static IEnumerable<AgentStepDefinition> ParseSteps(JsonElement stepsArray)
+    {
+        foreach (var stepEl in stepsArray.EnumerateArray())
+        {
+            var stepName = stepEl.TryGetProperty("name", out var sn) ? sn.GetString() ?? "" : "";
+            var kindStr = stepEl.TryGetProperty("kind", out var sk) ? sk.GetString() ?? "Tool" : "Tool";
+            var target = stepEl.TryGetProperty("target", out var st) ? st.GetString() : null;
+            var condition = stepEl.TryGetProperty("condition", out var sc) ? sc.GetString() : null;
+
+            var kind = kindStr.ToUpperInvariant() switch
+            {
+                "SKILL" => AgentStepKind.Skill,
+                "NESTED" => AgentStepKind.Nested,
+                "LOOP" => AgentStepKind.Loop,
+                "CONDITIONAL" => AgentStepKind.Conditional,
+                _ => AgentStepKind.Tool,
+            };
+
+            var subSteps = stepEl.TryGetProperty("subSteps", out var ss) && ss.ValueKind == JsonValueKind.Array
+                ? [.. ParseSteps(ss)]
+                : new List<AgentStepDefinition>();
+
+            yield return new AgentStepDefinition
+            {
+                Name = stepName,
+                Kind = kind,
+                Target = target,
+                Condition = condition,
+                SubSteps = subSteps,
+            };
+        }
+    }
+
+    private static string DeriveToolStepName(string tool)
+    {
+        // Convert "plugin-function_name" to "Function Name"
+        var parts = tool.Split('-', '_', '.');
+        return string.Join(' ', parts.Select(p =>
+            p.Length > 0 ? char.ToUpperInvariant(p[0]) + p[1..] : p));
     }
 
     private static List<AgentStepDefinition> DecomposeIntoSteps(string description)
@@ -307,4 +565,13 @@ public sealed record DryRunStep
     public string? ToolOrTarget { get; init; }
     public string Description { get; init; } = "";
     public IList<DryRunStep> SubSteps { get; init; } = new List<DryRunStep>();
+}
+
+/// <summary>Result of an AI-powered workflow refinement.</summary>
+public sealed record WorkflowRefinementResult
+{
+    public bool Success { get; init; }
+    public AgentWorkflowDefinition Workflow { get; init; } = new();
+    public string Changelog { get; init; } = "";
+    public string? RawResponse { get; init; }
 }

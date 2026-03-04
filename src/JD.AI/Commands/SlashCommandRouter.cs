@@ -1378,8 +1378,9 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "EXPORT" => "Usage: /workflow export <name> [json|csharp|mermaid]",
             "REPLAY" when param is not null => await ReplayWorkflowAsync(param, ct).ConfigureAwait(false),
             "REPLAY" => "Usage: /workflow replay <name> [version]",
-            "REFINE" when param is not null => RefineWorkflowInfo(param),
-            "REFINE" => "Usage: /workflow refine <name>",
+            "REFINE" when param is not null => await RefineWorkflowAsync(param, ct).ConfigureAwait(false),
+            "REFINE" => "Usage: /workflow refine <name> <feedback>  — e.g. /workflow refine my-workflow Add a validation step after step 2",
+            "FROM-HISTORY" or "FROMHISTORY" => await ExtractWorkflowFromHistoryAsync(param, ct).ConfigureAwait(false),
             "CATALOG" => await CatalogSharedWorkflowsAsync(param, ct).ConfigureAwait(false),
             "PUBLISH" when param is not null => await PublishWorkflowAsync(param, ct).ConfigureAwait(false),
             "PUBLISH" => "Usage: /workflow publish <name>",
@@ -1389,7 +1390,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "SEARCH" => "Usage: /workflow search <query>",
             "VERSIONS" when param is not null => await ShowWorkflowVersionsAsync(param, ct).ConfigureAwait(false),
             "VERSIONS" => "Usage: /workflow versions <name>",
-            _ => "Usage: /workflow [list|show|create|compose|dry-run|export|replay|refine|catalog|publish|install|search|versions]",
+            _ => "Usage: /workflow [list|show|create|compose|dry-run|export|replay|refine|from-history|catalog|publish|install|search|versions]",
         };
     }
 
@@ -1455,9 +1456,95 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                "(Dry-run mode — pass the prompt to the agent to execute live.)";
     }
 
-    private static string RefineWorkflowInfo(string name) =>
-        $"To refine '{name}', export it (e.g. /workflow export {name} csharp), " +
-        "edit the steps, then save a new version via the agent.";
+    private async Task<string> RefineWorkflowAsync(string param, CancellationToken ct)
+    {
+        // Parse: /workflow refine <name> <feedback>
+        var parts = param.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var name = parts[0];
+        var feedback = parts.Length > 1 ? parts[1] : null;
+
+        if (string.IsNullOrWhiteSpace(feedback))
+            return $"Usage: /workflow refine {name} <describe what to change>\n" +
+                   "Example: /workflow refine my-workflow Add a validation step after cloning";
+
+        var workflow = await _workflowCatalog!.GetAsync(name, ct: ct).ConfigureAwait(false);
+        if (workflow is null)
+            return $"Workflow '{name}' not found. Use '/workflow list' to see available workflows.";
+
+        if (_session?.Kernel is null)
+            return "No active model/kernel. Select a model first with /model.";
+
+        var generator = new WorkflowGenerator();
+        var result = await generator.RefineAsync(workflow, feedback, _session.Kernel, ct)
+            .ConfigureAwait(false);
+
+        if (!result.Success)
+        {
+            return $"⚠️ Refinement failed: {result.Changelog}\n" +
+                   (result.RawResponse is not null ? $"Raw response:\n{result.RawResponse[..Math.Min(500, result.RawResponse.Length)]}" : "");
+        }
+
+        // Save refined version
+        await _workflowCatalog.SaveAsync(result.Workflow, ct).ConfigureAwait(false);
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"✅ Refined '{result.Workflow.Name}' → v{result.Workflow.Version}");
+        sb.AppendLine($"   Changes: {result.Changelog}");
+        sb.AppendLine();
+        sb.AppendLine("Updated steps:");
+        sb.Append(FlattenSteps(result.Workflow.Steps, 1));
+        sb.AppendLine();
+        sb.AppendLine($"Use '/workflow show {result.Workflow.Name}' to view JSON, '/workflow dry-run {result.Workflow.Name}' to preview.");
+        return sb.ToString().TrimEnd();
+    }
+
+    private async Task<string> ExtractWorkflowFromHistoryAsync(string? param, CancellationToken ct)
+    {
+        // Parse: /workflow from-history [N] [--name <name>]
+        var turnCount = 10;
+        string? name = null;
+
+        if (param is not null)
+        {
+            var parts = param.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var i in Enumerable.Range(0, parts.Length))
+            {
+                if (int.TryParse(parts[i], out var n))
+                    turnCount = n;
+                else if (parts[i].Equals("--name", StringComparison.OrdinalIgnoreCase) && i + 1 < parts.Length)
+                    name = parts[i + 1];
+            }
+        }
+
+        if (_session?.History is null || _session.History.Count == 0)
+            return "No conversation history to extract from.";
+
+        var messages = _session.History.ToList().AsReadOnly();
+        var generator = new WorkflowGenerator();
+        var workflow = generator.ExtractFromHistory(messages, turnCount, name);
+
+        if (workflow.Steps.Count == 0)
+            return $"No tool calls found in the last {turnCount} turns. Try a larger number.";
+
+        await _workflowCatalog!.SaveAsync(workflow, ct).ConfigureAwait(false);
+
+        var emitter = _workflowEmitter;
+        var mermaid = emitter.Emit(workflow, WorkflowExportFormat.Mermaid);
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"✅ Extracted workflow '{workflow.Name}' ({workflow.Steps.Count} steps) from last {turnCount} turns");
+        if (workflow.Tags.Count > 0)
+            sb.AppendLine($"   Tags: {string.Join(", ", workflow.Tags)}");
+        sb.AppendLine();
+        sb.AppendLine("Steps:");
+        sb.Append(FlattenSteps(workflow.Steps, 1));
+        sb.AppendLine();
+        sb.AppendLine("Diagram:");
+        sb.AppendLine(mermaid.Content);
+        sb.AppendLine();
+        sb.AppendLine($"Use '/workflow refine {workflow.Name} <feedback>' to adjust, '/workflow dry-run {workflow.Name}' to preview.");
+        return sb.ToString().TrimEnd();
+    }
 
     // ── Shared workflow store commands ────────────────────────
 
