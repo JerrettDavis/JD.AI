@@ -16,6 +16,9 @@ using JD.AI.Gateway.Endpoints;
 using JD.AI.Gateway.Hubs;
 using JD.AI.Gateway.Middleware;
 using JD.AI.Gateway.Services;
+using JD.AI.Telemetry;
+using JD.AI.Telemetry.Extensions;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -90,6 +93,9 @@ builder.Services.AddSingleton<ICommandRegistry>(sp =>
         sp.GetRequiredService<AgentPoolService>(),
         sp.GetRequiredService<IChannelRegistry>(),
         sp.GetRequiredService<IProviderRegistry>()));
+    registry.Register(new DoctorCommand(
+        sp.GetRequiredService<HealthCheckService>()));
+    registry.Register(new DocsCommand());
     return registry;
 });
 builder.Services.AddSingleton<IVectorStore>(_ =>
@@ -188,8 +194,19 @@ builder.Services.AddSignalR();
 // --- OpenAPI ---
 builder.Services.AddOpenApi();
 
+// --- OpenTelemetry ---
+var telemetryConfig = new TelemetryConfig
+{
+    Enabled = gatewayConfig.Telemetry.Enabled,
+    ServiceName = gatewayConfig.Telemetry.ServiceName,
+    Exporter = gatewayConfig.Telemetry.Exporter,
+    Endpoint = gatewayConfig.Telemetry.Endpoint,
+};
+builder.Services.AddSingleton(telemetryConfig);
+builder.Services.AddJdAiTelemetry(telemetryConfig);
+
 // --- Health checks ---
-builder.Services.AddHealthChecks()
+builder.Services.AddJdAiHealthChecks()
     .AddCheck<GatewayHealthCheck>("gateway");
 
 // --- CORS (allow TUI, web clients, and SignalR WebSockets) ---
@@ -222,6 +239,17 @@ if (app.Environment.IsDevelopment())
 
 // --- Health ---
 app.MapHealthChecks("/health");
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = _ => true,
+    ResultStatusCodes =
+    {
+        [HealthStatus.Healthy] = StatusCodes.Status200OK,
+        [HealthStatus.Degraded] = StatusCodes.Status200OK,
+        [HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable,
+    },
+});
+app.MapGet("/health/live", () => Results.Ok(new { Status = "Live" }));
 app.MapGet("/ready", () => Results.Ok(new { Status = "Ready" }));
 
 // --- REST API endpoints ---

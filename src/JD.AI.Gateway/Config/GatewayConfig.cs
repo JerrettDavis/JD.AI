@@ -12,6 +12,7 @@ public sealed class GatewayConfig
     public IList<AgentDefinition> Agents { get; set; } = [];
     public RoutingConfig Routing { get; set; } = new();
     public OpenClawGatewayConfig OpenClaw { get; set; } = new();
+    public TelemetryGatewayConfig Telemetry { get; set; } = new();
 }
 
 public sealed class ServerConfig
@@ -175,3 +176,20 @@ public sealed class OpenClawChannelConfig
     public string? TriggerPattern { get; set; }
     public string? SystemPrompt { get; set; }
 }
+
+/// <summary>Telemetry settings nested under <c>Gateway:Telemetry</c> in appsettings.json.</summary>
+public sealed class TelemetryGatewayConfig
+{
+    /// <summary>Whether OTel tracing and metrics are enabled. Defaults to <c>true</c>.</summary>
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>Logical service name reported in traces and metrics. Defaults to <c>"jdai"</c>.</summary>
+    public string ServiceName { get; set; } = "jdai";
+
+    /// <summary>Exporter type: <c>"console"</c> (default), <c>"otlp"</c>, or <c>"zipkin"</c>.</summary>
+    public string Exporter { get; set; } = "console";
+
+    /// <summary>Exporter endpoint URI (e.g. <c>http://localhost:4317</c> for OTLP).</summary>
+    public string? Endpoint { get; set; }
+}
+
