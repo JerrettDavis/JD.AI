@@ -2751,6 +2751,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
         var settings = new OpenAIPromptExecutionSettings
         {
+            ModelId = _session.CurrentModel?.Id,
             MaxTokens = 2200,
             Temperature = 0.1,
         };

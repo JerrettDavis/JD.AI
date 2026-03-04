@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using System.Text;
 using JD.AI.Core.PromptCaching;
+using JD.AI.Core.Providers;
 using JD.AI.Core.Tracing;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
-using Microsoft.SemanticKernel.Connectors.OpenAI;
 
 namespace JD.AI.Core.Agents;
 
@@ -36,11 +36,7 @@ public sealed class AgentLoop
 
         var chat = _session.Kernel.GetRequiredService<IChatCompletionService>();
 
-        var settings = new OpenAIPromptExecutionSettings
-        {
-            ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
-            MaxTokens = 4096,
-        };
+        var settings = BuildExecutionSettings();
         PromptCachePolicy.Apply(
             settings,
             _session.CurrentModel,
@@ -121,11 +117,7 @@ public sealed class AgentLoop
 
         var chat = _session.Kernel.GetRequiredService<IChatCompletionService>();
 
-        var settings = new OpenAIPromptExecutionSettings
-        {
-            ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
-            MaxTokens = 4096,
-        };
+        var settings = BuildExecutionSettings();
         PromptCachePolicy.Apply(
             settings,
             _session.CurrentModel,
@@ -304,7 +296,27 @@ public sealed class AgentLoop
     }
 
     /// <summary>
-    /// Determines whether an exception is retriable (429/503/timeout)
+    /// Builds provider-appropriate execution settings for the current model.
+    /// Uses SK's unified <see cref="FunctionChoiceBehavior"/> instead of
+    /// OpenAI-specific <c>ToolCallBehavior</c> so that tool calling works
+    /// across all connector types (OpenAI, MEAI/Anthropic, native SK connectors).
+    /// </summary>
+    private PromptExecutionSettings BuildExecutionSettings()
+    {
+        var supportsTools = _session.CurrentModel?.Capabilities
+            .HasFlag(ModelCapabilities.ToolCalling) ?? false;
+
+        return new PromptExecutionSettings
+        {
+            ModelId = _session.CurrentModel?.Id,
+            FunctionChoiceBehavior = supportsTools
+                ? FunctionChoiceBehavior.Auto()
+                : null,
+        };
+    }
+
+    /// <summary>
+    /// Determines whether an exception is retriable (429/500/503/timeout)
     /// and therefore eligible for model fallback.
     /// </summary>
     private static bool IsRetriableError(Exception ex)
@@ -315,6 +327,7 @@ public sealed class AgentLoop
         if (ex is HttpRequestException httpEx)
         {
             return httpEx.StatusCode is
+                System.Net.HttpStatusCode.InternalServerError or   // 500
                 System.Net.HttpStatusCode.TooManyRequests or       // 429
                 System.Net.HttpStatusCode.ServiceUnavailable or    // 503
                 System.Net.HttpStatusCode.GatewayTimeout;          // 504
@@ -324,16 +337,18 @@ public sealed class AgentLoop
         if (ex.InnerException is HttpRequestException inner)
         {
             return inner.StatusCode is
+                System.Net.HttpStatusCode.InternalServerError or
                 System.Net.HttpStatusCode.TooManyRequests or
                 System.Net.HttpStatusCode.ServiceUnavailable or
                 System.Net.HttpStatusCode.GatewayTimeout;
         }
 
-        // Check message for common rate-limit patterns
+        // Check message for common patterns
         var msg = ex.Message;
         return msg.Contains("429", StringComparison.Ordinal) ||
                msg.Contains("rate limit", StringComparison.OrdinalIgnoreCase) ||
-               msg.Contains("overloaded", StringComparison.OrdinalIgnoreCase);
+               msg.Contains("overloaded", StringComparison.OrdinalIgnoreCase) ||
+               msg.Contains("model: Field required", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

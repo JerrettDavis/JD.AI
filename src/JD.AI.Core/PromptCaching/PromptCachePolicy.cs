@@ -1,7 +1,7 @@
 using JD.AI.Core.Providers;
 using JD.SemanticKernel.Extensions.Compaction;
+using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
-using Microsoft.SemanticKernel.Connectors.OpenAI;
 
 namespace JD.AI.Core.PromptCaching;
 
@@ -17,7 +17,7 @@ public static class PromptCachePolicy
     private const int HaikuMinTokens = 2048;
 
     public static void Apply(
-        OpenAIPromptExecutionSettings settings,
+        PromptExecutionSettings settings,
         ProviderModelInfo? model,
         ChatHistory history,
         bool enabled,
@@ -30,7 +30,7 @@ public static class PromptCachePolicy
     }
 
     public static void Apply(
-        OpenAIPromptExecutionSettings settings,
+        PromptExecutionSettings settings,
         string? providerName,
         string? modelId,
         ChatHistory history,

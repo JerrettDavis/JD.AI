@@ -1,9 +1,9 @@
 using System.Text;
 using JD.AI.Core.PromptCaching;
+using JD.AI.Core.Providers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
-using Microsoft.SemanticKernel.Connectors.OpenAI;
 
 namespace JD.AI.Core.Agents;
 
@@ -38,10 +38,14 @@ public sealed class SubagentRunner
         history.AddUserMessage(prompt);
 
         var chat = kernel.GetRequiredService<IChatCompletionService>();
-        var settings = new OpenAIPromptExecutionSettings
+        var supportsTools = _parentSession.CurrentModel?.Capabilities
+            .HasFlag(ModelCapabilities.ToolCalling) ?? false;
+        var settings = new PromptExecutionSettings
         {
-            ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
-            MaxTokens = 4096,
+            ModelId = _parentSession.CurrentModel?.Id,
+            FunctionChoiceBehavior = supportsTools
+                ? FunctionChoiceBehavior.Auto()
+                : null,
         };
         PromptCachePolicy.Apply(
             settings,
