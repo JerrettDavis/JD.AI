@@ -8,6 +8,7 @@ using JD.AI.Core.LocalModels;
 using JD.AI.Core.Mcp;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Providers.Credentials;
+using JD.AI.Core.Providers.Metadata;
 using JD.AI.Core.Providers.ModelSearch;
 using JD.AI.Rendering;
 using JD.AI.Tools;
@@ -163,7 +164,8 @@ var detectors = new IProviderDetector[]
     new HuggingFaceDetector(providerConfig),
     new OpenAICompatibleDetector(providerConfig),
 };
-var registry = new ProviderRegistry(detectors);
+var metadataProvider = new ModelMetadataProvider();
+var registry = new ProviderRegistry(detectors, metadataProvider);
 
 // 2. Detect available providers and show status
 var providers = await registry.DetectProvidersAsync().ConfigureAwait(false);
@@ -392,6 +394,7 @@ kernel.Plugins.AddFromType<BatchEditTools>("batchEdit");
 kernel.Plugins.AddFromObject(new MemoryTools(), "memory");
 kernel.Plugins.AddFromObject(new TaskTools(), "tasks");
 var usageTools = new UsageTools();
+usageTools.SetModel(selectedModel);
 kernel.Plugins.AddFromObject(usageTools, "usage");
 kernel.Plugins.AddFromObject(
     new QuestionTools(req => QuestionnaireSession.Run(req)), "questions");
@@ -598,7 +601,8 @@ var commandRouter = new SlashCommandRouter(
     onSpinnerStyleChanged: style => spectreOutput.Style = style,
     providerConfig: providerConfig,
     configStore: configStore,
-    modelSearchAggregator: modelSearchAggregator);
+    modelSearchAggregator: modelSearchAggregator,
+    metadataProvider: metadataProvider);
 
 // 10. Build interactive input with command completions
 var completionProvider = new CompletionProvider();
@@ -643,6 +647,8 @@ completionProvider.Register("/default provider", "Set global default provider");
 completionProvider.Register("/default model", "Set global default model");
 completionProvider.Register("/default project provider", "Set project default provider");
 completionProvider.Register("/default project model", "Set project default model");
+completionProvider.Register("/model-info", "Show model metadata (context, cost, capabilities)");
+completionProvider.Register("/model-info refresh", "Force-refresh model metadata from LiteLLM");
 completionProvider.Register("/quit", "Exit jdai");
 completionProvider.Register("/exit", "Exit jdai");
 var interactiveInput = new InteractiveInput(completionProvider);

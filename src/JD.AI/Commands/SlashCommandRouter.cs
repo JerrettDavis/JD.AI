@@ -5,6 +5,7 @@ using JD.AI.Core.Mcp;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Providers.Credentials;
+using JD.AI.Core.Providers.Metadata;
 using JD.AI.Core.Providers.ModelSearch;
 using JD.AI.Core.Sessions;
 using JD.AI.Core.Tools;
@@ -35,6 +36,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private readonly McpManager _mcpManager;
     private readonly AtomicConfigStore? _configStore;
     private readonly ModelSearchAggregator? _modelSearchAggregator;
+    private readonly ModelMetadataProvider? _metadataProvider;
 
     public SlashCommandRouter(
         AgentSession session,
@@ -49,7 +51,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         McpManager? mcpManager = null,
         AtomicConfigStore? configStore = null,
         ModelSearchAggregator? modelSearchAggregator = null,
-        IWorkflowStore? workflowStore = null)
+        IWorkflowStore? workflowStore = null,
+        ModelMetadataProvider? metadataProvider = null)
     {
         _session = session;
         _registry = registry;
@@ -65,6 +68,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         _mcpManager = mcpManager ?? new McpManager();
         _configStore = configStore;
         _modelSearchAggregator = modelSearchAggregator;
+        _metadataProvider = metadataProvider;
     }
 
     public bool IsSlashCommand(string input) =>
@@ -111,6 +115,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/DOCTOR" or "/JDAI-DOCTOR" => await RunDoctorAsync(ct).ConfigureAwait(false),
             "/FORK" or "/JDAI-FORK" => await ForkSessionAsync(parts, ct).ConfigureAwait(false),
             "/DEFAULT" or "/JDAI-DEFAULT" => await HandleDefaultAsync(arg, ct).ConfigureAwait(false),
+            "/MODEL-INFO" or "/JDAI-MODEL-INFO" => await HandleModelInfoAsync(arg, ct).ConfigureAwait(false),
             "/QUIT" or "/EXIT" or "/JDAI-QUIT" or "/JDAI-EXIT" => null, // Signal exit
             _ => $"Unknown command: {parts[0]}. Type /help for available commands.",
         };
@@ -153,6 +158,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /doctor         — Run self-diagnostics
           /fork [name]    — Fork conversation to new session
           /default        — Manage default provider/model (global & per-project)
+          /model-info [refresh] — Show model metadata (context, cost, capabilities)
           /quit           — Exit jdai
         """;
 
@@ -1050,7 +1056,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     // ── Shared workflow store commands ────────────────────────
 
     private static string WorkflowStoreNotConfigured =>
-        "Shared workflow store not configured. Pass --workflow-store or inject an IWorkflowStore to enable.";
+        "Shared workflow store not configured. Inject an IWorkflowStore implementation to enable store commands.";
 
     private async Task<string> CatalogSharedWorkflowsAsync(string? param, CancellationToken ct)
     {
@@ -1740,6 +1746,53 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         var forkName = cmdParts.Length > 1 ? string.Join(' ', cmdParts.Skip(1)) : null;
         var forkedSession = await _session.ForkSessionAsync(forkName).ConfigureAwait(false);
         return $"Forked to new session: {forkedSession?.Id ?? "failed"}";
+    }
+
+    private async Task<string> HandleModelInfoAsync(string? arg, CancellationToken ct)
+    {
+        var model = _session.CurrentModel;
+        if (model is null)
+            return "No model selected.";
+
+        if (string.Equals(arg?.Trim(), "refresh", StringComparison.OrdinalIgnoreCase)
+            && _metadataProvider is not null)
+        {
+            await _metadataProvider.LoadAsync(forceRefresh: true, ct).ConfigureAwait(false);
+            var refreshed = _metadataProvider.Enrich([model]);
+            if (refreshed.Count > 0 && refreshed[0].HasMetadata)
+            {
+                model = refreshed[0];
+                _session.SwitchModel(model);
+            }
+        }
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("=== Model Info ===");
+        sb.AppendLine($"  Name:           {model.DisplayName}");
+        sb.AppendLine($"  Provider:       {model.ProviderName}");
+        sb.AppendLine($"  ID:             {model.Id}");
+        sb.AppendLine($"  Context window: {model.ContextWindowTokens:N0} tokens");
+        sb.AppendLine($"  Max output:     {model.MaxOutputTokens:N0} tokens");
+
+        if (model.HasMetadata)
+        {
+            sb.AppendLine($"  Input cost:     ${model.InputCostPerToken}/token");
+            sb.AppendLine($"  Output cost:    ${model.OutputCostPerToken}/token");
+            sb.AppendLine($"  Source:         LiteLLM catalog");
+        }
+        else
+        {
+            sb.AppendLine("  Cost data:      Not available (using defaults)");
+        }
+
+        if (_metadataProvider is not null)
+        {
+            sb.AppendLine($"  Catalog size:   {_metadataProvider.EntryCount:N0} models");
+            if (_metadataProvider.LastFetched is { } fetched)
+                sb.AppendLine($"  Last fetched:   {fetched:yyyy-MM-dd HH:mm} UTC");
+        }
+
+        return sb.ToString();
     }
 
     private async Task<string> HandleDefaultAsync(string? arg, CancellationToken ct)
