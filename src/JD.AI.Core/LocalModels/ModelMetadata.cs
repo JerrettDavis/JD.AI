@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using JD.AI.Core.Providers;
 
 namespace JD.AI.Core.LocalModels;
 
@@ -83,6 +84,12 @@ public sealed record ModelMetadata
 
     [JsonPropertyName("fileHash")]
     public string? FileHash { get; init; }
+
+    /// <summary>
+    /// Capabilities detected or configured for this model (e.g., Chat, ToolCalling, Vision).
+    /// </summary>
+    [JsonPropertyName("capabilities")]
+    public ModelCapabilities Capabilities { get; init; } = ModelCapabilities.Chat;
 
     /// <summary>
     /// Parses quantization and parameter size from a GGUF filename.
