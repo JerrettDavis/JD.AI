@@ -58,6 +58,41 @@ public sealed class WorkflowGenerator
     }
 
     /// <summary>
+    /// Composes multiple workflows into a single composite workflow.
+    /// Steps from each child workflow become nested steps in the composite.
+    /// </summary>
+    public AgentWorkflowDefinition Compose(string name, IReadOnlyList<AgentWorkflowDefinition> workflows)
+    {
+        var steps = new List<AgentStepDefinition>();
+        var allTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var wf in workflows)
+        {
+            var nested = new AgentStepDefinition
+            {
+                Name = wf.Name,
+                Kind = AgentStepKind.Nested,
+                Target = wf.Name,
+                SubSteps = [.. wf.Steps],
+            };
+            steps.Add(nested);
+
+            foreach (var tag in wf.Tags)
+                allTags.Add(tag);
+        }
+
+        var descriptions = workflows.Select(w => w.Name);
+        return new AgentWorkflowDefinition
+        {
+            Name = name,
+            Version = "1.0",
+            Description = $"Composite: {string.Join(" → ", descriptions)}",
+            Tags = [.. allTags],
+            Steps = steps,
+        };
+    }
+
+    /// <summary>
     /// Formats a dry-run result for display.
     /// </summary>
     public static string FormatDryRun(WorkflowDryRunResult result)

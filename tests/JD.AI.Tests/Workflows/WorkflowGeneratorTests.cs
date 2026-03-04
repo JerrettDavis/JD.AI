@@ -108,7 +108,7 @@ public sealed class WorkflowGeneratorTests
             ],
         };
 
-        var availableTools = new HashSet<string> { "file-read_file", "search-grep" };
+        var availableTools = new HashSet<string>(StringComparer.Ordinal) { "file-read_file", "search-grep" };
         var result = _generator.DryRun(wf, availableTools);
 
         Assert.False(result.IsValid);
@@ -183,5 +183,49 @@ public sealed class WorkflowGeneratorTests
         var formatted = WorkflowGenerator.FormatDryRun(result);
         Assert.Contains("Missing tools", formatted);
         Assert.Contains("missing-tool", formatted);
+    }
+
+    [Fact]
+    public void Compose_CombinesWorkflows()
+    {
+        var wf1 = _generator.Generate("Read the file", "read-step");
+        var wf2 = _generator.Generate("Run the tests", "test-step");
+
+        var composite = _generator.Compose("full-pipeline", [wf1, wf2]);
+
+        Assert.Equal("full-pipeline", composite.Name);
+        Assert.Equal(2, composite.Steps.Count);
+        Assert.True(composite.Steps.All(s => s.Kind == AgentStepKind.Nested));
+    }
+
+    [Fact]
+    public void Compose_MergesTags()
+    {
+        var wf1 = _generator.Generate("Run the tests", "test-wf");
+        var wf2 = _generator.Generate("Deploy the release", "deploy-wf");
+
+        var composite = _generator.Compose("ci-cd", [wf1, wf2]);
+
+        Assert.Contains("testing", composite.Tags);
+        Assert.Contains("deployment", composite.Tags);
+    }
+
+    [Fact]
+    public void Compose_NestedStepsPreserveChildren()
+    {
+        var wf1 = new AgentWorkflowDefinition
+        {
+            Name = "inner",
+            Steps =
+            [
+                AgentStepDefinition.InvokeTool("step-a", "file-read_file"),
+                AgentStepDefinition.InvokeTool("step-b", "search-grep"),
+            ],
+        };
+
+        var composite = _generator.Compose("outer", [wf1]);
+
+        Assert.Single(composite.Steps);
+        Assert.Equal(2, composite.Steps[0].SubSteps.Count);
     }
 }
