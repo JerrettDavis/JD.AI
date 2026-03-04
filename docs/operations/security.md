@@ -267,7 +267,13 @@ For single-machine deployments, bind the gateway to localhost only:
 
 ## Audit Logging
 
-### What is logged
+JD.AI has two separate audit mechanisms that serve different purposes.
+
+### Operational Logs
+
+Traditional application logs written to standard logging sinks (stdout, file, Seq, etc.). Configured via the `Logging` section of `appsettings.json`.
+
+These logs include:
 
 - Provider authentication events (success/failure, no credentials logged)
 - Agent spawn and stop events
@@ -276,9 +282,7 @@ For single-machine deployments, bind the gateway to localhost only:
 - Rate limit violations
 - Configuration changes via the dashboard
 
-### Where logs are stored
-
-Logs are written to stdout by default. Configure structured logging for production:
+Configure structured logging for production:
 
 ```json
 {
@@ -292,11 +296,52 @@ Logs are written to stdout by default. Configure structured logging for producti
 }
 ```
 
+Log retention is managed by your log aggregation system (Seq, ELK, CloudWatch, etc.).
+
+### Audit Events
+
+Structured events stored in a queryable in-memory circular buffer. Unlike operational logs, audit events are structured, filterable, and accessible through the CLI and REST API in real time.
+
+**Buffer characteristics:**
+
+- **Capacity**: approximately 10,000 events
+- **Overflow**: oldest events are evicted when the buffer is full
+- **Persistence**: in-memory only — events are cleared on application restart
+
+**Event types recorded:**
+
+- Every tool invocation (with outcome: `ok`, `denied`, or `user_denied`)
+- Session create and close events
+- Policy denial events
+
+**Access methods:**
+
+- **`/audit` command** — view recent events interactively with severity filtering (see [Commands Reference](../reference/commands.md))
+- **`GET /api/audit/events`** — query events via REST API with full filter and pagination support
+- **`GET /api/audit/stats`** — summary counts grouped by severity and action
+
+**Example — query warning-level events via REST:**
+
+```bash
+curl http://localhost:18789/api/audit/events?severity=warning&limit=25
+```
+
+**Example — view recent events in the CLI:**
+
+```text
+/audit --severity warning
+```
+
+For long-term retention and external sink configuration (file, Elasticsearch, webhook), see [Audit Logging](../user-guide/audit-logging.md).
+
+For the full REST API reference for audit endpoints, see the [Gateway API Reference](../developer-guide/gateway-api.md).
+
 ### Retention
 
-- Log retention is managed by your log aggregation system (Seq, ELK, CloudWatch, etc.)
+- Audit events in the in-memory buffer are cleared on application restart
+- Operational log retention is managed by your log aggregation system
 - Session data is retained in SQLite indefinitely until manually deleted
-- The gateway does not automatically purge old sessions or logs
+- To persist audit events across restarts, configure an external audit sink
 
 ## Security checklist
 
@@ -312,6 +357,8 @@ Use this checklist for production deployments:
 - [ ] Route logs to a centralized logging system
 - [ ] Review provider credentials periodically and rotate as needed
 - [ ] Restrict MCP servers to local-only unless explicitly required
+- [ ] Configure an external audit sink (file, Elasticsearch, or webhook) for long-term audit event retention
+- [ ] Monitor `/api/audit/events?severity=warning` periodically for policy denial activity
 
 ## See also
 
@@ -319,3 +366,5 @@ Use this checklist for production deployments:
 - [Governance](governance.md) — policy enforcement and usage limits
 - [Gateway Administration](gateway-admin.md) — operational management
 - [Providers](../reference/providers.md) — credential resolution and provider setup
+- [Audit Logging](../user-guide/audit-logging.md) — external sink configuration and event schema
+- [Gateway API Reference](../developer-guide/gateway-api.md) — REST audit endpoints

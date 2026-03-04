@@ -112,6 +112,22 @@ See [Sessions & History](sessions.md) for more details.
 > [!TIP]
 > Run `/compact` proactively before the context window fills up — not after. Use `/cost` to monitor token usage.
 
+## Audit and security
+
+| Command | Description |
+|---------|-------------|
+| `/audit` | Show recent audit events from the in-memory buffer |
+| `/audit --severity <level>` | Filter events by minimum severity (`debug`, `info`, `warning`, `error`, `critical`) |
+| `/audit --limit <n>` | Limit the number of events shown (default: 20) |
+
+```text
+/audit
+/audit --severity warning
+/audit --limit 50
+```
+
+See [Audit Logging](audit-logging.md) for the full audit model, event schema, and external sink configuration.
+
 ## Safety controls
 
 | Command | Description |
@@ -235,6 +251,7 @@ See [Checkpointing](checkpointing.md) for details on strategies and configuratio
 | `/clear` | Clear conversation |
 | `/compact` | Compress context |
 | `/cost` | Token usage |
+| `/audit` | Inspect audit events |
 | `/autorun` | Toggle auto-approve |
 | `/sessions` | List sessions |
 | `/resume` | Resume session |

@@ -207,6 +207,7 @@ JD.AI maintains an audit trail through:
 - **Session records** — full conversation history with timestamps, token counts, and tool invocations
 - **Gateway events** — agent lifecycle, channel activity, and authentication events (via SignalR Event Hub)
 - **OpenTelemetry traces** — distributed traces for every agent turn and provider call
+- **Queryable audit buffer** — structured audit events stored in an in-memory circular buffer (~10,000 events) accessible via the `/audit` command and REST API
 
 Export audit data for compliance review:
 
@@ -216,6 +217,64 @@ jdai /export session-id
 
 # Sessions are exported to ~/.jdai/exports/ as JSON
 ```
+
+## Retrieving Audit Data
+
+The audit system provides two complementary access methods for inspecting what actions occurred during agent sessions.
+
+### Interactive (CLI)
+
+Use the `/audit` command in the JD.AI interactive prompt or channel adapters to inspect recent events:
+
+```text
+# Show all recent audit events
+/audit
+
+# Show only warning-level events and above
+/audit --severity warning
+
+# Show only error-level events
+/audit --severity error
+
+# Show the last 50 events
+/audit --limit 50
+```
+
+### Programmatic (REST API)
+
+Query the audit buffer via the Gateway REST API for automation and compliance tooling:
+
+```bash
+# List all recent events
+curl http://localhost:18789/api/audit/events
+
+# Filter by severity
+curl http://localhost:18789/api/audit/events?severity=warning&limit=25
+
+# Filter by session ID
+curl "http://localhost:18789/api/audit/events?sessionId=sess_abc123"
+
+# Filter by action type (e.g., policy denials only)
+curl "http://localhost:18789/api/audit/events?action=policy.deny"
+
+# Get summary statistics
+curl http://localhost:18789/api/audit/stats
+```
+
+The `/api/audit/stats` endpoint returns counts grouped by severity and action type — useful for dashboards and compliance reports:
+
+```json
+{
+  "totalEvents": 142,
+  "bySeverity": { "Debug": 98, "Info": 12, "Warning": 30, "Error": 2 },
+  "topActions": { "tool.invoke": 105, "session.create": 14, "policy.deny": 9 }
+}
+```
+
+> [!NOTE]
+> The in-memory audit buffer holds approximately 10,000 events and is cleared on restart. For long-term audit retention required by compliance frameworks, configure an external audit sink. See [Audit Logging](../user-guide/audit-logging.md) for file, Elasticsearch, and webhook sink configuration.
+
+See [Gateway API Reference](../developer-guide/gateway-api.md) for the full REST API reference including all filter parameters and response schemas.
 
 ### Data residency
 
@@ -303,3 +362,5 @@ Different API keys can scope access to specific resources:
 - [Observability](observability.md) — metrics and monitoring for usage tracking
 - [Gateway Administration](gateway-admin.md) — scaling and operational management
 - [Dashboard](dashboard.md) — real-time monitoring UI
+- [Audit Logging](../user-guide/audit-logging.md) — audit event schema, sinks, and configuration
+- [Gateway API Reference](../developer-guide/gateway-api.md) — REST audit endpoints

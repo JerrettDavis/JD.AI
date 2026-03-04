@@ -185,6 +185,46 @@ Copies the last assistant response to clipboard.
 
 Shows uncommitted git diff (`git diff`, then staged diff fallback).
 
+## Audit commands
+
+### `/audit`
+
+Shows recent audit events from the in-memory audit buffer. Supports filtering by severity. Use this command to inspect what actions the agent has taken, what tools were invoked, and whether any policy denials occurred.
+
+```text
+/audit
+/audit --severity warning
+/audit --limit 50
+```
+
+| Parameter | Description |
+|---|---|
+| `--severity` | Minimum severity level to display (`debug`, `info`, `warning`, `error`, `critical`) |
+| `--limit` | Number of events to show (default: 20, max: 100) |
+
+Output format:
+
+```text
+Audit Log (142 total events, showing 20)
+
+.. 14:22:07 tool.invoke [read_file] — Debug
+.. 14:22:08 tool.invoke [grep] — Debug
+~~ 14:22:09 tool.invoke [run_command] — Warning
+-- 14:22:10 session.create — Info
+```
+
+Severity icons in the output:
+
+| Icon | Severity |
+|------|----------|
+| `..` | Debug |
+| `--` | Info |
+| `~~` | Warning |
+| `**` | Error |
+| `!!` | Critical |
+
+For interactive filtering and programmatic access, see the [Gateway API Reference](../developer-guide/gateway-api.md) and [Audit Logging](../user-guide/audit-logging.md).
+
 ## Review and security commands
 
 ### `/review [--branch <name> --target <name>]`
@@ -451,6 +491,7 @@ Lists active gateway agents and route mappings.
 | `/sessions`, `/resume`, `/name`, `/fork` | Session lifecycle |
 | `/clear`, `/compact`, `/context`, `/cost`, `/history`, `/export` | Context/session operations |
 | `/autorun`, `/permissions`, `/sandbox`, `/plan` | Safety and execution mode |
+| `/audit` | Inspect audit events with optional severity filter |
 | `/review`, `/security-review` | Code and security review |
 | `/local ...` | Local model operations |
 | `/mcp ...` | MCP server management |
