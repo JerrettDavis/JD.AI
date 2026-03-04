@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using JD.AI.Core.Events;
 using JD.AI.Core.Providers;
 using JD.AI.Gateway.Config;
+using JD.AI.Telemetry;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -89,17 +91,47 @@ public sealed class AgentPoolService : IHostedService
         var chat = agent.Kernel.GetRequiredService<IChatCompletionService>();
         var settings = BuildExecutionSettings(agent.Parameters);
 
-        var response = await SendWithRetryAsync(
-            chat, agent, settings, ct).ConfigureAwait(false);
+        using var turnActivity = ActivitySources.Agent.StartActivity("jdai.agent.turn");
+        turnActivity?.SetTag("jdai.session.agent_id", agentId);
+        turnActivity?.SetTag("jdai.turn.index", agent.TurnCount);
+        turnActivity?.SetTag("gen_ai.system", agent.Provider);
+        turnActivity?.SetTag("gen_ai.request.model", agent.Model);
 
-        agent.History.AddAssistantMessage(response.Content ?? "");
-        agent.TurnCount++;
+        var sw = Stopwatch.StartNew();
+        string? content;
+        try
+        {
+            var response = await SendWithRetryAsync(
+                chat, agent, settings, ct).ConfigureAwait(false);
+
+            content = response.Content ?? "";
+            agent.History.AddAssistantMessage(content);
+            agent.TurnCount++;
+
+            sw.Stop();
+
+            turnActivity?.SetTag("jdai.agent.turn_count", agent.TurnCount);
+            turnActivity?.SetStatus(ActivityStatusCode.Ok);
+
+            // Record metrics
+            var providerTag = new KeyValuePair<string, object?>("gen_ai.system", agent.Provider);
+            Meters.TurnCount.Add(1, providerTag);
+            Meters.TurnDuration.Record(sw.Elapsed.TotalMilliseconds, providerTag);
+        }
+        catch
+        {
+            sw.Stop();
+            turnActivity?.SetStatus(ActivityStatusCode.Error);
+            Meters.ProviderErrors.Add(1,
+                new KeyValuePair<string, object?>("gen_ai.system", agent.Provider));
+            throw;
+        }
 
         await _eventBus.PublishAsync(
             new GatewayEvent("agent.turn_complete", agentId, DateTimeOffset.UtcNow,
                 new { Turn = agent.TurnCount }), ct);
 
-        return response.Content;
+        return content;
     }
 
     /// <summary>
@@ -112,13 +144,31 @@ public sealed class AgentPoolService : IHostedService
     {
         for (var attempt = 0; ; attempt++)
         {
+            using var providerActivity = ActivitySources.Providers.StartActivity("jdai.provider.chat_completion");
+            providerActivity?.SetTag("gen_ai.system", agent.Provider);
+            providerActivity?.SetTag("gen_ai.request.model", agent.Model);
+            providerActivity?.SetTag("jdai.provider.attempt", attempt);
+
+            var sw = Stopwatch.StartNew();
             try
             {
-                return await chat.GetChatMessageContentAsync(
+                var result = await chat.GetChatMessageContentAsync(
                     agent.History, settings, cancellationToken: ct).ConfigureAwait(false);
+
+                sw.Stop();
+                providerActivity?.SetStatus(ActivityStatusCode.Ok);
+
+                Meters.ProviderLatency.Record(
+                    sw.Elapsed.TotalMilliseconds,
+                    new KeyValuePair<string, object?>("gen_ai.system", agent.Provider));
+
+                return result;
             }
             catch (Exception ex) when (attempt < MaxRetries && IsTransientOllamaError(ex) && !ct.IsCancellationRequested)
             {
+                sw.Stop();
+                providerActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+
                 var delay = BaseRetryDelay * Math.Pow(2, attempt);
                 _logger.LogWarning(
                     "Ollama transient error on attempt {Attempt}/{MaxRetries}: {Error}. Retrying in {Delay}s...",
