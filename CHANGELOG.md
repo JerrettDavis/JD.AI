@@ -24,3 +24,4 @@ via [Nerdbank.GitVersioning](https://github.com/dotnet/Nerdbank.GitVersioning).
 - Comprehensive test suite (281+ unit tests)
 - CI/CD with GitHub Actions
 - DocFX documentation
+- Extended slash command set: `/review`, `/security-review`, `/theme`, `/vim`, `/stats`, `/config`, `/agents`, `/hooks`, `/memory`, `/output-style`

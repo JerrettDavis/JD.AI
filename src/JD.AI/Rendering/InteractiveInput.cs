@@ -23,6 +23,9 @@ public sealed class InteractiveInput
     /// <summary>Fires when the user double-taps ESC at an empty prompt.</summary>
     public event EventHandler? OnDoubleEscape;
 
+    /// <summary>When true, use vim-style input editing modes and motions.</summary>
+    public bool VimModeEnabled { get; set; }
+
     public InteractiveInput(CompletionProvider completions)
     {
         _completions = completions;
@@ -52,12 +55,18 @@ public sealed class InteractiveInput
         var attachments = new List<PastedContent>();
         // Track chip positions: each chip occupies a range in the buffer
         var chipRanges = new List<(int Start, int Length, PastedContent Paste)>();
+        var vimInsertMode = !VimModeEnabled;
+        char? vimPendingOp = null;
+        var vimRegister = string.Empty;
 
         RedrawAll();
 
         while (true)
         {
             var key = Console.ReadKey(intercept: true);
+
+            if (VimModeEnabled && !vimInsertMode && HandleVimNormalMode(key))
+                continue;
 
             switch (key.Key)
             {
@@ -82,6 +91,17 @@ public sealed class InteractiveInput
                     break;
 
                 case ConsoleKey.Escape:
+                    if (VimModeEnabled && vimInsertMode)
+                    {
+                        vimInsertMode = false;
+                        vimPendingOp = null;
+                        if (cursor > 0)
+                            cursor--;
+                        DismissCompletions();
+                        SetCursorPos();
+                        break;
+                    }
+
                     if (matches.Count > 0)
                     {
                         DismissCompletions();
@@ -207,6 +227,9 @@ public sealed class InteractiveInput
                 default:
                     if (key.KeyChar != '\0' && !char.IsControl(key.KeyChar))
                     {
+                        if (VimModeEnabled && !vimInsertMode)
+                            break;
+
                         // Burst detection: read ahead rapidly to detect paste
                         var burstChars = DetectBurst(key.KeyChar);
                         if (burstChars is not null)
@@ -251,6 +274,262 @@ public sealed class InteractiveInput
 
         int CalcInputLines(int totalChars) =>
             Math.Max(1, (PromptWidth + totalChars - 1) / WindowWidth() + 1);
+
+        bool HandleVimNormalMode(ConsoleKeyInfo key)
+        {
+            if (key.Modifiers.HasFlag(ConsoleModifiers.Control))
+                return false;
+
+            var keyChar = key.KeyChar;
+
+            if (vimPendingOp.HasValue)
+            {
+                var pending = vimPendingOp.Value;
+                vimPendingOp = null;
+
+                if (pending == 'd' && keyChar == 'd')
+                {
+                    buffer.Clear();
+                    attachments.Clear();
+                    chipRanges.Clear();
+                    cursor = 0;
+                    RefreshCompletions();
+                    RedrawAll();
+                    return true;
+                }
+
+                if (pending == 'y' && keyChar == 'y')
+                {
+                    vimRegister = Str();
+                    return true;
+                }
+
+                if (pending == 'g' && keyChar == 'g')
+                {
+                    cursor = 0;
+                    SetCursorPos();
+                    return true;
+                }
+            }
+
+            switch (key.Key)
+            {
+                case ConsoleKey.LeftArrow:
+                    if (cursor > 0)
+                    {
+                        var chip = FindChipEndingAt(cursor);
+                        cursor = chip is not null ? chip.Value.Start : cursor - 1;
+                        SetCursorPos();
+                    }
+                    return true;
+
+                case ConsoleKey.RightArrow:
+                    if (cursor < buffer.Count)
+                    {
+                        var chip = FindChipAt(cursor);
+                        cursor = chip is not null ? chip.Value.Start + chip.Value.Length : cursor + 1;
+                        SetCursorPos();
+                    }
+                    return true;
+
+                case ConsoleKey.Home:
+                    cursor = 0;
+                    SetCursorPos();
+                    return true;
+
+                case ConsoleKey.End:
+                    cursor = buffer.Count;
+                    SetCursorPos();
+                    return true;
+
+                case ConsoleKey.UpArrow:
+                    NavigateHistory(-1);
+                    return true;
+
+                case ConsoleKey.DownArrow:
+                    NavigateHistory(1);
+                    return true;
+
+                case ConsoleKey.Escape:
+                    if (buffer.Count == 0 && attachments.Count == 0)
+                    {
+                        var now = DateTime.UtcNow;
+                        if (now - _lastEscapeTime <= EscapeDoubleWindow)
+                        {
+                            _lastEscapeTime = DateTime.MinValue;
+                            OnDoubleEscape?.Invoke(this, EventArgs.Empty);
+                        }
+                        else
+                        {
+                            _lastEscapeTime = now;
+                        }
+                    }
+                    return true;
+            }
+
+            if (keyChar == '\0')
+                return false;
+
+            switch (keyChar)
+            {
+                case 'h':
+                    if (cursor > 0)
+                    {
+                        var chip = FindChipEndingAt(cursor);
+                        cursor = chip is not null ? chip.Value.Start : cursor - 1;
+                        SetCursorPos();
+                    }
+                    return true;
+
+                case 'l':
+                    if (cursor < buffer.Count)
+                    {
+                        var chip = FindChipAt(cursor);
+                        cursor = chip is not null ? chip.Value.Start + chip.Value.Length : cursor + 1;
+                        SetCursorPos();
+                    }
+                    return true;
+
+                case 'k':
+                    NavigateHistory(-1);
+                    return true;
+
+                case 'j':
+                    NavigateHistory(1);
+                    return true;
+
+                case '0':
+                    cursor = 0;
+                    SetCursorPos();
+                    return true;
+
+                case '$':
+                case 'G':
+                    cursor = buffer.Count;
+                    SetCursorPos();
+                    return true;
+
+                case 'g':
+                    vimPendingOp = 'g';
+                    return true;
+
+                case 'w':
+                    cursor = NextWordStart(cursor);
+                    SetCursorPos();
+                    return true;
+
+                case 'b':
+                    cursor = PreviousWordStart(cursor);
+                    SetCursorPos();
+                    return true;
+
+                case 'e':
+                    cursor = EndOfWord(cursor);
+                    SetCursorPos();
+                    return true;
+
+                case 'x':
+                    if (cursor < buffer.Count)
+                    {
+                        var chip = FindChipAt(cursor);
+                        if (chip is not null)
+                            RemoveChip(chip.Value);
+                        else
+                            buffer.RemoveAt(cursor);
+                        RefreshCompletions();
+                        RedrawAll();
+                    }
+                    return true;
+
+                case 'd':
+                    vimPendingOp = 'd';
+                    return true;
+
+                case 'y':
+                    vimPendingOp = 'y';
+                    return true;
+
+                case 'p':
+                    if (!string.IsNullOrEmpty(vimRegister))
+                    {
+                        var insertAt = Math.Min(cursor + (buffer.Count > 0 ? 1 : 0), buffer.Count);
+                        foreach (var ch in vimRegister)
+                            buffer.Insert(insertAt++, ch);
+                        cursor = Math.Clamp(insertAt - 1, 0, buffer.Count);
+                        RefreshCompletions();
+                        RedrawAll();
+                    }
+                    return true;
+
+                case 'i':
+                    vimInsertMode = true;
+                    vimPendingOp = null;
+                    return true;
+
+                case 'a':
+                    cursor = Math.Min(cursor + 1, buffer.Count);
+                    vimInsertMode = true;
+                    vimPendingOp = null;
+                    SetCursorPos();
+                    return true;
+
+                case 'I':
+                    cursor = 0;
+                    vimInsertMode = true;
+                    vimPendingOp = null;
+                    SetCursorPos();
+                    return true;
+
+                case 'A':
+                    cursor = buffer.Count;
+                    vimInsertMode = true;
+                    vimPendingOp = null;
+                    SetCursorPos();
+                    return true;
+
+                case 'o':
+                    cursor = buffer.Count;
+                    if (buffer.Count > 0 && buffer[^1] != ' ')
+                    {
+                        buffer.Add(' ');
+                        cursor = buffer.Count;
+                    }
+                    vimInsertMode = true;
+                    vimPendingOp = null;
+                    RefreshCompletions();
+                    RedrawAll();
+                    return true;
+
+                default:
+                    return true; // In normal mode, unhandled printable keys are no-op.
+            }
+        }
+
+        static bool IsWordChar(char c) => char.IsLetterOrDigit(c) || c == '_';
+
+        int NextWordStart(int from)
+        {
+            var i = Math.Clamp(from, 0, buffer.Count);
+            while (i < buffer.Count && IsWordChar(buffer[i])) i++;
+            while (i < buffer.Count && !IsWordChar(buffer[i])) i++;
+            return i;
+        }
+
+        int PreviousWordStart(int from)
+        {
+            var i = Math.Clamp(from - 1, 0, buffer.Count > 0 ? buffer.Count - 1 : 0);
+            while (i > 0 && !IsWordChar(buffer[i])) i--;
+            while (i > 0 && IsWordChar(buffer[i - 1])) i--;
+            return i;
+        }
+
+        int EndOfWord(int from)
+        {
+            var i = Math.Clamp(from, 0, buffer.Count);
+            while (i < buffer.Count && !IsWordChar(buffer[i])) i++;
+            while (i < buffer.Count && IsWordChar(buffer[i])) i++;
+            return i > 0 ? i - 1 : 0;
+        }
 
         // ── Paste detection ────────────────────────────────────
 
