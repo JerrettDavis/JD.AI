@@ -101,6 +101,13 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["skills_detail"] = SafetyTier.AutoApprove,
             ["skills_parity_export"] = SafetyTier.AutoApprove,
 
+            // Parity documentation tools — read-only
+            ["parity_compatibility_matrix"] = SafetyTier.AutoApprove,
+            ["parity_migration_guide"] = SafetyTier.AutoApprove,
+            ["parity_governance_runbook"] = SafetyTier.AutoApprove,
+            ["parity_threat_model"] = SafetyTier.AutoApprove,
+            ["parity_export"] = SafetyTier.AutoApprove,
+
             // Write ops — confirm once per session
             ["write_file"] = SafetyTier.ConfirmOnce,
             ["edit_file"] = SafetyTier.ConfirmOnce,
