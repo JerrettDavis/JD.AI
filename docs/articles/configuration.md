@@ -91,6 +91,30 @@ JD.AI stores local state and models in the following directories:
     └── registry.json    # Model manifest
 ```
 
+### Data root resolution
+
+JD.AI resolves the data root in this order:
+
+1. `JDAI_DATA_DIR` (if set)
+2. Current user profile `~/.jdai`
+3. Existing `.jdai` under discovered user profiles
+4. Machine fallback (`%ProgramData%/JD.AI` on Windows, `/var/lib/jdai` on Linux/macOS)
+
+### Data files and folders
+
+| Path | Purpose |
+|---|---|
+| `config.json` | Global default provider/model settings |
+| `sessions.db` | Session persistence store |
+| `vectors.db` | Vector memory database |
+| `exports/` | Exported session JSON files |
+| `models/` | Local GGUF model registry/storage |
+| `workflows/` | Workflow catalog artifacts |
+| `agents.json` | Local agent profiles (`/agents`) |
+| `hooks.json` | Local hook profiles (`/hooks`) |
+| `tui-settings.json` | Theme/vim/spinner/output settings |
+| `update-check.json` | Update check cache |
+
 ## Skills, plugins, and hooks
 
 JD.AI loads Claude Code extensions from standard locations:
@@ -171,10 +195,35 @@ When determining which provider and model to use, JD.AI resolves through this pr
 /clear          # Clear conversation history
 ```
 
+### Runtime command settings
+
+JD.AI persists TUI/runtime settings in `tui-settings.json` under the resolved data root.
+
+The following commands update persisted runtime state:
+
+- `/spinner`
+- `/theme`
+- `/vim`
+- `/output-style`
+- `/config set ...`
+
+#### `/config` keys
+
+| Key | Meaning | Example |
+|---|---|---|
+| `theme` | Terminal theme token | `/config set theme nord` |
+| `vim_mode` | Vim editing mode | `/config set vim_mode on` |
+| `output_style` | Output renderer mode | `/config set output_style compact` |
+| `spinner_style` | Spinner/progress style | `/config set spinner_style rich` |
+| `autorun` | Auto-run tool confirmation behavior | `/config set autorun off` |
+| `permissions` | Global permission checks | `/config set permissions on` |
+| `plan_mode` | Plan mode state | `/config set plan_mode off` |
+
 ## Environment variables
 
 | Variable | Description | Default |
 |---|---|---|
+| `JDAI_DATA_DIR` | Override JD.AI data directory root | auto-resolved |
 | `OLLAMA_ENDPOINT` | Ollama API URL | `http://localhost:11434` |
 | `OLLAMA_CHAT_MODEL` | Default Ollama chat model | `llama3.2:latest` |
 | `OLLAMA_EMBEDDING_MODEL` | Default embedding model | `all-minilm:latest` |
@@ -187,3 +236,10 @@ When determining which provider and model to use, JD.AI resolves through this pr
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Activate OTLP exporter and set its endpoint (e.g. `http://localhost:4317`) | — |
 
 See [Observability](observability.md) for full telemetry configuration and exporter options.
+
+## Related docs
+
+- [Interactive Mode](interactive-mode.md)
+- [Commands Reference](commands-reference.md)
+- [CLI Reference](cli-reference.md)
+- [Tools Reference](tools-reference.md)

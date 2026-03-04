@@ -192,4 +192,3 @@ public sealed class TelemetryGatewayConfig
     /// <summary>Exporter endpoint URI (e.g. <c>http://localhost:4317</c> for OTLP).</summary>
     public string? Endpoint { get; set; }
 }
-

@@ -1,12 +1,12 @@
 ---
-description: "All built-in tools — file operations, search, shell, git, web, memory, subagent, think, environment, tasks, code execution, clipboard, and questions — with parameters and examples."
+description: "All built-in tools — file, search, shell, git, web, memory, subagent, think, environment, task, code execution, clipboard, question, diff/patch, batch-edit, and usage tools — with parameters and examples."
 ---
 
 # Tools reference
 
 JD.AI provides a set of built-in tools that the AI agent invokes automatically during conversations. Each tool call is confirmed before execution unless overridden by [`/autorun`](common-workflows.md), [`/permissions`](common-workflows.md), or the `--dangerously-skip-permissions` CLI flag.
 
-Tools are grouped into thirteen categories: **File**, **Search**, **Shell**, **Git**, **Web**, **Web Search**, **Memory**, **Subagent**, **Think**, **Environment**, **Tasks**, **Code Execution**, **Clipboard**, and **Questions**.
+Tools are grouped into seventeen categories: **File**, **Search**, **Shell**, **Git**, **Web**, **Web Search**, **Memory**, **Subagent**, **Think**, **Environment**, **Tasks**, **Code Execution**, **Clipboard**, **Questions**, **Diff/Patch**, **Batch Edit**, and **Usage Tracking**.
 
 ![Tool execution showing file reading and grep](../images/demo-tools.png)
 

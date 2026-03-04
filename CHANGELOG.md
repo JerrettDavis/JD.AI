@@ -13,6 +13,7 @@ entries are grouped by feature milestones.
 - **Dynamic provider/model switching** — ConversationTransformer with 5 handoff modes, AtomicConfigStore, model search, and `/default` commands (#44)
 - **Observability** — OpenTelemetry tracing & metrics, health-check endpoints, and `/docs` command integration via JD.AI.Telemetry (#39)
 - **Microsoft Foundry Local provider** — native integration with Microsoft Foundry Local (#38)
+- **Interactive command expansion** — Added `/review`, `/security-review`, `/theme`, `/vim`, `/stats`, `/config`, `/agents`, `/hooks`, `/memory`, and `/output-style` with persistent UX/runtime configuration improvements
 
 ### Fixed
 - CI pack: suppress NU5104 for prerelease Semantic Kernel connector dependencies (#45)

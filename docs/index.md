@@ -42,7 +42,7 @@ JD.AI auto-detects available providers. No manual configuration needed.
 | Feature | Description |
 |---------|-------------|
 | **Multi-provider** | [14 AI providers](articles/providers.md) including Claude Code, Copilot, Ollama, OpenAI, Anthropic, Azure, Gemini, Bedrock, Foundry Local, and more — auto-detected on startup |
-| **33+ slash commands** | [Model switching, sessions, context, workflows, defaults](articles/commands-reference.md) |
+| **35+ slash commands** | [Model switching, sessions, reviews, memory, profiles, workflows, and defaults](articles/commands-reference.md) |
 | **17 tool categories** | [Files, search, shell, git, web, web search, memory, subagents, think, environment, tasks, code execution, clipboard, questions, diff/patch, batch edit, usage tracking](articles/tools-reference.md) |
 | **5 subagent types** | [Explore, task, plan, review, general-purpose](articles/subagents.md) |
 | **4 orchestration strategies** | [Sequential, fan-out, supervisor, debate](articles/orchestration.md) team coordination |
@@ -67,12 +67,13 @@ JD.AI auto-detects available providers. No manual configuration needed.
 
 - [Best Practices](articles/best-practices.md) — Tips for effective prompting and context management
 - [Common Workflows](articles/common-workflows.md) — Bug fixing, refactoring, testing, PRs
+- [Interactive Mode](articles/interactive-mode.md) — Prompt behavior, keybindings, vim mode, and streaming controls
 - [Configuration](articles/configuration.md) — JDAI.md and project settings
 
 ### Reference
 
 - [Tools Reference](articles/tools-reference.md) — All tools with parameters and examples
-- [Commands Reference](articles/commands-reference.md) — All 33+ slash commands
+- [Commands Reference](articles/commands-reference.md) — All 35+ slash commands
 - [CLI Reference](articles/cli-reference.md) — Flags, environment variables, exit codes
 - [AI Providers](articles/providers.md) — Provider setup and comparison
 
