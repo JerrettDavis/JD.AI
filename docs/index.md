@@ -1,13 +1,13 @@
 ---
 _layout: landing
-description: "AI-powered terminal assistant built on Microsoft Semantic Kernel. 14 AI providers, 17 tool categories, 33+ slash commands, subagent swarms, team orchestration, and 6 channel adapters."
+description: "AI-powered terminal assistant built on Microsoft Semantic Kernel. 14 AI providers, 17 tool categories, 35+ slash commands, subagent swarms, team orchestration, and 6 channel adapters."
 ---
 
 # JD.AI
 
-An AI-powered terminal assistant built on Microsoft Semantic Kernel. Connect to Claude Code, GitHub Copilot, or Ollama — and get a full coding agent in your terminal.
+An AI-powered terminal assistant and multi-channel platform built on Microsoft Semantic Kernel. Connect to 14 AI providers — from cloud APIs to fully local models — and get a complete coding agent in your terminal.
 
-[Get started](articles/getting-started.md) ·
+[Get started](user-guide/installation.md) ·
 [View on GitHub](https://github.com/JerrettDavis/JD.AI) ·
 [NuGet package](https://www.nuget.org/packages/JD.AI)
 
@@ -41,53 +41,60 @@ JD.AI auto-detects available providers. No manual configuration needed.
 
 | Feature | Description |
 |---------|-------------|
-| **Multi-provider** | [14 AI providers](articles/providers.md) including Claude Code, Copilot, Ollama, OpenAI, Anthropic, Azure, Gemini, Bedrock, Foundry Local, and more — auto-detected on startup |
-| **35+ slash commands** | [Model switching, sessions, reviews, memory, profiles, workflows, and defaults](articles/commands-reference.md) |
-| **17 tool categories** | [Files, search, shell, git, web, web search, memory, subagents, think, environment, tasks, code execution, clipboard, questions, diff/patch, batch edit, usage tracking](articles/tools-reference.md) |
-| **5 subagent types** | [Explore, task, plan, review, general-purpose](articles/subagents.md) |
-| **4 orchestration strategies** | [Sequential, fan-out, supervisor, debate](articles/orchestration.md) team coordination |
-| **6 channel adapters** | [Discord, Signal, Slack, Telegram, Web, OpenClaw](articles/channels.md) |
-| **Session persistence** | [Save, load, export conversations](articles/persistence.md) across sessions |
-| **Project instructions** | [JDAI.md and `/default` global config](articles/configuration.md) via AtomicConfigStore |
-| **Git checkpointing** | [Safe rollback with stash/directory/commit](articles/checkpointing.md) strategies |
-| **Skills & plugins** | [Claude Code skills/plugins/hooks](articles/skills-and-plugins.md) integration |
+| **Multi-provider** | [14 AI providers](user-guide/provider-setup.md) including Claude Code, Copilot, Ollama, OpenAI, Anthropic, Azure, Gemini, Bedrock, Foundry Local, and more |
+| **35+ slash commands** | [Model switching, sessions, context, workflows, defaults](user-guide/commands.md) |
+| **17 tool categories** | [Files, search, shell, git, web, memory, subagents, think, tasks, code execution, clipboard, questions, diff/patch, batch edit, usage tracking](user-guide/tools.md) |
+| **5 subagent types** | [Explore, task, plan, review, general-purpose](developer-guide/subagents.md) |
+| **4 orchestration strategies** | [Sequential, fan-out, supervisor, debate](developer-guide/orchestration.md) team coordination |
+| **6 channel adapters** | [Discord, Signal, Slack, Telegram, Web, OpenClaw](developer-guide/channels.md) |
+| **Session persistence** | [Save, load, export conversations](user-guide/sessions.md) across sessions |
+| **MCP integration** | [Connect external tool servers](developer-guide/mcp-integration.md) via Model Context Protocol |
+| **Workflows** | [Composable multi-step automation](developer-guide/workflows.md) with /workflow commands |
+| **Observability** | [OpenTelemetry tracing, metrics, health checks](operations/observability.md) |
+| **Git checkpointing** | [Safe rollback with stash/directory/commit](user-guide/checkpointing.md) strategies |
+| **Skills & plugins** | [Claude Code skills/plugins/hooks](developer-guide/plugins.md) integration |
 | **Auto-update** | Check and apply updates via NuGet from your terminal |
 
 ![Subagent execution and team orchestration](images/demo-orchestration.png)
 
 ## Documentation
 
-### Getting started
+### [User Guide](user-guide/index.md) — Using JD.AI
 
-- [Overview](articles/overview.md) — What JD.AI is and what it offers
-- [Getting Started](articles/getting-started.md) — Installation and provider setup
-- [Quickstart](articles/quickstart.md) — Your first task, step by step
+For anyone using `jdai` as a tool. Installation, provider setup, commands, workflows, and best practices.
 
-### Using JD.AI
+- [Installation](user-guide/installation.md) — Get JD.AI running in minutes
+- [Quickstart](user-guide/quickstart.md) — Your first task, step by step
+- [Provider Setup](user-guide/provider-setup.md) — Configure any of the 14 providers
+- [Commands](user-guide/commands.md) — All 35+ slash commands at a glance
+- [Common Workflows](user-guide/common-workflows.md) — Bug fixing, refactoring, testing, PRs
+- [Best Practices](user-guide/best-practices.md) — Effective prompting and context management
 
-- [Best Practices](articles/best-practices.md) — Tips for effective prompting and context management
-- [Common Workflows](articles/common-workflows.md) — Bug fixing, refactoring, testing, PRs
-- [Interactive Mode](articles/interactive-mode.md) — Prompt behavior, keybindings, vim mode, and streaming controls
-- [Configuration](articles/configuration.md) — JDAI.md and project settings
+### [Developer Guide](developer-guide/index.md) — Extending & integrating
 
-### Reference
+For developers building on JD.AI. Architecture, custom tools, providers, plugins, and the gateway API.
 
-- [Tools Reference](articles/tools-reference.md) — All tools with parameters and examples
-- [Commands Reference](articles/commands-reference.md) — All 35+ slash commands
-- [CLI Reference](articles/cli-reference.md) — Flags, environment variables, exit codes
-- [AI Providers](articles/providers.md) — Provider setup and comparison
+- [Architecture Overview](developer-guide/index.md) — How JD.AI is built
+- [Custom Tools](developer-guide/custom-tools.md) — Write your own Semantic Kernel tools
+- [Custom Providers](developer-guide/custom-providers.md) — Add new AI providers
+- [Plugin SDK](developer-guide/plugins.md) — Build distributable plugins
+- [Gateway API](developer-guide/gateway-api.md) — REST & SignalR integration
 
-### Advanced
+### [Operations](operations/index.md) — Deploy, monitor, govern
 
-- [Subagents](articles/subagents.md) — Specialized AI instances for scoped tasks
-- [Team Orchestration](articles/orchestration.md) — Multi-agent coordination strategies
-- [Channel Adapters](articles/channels.md) — Discord, Signal, Slack, Telegram, Web, OpenClaw
-- [Observability](articles/observability.md) — OpenTelemetry tracing, metrics, and health checks
-- [Local Models](articles/local-models.md) — In-process GGUF inference with LLamaSharp
-- [Skills, Plugins, and Hooks](articles/skills-and-plugins.md) — Extension system
-- [Extending JD.AI](articles/extending.md) — Writing custom tools and providers
+For ops teams and administrators. Deployment, observability, security, and enterprise governance.
 
-### Support
+- [Service Deployment](operations/deployment.md) — Windows Service, systemd, containers
+- [Observability](operations/observability.md) — OpenTelemetry, health checks, Kubernetes
+- [Security & Credentials](operations/security.md) — Encrypted storage, API key management
+- [Enterprise Governance](operations/governance.md) — Usage limits, policies, compliance
 
-- [Troubleshooting](articles/troubleshooting.md) — Common issues and solutions
+### [Reference](reference/index.md) — Quick lookup
+
+Complete reference material for CLI flags, commands, tools, providers, and configuration.
+
+- [CLI Reference](reference/cli.md) — All flags, environment variables, exit codes
+- [Commands Reference](reference/commands.md) — Full 35+ command documentation
+- [Tools Reference](reference/tools.md) — All 17 tool categories with parameters
+- [Providers Reference](reference/providers.md) — Comparison tables and capabilities
 - [API Reference](https://jerrettdavis.github.io/JD.AI/api/) — Generated API documentation
