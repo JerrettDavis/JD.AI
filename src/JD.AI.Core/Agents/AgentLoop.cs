@@ -78,6 +78,19 @@ public sealed class AgentLoop
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
+            // Attempt fallback model if available and error is retriable
+            if (IsRetriableError(ex) && _session.FallbackModels.Count > 0)
+            {
+                var fallbackResult = await TryFallbackAsync(userMessage, streaming: false, ct).ConfigureAwait(false);
+                if (fallbackResult is not null)
+                {
+                    turnEntry.Attributes["fallback"] = "true";
+                    turnEntry.Complete();
+                    _session.LastTimeline = traceCtx.Timeline;
+                    return fallbackResult;
+                }
+            }
+
             turnEntry.Complete("error", ex.Message);
             _session.LastTimeline = traceCtx.Timeline;
 
@@ -262,6 +275,21 @@ public sealed class AgentLoop
         {
             output.EndStreaming();
             sw.Stop();
+
+            // Attempt fallback model if available and error is retriable
+            if (IsRetriableError(ex) && _session.FallbackModels.Count > 0)
+            {
+                output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, 0, totalBytes));
+                var fallbackResult = await TryFallbackAsync(userMessage, streaming: true, ct).ConfigureAwait(false);
+                if (fallbackResult is not null)
+                {
+                    turnEntry.Attributes["fallback"] = "true";
+                    turnEntry.Complete();
+                    _session.LastTimeline = traceCtx.Timeline;
+                    return fallbackResult;
+                }
+            }
+
             turnEntry.Complete("error", ex.Message);
             _session.LastTimeline = traceCtx.Timeline;
             output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, 0, totalBytes));
@@ -273,5 +301,89 @@ public sealed class AgentLoop
 
             return errorMsg;
         }
+    }
+
+    /// <summary>
+    /// Determines whether an exception is retriable (429/503/timeout)
+    /// and therefore eligible for model fallback.
+    /// </summary>
+    private static bool IsRetriableError(Exception ex)
+    {
+        if (ex is TaskCanceledException or TimeoutException)
+            return true;
+
+        if (ex is HttpRequestException httpEx)
+        {
+            return httpEx.StatusCode is
+                System.Net.HttpStatusCode.TooManyRequests or       // 429
+                System.Net.HttpStatusCode.ServiceUnavailable or    // 503
+                System.Net.HttpStatusCode.GatewayTimeout;          // 504
+        }
+
+        // Check inner exceptions (SK wraps HTTP errors)
+        if (ex.InnerException is HttpRequestException inner)
+        {
+            return inner.StatusCode is
+                System.Net.HttpStatusCode.TooManyRequests or
+                System.Net.HttpStatusCode.ServiceUnavailable or
+                System.Net.HttpStatusCode.GatewayTimeout;
+        }
+
+        // Check message for common rate-limit patterns
+        var msg = ex.Message;
+        return msg.Contains("429", StringComparison.Ordinal) ||
+               msg.Contains("rate limit", StringComparison.OrdinalIgnoreCase) ||
+               msg.Contains("overloaded", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Attempts to switch to a fallback model and retry the turn.
+    /// Returns null if all fallbacks fail.
+    /// </summary>
+    private async Task<string?> TryFallbackAsync(
+        string userMessage, bool streaming, CancellationToken ct)
+    {
+        var output = AgentOutput.Current;
+
+        foreach (var fallbackModel in _session.FallbackModels)
+        {
+            output.RenderWarning(
+                $"Primary model unavailable, falling back to {fallbackModel}...");
+
+            DebugLogger.Log(DebugCategory.Providers,
+                "Attempting fallback to model: {0}", fallbackModel);
+
+            try
+            {
+                // Try to switch model via the session's registry
+                var switched = await _session.TrySwitchModelAsync(fallbackModel, ct)
+                    .ConfigureAwait(false);
+
+                if (!switched)
+                {
+                    output.RenderWarning($"  Fallback model '{fallbackModel}' not available.");
+                    continue;
+                }
+
+                // Remove the user message we already added (it'll be re-added by the recursive call)
+                if (_session.History.Count > 0 &&
+                    _session.History[^1].Role == AuthorRole.User)
+                {
+                    _session.History.RemoveAt(_session.History.Count - 1);
+                }
+
+                // Retry with the new model
+                return streaming
+                    ? await RunTurnStreamingAsync(userMessage, ct).ConfigureAwait(false)
+                    : await RunTurnAsync(userMessage, ct).ConfigureAwait(false);
+            }
+            catch (Exception fallbackEx)
+            {
+                output.RenderWarning(
+                    $"  Fallback to {fallbackModel} also failed: {fallbackEx.Message}");
+            }
+        }
+
+        return null;
     }
 }
