@@ -19,8 +19,8 @@ public static class ChatRenderer
         string UserTextColor,
         string ThinkingColor);
 
-    private static readonly IReadOnlyDictionary<TuiTheme, ThemePalette> ThemePalettes =
-        new Dictionary<TuiTheme, ThemePalette>
+    private static readonly Dictionary<TuiTheme, ThemePalette> ThemePalettes =
+        new()
         {
             [TuiTheme.DefaultDark] = new("#4ea1ff", "#67d8ef", "#9aa0a6", "#f2c14e", "#ff6b6b", "#9aa0a6", "#7f8c8d"),
             [TuiTheme.Monokai] = new("#a6e22e", "#66d9ef", "#a1a1a1", "#e6db74", "#f92672", "#bdbdbd", "#75715e"),

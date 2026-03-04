@@ -1458,7 +1458,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             ? value
             : value[..maxChars] + "\n... [truncated]";
 
-    private static IReadOnlyList<string> SplitLines(string text) =>
+    private static List<string> SplitLines(string text) =>
         text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Where(l => !string.IsNullOrWhiteSpace(l))
             .ToList();

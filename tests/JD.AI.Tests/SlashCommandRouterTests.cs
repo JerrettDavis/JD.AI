@@ -8,6 +8,7 @@ using Xunit;
 
 namespace JD.AI.Tests;
 
+[Collection("DataDirectories")]
 public sealed class SlashCommandRouterTests
 {
     private readonly IProviderRegistry _registry = Substitute.For<IProviderRegistry>();
