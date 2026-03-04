@@ -472,18 +472,12 @@ session.History.AddSystemMessage(systemPrompt);
 
 // 9. Wire up SpectreAgentOutput so streaming renders in the TUI
 var tuiSettings = TuiSettings.Load();
+ChatRenderer.ApplyTheme(tuiSettings.Theme);
+ChatRenderer.SetOutputStyle(tuiSettings.OutputStyle);
 using var spectreOutput = new SpectreAgentOutput(
     tuiSettings.SpinnerStyle,
     session.CurrentModel?.Id);
 AgentOutput.Current = spectreOutput;
-
-// 10. Set up slash commands
-var workflowCatalog = new FileWorkflowCatalog(Path.Combine(DataDirectories.Root, "workflows"));
-var commandRouter = new SlashCommandRouter(
-    session, registry, instructions, checkpointStrategy,
-    workflowCatalog: workflowCatalog,
-    getSpinnerStyle: () => spectreOutput.Style,
-    onSpinnerStyleChanged: style => spectreOutput.Style = style);
 
 // 10. Build interactive input with command completions
 var completionProvider = new CompletionProvider();
@@ -517,9 +511,36 @@ completionProvider.Register("/init", "Initialize JDAI.md project file");
 completionProvider.Register("/plan", "Toggle plan mode (explore only)");
 completionProvider.Register("/doctor", "Run self-diagnostics");
 completionProvider.Register("/fork", "Fork conversation to new session");
+completionProvider.Register("/review", "Review code changes with severity categories");
+completionProvider.Register("/security-review", "Run OWASP/CWE-focused security review");
+completionProvider.Register("/theme", "Set or list terminal themes");
+completionProvider.Register("/vim", "Toggle vim editing mode");
+completionProvider.Register("/stats", "Show session and historical usage statistics");
+completionProvider.Register("/config", "List/get/set command settings");
+completionProvider.Register("/agents", "Manage local agent profiles");
+completionProvider.Register("/hooks", "Manage local hook profiles");
+completionProvider.Register("/memory", "View/edit JDAI.md project memory");
+completionProvider.Register("/output-style", "Set output rendering style");
 completionProvider.Register("/quit", "Exit jdai");
 completionProvider.Register("/exit", "Exit jdai");
-var interactiveInput = new InteractiveInput(completionProvider);
+var interactiveInput = new InteractiveInput(completionProvider)
+{
+    VimModeEnabled = tuiSettings.VimMode,
+};
+
+// 10a. Set up slash commands
+var workflowCatalog = new FileWorkflowCatalog(Path.Combine(DataDirectories.Root, "workflows"));
+var commandRouter = new SlashCommandRouter(
+    session, registry, instructions, checkpointStrategy,
+    workflowCatalog: workflowCatalog,
+    getSpinnerStyle: () => spectreOutput.Style,
+    onSpinnerStyleChanged: style => spectreOutput.Style = style,
+    getTheme: () => ChatRenderer.CurrentTheme,
+    onThemeChanged: ChatRenderer.ApplyTheme,
+    getVimMode: () => interactiveInput.VimModeEnabled,
+    onVimModeChanged: enabled => interactiveInput.VimModeEnabled = enabled,
+    getOutputStyle: () => ChatRenderer.CurrentOutputStyle,
+    onOutputStyleChanged: ChatRenderer.SetOutputStyle);
 
 // Hook double-ESC at empty prompt → open history viewer
 interactiveInput.OnDoubleEscape += (sender, e) =>
