@@ -46,11 +46,11 @@ public sealed class AuditSinksSteps : IDisposable
     [When(@"I write an audit event with action ""(.*)""")]
     public async Task WhenIWriteAnAuditEventWithAction(string action)
     {
-        if (_context.TryGetValue("FileSink", out FileAuditSink? fileSink))
+        if (_context.TryGetValue("FileSink", out FileAuditSink? fileSink) && fileSink is not null)
         {
             await fileSink.WriteAsync(new AuditEvent { Action = action });
         }
-        else if (_context.TryGetValue("WebhookSink", out WebhookAuditSink? webhookSink))
+        else if (_context.TryGetValue("WebhookSink", out WebhookAuditSink? webhookSink) && webhookSink is not null)
         {
             await webhookSink.WriteAsync(new AuditEvent { Action = action });
         }
@@ -70,7 +70,7 @@ public sealed class AuditSinksSteps : IDisposable
     public void ThenAJsonlAuditFileShouldExistForToday()
     {
         var dir = _context.Get<string>("AuditDir");
-        var today = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd");
+        var today = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
         var expectedFile = Path.Combine(dir, $"audit-{today}.jsonl");
         File.Exists(expectedFile).Should().BeTrue($"audit file for {today} should exist");
     }
@@ -79,7 +79,7 @@ public sealed class AuditSinksSteps : IDisposable
     public void ThenTheAuditFileShouldContain(string expected)
     {
         var dir = _context.Get<string>("AuditDir");
-        var today = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd");
+        var today = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
         var filePath = Path.Combine(dir, $"audit-{today}.jsonl");
         var content = File.ReadAllText(filePath);
         content.Should().Contain(expected);
@@ -89,7 +89,7 @@ public sealed class AuditSinksSteps : IDisposable
     public void ThenTheAuditFileShouldContainLines(int count)
     {
         var dir = _context.Get<string>("AuditDir");
-        var today = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd");
+        var today = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
         var filePath = Path.Combine(dir, $"audit-{today}.jsonl");
         var lines = File.ReadAllLines(filePath).Where(l => !string.IsNullOrWhiteSpace(l)).ToArray();
         lines.Should().HaveCount(count);

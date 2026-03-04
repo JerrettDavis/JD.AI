@@ -195,7 +195,9 @@ public sealed class AgentLifecycleSteps
         [EnumeratorCancellation] CancellationToken ct = default)
     {
         throw ex;
+#pragma warning disable CS0162 // Unreachable code detected
         yield break; // Required to make this an async enumerator
+#pragma warning restore CS0162
     }
 #pragma warning restore CS1998
 }

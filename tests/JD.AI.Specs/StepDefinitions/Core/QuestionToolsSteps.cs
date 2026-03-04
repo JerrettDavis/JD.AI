@@ -38,7 +38,7 @@ public sealed class QuestionToolsSteps
         {
             Id = Guid.NewGuid().ToString("N"),
             Completed = false,
-            Answers = new Dictionary<string, string>(),
+            Answers = new Dictionary<string, string>(StringComparer.Ordinal),
         };
 
         _context.Set(new QuestionTools(runner), "QuestionTools");

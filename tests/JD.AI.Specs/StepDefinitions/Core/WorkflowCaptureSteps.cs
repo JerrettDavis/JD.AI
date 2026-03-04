@@ -106,7 +106,7 @@ public sealed class WorkflowCaptureSteps
     public void ThenTheLastEventShouldBe(string kind, string stepName)
     {
         var capture = _context.Get<WorkflowExecutionCapture>("Capture");
-        var lastEvent = capture.Events.Last();
+        var lastEvent = capture.Events[^1];
         lastEvent.Kind.ToString().Should().Be(kind);
         lastEvent.StepName.Should().Be(stepName);
     }
@@ -129,7 +129,7 @@ public sealed class WorkflowCaptureSteps
     public void ThenTheLastEventErrorShouldBe(string expected)
     {
         var capture = _context.Get<WorkflowExecutionCapture>("Capture");
-        var lastEvent = capture.Events.Last();
+        var lastEvent = capture.Events[^1];
         lastEvent.Error.Should().Be(expected);
     }
 

@@ -33,7 +33,7 @@ public sealed class RateLimitingSteps
             results.Add(await limiter.AllowAsync(key));
         }
 
-        if (!_context.TryGetValue("RateResults", out List<bool>? existing))
+        if (!_context.TryGetValue("RateResults", out List<bool>? existing) || existing is null)
         {
             existing = [];
             _context.Set(existing, "RateResults");

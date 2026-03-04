@@ -41,7 +41,7 @@ public sealed class VectorStoreSteps : IDisposable
     public async Task GivenIHaveStoredEntryInCategoryWithEmbedding(string id, string category, string embeddingStr)
     {
         var store = _context.Get<SqliteVectorStore>("VectorStore");
-        var embedding = embeddingStr.Split(',').Select(s => float.Parse(s.Trim())).ToArray();
+        var embedding = embeddingStr.Split(',').Select(s => float.Parse(s.Trim(), System.Globalization.CultureInfo.InvariantCulture)).ToArray();
         var entry = new MemoryEntry
         {
             Id = id,
@@ -95,7 +95,7 @@ public sealed class VectorStoreSteps : IDisposable
     public async Task WhenISearchWithEmbeddingForTop(string embeddingStr, int topK)
     {
         var store = _context.Get<SqliteVectorStore>("VectorStore");
-        var embedding = embeddingStr.Split(',').Select(s => float.Parse(s.Trim())).ToArray();
+        var embedding = embeddingStr.Split(',').Select(s => float.Parse(s.Trim(), System.Globalization.CultureInfo.InvariantCulture)).ToArray();
         var results = await store.SearchAsync(embedding, topK);
         _context.Set(results, "SearchResults");
     }
@@ -104,7 +104,7 @@ public sealed class VectorStoreSteps : IDisposable
     public async Task WhenISearchWithEmbeddingInCategory(string embeddingStr, string category)
     {
         var store = _context.Get<SqliteVectorStore>("VectorStore");
-        var embedding = embeddingStr.Split(',').Select(s => float.Parse(s.Trim())).ToArray();
+        var embedding = embeddingStr.Split(',').Select(s => float.Parse(s.Trim(), System.Globalization.CultureInfo.InvariantCulture)).ToArray();
         var results = await store.SearchAsync(embedding, categoryFilter: category);
         _context.Set(results, "SearchResults");
     }

@@ -69,9 +69,10 @@ public sealed class LocalModelDetectionSteps
     public void ThenTheStatusMessageShouldContainEither(string expected1, string expected2)
     {
         var result = _context.Get<ProviderInfo>("DetectionResult");
-        (result.StatusMessage.Contains(expected1, StringComparison.OrdinalIgnoreCase) ||
-         result.StatusMessage.Contains(expected2, StringComparison.OrdinalIgnoreCase))
-            .Should().BeTrue($"status should contain '{expected1}' or '{expected2}' but was '{result.StatusMessage}'");
+        var msg = result.StatusMessage ?? string.Empty;
+        (msg.Contains(expected1, StringComparison.OrdinalIgnoreCase) ||
+         msg.Contains(expected2, StringComparison.OrdinalIgnoreCase))
+            .Should().BeTrue($"status should contain '{expected1}' or '{expected2}' but was '{msg}'");
     }
 
     [Then(@"the provider name should be ""(.*)""")]
