@@ -577,6 +577,8 @@ session.History.AddSystemMessage(systemPrompt);
 
 // 9. Wire up SpectreAgentOutput so streaming renders in the TUI
 var tuiSettings = TuiSettings.Load();
+session.PromptCachingEnabled = tuiSettings.PromptCacheEnabled;
+session.PromptCacheTtl = tuiSettings.PromptCacheTtl;
 ChatRenderer.ApplyTheme(tuiSettings.Theme);
 ChatRenderer.SetOutputStyle(tuiSettings.OutputStyle);
 using var spectreOutput = new SpectreAgentOutput(
