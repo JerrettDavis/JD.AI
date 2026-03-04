@@ -13,6 +13,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="JD.AI.Gateway.Tests" />
+    <InternalsVisibleTo Include="JD.AI.Specs" />
+    <InternalsVisibleTo Include="JD.AI.Specs.UI" />
   </ItemGroup>
 
   <ItemGroup>
