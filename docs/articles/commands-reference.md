@@ -41,13 +41,62 @@ Switches model by partial or full ID. Without an argument, opens the model picke
 /model gpt-4o
 ```
 
+### `/model search <query>`
+
+Search remote model catalogs (Ollama, HuggingFace, Foundry Local) for models matching the query.
+
+```text
+/model search llama 70b
+/model search phi-3
+```
+
+### `/model url <url>`
+
+Pull a model directly from a URL. Supports Ollama model URLs, HuggingFace repository URLs, and direct GGUF download links.
+
+```text
+/model url https://ollama.com/library/llama3.2
+/model url https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF
+```
+
 ### `/providers`
 
 Lists detected providers and status.
 
 ### `/provider`
 
-Shows the currently active provider/model.
+Manage and inspect providers. Without arguments, shows an interactive picker to switch between available providers.
+
+| Subcommand | Description |
+|---|---|
+| `/provider list` | Show all providers with status, model count, and auth method |
+| `/provider add <name>` | Interactive wizard to configure an API-key provider |
+| `/provider remove <name>` | Remove stored credentials for a provider |
+| `/provider test [name]` | Test provider connectivity (all or specific) |
+
+Provider names for `/provider add`: `openai`, `azure-openai`, `anthropic`, `google-gemini`, `mistral`, `bedrock`, `huggingface`, `openai-compat`.
+
+## Defaults management
+
+### `/default`
+
+Show the current default provider and model (global and per-project).
+
+### `/default provider <name>`
+
+Set the global default provider.
+
+### `/default model <id>`
+
+Set the global default model.
+
+### `/default project provider <name>`
+
+Set the per-project default provider for the current repo.
+
+### `/default project model <id>`
+
+Set the per-project default model for the current repo.
 
 ### `/update`
 
@@ -56,6 +105,10 @@ Checks NuGet for a JD.AI update and offers to apply it.
 ### `/doctor`
 
 Runs environment diagnostics (runtime, providers, model count, tools, plugin load status, and CLI availability).
+
+### `/docs [topic]`
+
+Shows links to JD.AI documentation. Without a topic, lists key doc areas.
 
 ## Session and context commands
 
@@ -360,8 +413,8 @@ Lists active gateway agents and route mappings.
 | Command | Purpose |
 |---|---|
 | `/help` | Command list |
-| `/models`, `/model` | Model browsing and switching |
-| `/providers`, `/provider` | Provider discovery and current provider |
+| `/models`, `/model`, `/model search`, `/model url` | Model browsing, switching, search, and pull by URL |
+| `/providers`, `/provider`, `/default ...` | Provider discovery, credential management, and defaults |
 | `/sessions`, `/resume`, `/name`, `/fork` | Session lifecycle |
 | `/clear`, `/compact`, `/context`, `/cost`, `/history`, `/export` | Context/session operations |
 | `/autorun`, `/permissions`, `/sandbox`, `/plan` | Safety and execution mode |
@@ -370,5 +423,5 @@ Lists active gateway agents and route mappings.
 | `/mcp ...` | MCP server management |
 | `/checkpoint ...`, `/workflow ...` | Checkpointing and workflows |
 | `/theme`, `/vim`, `/spinner`, `/output-style`, `/stats`, `/config` | UX and runtime settings |
-| `/agents`, `/hooks`, `/memory`, `/init`, `/instructions`, `/plugins`, `/doctor` | Project and profile operations |
+| `/agents`, `/hooks`, `/memory`, `/init`, `/instructions`, `/plugins`, `/doctor`, `/docs` | Project and profile operations |
 | `/quit`, `/exit` | Exit session |
