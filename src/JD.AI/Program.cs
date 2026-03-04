@@ -16,6 +16,7 @@ using JD.AI.Core.Providers.Credentials;
 using JD.AI.Core.Providers.Metadata;
 using JD.AI.Core.Providers.ModelSearch;
 using JD.AI.Core.Safety;
+using JD.AI.Core.Tools;
 using JD.AI.Core.Usage;
 using JD.AI.Rendering;
 using JD.AI.Tools;
@@ -556,6 +557,8 @@ kernel.Plugins.AddFromObject(new TaskTools(), "tasks");
 var usageTools = new UsageTools();
 usageTools.SetModel(selectedModel);
 kernel.Plugins.AddFromObject(usageTools, "usage");
+var capabilityTools = new CapabilityTools(kernel);
+kernel.Plugins.AddFromObject(capabilityTools, "capabilities");
 kernel.Plugins.AddFromObject(
     new QuestionTools(req => QuestionnaireSession.Run(req)), "questions");
 kernel.Plugins.AddFromObject(new SessionOrchestrationTools(session), "sessions");
