@@ -3,7 +3,7 @@ using Microsoft.Data.Sqlite;
 
 namespace JD.AI.Tests.Usage;
 
-public sealed class SqliteUsageMeterTests : IAsyncLifetime
+public sealed class SqliteUsageMeterTests : IAsyncLifetime, IDisposable
 {
     private readonly string _dbPath;
     private readonly SqliteUsageMeter _sut;
@@ -19,6 +19,13 @@ public sealed class SqliteUsageMeterTests : IAsyncLifetime
     public async Task DisposeAsync()
     {
         await _sut.DisposeAsync();
+        SqliteConnection.ClearAllPools();
+        if (File.Exists(_dbPath)) File.Delete(_dbPath);
+    }
+
+    public void Dispose()
+    {
+        _sut.DisposeAsync().AsTask().GetAwaiter().GetResult();
         SqliteConnection.ClearAllPools();
         if (File.Exists(_dbPath)) File.Delete(_dbPath);
     }
