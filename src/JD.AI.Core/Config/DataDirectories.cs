@@ -50,6 +50,9 @@ public static class DataDirectories
     /// <summary>Path to the SQLite vector store database.</summary>
     public static string VectorsDb => Path.Combine(Root, "vectors.db");
 
+    /// <summary>Path to the SQLite usage/metering database.</summary>
+    public static string UsageDb => Path.Combine(Root, "usage.db");
+
     /// <summary>Path to the update-check cache file.</summary>
     public static string UpdateCacheDir => Root;
 

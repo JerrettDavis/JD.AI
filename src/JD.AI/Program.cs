@@ -14,6 +14,7 @@ using JD.AI.Core.Providers;
 using JD.AI.Core.Providers.Credentials;
 using JD.AI.Core.Providers.Metadata;
 using JD.AI.Core.Providers.ModelSearch;
+using JD.AI.Core.Usage;
 using JD.AI.Rendering;
 using JD.AI.Tools;
 using JD.AI.Workflows;
@@ -770,6 +771,11 @@ var modelSearchAggregator = new ModelSearchAggregator(new IRemoteModelSearch[]
     new HuggingFaceModelSearch(searchHttp),
     new FoundryLocalModelSearch(),
 });
+// Centralized usage metering
+var usageMeter = new SqliteUsageMeter(DataDirectories.UsageDb);
+await usageMeter.InitializeAsync();
+session.UsageMeter = usageMeter;
+
 var commandRouter = new SlashCommandRouter(
     session, registry, instructions, checkpointStrategy,
     pluginLoader: pluginLoader,
@@ -787,7 +793,8 @@ var commandRouter = new SlashCommandRouter(
     getVimMode: () => interactiveInput.VimModeEnabled,
     onVimModeChanged: enabled => interactiveInput.VimModeEnabled = enabled,
     getOutputStyle: () => ChatRenderer.CurrentOutputStyle,
-    onOutputStyleChanged: ChatRenderer.SetOutputStyle);
+    onOutputStyleChanged: ChatRenderer.SetOutputStyle,
+    usageMeter: usageMeter);
 
 // Hook double-ESC at empty prompt → open history viewer
 interactiveInput.OnDoubleEscape += (sender, e) =>

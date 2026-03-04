@@ -16,6 +16,7 @@ using JD.AI.Core.Providers.Metadata;
 using JD.AI.Core.Providers.ModelSearch;
 using JD.AI.Core.Sessions;
 using JD.AI.Core.Tools;
+using JD.AI.Core.Usage;
 using JD.AI.Rendering;
 using JD.AI.Workflows;
 using JD.AI.Workflows.Store;
@@ -54,6 +55,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private readonly AtomicConfigStore? _configStore;
     private readonly ModelSearchAggregator? _modelSearchAggregator;
     private readonly ModelMetadataProvider? _metadataProvider;
+    private readonly IUsageMeter? _usageMeter;
 
     public SlashCommandRouter(
         AgentSession session,
@@ -76,7 +78,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         Func<bool>? getVimMode = null,
         Action<bool>? onVimModeChanged = null,
         Func<OutputStyle>? getOutputStyle = null,
-        Action<OutputStyle>? onOutputStyleChanged = null)
+        Action<OutputStyle>? onOutputStyleChanged = null,
+        IUsageMeter? usageMeter = null)
     {
         _session = session;
         _registry = registry;
@@ -100,6 +103,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         _configStore = configStore;
         _modelSearchAggregator = modelSearchAggregator;
         _metadataProvider = metadataProvider;
+        _usageMeter = usageMeter;
     }
 
     public bool IsSlashCommand(string input) =>
@@ -120,7 +124,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/PROVIDER" or "/JDAI-PROVIDER" => await HandleProviderCommandAsync(arg, ct).ConfigureAwait(false),
             "/CLEAR" or "/JDAI-CLEAR" => ClearHistory(),
             "/COMPACT" or "/JDAI-COMPACT" => await CompactAsync(ct).ConfigureAwait(false),
-            "/COST" or "/JDAI-COST" => GetCost(),
+            "/COST" or "/JDAI-COST" => await GetCostAsync(arg, ct).ConfigureAwait(false),
             "/AUTORUN" or "/JDAI-AUTORUN" => ToggleAutoRun(arg),
             "/PERMISSIONS" or "/JDAI-PERMISSIONS" => TogglePermissions(arg),
             "/SESSIONS" or "/JDAI-SESSIONS" => await ListSessionsAsync(ct).ConfigureAwait(false),
@@ -828,10 +832,108 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         return "Context compacted.";
     }
 
-    private string GetCost()
+    private async Task<string> GetCostAsync(string? arg, CancellationToken ct)
     {
-        var tokens = _session.TotalTokens;
-        return $"Token usage: {tokens:N0} total";
+        if (_usageMeter is null)
+        {
+            var tokens = _session.TotalTokens;
+            return $"Token usage: {tokens:N0} total (metering not configured)";
+        }
+
+        try
+        {
+            var sb = new StringBuilder();
+            var upper = arg?.ToUpperInvariant().Trim();
+
+            // Determine scope
+            UsageSummary usage;
+            string scopeLabel;
+            if (upper is "--DAY" or "--DAILY")
+            {
+                var today = new DateTimeOffset(DateTimeOffset.UtcNow.Date, TimeSpan.Zero);
+                usage = await _usageMeter.GetPeriodUsageAsync(today, DateTimeOffset.UtcNow, ct);
+                scopeLabel = "Today";
+            }
+            else if (upper is "--WEEK" or "--WEEKLY")
+            {
+                var startOfWeek = new DateTimeOffset(DateTimeOffset.UtcNow.AddDays(-(int)DateTimeOffset.UtcNow.DayOfWeek).Date, TimeSpan.Zero);
+                usage = await _usageMeter.GetPeriodUsageAsync(startOfWeek, DateTimeOffset.UtcNow, ct);
+                scopeLabel = "This week";
+            }
+            else if (upper is "--MONTH" or "--MONTHLY")
+            {
+                var now = DateTimeOffset.UtcNow;
+                var startOfMonth = new DateTimeOffset(now.Year, now.Month, 1, 0, 0, 0, TimeSpan.Zero);
+                usage = await _usageMeter.GetPeriodUsageAsync(startOfMonth, DateTimeOffset.UtcNow, ct);
+                scopeLabel = "This month";
+            }
+            else if (upper is "--ALL" or "--TOTAL")
+            {
+                usage = await _usageMeter.GetTotalUsageAsync(ct);
+                scopeLabel = "All time";
+            }
+            else if (upper is "--EXPORT CSV")
+            {
+                var data = await _usageMeter.ExportAsync(UsageExportFormat.Csv, ct: ct);
+                return $"CSV export:\n{data}";
+            }
+            else if (upper is "--EXPORT JSON")
+            {
+                var data = await _usageMeter.ExportAsync(UsageExportFormat.Json, ct: ct);
+                return $"JSON export:\n{data}";
+            }
+            else
+            {
+                // Default: session usage
+                var sessionId = _session.SessionInfo?.Id;
+                if (sessionId is not null)
+                {
+                    usage = await _usageMeter.GetSessionUsageAsync(sessionId, ct);
+                    scopeLabel = "This session";
+                }
+                else
+                {
+                    var tokens = _session.TotalTokens;
+                    return $"Token usage: {tokens:N0} total";
+                }
+            }
+
+            sb.AppendLine($"📊 Usage — {scopeLabel}");
+            sb.AppendLine($"  Turns: {usage.TotalTurns:N0}  |  Tool calls: {usage.TotalToolCalls:N0}");
+            sb.AppendLine($"  Prompt tokens:     {usage.TotalPromptTokens,12:N0}");
+            sb.AppendLine($"  Completion tokens: {usage.TotalCompletionTokens,12:N0}");
+            sb.AppendLine($"  Total tokens:      {usage.TotalTokens,12:N0}");
+            sb.AppendLine($"  Estimated cost:    ${usage.EstimatedCostUsd:F4}");
+
+            if (usage.ByProvider.Count > 1)
+            {
+                sb.AppendLine();
+                sb.AppendLine("  By provider:");
+                foreach (var (pid, breakdown) in usage.ByProvider.OrderByDescending(p => p.Value.TotalTokens))
+                {
+                    var costStr = breakdown.EstimatedCostUsd > 0
+                        ? $"  ~${breakdown.EstimatedCostUsd:F4}"
+                        : "  (free)";
+                    sb.AppendLine($"    [{pid}] {breakdown.TotalTokens:N0} tokens, {breakdown.Turns} turns{costStr}");
+                }
+            }
+
+            // Budget status
+            var budget = await _usageMeter.CheckBudgetAsync(ct: ct);
+            if (budget.LimitUsd.HasValue)
+            {
+                sb.AppendLine();
+                var pct = budget.LimitUsd.Value > 0 ? budget.SpentUsd / budget.LimitUsd.Value * 100 : 0;
+                var status = budget.IsExceeded ? "⛔ EXCEEDED" : budget.IsWarning ? "⚠️  WARNING" : "✅ OK";
+                sb.AppendLine($"  Budget ({budget.Period}): ${budget.SpentUsd:F2} / ${budget.LimitUsd:F2} ({pct:F0}%) {status}");
+            }
+
+            return sb.ToString().TrimEnd();
+        }
+        catch (Exception ex)
+        {
+            return $"Token usage: {_session.TotalTokens:N0} total (metering error: {ex.Message})";
+        }
     }
 
     private string ShowTrace(string? arg)
