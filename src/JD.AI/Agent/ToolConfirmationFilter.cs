@@ -187,6 +187,15 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             // Tailscale — write credentials (confirm once)
             ["tailscale_configure"] = SafetyTier.ConfirmOnce,
 
+            // Encoding/crypto — all read-only transformations
+            ["encode_base64"] = SafetyTier.AutoApprove,
+            ["decode_base64"] = SafetyTier.AutoApprove,
+            ["encode_url"] = SafetyTier.AutoApprove,
+            ["decode_url"] = SafetyTier.AutoApprove,
+            ["decode_jwt"] = SafetyTier.AutoApprove,
+            ["hash_compute"] = SafetyTier.AutoApprove,
+            ["generate_guid"] = SafetyTier.AutoApprove,
+
             // Dangerous — always confirm
             ["run_command"] = SafetyTier.AlwaysConfirm,
             ["web_search"] = SafetyTier.AlwaysConfirm,
