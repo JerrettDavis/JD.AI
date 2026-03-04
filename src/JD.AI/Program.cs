@@ -580,14 +580,24 @@ session.History.AddSystemMessage(systemPrompt);
 
 // 9. Wire up SpectreAgentOutput so streaming renders in the TUI
 var tuiSettings = TuiSettings.Load();
+ChatRenderer.ApplyTheme(tuiSettings.Theme);
+ChatRenderer.SetOutputStyle(tuiSettings.OutputStyle);
 using var spectreOutput = new SpectreAgentOutput(
     tuiSettings.SpinnerStyle,
     session.CurrentModel?.Id);
 AgentOutput.Current = spectreOutput;
 
-// 10. Set up slash commands
+// 10. Build interactive input with command completions
+var completionProvider = new CompletionProvider();
+SlashCommandCatalog.RegisterCompletions(completionProvider);
+var interactiveInput = new InteractiveInput(completionProvider)
+{
+    VimModeEnabled = tuiSettings.VimMode,
+};
+
+// 10a. Set up slash commands
 var workflowCatalog = new FileWorkflowCatalog(Path.Combine(DataDirectories.Root, "workflows"));
-var searchHttp = new HttpClient();
+using var searchHttp = new HttpClient();
 var modelSearchAggregator = new ModelSearchAggregator(new IRemoteModelSearch[]
 {
     new OllamaModelSearch(searchHttp),
@@ -602,56 +612,13 @@ var commandRouter = new SlashCommandRouter(
     providerConfig: providerConfig,
     configStore: configStore,
     modelSearchAggregator: modelSearchAggregator,
-    metadataProvider: metadataProvider);
-
-// 10. Build interactive input with command completions
-var completionProvider = new CompletionProvider();
-completionProvider.Register("/help", "Show available commands");
-completionProvider.Register("/models", "List available models");
-completionProvider.Register("/model", "Switch to a model");
-completionProvider.Register("/model search", "Search for models across all providers");
-completionProvider.Register("/model url", "Pull a model by URL or identifier");
-completionProvider.Register("/providers", "List detected providers");
-completionProvider.Register("/provider", "Manage provider (add|remove|test|list)");
-completionProvider.Register("/provider add", "Configure an API-key provider");
-completionProvider.Register("/provider remove", "Remove provider credentials");
-completionProvider.Register("/provider test", "Test provider connectivity");
-completionProvider.Register("/provider list", "List all providers with status");
-completionProvider.Register("/clear", "Clear chat history");
-completionProvider.Register("/compact", "Force context compaction");
-completionProvider.Register("/cost", "Show token usage");
-completionProvider.Register("/autorun", "Toggle auto-approve for tools");
-completionProvider.Register("/permissions", "Toggle permission checks");
-completionProvider.Register("/sessions", "List recent sessions");
-completionProvider.Register("/resume", "Resume a previous session");
-completionProvider.Register("/name", "Name the current session");
-completionProvider.Register("/history", "Show session turn history");
-completionProvider.Register("/export", "Export current session to JSON");
-completionProvider.Register("/update", "Check for and apply updates");
-completionProvider.Register("/instructions", "Show loaded project instructions");
-completionProvider.Register("/plugins", "List loaded plugins");
-completionProvider.Register("/checkpoint", "List, restore, or clear checkpoints");
-completionProvider.Register("/sandbox", "Show or change sandbox mode");
-completionProvider.Register("/workflow", "Manage workflows (list|show|export|replay|refine)");
-completionProvider.Register("/spinner", "Set progress style (none|minimal|normal|rich|nerdy)");
-completionProvider.Register("/mcp", "Manage MCP servers (list|add|remove|enable|disable)");
-completionProvider.Register("/context", "Show context window usage");
-completionProvider.Register("/copy", "Copy last response to clipboard");
-completionProvider.Register("/diff", "Show uncommitted changes");
-completionProvider.Register("/init", "Initialize JDAI.md project file");
-completionProvider.Register("/plan", "Toggle plan mode (explore only)");
-completionProvider.Register("/doctor", "Run self-diagnostics");
-completionProvider.Register("/fork", "Fork conversation to new session");
-completionProvider.Register("/default", "Manage default provider/model settings");
-completionProvider.Register("/default provider", "Set global default provider");
-completionProvider.Register("/default model", "Set global default model");
-completionProvider.Register("/default project provider", "Set project default provider");
-completionProvider.Register("/default project model", "Set project default model");
-completionProvider.Register("/model-info", "Show model metadata (context, cost, capabilities)");
-completionProvider.Register("/model-info refresh", "Force-refresh model metadata from LiteLLM");
-completionProvider.Register("/quit", "Exit jdai");
-completionProvider.Register("/exit", "Exit jdai");
-var interactiveInput = new InteractiveInput(completionProvider);
+    metadataProvider: metadataProvider,
+    getTheme: () => ChatRenderer.CurrentTheme,
+    onThemeChanged: ChatRenderer.ApplyTheme,
+    getVimMode: () => interactiveInput.VimModeEnabled,
+    onVimModeChanged: enabled => interactiveInput.VimModeEnabled = enabled,
+    getOutputStyle: () => ChatRenderer.CurrentOutputStyle,
+    onOutputStyleChanged: ChatRenderer.SetOutputStyle);
 
 // Hook double-ESC at empty prompt → open history viewer
 interactiveInput.OnDoubleEscape += (sender, e) =>

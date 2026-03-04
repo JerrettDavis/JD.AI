@@ -26,6 +26,15 @@ public sealed record TuiSettings
     /// <summary>System prompt compaction mode: Off, Auto (compact when over budget), Always.</summary>
     public SystemPromptCompaction SystemPromptCompaction { get; init; } = SystemPromptCompaction.Off;
 
+    /// <summary>Color theme used by the terminal renderer.</summary>
+    public TuiTheme Theme { get; init; } = TuiTheme.DefaultDark;
+
+    /// <summary>When true, interactive input uses vim-style key bindings.</summary>
+    public bool VimMode { get; init; }
+
+    /// <summary>Assistant output rendering style.</summary>
+    public OutputStyle OutputStyle { get; init; } = OutputStyle.Rich;
+
     /// <summary>Load settings from the data directory, returning defaults if not found.</summary>
     public static TuiSettings Load()
     {

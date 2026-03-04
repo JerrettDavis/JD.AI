@@ -1,3 +1,8 @@
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using JD.AI.Agent;
 using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Config;
@@ -13,6 +18,9 @@ using JD.AI.Rendering;
 using JD.AI.Workflows;
 using JD.AI.Workflows.Store;
 using JD.SemanticKernel.Extensions.Mcp;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Spectre.Console;
 
 namespace JD.AI.Commands;
@@ -34,6 +42,12 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private readonly Action<SpinnerStyle>? _onSpinnerStyleChanged;
     private readonly Func<SpinnerStyle>? _getSpinnerStyle;
     private readonly McpManager _mcpManager;
+    private readonly Action<TuiTheme>? _onThemeChanged;
+    private readonly Func<TuiTheme>? _getTheme;
+    private readonly Action<bool>? _onVimModeChanged;
+    private readonly Func<bool>? _getVimMode;
+    private readonly Action<OutputStyle>? _onOutputStyleChanged;
+    private readonly Func<OutputStyle>? _getOutputStyle;
     private readonly AtomicConfigStore? _configStore;
     private readonly ModelSearchAggregator? _modelSearchAggregator;
     private readonly ModelMetadataProvider? _metadataProvider;
@@ -52,7 +66,13 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         AtomicConfigStore? configStore = null,
         ModelSearchAggregator? modelSearchAggregator = null,
         IWorkflowStore? workflowStore = null,
-        ModelMetadataProvider? metadataProvider = null)
+        ModelMetadataProvider? metadataProvider = null,
+        Func<TuiTheme>? getTheme = null,
+        Action<TuiTheme>? onThemeChanged = null,
+        Func<bool>? getVimMode = null,
+        Action<bool>? onVimModeChanged = null,
+        Func<OutputStyle>? getOutputStyle = null,
+        Action<OutputStyle>? onOutputStyleChanged = null)
     {
         _session = session;
         _registry = registry;
@@ -66,6 +86,12 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         _onSpinnerStyleChanged = onSpinnerStyleChanged;
         _providerConfig = providerConfig;
         _mcpManager = mcpManager ?? new McpManager();
+        _getTheme = getTheme;
+        _onThemeChanged = onThemeChanged;
+        _getVimMode = getVimMode;
+        _onVimModeChanged = onVimModeChanged;
+        _getOutputStyle = getOutputStyle;
+        _onOutputStyleChanged = onOutputStyleChanged;
         _configStore = configStore;
         _modelSearchAggregator = modelSearchAggregator;
         _metadataProvider = metadataProvider;
@@ -114,6 +140,16 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/PLAN" or "/JDAI-PLAN" => TogglePlanMode(),
             "/DOCTOR" or "/JDAI-DOCTOR" => await RunDoctorAsync(ct).ConfigureAwait(false),
             "/FORK" or "/JDAI-FORK" => await ForkSessionAsync(parts, ct).ConfigureAwait(false),
+            "/REVIEW" or "/JDAI-REVIEW" => await RunReviewAsync(arg, securityMode: false, ct).ConfigureAwait(false),
+            "/SECURITY-REVIEW" or "/JDAI-SECURITY-REVIEW" => await RunReviewAsync(arg, securityMode: true, ct).ConfigureAwait(false),
+            "/THEME" or "/JDAI-THEME" => HandleTheme(arg),
+            "/VIM" or "/JDAI-VIM" => ToggleVimMode(arg),
+            "/STATS" or "/JDAI-STATS" => await ShowStatsAsync(arg, ct).ConfigureAwait(false),
+            "/CONFIG" or "/JDAI-CONFIG" => HandleConfig(arg),
+            "/AGENTS" or "/JDAI-AGENTS" => await HandleAgentsAsync(arg, ct).ConfigureAwait(false),
+            "/HOOKS" or "/JDAI-HOOKS" => await HandleHooksAsync(arg, ct).ConfigureAwait(false),
+            "/MEMORY" or "/JDAI-MEMORY" => await HandleMemoryAsync(arg, ct).ConfigureAwait(false),
+            "/OUTPUT-STYLE" or "/JDAI-OUTPUT-STYLE" => HandleOutputStyle(arg),
             "/DEFAULT" or "/JDAI-DEFAULT" => await HandleDefaultAsync(arg, ct).ConfigureAwait(false),
             "/MODEL-INFO" or "/JDAI-MODEL-INFO" => await HandleModelInfoAsync(arg, ct).ConfigureAwait(false),
             "/QUIT" or "/EXIT" or "/JDAI-QUIT" or "/JDAI-EXIT" => null, // Signal exit
@@ -157,6 +193,16 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /plan           — Toggle plan mode (explore only)
           /doctor         — Run self-diagnostics
           /fork [name]    — Fork conversation to new session
+          /review         — Review current changes (or branch diff)
+          /security-review — OWASP/CWE-focused security analysis
+          /theme [name]   — Set/list terminal themes
+          /vim [on|off]   — Toggle vim editing mode
+          /stats [--history|--daily] — Session and historical usage stats
+          /config [list|get|set] — Manage persisted command settings
+          /agents         — Manage local agent profiles
+          /hooks          — Manage local hook profiles
+          /memory         — View/edit project memory (JDAI.md)
+          /output-style [style] — Set output format (rich|plain|compact|json)
           /default        — Manage default provider/model (global & per-project)
           /model-info [refresh] — Show model metadata (context, cost, capabilities)
           /quit           — Exit jdai
@@ -1793,6 +1839,1178 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         }
 
         return sb.ToString();
+    }
+
+    // ── /review, /security-review ──────────────────────────
+
+    private sealed record ReviewRequest(
+        bool SecurityMode,
+        bool FullScan,
+        string? Branch,
+        string? Target);
+
+    private sealed record SecurityFinding(
+        string Severity,
+        string Cwe,
+        string Title,
+        string File,
+        int Line,
+        string Summary,
+        string Recommendation);
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    };
+
+    private async Task<string> RunReviewAsync(string? arg, bool securityMode, CancellationToken ct)
+    {
+        try
+        {
+            var request = await ParseReviewArgsAsync(arg, securityMode, ct).ConfigureAwait(false);
+            if (request is null)
+            {
+                return securityMode
+                    ? "Usage: /security-review [--full] [--branch <name> --target <name>]"
+                    : "Usage: /review [--branch <name> --target <name>]";
+            }
+
+            if (request.SecurityMode)
+                return await RunSecurityReviewAsync(request, ct).ConfigureAwait(false);
+
+            var (diff, files) = await GetReviewDiffAndFilesAsync(request, ct).ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(diff))
+                return "No changes to review.";
+
+            var fileContext = await BuildFileContextAsync(files, ct).ConfigureAwait(false);
+            var trimmedDiff = TrimTo(diff, 50_000);
+
+            var prompt = $$"""
+            Review the following code changes and return findings in exactly this format:
+
+            ## Critical
+            - <file:line> <issue and impact>
+
+            ## Warning
+            - <file:line> <issue and impact>
+
+            ## Suggestions
+            - <file:line> <improvement suggestion>
+
+            Rules:
+            - Focus on correctness, regressions, reliability, security, and maintainability.
+            - Include file paths and line numbers when possible.
+            - If no items for a section, write "- None."
+            - Keep each bullet concise.
+
+            Diff:
+            ```diff
+            {{trimmedDiff}}
+            ```
+
+            Additional file context:
+            {{fileContext}}
+            """;
+
+            var reviewed = await RunModelAnalysisAsync(prompt, ct).ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(reviewed))
+                return "Review completed, but no findings were returned.";
+
+            return request.Branch is not null
+                ? $"Reviewing `{request.Branch}` against `{request.Target}`\n\n{reviewed}"
+                : $"Reviewing uncommitted changes\n\n{reviewed}";
+        }
+        catch (Exception ex)
+        {
+            return $"Review failed: {ex.Message}";
+        }
+    }
+
+    private async Task<string> RunSecurityReviewAsync(ReviewRequest request, CancellationToken ct)
+    {
+        var files = await GetSecurityTargetFilesAsync(request, ct).ConfigureAwait(false);
+        if (files.Count == 0)
+            return "No files found for security scan.";
+
+        var findings = new List<SecurityFinding>();
+        foreach (var file in files.Where(IsSourceLikeFile))
+        {
+            if (!File.Exists(file)) continue;
+            var text = await File.ReadAllTextAsync(file, ct).ConfigureAwait(false);
+
+            AddSecurityFindings(findings, file, text);
+        }
+
+        var bySeverity = findings
+            .GroupBy(f => f.Severity)
+            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+
+        var critical = bySeverity.GetValueOrDefault("critical")?.Count ?? 0;
+        var warning = bySeverity.GetValueOrDefault("warning")?.Count ?? 0;
+        var info = bySeverity.GetValueOrDefault("info")?.Count ?? 0;
+
+        var sb = new StringBuilder();
+        sb.AppendLine(request.FullScan
+            ? "Security scan across tracked repository files (OWASP/CWE heuristics)"
+            : "Security scan of current changes (OWASP/CWE heuristics)");
+
+        if (findings.Count == 0)
+        {
+            sb.AppendLine("No obvious security findings from heuristic checks.");
+            return sb.ToString().TrimEnd();
+        }
+
+        foreach (var severity in new[] { "critical", "warning", "info" })
+        {
+            if (!bySeverity.TryGetValue(severity, out var items) || items.Count == 0)
+                continue;
+
+            var label = severity switch
+            {
+                "critical" => "Critical",
+                "warning" => "Warning",
+                _ => "Info",
+            };
+
+            sb.AppendLine();
+            sb.AppendLine($"## {label}");
+            foreach (var finding in items.Take(40))
+            {
+                sb.AppendLine(
+                    $"- {finding.Cwe} {finding.Title} — {finding.File}:{finding.Line} | {finding.Summary} | Fix: {finding.Recommendation}");
+            }
+        }
+
+        sb.AppendLine();
+        sb.AppendLine($"Summary: {critical} critical, {warning} warning, {info} info");
+        return sb.ToString().TrimEnd();
+    }
+
+    private static void AddSecurityFindings(List<SecurityFinding> findings, string file, string text)
+    {
+        AddPatternFindings(
+            findings, file, text,
+            severity: "critical",
+            cwe: "CWE-89",
+            title: "Potential SQL Injection",
+            pattern: @"(?im)(select|insert|update|delete)\s+.+\+.+",
+            summary: "String concatenation appears in SQL statement construction.",
+            recommendation: "Use parameterized queries or ORM parameters.");
+
+        AddPatternFindings(
+            findings, file, text,
+            severity: "warning",
+            cwe: "CWE-798",
+            title: "Hard-coded Credential Pattern",
+            pattern: @"(?im)\b(api[_-]?key|secret|password|token)\b\s*[:=]\s*[""'][^""'\r\n]{8,}[""']",
+            summary: "Credential-like literal appears hard-coded.",
+            recommendation: "Move secrets to environment variables or secret manager.");
+
+        AddPatternFindings(
+            findings, file, text,
+            severity: "warning",
+            cwe: "CWE-327",
+            title: "Weak Cryptographic Hash",
+            pattern: @"(?im)\b(MD5|SHA1)\b",
+            summary: "Weak hash algorithm detected.",
+            recommendation: "Use SHA-256+ or approved cryptographic primitives.");
+
+        AddPatternFindings(
+            findings, file, text,
+            severity: "warning",
+            cwe: "CWE-78",
+            title: "Potential Command Injection",
+            pattern: @"(?im)ProcessStartInfo\s*\{[^}]*Arguments\s*=\s*\$""",
+            summary: "Interpolated shell arguments may include untrusted input.",
+            recommendation: "Validate inputs and avoid shell interpolation when possible.");
+
+        AddPatternFindings(
+            findings, file, text,
+            severity: "info",
+            cwe: "CWE-22",
+            title: "Potential Path Traversal Risk",
+            pattern: @"(?im)Path\.Combine\([^)]*(input|path|filename|user)",
+            summary: "Path combines potentially user-controlled values.",
+            recommendation: "Normalize and validate paths before filesystem access.");
+    }
+
+    private static void AddPatternFindings(
+        List<SecurityFinding> findings,
+        string file,
+        string text,
+        string severity,
+        string cwe,
+        string title,
+        string pattern,
+        string summary,
+        string recommendation)
+    {
+        var matches = Regex.Matches(text, pattern, RegexOptions.CultureInvariant);
+        foreach (Match match in matches.Cast<Match>().Take(5))
+        {
+            var line = 1 + text.AsSpan(0, match.Index).Count('\n');
+            findings.Add(new SecurityFinding(
+                Severity: severity,
+                Cwe: cwe,
+                Title: title,
+                File: file.Replace('\\', '/'),
+                Line: line,
+                Summary: summary,
+                Recommendation: recommendation));
+        }
+    }
+
+    private async Task<ReviewRequest?> ParseReviewArgsAsync(string? arg, bool securityMode, CancellationToken ct)
+    {
+        var tokens = (arg ?? string.Empty)
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        string? branch = null;
+        string? target = null;
+        var full = false;
+
+        for (var i = 0; i < tokens.Length; i++)
+        {
+            var token = tokens[i];
+            if (string.Equals(token, "--full", StringComparison.OrdinalIgnoreCase))
+            {
+                full = true;
+                continue;
+            }
+
+            if (string.Equals(token, "--branch", StringComparison.OrdinalIgnoreCase))
+            {
+                if (i + 1 >= tokens.Length) return null;
+                branch = tokens[++i];
+                continue;
+            }
+
+            if (string.Equals(token, "--target", StringComparison.OrdinalIgnoreCase))
+            {
+                if (i + 1 >= tokens.Length) return null;
+                target = tokens[++i];
+            }
+        }
+
+        if (target is not null && branch is null)
+        {
+            branch = await GetCurrentBranchAsync(ct).ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(branch))
+                throw new InvalidOperationException(
+                    "Unable to determine current git branch for --target comparison.");
+        }
+
+        if (branch is not null && target is null)
+            target = "main";
+
+        return new ReviewRequest(securityMode, full, branch, target);
+    }
+
+    private async Task<(string Diff, IReadOnlyList<string> Files)> GetReviewDiffAndFilesAsync(
+        ReviewRequest request, CancellationToken ct)
+    {
+        if (request.Branch is not null && request.Target is not null)
+        {
+            var args = $"{request.Target}...{request.Branch}";
+            var diffResult = await RunGitCommandAsync($"diff {args}", ct).ConfigureAwait(false);
+            EnsureGitCommandSucceeded($"diff {args}", diffResult);
+            var filesOutput = await RunGitCommandAsync($"diff --name-only {args}", ct).ConfigureAwait(false);
+            EnsureGitCommandSucceeded($"diff --name-only {args}", filesOutput);
+            return (diffResult.StdOut, SplitLines(filesOutput.StdOut));
+        }
+
+        var unstaged = await RunGitCommandAsync("diff", ct).ConfigureAwait(false);
+        EnsureGitCommandSucceeded("diff", unstaged);
+        var staged = await RunGitCommandAsync("diff --cached", ct).ConfigureAwait(false);
+        EnsureGitCommandSucceeded("diff --cached", staged);
+        var diff = $"{unstaged.StdOut}\n{staged.StdOut}".Trim();
+
+        var unstagedFiles = await RunGitCommandAsync("diff --name-only", ct).ConfigureAwait(false);
+        EnsureGitCommandSucceeded("diff --name-only", unstagedFiles);
+        var stagedFiles = await RunGitCommandAsync("diff --cached --name-only", ct).ConfigureAwait(false);
+        EnsureGitCommandSucceeded("diff --cached --name-only", stagedFiles);
+        var untrackedFiles = await RunGitCommandAsync("ls-files --others --exclude-standard", ct).ConfigureAwait(false);
+        EnsureGitCommandSucceeded("ls-files --others --exclude-standard", untrackedFiles);
+
+        var files = SplitLines($"{unstagedFiles.StdOut}\n{stagedFiles.StdOut}\n{untrackedFiles.StdOut}")
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return (diff, files);
+    }
+
+    private async Task<IReadOnlyList<string>> GetSecurityTargetFilesAsync(ReviewRequest request, CancellationToken ct)
+    {
+        if (request.FullScan)
+        {
+            var all = await RunGitCommandAsync("ls-files", ct).ConfigureAwait(false);
+            EnsureGitCommandSucceeded("ls-files", all);
+            return SplitLines(all.StdOut);
+        }
+
+        var (_, files) = await GetReviewDiffAndFilesAsync(request, ct).ConfigureAwait(false);
+        return files;
+    }
+
+    private async Task<string> BuildFileContextAsync(IReadOnlyList<string> files, CancellationToken ct)
+    {
+        if (files.Count == 0)
+            return "No changed files available.";
+
+        var sb = new StringBuilder();
+        foreach (var file in files.Where(IsSourceLikeFile).Take(8))
+        {
+            if (!File.Exists(file)) continue;
+            var content = await File.ReadAllTextAsync(file, ct).ConfigureAwait(false);
+            sb.AppendLine($"### {file.Replace('\\', '/')}");
+            sb.AppendLine("```");
+            sb.AppendLine(TrimTo(content, 5_000));
+            sb.AppendLine("```");
+            sb.AppendLine();
+        }
+
+        return sb.Length == 0 ? "No readable text files found." : sb.ToString().TrimEnd();
+    }
+
+    private async Task<string> RunModelAnalysisAsync(string prompt, CancellationToken ct)
+    {
+        var chat = _session.Kernel.GetRequiredService<IChatCompletionService>();
+        var history = new ChatHistory();
+        history.AddSystemMessage("""
+            You are a principal engineer doing a high-signal code review.
+            Prioritize bugs, regressions, security issues, and maintainability risks.
+            Be concise and concrete.
+            """);
+        history.AddUserMessage(prompt);
+
+        var settings = new OpenAIPromptExecutionSettings
+        {
+            MaxTokens = 2200,
+            Temperature = 0.1,
+        };
+
+        var result = await chat.GetChatMessageContentAsync(
+            history,
+            settings,
+            _session.Kernel,
+            ct).ConfigureAwait(false);
+
+        return result.Content ?? string.Empty;
+    }
+
+    private static bool IsSourceLikeFile(string path)
+    {
+        var ext = Path.GetExtension(path).ToLowerInvariant();
+        return ext is ".cs" or ".csx" or ".md" or ".json" or ".yaml" or ".yml" or ".xml" or ".ts" or ".tsx" or ".js" or ".jsx" or ".py" or ".go" or ".java" or ".cpp" or ".c" or ".h" or ".hpp" or ".rb" or ".rs" or ".sql" or ".ps1" or ".sh" or ".txt";
+    }
+
+    private static string TrimTo(string value, int maxChars) =>
+        value.Length <= maxChars
+            ? value
+            : value[..maxChars] + "\n... [truncated]";
+
+    private static List<string> SplitLines(string text) =>
+        text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(l => !string.IsNullOrWhiteSpace(l))
+            .ToList();
+
+    private static void EnsureGitCommandSucceeded(
+        string command,
+        (int ExitCode, string StdOut, string StdErr) result)
+    {
+        if (result.ExitCode == 0)
+            return;
+
+        throw new InvalidOperationException(FormatGitError(command, result));
+    }
+
+    private static string FormatGitError(
+        string command,
+        (int ExitCode, string StdOut, string StdErr) result)
+    {
+        var error = string.IsNullOrWhiteSpace(result.StdErr)
+            ? "No error output."
+            : result.StdErr.Trim();
+        return $"`git {command}` failed (exit {result.ExitCode}): {error}";
+    }
+
+    private static async Task<(int ExitCode, string StdOut, string StdErr)> RunGitCommandAsync(
+        string args, CancellationToken ct)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "git",
+                Arguments = $"--no-pager {args}",
+                WorkingDirectory = Directory.GetCurrentDirectory(),
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+
+            using var process = new Process { StartInfo = psi };
+            process.Start();
+
+            var stdoutTask = process.StandardOutput.ReadToEndAsync(ct);
+            var stderrTask = process.StandardError.ReadToEndAsync(ct);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
+
+            var stdout = await stdoutTask.ConfigureAwait(false);
+            var stderr = await stderrTask.ConfigureAwait(false);
+            return (process.ExitCode, stdout, stderr);
+        }
+        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
+        {
+            return (-1, string.Empty, $"Failed to run git: {ex.Message}");
+        }
+    }
+
+    private static async Task<string?> GetCurrentBranchAsync(CancellationToken ct)
+    {
+        var result = await RunGitCommandAsync("rev-parse --abbrev-ref HEAD", ct).ConfigureAwait(false);
+        if (result.ExitCode != 0)
+            return null;
+
+        return result.StdOut.Trim();
+    }
+
+    // ── /theme, /vim, /output-style, /config ───────────────
+
+    private static readonly IReadOnlyDictionary<string, TuiTheme> ThemeAliases =
+        new Dictionary<string, TuiTheme>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["default"] = TuiTheme.DefaultDark,
+            ["default-dark"] = TuiTheme.DefaultDark,
+            ["monokai"] = TuiTheme.Monokai,
+            ["solarized-dark"] = TuiTheme.SolarizedDark,
+            ["solarized-light"] = TuiTheme.SolarizedLight,
+            ["nord"] = TuiTheme.Nord,
+            ["dracula"] = TuiTheme.Dracula,
+            ["one-dark"] = TuiTheme.OneDark,
+            ["catppuccin"] = TuiTheme.CatppuccinMocha,
+            ["catppuccin-mocha"] = TuiTheme.CatppuccinMocha,
+            ["gruvbox"] = TuiTheme.Gruvbox,
+            ["high-contrast"] = TuiTheme.HighContrast,
+        };
+
+    private static readonly IReadOnlyDictionary<string, OutputStyle> OutputStyleAliases =
+        new Dictionary<string, OutputStyle>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["rich"] = OutputStyle.Rich,
+            ["plain"] = OutputStyle.Plain,
+            ["compact"] = OutputStyle.Compact,
+            ["json"] = OutputStyle.Json,
+        };
+
+    private string HandleTheme(string? arg)
+    {
+        if (_getTheme is null || _onThemeChanged is null)
+            return "Theme switching is not configurable in this context.";
+
+        if (string.IsNullOrWhiteSpace(arg))
+        {
+            var current = _getTheme();
+            var available = string.Join(", ", ThemeAliases.Keys.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(k => k));
+            return $"Current theme: {ToThemeToken(current)}\nAvailable: {available}\nUsage: /theme <name>";
+        }
+
+        var token = arg.Trim();
+        if (!ThemeAliases.TryGetValue(token, out var selected))
+            return $"Unknown theme '{token}'. Run /theme to list available themes.";
+
+        _onThemeChanged(selected);
+        SaveSettings(TuiSettings.Load() with { Theme = selected });
+        return $"Theme set to {ToThemeToken(selected)}.";
+    }
+
+    private string ToggleVimMode(string? arg)
+    {
+        if (_getVimMode is null || _onVimModeChanged is null)
+            return "Vim mode is not configurable in this context.";
+
+        bool enabled;
+        if (string.IsNullOrWhiteSpace(arg))
+        {
+            enabled = !_getVimMode();
+        }
+        else if (TryParseOnOff(arg.Trim(), out var parsed))
+        {
+            enabled = parsed;
+        }
+        else
+        {
+            return $"Vim mode is {(_getVimMode() ? "ON" : "OFF")}. Usage: /vim [on|off]";
+        }
+
+        _onVimModeChanged(enabled);
+        SaveSettings(TuiSettings.Load() with { VimMode = enabled });
+        return enabled
+            ? "Vim mode: ON (ESC normal mode, i/a/I/A to enter insert mode)"
+            : "Vim mode: OFF (standard editing restored)";
+    }
+
+    private string HandleOutputStyle(string? arg)
+    {
+        if (_getOutputStyle is null || _onOutputStyleChanged is null)
+            return "Output style is not configurable in this context.";
+
+        if (string.IsNullOrWhiteSpace(arg))
+        {
+            var current = _getOutputStyle();
+            var available = string.Join(", ", OutputStyleAliases.Keys.OrderBy(k => k));
+            return $"Current output style: {current.ToString().ToLowerInvariant()}\nAvailable: {available}\nUsage: /output-style <style>";
+        }
+
+        var token = arg.Trim();
+        if (!OutputStyleAliases.TryGetValue(token, out var style))
+            return $"Unknown output style '{token}'. Run /output-style to list options.";
+
+        _onOutputStyleChanged(style);
+        SaveSettings(TuiSettings.Load() with { OutputStyle = style });
+        return $"Output style set to {style.ToString().ToLowerInvariant()}.";
+    }
+
+    private string HandleConfig(string? arg)
+    {
+        var settings = TuiSettings.Load();
+        var parts = (arg ?? string.Empty).Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var action = parts.Length == 0 ? "list" : parts[0].ToLowerInvariant();
+        var rest = parts.Length > 1 ? parts[1] : null;
+
+        return action switch
+        {
+            "list" => FormatConfig(settings),
+            "get" => GetConfigValue(rest, settings),
+            "set" => SetConfigValue(rest, settings),
+            _ => "Usage: /config [list|get <key>|set <key> <value>]",
+        };
+    }
+
+    private string FormatConfig(TuiSettings settings)
+    {
+        var theme = _getTheme?.Invoke() ?? settings.Theme;
+        var vim = _getVimMode?.Invoke() ?? settings.VimMode;
+        var output = _getOutputStyle?.Invoke() ?? settings.OutputStyle;
+        var spinner = _getSpinnerStyle?.Invoke() ?? settings.SpinnerStyle;
+
+        return $$"""
+            Configuration:
+              theme: {{ToThemeToken(theme)}}
+              vim_mode: {{vim.ToString().ToLowerInvariant()}}
+              output_style: {{output.ToString().ToLowerInvariant()}}
+              spinner_style: {{spinner.ToString().ToLowerInvariant()}}
+              autorun: {{_session.AutoRunEnabled.ToString().ToLowerInvariant()}}
+              permissions: {{(!_session.SkipPermissions).ToString().ToLowerInvariant()}}
+              plan_mode: {{_session.PlanMode.ToString().ToLowerInvariant()}}
+
+            Usage:
+              /config get <key>
+              /config set <key> <value>
+            """;
+    }
+
+    private string GetConfigValue(string? key, TuiSettings settings)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+            return "Usage: /config get <key>";
+
+        var token = NormalizeConfigKey(key);
+        return token switch
+        {
+            "theme" => $"theme={ToThemeToken(_getTheme?.Invoke() ?? settings.Theme)}",
+            "vim_mode" => $"vim_mode={(_getVimMode?.Invoke() ?? settings.VimMode).ToString().ToLowerInvariant()}",
+            "output_style" => $"output_style={(_getOutputStyle?.Invoke() ?? settings.OutputStyle).ToString().ToLowerInvariant()}",
+            "spinner_style" => $"spinner_style={(_getSpinnerStyle?.Invoke() ?? settings.SpinnerStyle).ToString().ToLowerInvariant()}",
+            "autorun" => $"autorun={_session.AutoRunEnabled.ToString().ToLowerInvariant()}",
+            "permissions" => $"permissions={(!_session.SkipPermissions).ToString().ToLowerInvariant()}",
+            "plan_mode" => $"plan_mode={_session.PlanMode.ToString().ToLowerInvariant()}",
+            _ => $"Unknown config key '{key}'.",
+        };
+    }
+
+    private string SetConfigValue(string? keyValue, TuiSettings settings)
+    {
+        if (string.IsNullOrWhiteSpace(keyValue))
+            return "Usage: /config set <key> <value>";
+
+        var parts = keyValue.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 2)
+            return "Usage: /config set <key> <value>";
+
+        var key = NormalizeConfigKey(parts[0]);
+        var value = parts[1].Trim();
+
+        switch (key)
+        {
+            case "theme":
+                if (!ThemeAliases.TryGetValue(value, out var theme))
+                    return $"Unknown theme '{value}'.";
+                _onThemeChanged?.Invoke(theme);
+                SaveSettings(settings with { Theme = theme });
+                return $"theme={ToThemeToken(theme)}";
+
+            case "vim_mode":
+                if (!TryParseOnOff(value, out var vimEnabled))
+                    return "vim_mode expects on/off.";
+                _onVimModeChanged?.Invoke(vimEnabled);
+                SaveSettings(settings with { VimMode = vimEnabled });
+                return $"vim_mode={vimEnabled.ToString().ToLowerInvariant()}";
+
+            case "output_style":
+                if (!OutputStyleAliases.TryGetValue(value, out var outputStyle))
+                    return $"Unknown output_style '{value}'.";
+                _onOutputStyleChanged?.Invoke(outputStyle);
+                SaveSettings(settings with { OutputStyle = outputStyle });
+                return $"output_style={outputStyle.ToString().ToLowerInvariant()}";
+
+            case "spinner_style":
+                if (!Enum.TryParse<SpinnerStyle>(value, true, out var spinner))
+                    return "Unknown spinner_style. Use none|minimal|normal|rich|nerdy.";
+                _onSpinnerStyleChanged?.Invoke(spinner);
+                SaveSettings(settings with { SpinnerStyle = spinner });
+                return $"spinner_style={spinner.ToString().ToLowerInvariant()}";
+
+            case "autorun":
+                if (!TryParseOnOff(value, out var autorun))
+                    return "autorun expects on/off.";
+                _session.AutoRunEnabled = autorun;
+                return $"autorun={autorun.ToString().ToLowerInvariant()}";
+
+            case "permissions":
+                if (!TryParseOnOff(value, out var permissionsOn))
+                    return "permissions expects on/off.";
+                _session.SkipPermissions = !permissionsOn;
+                return $"permissions={permissionsOn.ToString().ToLowerInvariant()}";
+
+            case "plan_mode":
+                if (!TryParseOnOff(value, out var plan))
+                    return "plan_mode expects on/off.";
+                _session.PlanMode = plan;
+                return $"plan_mode={plan.ToString().ToLowerInvariant()}";
+
+            default:
+                return $"Unknown config key '{parts[0]}'.";
+        }
+    }
+
+    private static string NormalizeConfigKey(string key) =>
+        key.Trim().ToLowerInvariant().Replace('-', '_');
+
+    private static bool TryParseOnOff(string value, out bool enabled)
+    {
+        switch (value.Trim().ToLowerInvariant())
+        {
+            case "on":
+            case "true":
+            case "1":
+            case "yes":
+                enabled = true;
+                return true;
+            case "off":
+            case "false":
+            case "0":
+            case "no":
+                enabled = false;
+                return true;
+            default:
+                enabled = false;
+                return false;
+        }
+    }
+
+    private static string ToThemeToken(TuiTheme theme) => theme switch
+    {
+        TuiTheme.DefaultDark => "default-dark",
+        TuiTheme.SolarizedDark => "solarized-dark",
+        TuiTheme.SolarizedLight => "solarized-light",
+        TuiTheme.OneDark => "one-dark",
+        TuiTheme.CatppuccinMocha => "catppuccin-mocha",
+        TuiTheme.HighContrast => "high-contrast",
+        _ => theme.ToString().ToLowerInvariant(),
+    };
+
+    private static void SaveSettings(TuiSettings settings)
+    {
+        try
+        {
+            settings.Save();
+        }
+#pragma warning disable CA1031
+        catch { }
+#pragma warning restore CA1031
+    }
+
+    // ── /stats ──────────────────────────────────────────────
+
+    private async Task<string> ShowStatsAsync(string? arg, CancellationToken ct)
+    {
+        var token = (arg ?? string.Empty).Trim();
+        if (string.Equals(token, "--history", StringComparison.OrdinalIgnoreCase))
+            return await ShowHistoryStatsAsync(ct).ConfigureAwait(false);
+
+        if (string.Equals(token, "--daily", StringComparison.OrdinalIgnoreCase))
+            return await ShowDailyStatsAsync(ct).ConfigureAwait(false);
+
+        return ShowSessionStats();
+    }
+
+    private string ShowSessionStats()
+    {
+        var session = _session.SessionInfo;
+        if (session is null)
+            return $"Session stats unavailable. Current token estimate: {_session.TotalTokens:N0}.";
+
+        var turns = session.Turns;
+        var first = turns.FirstOrDefault()?.CreatedAt;
+        var last = turns.LastOrDefault()?.CreatedAt;
+        var duration = first.HasValue && last.HasValue
+            ? last.Value - first.Value
+            : TimeSpan.Zero;
+
+        var providerTotals = turns
+            .Where(t => !string.IsNullOrWhiteSpace(t.ProviderName))
+            .GroupBy(t => t.ProviderName!, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new
+            {
+                Provider = g.Key,
+                Tokens = g.Sum(t => t.TokensIn + t.TokensOut),
+            })
+            .OrderByDescending(x => x.Tokens)
+            .ToList();
+
+        var toolTotals = turns
+            .SelectMany(t => t.ToolCalls)
+            .GroupBy(tc => tc.ToolName, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new { Tool = g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .Take(8)
+            .ToList();
+
+        var sb = new StringBuilder();
+        sb.AppendLine("Session Stats");
+        sb.AppendLine($"Turns: {turns.Count} | Duration: {FormatDuration(duration)} | Tokens: {session.TotalTokens:N0}");
+
+        if (providerTotals.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("Provider breakdown:");
+            var total = Math.Max(1L, providerTotals.Sum(p => p.Tokens));
+            foreach (var p in providerTotals)
+            {
+                var pct = (double)p.Tokens / total;
+                sb.AppendLine($"  {p.Provider,-12} {BuildBar(pct, 20)} {(pct * 100):F0}% ({p.Tokens:N0})");
+            }
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("Tool usage:");
+        if (toolTotals.Count == 0)
+        {
+            sb.AppendLine("  No tool calls recorded.");
+        }
+        else
+        {
+            var max = toolTotals.Max(t => t.Count);
+            foreach (var tool in toolTotals)
+            {
+                var pct = max == 0 ? 0 : (double)tool.Count / max;
+                sb.AppendLine($"  {tool.Tool,-14} {BuildBar(pct, 12, '▓', '░')} {tool.Count} calls");
+            }
+        }
+
+        return sb.ToString().TrimEnd();
+    }
+
+    private async Task<string> ShowHistoryStatsAsync(CancellationToken ct)
+    {
+        if (_session.Store is null)
+            return "History stats unavailable: session persistence not initialized.";
+
+        _ = ct;
+        var sessions = await _session.Store.ListSessionsAsync(limit: 200).ConfigureAwait(false);
+        if (sessions.Count == 0)
+            return "No historical sessions found.";
+
+        var totalTokens = sessions.Sum(s => s.TotalTokens);
+        var totalMessages = sessions.Sum(s => s.MessageCount);
+        var active = sessions.Count(s => s.IsActive);
+
+        var providerTotals = sessions
+            .Where(s => !string.IsNullOrWhiteSpace(s.ProviderName))
+            .GroupBy(s => s.ProviderName!, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new { Provider = g.Key, Tokens = g.Sum(s => s.TotalTokens) })
+            .OrderByDescending(x => x.Tokens)
+            .ToList();
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"History Stats ({sessions.Count} sessions)");
+        sb.AppendLine($"Total tokens: {totalTokens:N0}");
+        sb.AppendLine($"Total messages: {totalMessages:N0}");
+        sb.AppendLine($"Active sessions: {active}");
+        sb.AppendLine();
+
+        if (providerTotals.Count > 0)
+        {
+            var max = Math.Max(1L, providerTotals.Max(p => p.Tokens));
+            sb.AppendLine("Provider totals:");
+            foreach (var p in providerTotals)
+            {
+                var pct = (double)p.Tokens / max;
+                sb.AppendLine($"  {p.Provider,-12} {BuildBar(pct, 16)} {p.Tokens:N0}");
+            }
+        }
+
+        return sb.ToString().TrimEnd();
+    }
+
+    private async Task<string> ShowDailyStatsAsync(CancellationToken ct)
+    {
+        if (_session.Store is null)
+            return "Daily stats unavailable: session persistence not initialized.";
+
+        _ = ct;
+        var sessions = await _session.Store.ListSessionsAsync(limit: 500).ConfigureAwait(false);
+        if (sessions.Count == 0)
+            return "No sessions available for daily stats.";
+
+        var byDay = sessions
+            .GroupBy(s => s.CreatedAt.Date)
+            .OrderBy(g => g.Key)
+            .ToList();
+
+        var max = Math.Max(1L, byDay.Max(g => g.Sum(s => s.TotalTokens)));
+        var sb = new StringBuilder();
+        sb.AppendLine("Daily Usage");
+        foreach (var day in byDay)
+        {
+            var tokens = day.Sum(s => s.TotalTokens);
+            var pct = (double)tokens / max;
+            sb.AppendLine($"  {day.Key:yyyy-MM-dd} {BuildBar(pct, 18)} {tokens:N0} tokens ({day.Count()} sessions)");
+        }
+
+        return sb.ToString().TrimEnd();
+    }
+
+    private static string BuildBar(double ratio, int width, char fill = '█', char empty = '░')
+    {
+        ratio = Math.Clamp(ratio, 0, 1);
+        var filled = (int)Math.Round(ratio * width, MidpointRounding.AwayFromZero);
+        return new string(fill, filled) + new string(empty, Math.Max(0, width - filled));
+    }
+
+    private static string FormatDuration(TimeSpan duration)
+    {
+        if (duration.TotalMinutes >= 60)
+            return $"{(int)duration.TotalHours}h {duration.Minutes}m";
+        if (duration.TotalMinutes >= 1)
+            return $"{(int)duration.TotalMinutes}m {duration.Seconds}s";
+        return $"{duration.TotalSeconds:F0}s";
+    }
+
+    // ── /agents and /hooks ─────────────────────────────────
+
+    private sealed class AgentProfile
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = "General-purpose assistant";
+        public string Provider { get; set; } = "default";
+        public string Model { get; set; } = "default";
+        public List<string> Tools { get; set; } = [];
+        public bool Enabled { get; set; } = true;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    private sealed class HookProfile
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Event { get; set; } = "post-tool";
+        public string Command { get; set; } = string.Empty;
+        public bool Enabled { get; set; } = true;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    private static string AgentsPath => Path.Combine(DataDirectories.Root, "agents.json");
+    private static string HooksPath => Path.Combine(DataDirectories.Root, "hooks.json");
+
+    private async Task<string> HandleAgentsAsync(string? arg, CancellationToken ct)
+    {
+        var profiles = await LoadAgentsAsync(ct).ConfigureAwait(false);
+        var tokens = (arg ?? string.Empty).Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var action = tokens.Length == 0 ? "list" : tokens[0].ToLowerInvariant();
+        var rest = tokens.Length > 1 ? tokens[1] : null;
+
+        switch (action)
+        {
+            case "list":
+                if (profiles.Count == 0)
+                    return "No agent profiles configured. Create one with: /agents create <name>";
+                return "Agent profiles:\n" + string.Join('\n', profiles.Select(p =>
+                    $"  - {p.Name} ({(p.Enabled ? "enabled" : "disabled")}) — {p.Description} | {p.Provider}/{p.Model}"));
+
+            case "create":
+                if (string.IsNullOrWhiteSpace(rest))
+                    return "Usage: /agents create <name>";
+                if (profiles.Any(p => string.Equals(p.Name, rest, StringComparison.OrdinalIgnoreCase)))
+                    return $"Agent '{rest}' already exists.";
+                profiles.Add(new AgentProfile { Name = rest.Trim() });
+                await SaveAgentsAsync(profiles, ct).ConfigureAwait(false);
+                return $"Created agent profile '{rest.Trim()}'.";
+
+            case "delete":
+                if (string.IsNullOrWhiteSpace(rest))
+                    return "Usage: /agents delete <name>";
+                profiles.RemoveAll(p => string.Equals(p.Name, rest, StringComparison.OrdinalIgnoreCase));
+                await SaveAgentsAsync(profiles, ct).ConfigureAwait(false);
+                return $"Deleted agent profile '{rest.Trim()}' (if it existed).";
+
+            case "set":
+                return await SetAgentFieldAsync(rest, profiles, ct).ConfigureAwait(false);
+
+            default:
+                return "Usage: /agents [list|create <name>|delete <name>|set <name> <field> <value>]";
+        }
+    }
+
+    private async Task<string> SetAgentFieldAsync(
+        string? rest,
+        List<AgentProfile> profiles,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(rest))
+            return "Usage: /agents set <name> <field> <value>";
+
+        var parts = rest.Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 3)
+            return "Usage: /agents set <name> <field> <value>";
+
+        var name = parts[0];
+        var field = parts[1].ToLowerInvariant();
+        var value = parts[2];
+
+        var profile = profiles.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+        if (profile is null)
+            return $"Agent '{name}' not found.";
+
+        switch (field)
+        {
+            case "description":
+                profile.Description = value;
+                break;
+            case "provider":
+                profile.Provider = value;
+                break;
+            case "model":
+                profile.Model = value;
+                break;
+            case "tools":
+                profile.Tools = value
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .ToList();
+                break;
+            case "enabled":
+                if (!TryParseOnOff(value, out var enabled))
+                    return "enabled expects on/off.";
+                profile.Enabled = enabled;
+                break;
+            default:
+                return "Supported fields: description, provider, model, tools, enabled";
+        }
+
+        profile.UpdatedAt = DateTime.UtcNow;
+        await SaveAgentsAsync(profiles, ct).ConfigureAwait(false);
+        return $"Updated agent '{profile.Name}' ({field}).";
+    }
+
+    private async Task<string> HandleHooksAsync(string? arg, CancellationToken ct)
+    {
+        var hooks = await LoadHooksAsync(ct).ConfigureAwait(false);
+        var tokens = (arg ?? string.Empty).Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var action = tokens.Length == 0 ? "list" : tokens[0].ToLowerInvariant();
+        var rest = tokens.Length > 1 ? tokens[1] : null;
+
+        switch (action)
+        {
+            case "list":
+                if (hooks.Count == 0)
+                    return "No hooks configured. Create one with: /hooks create <name>";
+                return "Hooks:\n" + string.Join('\n', hooks.Select(h =>
+                    $"  - {h.Name} ({(h.Enabled ? "enabled" : "disabled")}) [{h.Event}] {h.Command}"));
+
+            case "create":
+                if (string.IsNullOrWhiteSpace(rest))
+                    return "Usage: /hooks create <name>";
+                if (hooks.Any(h => string.Equals(h.Name, rest, StringComparison.OrdinalIgnoreCase)))
+                    return $"Hook '{rest}' already exists.";
+                hooks.Add(new HookProfile { Name = rest.Trim(), Command = "echo hook", Event = "post-tool" });
+                await SaveHooksAsync(hooks, ct).ConfigureAwait(false);
+                return $"Created hook '{rest.Trim()}'.";
+
+            case "delete":
+                if (string.IsNullOrWhiteSpace(rest))
+                    return "Usage: /hooks delete <name>";
+                hooks.RemoveAll(h => string.Equals(h.Name, rest, StringComparison.OrdinalIgnoreCase));
+                await SaveHooksAsync(hooks, ct).ConfigureAwait(false);
+                return $"Deleted hook '{rest.Trim()}' (if it existed).";
+
+            case "toggle":
+                if (string.IsNullOrWhiteSpace(rest))
+                    return "Usage: /hooks toggle <name>";
+                var target = hooks.FirstOrDefault(h => string.Equals(h.Name, rest, StringComparison.OrdinalIgnoreCase));
+                if (target is null) return $"Hook '{rest}' not found.";
+                target.Enabled = !target.Enabled;
+                target.UpdatedAt = DateTime.UtcNow;
+                await SaveHooksAsync(hooks, ct).ConfigureAwait(false);
+                return $"Hook '{target.Name}' {(target.Enabled ? "enabled" : "disabled")}.";
+
+            case "set":
+                return await SetHookFieldAsync(rest, hooks, ct).ConfigureAwait(false);
+
+            default:
+                return "Usage: /hooks [list|create <name>|delete <name>|toggle <name>|set <name> <field> <value>]";
+        }
+    }
+
+    private async Task<string> SetHookFieldAsync(
+        string? rest,
+        List<HookProfile> hooks,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(rest))
+            return "Usage: /hooks set <name> <field> <value>";
+
+        var parts = rest.Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 3)
+            return "Usage: /hooks set <name> <field> <value>";
+
+        var name = parts[0];
+        var field = parts[1].ToLowerInvariant();
+        var value = parts[2];
+        var hook = hooks.FirstOrDefault(h => string.Equals(h.Name, name, StringComparison.OrdinalIgnoreCase));
+        if (hook is null)
+            return $"Hook '{name}' not found.";
+
+        switch (field)
+        {
+            case "event":
+                hook.Event = value;
+                break;
+            case "command":
+                hook.Command = value;
+                break;
+            case "enabled":
+                if (!TryParseOnOff(value, out var enabled))
+                    return "enabled expects on/off.";
+                hook.Enabled = enabled;
+                break;
+            default:
+                return "Supported fields: event, command, enabled";
+        }
+
+        hook.UpdatedAt = DateTime.UtcNow;
+        await SaveHooksAsync(hooks, ct).ConfigureAwait(false);
+        return $"Updated hook '{hook.Name}' ({field}).";
+    }
+
+    private static async Task<List<AgentProfile>> LoadAgentsAsync(CancellationToken ct)
+    {
+        if (!File.Exists(AgentsPath))
+            return [];
+
+        try
+        {
+            var json = await File.ReadAllTextAsync(AgentsPath, ct).ConfigureAwait(false);
+            return JsonSerializer.Deserialize<List<AgentProfile>>(json, JsonOptions) ?? [];
+        }
+        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
+        {
+            return [];
+        }
+    }
+
+    private static async Task SaveAgentsAsync(List<AgentProfile> profiles, CancellationToken ct)
+    {
+        Directory.CreateDirectory(DataDirectories.Root);
+        var json = JsonSerializer.Serialize(profiles, JsonOptions);
+        await File.WriteAllTextAsync(AgentsPath, json, ct).ConfigureAwait(false);
+    }
+
+    private static async Task<List<HookProfile>> LoadHooksAsync(CancellationToken ct)
+    {
+        if (!File.Exists(HooksPath))
+            return [];
+
+        try
+        {
+            var json = await File.ReadAllTextAsync(HooksPath, ct).ConfigureAwait(false);
+            return JsonSerializer.Deserialize<List<HookProfile>>(json, JsonOptions) ?? [];
+        }
+        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
+        {
+            return [];
+        }
+    }
+
+    private static async Task SaveHooksAsync(List<HookProfile> hooks, CancellationToken ct)
+    {
+        Directory.CreateDirectory(DataDirectories.Root);
+        var json = JsonSerializer.Serialize(hooks, JsonOptions);
+        await File.WriteAllTextAsync(HooksPath, json, ct).ConfigureAwait(false);
+    }
+
+    // ── /memory ─────────────────────────────────────────────
+
+    private static string MemoryFilePath => Path.Combine(Directory.GetCurrentDirectory(), "JDAI.md");
+
+    private static async Task<string> HandleMemoryAsync(string? arg, CancellationToken ct)
+    {
+        var tokens = (arg ?? string.Empty).Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var action = tokens.Length == 0 ? "show" : tokens[0].ToLowerInvariant();
+        var rest = tokens.Length > 1 ? tokens[1] : null;
+
+        switch (action)
+        {
+            case "show":
+            case "view":
+                if (!File.Exists(MemoryFilePath))
+                    return "JDAI.md not found. Create one with /init or /memory reset.";
+                var content = await File.ReadAllTextAsync(MemoryFilePath, ct).ConfigureAwait(false);
+                return $"Project memory ({MemoryFilePath}):\n\n{TrimTo(content, 12_000)}";
+
+            case "edit":
+            case "set":
+                if (string.IsNullOrWhiteSpace(rest))
+                    return "Usage: /memory edit <new content>";
+                await File.WriteAllTextAsync(MemoryFilePath, rest, ct).ConfigureAwait(false);
+                return $"Updated {MemoryFilePath}.";
+
+            case "append":
+                if (string.IsNullOrWhiteSpace(rest))
+                    return "Usage: /memory append <text>";
+                await File.AppendAllTextAsync(MemoryFilePath, Environment.NewLine + rest, ct).ConfigureAwait(false);
+                return $"Appended to {MemoryFilePath}.";
+
+            case "reset":
+                var template = """
+                    # Project Instructions
+
+                    ## Conventions
+                    -
+
+                    ## Architecture
+                    -
+
+                    ## Testing
+                    -
+                    """;
+                await File.WriteAllTextAsync(MemoryFilePath, template, ct).ConfigureAwait(false);
+                return $"Reset {MemoryFilePath} to template.";
+
+            default:
+                return "Usage: /memory [show|edit <text>|append <text>|reset]";
+        }
     }
 
     private async Task<string> HandleDefaultAsync(string? arg, CancellationToken ct)

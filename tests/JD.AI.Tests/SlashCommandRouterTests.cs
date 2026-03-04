@@ -8,6 +8,7 @@ using Xunit;
 
 namespace JD.AI.Tests;
 
+[Collection("DataDirectories")]
 public sealed class SlashCommandRouterTests
 {
     private readonly IProviderRegistry _registry = Substitute.For<IProviderRegistry>();
@@ -441,5 +442,151 @@ public sealed class SlashCommandRouterTests
 
         Assert.NotNull(result);
         Assert.Contains("No active session", result);
+    }
+
+    [Fact]
+    public async Task Theme_NoCallbacks_ReportsNotConfigurable()
+    {
+        var result = await _router.ExecuteAsync("/theme");
+
+        Assert.NotNull(result);
+        Assert.Contains("not configurable", result);
+    }
+
+    [Fact]
+    public async Task Theme_SetsTheme()
+    {
+        var currentTheme = TuiTheme.DefaultDark;
+        var router = new SlashCommandRouter(
+            _session, _registry,
+            getTheme: () => currentTheme,
+            onThemeChanged: t => currentTheme = t);
+
+        var result = await router.ExecuteAsync("/theme monokai");
+
+        Assert.NotNull(result);
+        Assert.Contains("monokai", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(TuiTheme.Monokai, currentTheme);
+    }
+
+    [Fact]
+    public async Task Vim_TogglesOnAndOff()
+    {
+        var vimMode = false;
+        var router = new SlashCommandRouter(
+            _session, _registry,
+            getVimMode: () => vimMode,
+            onVimModeChanged: enabled => vimMode = enabled);
+
+        var onResult = await router.ExecuteAsync("/vim on");
+        var offResult = await router.ExecuteAsync("/vim off");
+
+        Assert.NotNull(onResult);
+        Assert.NotNull(offResult);
+        Assert.Contains("ON", onResult, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("OFF", offResult, StringComparison.OrdinalIgnoreCase);
+        Assert.False(vimMode);
+    }
+
+    [Fact]
+    public async Task OutputStyle_SetsStyle()
+    {
+        var style = OutputStyle.Rich;
+        var router = new SlashCommandRouter(
+            _session, _registry,
+            getOutputStyle: () => style,
+            onOutputStyleChanged: s => style = s);
+
+        var result = await router.ExecuteAsync("/output-style json");
+
+        Assert.NotNull(result);
+        Assert.Contains("json", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(OutputStyle.Json, style);
+    }
+
+    [Fact]
+    public async Task Config_List_IncludesTheme()
+    {
+        var result = await _router.ExecuteAsync("/config");
+
+        Assert.NotNull(result);
+        Assert.Contains("theme", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("vim_mode", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Stats_WithoutSession_UsesFallback()
+    {
+        var result = await _router.ExecuteAsync("/stats");
+
+        Assert.NotNull(result);
+        Assert.Contains("unavailable", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Review_WithTargetOutsideGitRepo_ReturnsFailureMessage()
+    {
+        var originalDirectory = Directory.GetCurrentDirectory();
+        var tempDirectory = Path.Combine(Path.GetTempPath(), $"jdai-review-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDirectory);
+
+        try
+        {
+            Directory.SetCurrentDirectory(tempDirectory);
+            var result = await _router.ExecuteAsync("/review --target main");
+
+            Assert.NotNull(result);
+            Assert.Contains("Review failed:", result, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("git", result, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(originalDirectory);
+            Directory.Delete(tempDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task AgentsList_WithCorruptJson_ReturnsEmptyStateMessage()
+    {
+        var tempDirectory = Path.Combine(Path.GetTempPath(), $"jdai-agents-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDirectory);
+        DataDirectories.SetRoot(tempDirectory);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(tempDirectory, "agents.json"), "{{not valid json}}");
+            var result = await _router.ExecuteAsync("/agents list");
+
+            Assert.NotNull(result);
+            Assert.Contains("No agent profiles configured", result, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            DataDirectories.Reset();
+            Directory.Delete(tempDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task HooksList_WithCorruptJson_ReturnsEmptyStateMessage()
+    {
+        var tempDirectory = Path.Combine(Path.GetTempPath(), $"jdai-hooks-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDirectory);
+        DataDirectories.SetRoot(tempDirectory);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(tempDirectory, "hooks.json"), "{{not valid json}}");
+            var result = await _router.ExecuteAsync("/hooks list");
+
+            Assert.NotNull(result);
+            Assert.Contains("No hooks configured", result, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            DataDirectories.Reset();
+            Directory.Delete(tempDirectory, recursive: true);
+        }
     }
 }
