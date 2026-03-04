@@ -40,7 +40,7 @@ public sealed class GatewayOpsTools
 
         try
         {
-            var healthUrl = $"{_gatewayEndpoint}/health";
+            var healthUrl = new Uri($"{_gatewayEndpoint}/health");
             using var response = await SharedClient.GetAsync(healthUrl).ConfigureAwait(false);
             var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
 
@@ -95,7 +95,7 @@ public sealed class GatewayOpsTools
 
         try
         {
-            var url = $"{_gatewayEndpoint}/api/gateway/config";
+            var url = new Uri($"{_gatewayEndpoint}/api/gateway/config");
             using var response = await SharedClient.GetAsync(url).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
@@ -123,7 +123,7 @@ public sealed class GatewayOpsTools
 
         try
         {
-            var url = $"{_gatewayEndpoint}/api/channels";
+            var url = new Uri($"{_gatewayEndpoint}/api/channels");
             using var response = await SharedClient.GetAsync(url).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
@@ -151,7 +151,7 @@ public sealed class GatewayOpsTools
 
         try
         {
-            var url = $"{_gatewayEndpoint}/api/agents";
+            var url = new Uri($"{_gatewayEndpoint}/api/agents");
             using var response = await SharedClient.GetAsync(url).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
@@ -179,7 +179,7 @@ public sealed class GatewayOpsTools
 
         try
         {
-            var url = $"{_gatewayEndpoint}/api/sessions";
+            var url = new Uri($"{_gatewayEndpoint}/api/sessions");
             using var response = await SharedClient.GetAsync(url).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
