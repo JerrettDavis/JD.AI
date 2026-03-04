@@ -24,6 +24,14 @@
   href: persistence.md
 - name: Configuration
   href: configuration.md
+- name: Governance & Policies
+  href: governance.md
+- name: Audit Logging
+  href: audit-logging.md
+- name: Shared Workflow Store
+  href: workflow-store.md
+- name: Organization Instructions
+  href: org-instructions.md
 - name: Gateway API
   href: gateway-api.md
 - name: Channel Adapters

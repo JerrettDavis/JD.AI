@@ -63,6 +63,24 @@ A good instruction file is concise and focused on information the AI cannot infe
 /instructions    # Show all loaded instruction content
 ```
 
+## Organization instructions
+
+JD.AI supports organization-level instruction files that apply across all projects. Org instructions are loaded before project instructions and establish baseline conventions for your team.
+
+Set up an org config repository and point JD.AI to it:
+
+```bash
+export JDAI_ORG_CONFIG=/path/to/org-config-repo
+```
+
+See [Organization Instructions](org-instructions.md) for the full guide.
+
+## Governance and policies
+
+For teams and organizations, JD.AI supports YAML-defined policies that control tool access, provider restrictions, budget limits, data redaction, and audit logging. Policies are scoped hierarchically and enforced at tool invocation time.
+
+See [Governance & Policies](governance.md) and [Audit Logging](audit-logging.md) for details.
+
 ## Directory structure
 
 JD.AI stores local state in `~/.jdai/`:
@@ -70,23 +88,18 @@ JD.AI stores local state in `~/.jdai/`:
 ```text
 ~/.jdai/
 ├── sessions.db          # SQLite session database
+├── budget.json          # Budget tracking (daily/monthly spend)
+├── org-config-path      # Path to org config repo (optional)
 ├── update-check.json    # NuGet update cache
+├── audit/               # Audit logs (daily-rotated JSONL)
+│   └── audit-2026-03-03.jsonl
 ├── exports/             # Exported session JSON files
-└── models/              # Local GGUF models and registry
-    └── registry.json    # Model manifest
-```
-
-## Data directories
-
-JD.AI stores local state and models in the following directories:
-
-```text
-~/.jdai/
-├── sessions.db          # SQLite session database
-├── update-check.json    # NuGet update cache
-├── exports/             # Exported session JSON files
-└── models/              # Local GGUF models and registry
-    └── registry.json    # Model manifest
+├── models/              # Local GGUF models and registry
+│   └── registry.json    # Model manifest
+├── policies/            # User-level policy YAML files
+│   └── security.yaml
+├── workflows/           # Local workflow definitions
+└── workflow-store/      # Git-backed shared workflow cache
 ```
 
 ## Skills, plugins, and hooks
@@ -130,3 +143,13 @@ See [Skills and Plugins](skills-and-plugins.md) for details.
 | `JDAI_MODELS_DIR` | Local model storage and registry directory | `~/.jdai/models/` |
 | `HF_HOME` | HuggingFace cache directory (for local model scanning) | `~/.cache/huggingface/` |
 | `HF_TOKEN` | HuggingFace API token for authenticated access | — |
+| `JDAI_ORG_CONFIG` | Path to organization config repo for org-level instructions | — |
+| `JDAI_WORKFLOW_STORE_REPO` | Git repo URL for shared workflow store | — |
+| `JDAI_DATA_DIR` | Override root data directory (all JD.AI state) | `~/.jdai/` |
+
+## See also
+
+- [Governance & Policies](governance.md) — Tool restrictions, provider policies, budget limits
+- [Audit Logging](audit-logging.md) — Audit event sinks and compliance logging
+- [Shared Workflow Store](workflow-store.md) — Share and discover workflows across teams
+- [Organization Instructions](org-instructions.md) — Org-wide instruction files
