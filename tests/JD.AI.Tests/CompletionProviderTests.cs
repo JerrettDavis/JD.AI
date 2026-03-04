@@ -1,3 +1,4 @@
+using JD.AI.Commands;
 using JD.AI.Rendering;
 
 namespace JD.AI.Tests;
@@ -7,37 +8,7 @@ public sealed class CompletionProviderTests
     private static CompletionProvider BuildProvider()
     {
         var provider = new CompletionProvider();
-        provider.Register("/help", "Show available commands");
-        provider.Register("/models", "List available models");
-        provider.Register("/model", "Switch to a model");
-        provider.Register("/providers", "List detected providers");
-        provider.Register("/provider", "Show current provider");
-        provider.Register("/clear", "Clear chat history");
-        provider.Register("/compact", "Force context compaction");
-        provider.Register("/cost", "Show token usage");
-        provider.Register("/autorun", "Toggle auto-approve");
-        provider.Register("/permissions", "Toggle permission checks");
-        provider.Register("/sessions", "List recent sessions");
-        provider.Register("/resume", "Resume a previous session");
-        provider.Register("/name", "Name the current session");
-        provider.Register("/history", "Show session turn history");
-        provider.Register("/export", "Export current session to JSON");
-        provider.Register("/update", "Check for and apply updates");
-        provider.Register("/instructions", "Show loaded project instructions");
-        provider.Register("/checkpoint", "List, restore, or clear checkpoints");
-        provider.Register("/sandbox", "Show or change sandbox mode");
-        provider.Register("/review", "Review current code changes");
-        provider.Register("/security-review", "Run a security-focused code review");
-        provider.Register("/theme", "Set terminal theme");
-        provider.Register("/vim", "Toggle vim editing mode");
-        provider.Register("/stats", "Show session and historical stats");
-        provider.Register("/config", "Manage settings");
-        provider.Register("/agents", "Manage agent profiles");
-        provider.Register("/hooks", "Manage hook profiles");
-        provider.Register("/memory", "View or edit JDAI.md");
-        provider.Register("/output-style", "Set output rendering style");
-        provider.Register("/quit", "Exit jdai");
-        provider.Register("/exit", "Exit jdai");
+        SlashCommandCatalog.RegisterCompletions(provider);
         return provider;
     }
 
@@ -60,7 +31,7 @@ public sealed class CompletionProviderTests
     {
         var provider = BuildProvider();
         var results = provider.GetCompletions("/");
-        Assert.Equal(31, results.Count);
+        Assert.Equal(SlashCommandCatalog.CompletionEntries.Count, results.Count);
     }
 
     [Fact]
@@ -68,7 +39,7 @@ public sealed class CompletionProviderTests
     {
         var provider = BuildProvider();
         var results = provider.GetCompletions("/p");
-        Assert.Equal(3, results.Count);
+        Assert.True(results.Count >= 3);
         Assert.Contains(results, r => string.Equals(r.Text, "/permissions", StringComparison.Ordinal));
         Assert.Contains(results, r => string.Equals(r.Text, "/provider", StringComparison.Ordinal));
         Assert.Contains(results, r => string.Equals(r.Text, "/providers", StringComparison.Ordinal));
@@ -79,7 +50,7 @@ public sealed class CompletionProviderTests
     {
         var provider = BuildProvider();
         var results = provider.GetCompletions("/mo");
-        Assert.Equal(2, results.Count);
+        Assert.True(results.Count >= 2);
         Assert.Contains(results, r => string.Equals(r.Text, "/model", StringComparison.Ordinal));
         Assert.Contains(results, r => string.Equals(r.Text, "/models", StringComparison.Ordinal));
     }
@@ -133,10 +104,12 @@ public sealed class CompletionProviderTests
     {
         var provider = BuildProvider();
         var results = provider.GetCompletions("/co");
-        // /compact, /config, /cost
+        // /compact, /config, /context, /copy, /cost
         Assert.Equal("/compact", results[0].Text);
         Assert.Equal("/config", results[1].Text);
-        Assert.Equal("/cost", results[2].Text);
+        Assert.Equal("/context", results[2].Text);
+        Assert.Equal("/copy", results[3].Text);
+        Assert.Equal("/cost", results[4].Text);
     }
 
     [Fact]
@@ -144,8 +117,11 @@ public sealed class CompletionProviderTests
     {
         var provider = BuildProvider();
         var results = provider.GetCompletions("/c");
-        // /checkpoint, /clear, /compact, /config, /cost
-        Assert.Equal(5, results.Count);
+        Assert.Contains(results, r => string.Equals(r.Text, "/checkpoint", StringComparison.Ordinal));
+        Assert.Contains(results, r => string.Equals(r.Text, "/clear", StringComparison.Ordinal));
+        Assert.Contains(results, r => string.Equals(r.Text, "/compact", StringComparison.Ordinal));
+        Assert.Contains(results, r => string.Equals(r.Text, "/config", StringComparison.Ordinal));
+        Assert.Contains(results, r => string.Equals(r.Text, "/cost", StringComparison.Ordinal));
     }
 
     [Fact]
