@@ -24,5 +24,7 @@
   href: best-practices.md
 - name: Clipboard & Input
   href: clipboard-and-input.md
+- name: Interactive Mode
+  href: interactive-mode.md
 - name: Troubleshooting
   href: troubleshooting.md

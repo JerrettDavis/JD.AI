@@ -1,6 +1,6 @@
 ---
 _layout: landing
-description: "AI-powered terminal assistant built on Microsoft Semantic Kernel. 14 AI providers, 17 tool categories, 33+ slash commands, subagent swarms, team orchestration, and 6 channel adapters."
+description: "AI-powered terminal assistant built on Microsoft Semantic Kernel. 14 AI providers, 17 tool categories, 35+ slash commands, subagent swarms, team orchestration, and 6 channel adapters."
 ---
 
 # JD.AI
@@ -42,7 +42,7 @@ JD.AI auto-detects available providers. No manual configuration needed.
 | Feature | Description |
 |---------|-------------|
 | **Multi-provider** | [14 AI providers](user-guide/provider-setup.md) including Claude Code, Copilot, Ollama, OpenAI, Anthropic, Azure, Gemini, Bedrock, Foundry Local, and more |
-| **33+ slash commands** | [Model switching, sessions, context, workflows, defaults](user-guide/commands.md) |
+| **35+ slash commands** | [Model switching, sessions, context, workflows, defaults](user-guide/commands.md) |
 | **17 tool categories** | [Files, search, shell, git, web, memory, subagents, think, tasks, code execution, clipboard, questions, diff/patch, batch edit, usage tracking](user-guide/tools.md) |
 | **5 subagent types** | [Explore, task, plan, review, general-purpose](developer-guide/subagents.md) |
 | **4 orchestration strategies** | [Sequential, fan-out, supervisor, debate](developer-guide/orchestration.md) team coordination |
@@ -66,7 +66,7 @@ For anyone using `jdai` as a tool. Installation, provider setup, commands, workf
 - [Installation](user-guide/installation.md) — Get JD.AI running in minutes
 - [Quickstart](user-guide/quickstart.md) — Your first task, step by step
 - [Provider Setup](user-guide/provider-setup.md) — Configure any of the 14 providers
-- [Commands](user-guide/commands.md) — All 33+ slash commands at a glance
+- [Commands](user-guide/commands.md) — All 35+ slash commands at a glance
 - [Common Workflows](user-guide/common-workflows.md) — Bug fixing, refactoring, testing, PRs
 - [Best Practices](user-guide/best-practices.md) — Effective prompting and context management
 
@@ -94,7 +94,7 @@ For ops teams and administrators. Deployment, observability, security, and enter
 Complete reference material for CLI flags, commands, tools, providers, and configuration.
 
 - [CLI Reference](reference/cli.md) — All flags, environment variables, exit codes
-- [Commands Reference](reference/commands.md) — Full 33+ command documentation
+- [Commands Reference](reference/commands.md) — Full 35+ command documentation
 - [Tools Reference](reference/tools.md) — All 17 tool categories with parameters
 - [Providers Reference](reference/providers.md) — Comparison tables and capabilities
 - [API Reference](https://jerrettdavis.github.io/JD.AI/api/) — Generated API documentation

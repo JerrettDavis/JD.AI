@@ -1,39 +1,52 @@
 ---
-title: Commands Reference
-description: "All 33+ slash commands — model switching, sessions, context management, local models, workflows, teams, and more."
+description: "Complete slash command reference for JD.AI interactive mode: model/provider control, sessions, reviews, local models, MCP servers, configuration, profiles, memory, and workflows."
 ---
 
 # Commands Reference
 
-Slash commands are typed at the `>` prompt prefixed with `/`. Type `/help` to see all commands.
+Use slash commands at the `>` prompt. Every command also accepts the `/jdai-` prefix for compatibility (example: `/jdai-help`, `/jdai-models`).
 
-## Model & Provider Management
+![Slash commands help output](../images/demo-commands-help.png)
+
+## Command groups
+
+JD.AI currently supports 35+ interactive commands:
+
+- Discovery and model/provider management
+- Session and context controls
+- Safety and execution controls
+- Reviews and diagnostics
+- Local models and MCP server management
+- UX customization and persisted config
+- Agent/hook profiles and project memory
+- Workflows and checkpoints
+
+## Discovery and model/provider commands
 
 ### `/help`
 
-Show all available commands with descriptions.
+Shows all available commands and short descriptions.
 
 ### `/models`
 
-List all available models across all detected providers. Shows model ID, provider name, and current selection.
+Opens model browsing and interactive selection.
 
-### `/model <id>`
+### `/model [id]`
 
-Switch to a different model. The model ID can be partial — JD.AI fuzzy-matches.
+Switches model by partial or full ID. Without an argument, opens the model picker.
 
 ```text
-/model gpt-4o
+/model
 /model claude-sonnet
-/model llama3.2
+/model gpt-4o
 ```
 
 ### `/model search <query>`
 
-Search remote model catalogs (Ollama, HuggingFace, Foundry Local) for models matching the query. Results include model ID, source, and download information.
+Search remote model catalogs (Ollama, HuggingFace, Foundry Local) for models matching the query.
 
 ```text
 /model search llama 70b
-/model search codestral
 /model search phi-3
 ```
 
@@ -48,20 +61,11 @@ Pull a model directly from a URL. Supports Ollama model URLs, HuggingFace reposi
 
 ### `/providers`
 
-List all detected AI providers with their connection status and available model count.
-
-```text
-Detecting providers...
-  ✅ Claude Code: Authenticated — 1 model(s)
-  ✅ GitHub Copilot: Authenticated — 3 model(s)
-  ❌ Ollama: Not available
-```
+Lists detected providers and status.
 
 ### `/provider`
 
 Manage and inspect providers. Without arguments, shows an interactive picker to switch between available providers.
-
-**Subcommands:**
 
 | Subcommand | Description |
 |---|---|
@@ -70,379 +74,354 @@ Manage and inspect providers. Without arguments, shows an interactive picker to 
 | `/provider remove <name>` | Remove stored credentials for a provider |
 | `/provider test [name]` | Test provider connectivity (all or specific) |
 
-**Available provider names for `/provider add`:**
+Provider names for `/provider add`: `openai`, `azure-openai`, `anthropic`, `google-gemini`, `mistral`, `bedrock`, `huggingface`, `openai-compat`.
 
-`openai`, `azure-openai`, `anthropic`, `google-gemini`, `mistral`, `bedrock`, `huggingface`, `openai-compat`
-
-**Example:**
-
-```text
-/provider add openai       # Prompts for API key, stores securely
-/provider add openai-compat # Prompts for alias, base URL, and API key
-/provider test              # Tests all configured providers
-/provider remove mistral    # Removes Mistral credentials
-```
-
-## Defaults Management
+## Defaults management
 
 ### `/default`
 
-Show the current default provider and model (both global and per-project).
+Show the current default provider and model (global and per-project).
 
 ### `/default provider <name>`
 
-Set the global default provider. Stored in `~/.jdai/config.json`.
-
-```text
-/default provider openai
-/default provider ollama
-```
+Set the global default provider.
 
 ### `/default model <id>`
 
-Set the global default model. Stored in `~/.jdai/config.json`.
-
-```text
-/default model gpt-4o
-/default model claude-sonnet-4
-```
+Set the global default model.
 
 ### `/default project provider <name>`
 
-Set the default provider for the current project. Stored in `.jdai/defaults.json`. Overrides the global default.
-
-```text
-/default project provider anthropic
-```
+Set the per-project default provider for the current repo.
 
 ### `/default project model <id>`
 
-Set the default model for the current project. Stored in `.jdai/defaults.json`. Overrides the global default.
-
-```text
-/default project model llama3.2:latest
-```
-
-## Context Management
-
-### `/clear`
-
-Clear the entire conversation history. Starts fresh while keeping the same session.
-
-### `/compact`
-
-Force context compaction — summarizes the conversation to free up context window space.
-
-### `/cost`
-
-Show token usage statistics for the current session: prompt tokens, completion tokens, and total cost.
-
-## Safety Controls
-
-### `/autorun`
-
-Toggle auto-approve mode for tool execution. When enabled, tools run without confirmation prompts.
-
-> [!WARNING]
-> Use with caution — tools can modify files and run commands.
-
-### `/permissions`
-
-Toggle permission checks entirely. When disabled, all tools execute without any confirmation.
-
-> [!WARNING]
-> Equivalent to `--dangerously-skip-permissions` for the current session.
-
-## Session Management
-
-### `/sessions`
-
-List recent sessions with ID, name, project path, and turn count. Sessions are stored in `~/.jdai/sessions.db`.
-
-### `/resume [id]`
-
-Resume a previous session. Without an ID, shows the list to choose from. With an ID, loads that specific session.
-
-```text
-/resume
-/resume abc123
-```
-
-### `/name <name>`
-
-Name the current session for easy recall.
-
-```text
-/name feature-authentication
-```
-
-### `/history`
-
-Show the turn-by-turn history of the current session with role, token counts, and timestamps. Supports interactive rollback (double-ESC).
-
-### `/export`
-
-Export the current session to a JSON file. Saved to `~/.jdai/exports/`.
-
-## Project & Environment
+Set the per-project default model for the current repo.
 
 ### `/update`
 
-Check for new versions of JD.AI on NuGet and optionally apply the update.
-
-### `/instructions`
-
-Show all loaded project instructions (from `JDAI.md`, `CLAUDE.md`, `AGENTS.md`, etc.).
-
-### `/plugins`
-
-List all loaded plugins with their names, descriptions, and source paths.
-
-### `/checkpoint`
-
-Manage git checkpoints for safe rollback:
-
-```text
-/checkpoint list          # Show all checkpoints
-/checkpoint restore <id>  # Restore to a checkpoint
-/checkpoint clear         # Remove all checkpoints
-```
-
-### `/sandbox`
-
-Show current sandbox/execution mode information.
+Checks NuGet for a JD.AI update and offers to apply it.
 
 ### `/doctor`
 
-Run all gateway health checks and display a human-readable diagnostic report.
-
-```text
-=== JD.AI Doctor ===
-Version:  1.0.0
-Runtime:  .NET 10.0.0
-Health:   ✔ Healthy
-
-Checks:
-  ✔ Gateway       — Gateway operational
-  ✔ Providers     — 2/3 providers reachable
-  ⚠ Disk Space    — Low disk space: 0.4 GB free (minimum: 100 MB)
-  ✔ Memory        — 142 MB managed heap
-  ✔ Session Store — SQLite OK (14 sessions)
-```
-
-See [Observability](../operations/observability.md) for details on health check configuration.
+Runs environment diagnostics (runtime, providers, model count, tools, plugin load status, and CLI availability).
 
 ### `/docs [topic]`
 
-Show links to the JD.AI documentation site. Without a topic, lists all major documentation sections. With a topic, filters to the most relevant article.
+Shows links to JD.AI documentation. Without a topic, lists key doc areas.
+
+## Session and context commands
+
+### `/clear`
+
+Clears current conversation history for the active session.
+
+### `/compact`
+
+Triggers context compaction immediately.
+
+### `/context`
+
+Shows current context window usage with a visual bar.
+
+### `/cost`
+
+Shows current session token usage.
+
+### `/sessions`
+
+Lists recent sessions for the current project hash.
+
+### `/resume [id]`
+
+Resumes a previous session. With no ID, shows a list and usage hint.
+
+### `/name <name>`
+
+Sets a friendly name on the current session.
+
+### `/history`
+
+Shows a summarized turn history for the current session.
+
+### `/export`
+
+Exports current session to JSON under the JD.AI data directory.
+
+### `/fork [name]`
+
+Forks the active session into a new session branch, optionally named.
+
+## Safety and execution controls
+
+### `/autorun [on|off]`
+
+Enables or disables auto-run behavior for tools.
+
+> [!WARNING]
+> `on` can allow writes, shell commands, and networked operations to execute without per-call confirmation.
+
+### `/permissions [on|off]`
+
+Enables or disables permission checks entirely for the current session.
+
+> [!WARNING]
+> `off` is equivalent to running with fully skipped confirmation behavior for that session.
+
+### `/sandbox`
+
+Shows available sandbox modes and configuration guidance.
+
+### `/plan`
+
+Toggles plan mode on/off for exploration-first behavior.
+
+### `/copy`
+
+Copies the last assistant response to clipboard.
+
+### `/diff`
+
+Shows uncommitted git diff (`git diff`, then staged diff fallback).
+
+## Review and security commands
+
+### `/review [--branch <name> --target <name>]`
+
+Runs model-assisted code review over local changes or a branch comparison.
 
 ```text
-/docs
-/docs observability
-/docs health
-/docs gateway
-/docs config
+/review
+/review --branch feature/login --target main
 ```
 
-Available topics: `observability`, `health`, `telemetry`, `gateway`, `config`, `providers`, `channels`, `commands`, `deployment`, `plugins`, `local`, `quickstart`.
+### `/security-review [--full] [--branch <name> --target <name>]`
 
-## Local Model Management
+Runs OWASP/CWE-oriented heuristic security scanning.
+
+- Default mode scans changed files.
+- `--full` scans tracked repository files.
+
+```text
+/security-review
+/security-review --full
+/security-review --branch hotfix/auth --target main
+```
+
+## Local model commands
 
 ### `/local list`
 
-List all registered local GGUF models with their ID, display name, quantization, parameter size, and file size.
+Lists registered local GGUF models.
 
 ### `/local add <path>`
 
-Register a model file or directory. If `path` is a directory, it is recursively scanned for `.gguf` files.
+Registers a `.gguf` file or scans a directory.
 
-```text
-/local add ~/models/mistral-7b.Q4_K_M.gguf
-/local add /path/to/models-folder/
-```
+### `/local scan [dir]`
 
-### `/local scan [path]`
-
-Scan a directory for `.gguf` files and merge discovered models into the registry. Without a path, scans the default model directory (`~/.jdai/models/`).
-
-```text
-/local scan
-/local scan /opt/llm-models/
-```
-
-### `/local search <query>`
-
-Query the HuggingFace Hub API for GGUF-tagged model repositories matching the search terms.
-
-```text
-/local search llama 7b
-/local search mistral instruct
-```
-
-> [!TIP]
-> Set the `HF_TOKEN` environment variable for higher rate limits and access to gated repositories.
-
-### `/local download <repo-id>`
-
-Download a GGUF model from a HuggingFace repository. Prefers Q4_K_M quantization by default. Downloads support resume.
-
-```text
-/local download TheBloke/Mistral-7B-Instruct-v0.2-GGUF
-```
+Scans directory for local models (defaults to JD.AI model dir).
 
 ### `/local remove <model-id>`
 
-Remove a model from the registry. The file on disk is not deleted.
+Removes a model from the local registry (does not delete model file).
 
-See [Local Models](../user-guide/local-models.md) for the full guide.
+### `/local search <query>`
 
-## Customization
+Searches HuggingFace for GGUF repositories.
 
-### `/spinner [style]`
+### `/local download <repo-id>`
 
-Change the TUI loading/thinking spinner animation style.
+Downloads GGUF model from HuggingFace and registers it.
 
-| Style | Description |
-|---|---|
-| `none` | No animation or progress display |
-| `minimal` | Single dot with elapsed time only |
-| `normal` | Braille spinner with elapsed time and token count (default) |
-| `rich` | Spinner with progress bar, tokens, bytes, and throughput |
-| `nerdy` | All statistics including model name, time-to-first-token, and internals |
+See [Local Models](../user-guide/local-models.md) for setup and storage behavior.
+
+## MCP server commands
+
+### `/mcp list`
+
+Lists configured MCP servers and current status.
+
+### `/mcp add <name> --transport stdio --command <cmd> [--args ...]`
+
+Adds a stdio MCP server.
+
+### `/mcp add <name> --transport http <url>`
+
+Adds an HTTP MCP server.
+
+### `/mcp remove <name>`
+
+Removes a JD.AI-managed MCP server entry.
+
+### `/mcp enable <name>`
+
+Enables a configured MCP server.
+
+### `/mcp disable <name>`
+
+Disables a configured MCP server.
+
+## Workflow and checkpoint commands
+
+### `/workflow [list|show|export|replay|refine]`
+
+Manages workflow artifacts captured from multi-step execution.
 
 ```text
-/spinner normal
-/spinner nerdy
+/workflow list
+/workflow show onboarding
+/workflow export onboarding mermaid
+/workflow replay onboarding
+/workflow refine onboarding
 ```
 
-## Workflow Management
+### `/checkpoint [list|create|restore <id>|clear]`
 
-### `/workflow`
+Manages safety checkpoints for rollback.
 
-List all captured workflows.
+```text
+/checkpoint list
+/checkpoint create before-refactor
+/checkpoint restore abc123
+/checkpoint clear
+```
 
-### `/workflow list`
+## UX, settings, and stats commands
 
-Show the workflow catalog with IDs, descriptions, step counts, and when they were last run.
+### `/spinner [none|minimal|normal|rich|nerdy]`
 
-### `/workflow show <id>`
+Sets turn progress spinner style.
 
-Display the steps of a specific workflow including tool calls, data flow, and dependencies.
+### `/theme [name]`
 
-### `/workflow export <id>`
+Lists or sets terminal theme.
 
-Export a workflow to a reusable JSON file.
+Supported aliases:
+`default`, `default-dark`, `monokai`, `solarized-dark`, `solarized-light`, `nord`, `dracula`, `one-dark`, `catppuccin`, `catppuccin-mocha`, `gruvbox`, `high-contrast`.
 
-### `/workflow replay <id>`
+### `/vim [on|off]`
 
-Re-execute a previously captured workflow, optionally with modified parameters.
+Toggles vim editing mode in the interactive prompt.
 
-### `/workflow refine <id>`
+### `/output-style [rich|plain|compact|json]`
 
-Open a workflow for interactive editing — add, remove, or reorder steps before replaying.
+Sets renderer output mode.
 
-### `/quit` or `/exit`
+### `/stats [--history|--daily]`
 
-Exit JD.AI. Unsaved sessions are auto-saved.
+Shows session usage stats, cross-session stats, or daily aggregates.
 
-## Gateway Channel Commands
+### `/config [list|get <key>|set <key> <value>]`
 
-The Gateway exposes commands natively on each connected channel:
+Reads or writes persisted command-facing settings.
 
-- **Discord**: Registered as native slash commands (e.g., `/jdai-help`)
-- **Signal**: Prefix commands (e.g., `!jdai-help`)
-- **Slack**: Native slash commands (e.g., `/jdai-help`)
+Supported keys:
+`theme`, `vim_mode`, `output_style`, `spinner_style`, `autorun`, `permissions`, `plan_mode`.
+
+### `/init`
+
+Creates a starter `JDAI.md` in the current project if missing.
+
+### `/instructions`
+
+Displays merged instruction sources loaded into the prompt.
+
+### `/plugins`
+
+Shows loaded plugins and metadata.
+
+## Profile and memory commands
+
+### `/agents [list|create|delete|set]`
+
+Manages local agent profiles in `~/.jdai/agents.json`.
+
+```text
+/agents list
+/agents create reviewer
+/agents set reviewer model gpt-4o
+/agents set reviewer tools read_file,grep,git_diff
+```
+
+### `/hooks [list|create|delete|toggle|set]`
+
+Manages local hook profiles in `~/.jdai/hooks.json`.
+
+```text
+/hooks list
+/hooks create lint-on-save
+/hooks set lint-on-save command dotnet format --verify-no-changes
+/hooks toggle lint-on-save
+```
+
+### `/memory [show|edit|append|reset]`
+
+Views or updates project memory file (`JDAI.md`) in the current repository.
+
+```text
+/memory show
+/memory append Prefer xUnit for unit tests
+/memory reset
+```
+
+## Exit commands
+
+### `/quit`
+### `/exit`
+
+Ends the JD.AI interactive session.
+
+## Gateway channel commands
+
+Gateway adapters expose command variants natively per platform:
+
+- Discord: slash commands (example: `/jdai-help`)
+- Slack: slash commands (example: `/jdai-help`)
+- Signal: command prefix form (example: `!jdai-help`)
 
 ### `jdai-help`
 
-Lists all available gateway commands and their usage.
+Lists gateway command usage.
 
 ### `jdai-usage`
 
-Shows current usage statistics — uptime, active agents, total turns, and per-agent breakdown.
+Shows uptime, turn counts, and per-agent usage.
 
 ### `jdai-status`
 
-Shows agent and channel health status — connected channels and running agents with uptime.
+Shows current agent/channel status.
 
 ### `jdai-models`
 
-Lists available providers, configured agent models, and currently running agents.
+Lists providers/models available to the gateway runtime.
 
 ### `jdai-switch <model> [provider]`
 
-Spawns a new agent with the specified model. Provider defaults to the current agent's provider if omitted.
-
-```text
-jdai-switch gpt-4
-jdai-switch llama3.2:latest Ollama
-```
+Switches spawned agent model/provider.
 
 ### `jdai-clear [agent]`
 
-Clears conversation history for an agent (first 8 chars of ID). Clears all agents if omitted.
+Clears one agent conversation or all if omitted.
 
 ### `jdai-agents`
 
-Lists all running agents, their models, turn counts, uptime, and routing table mappings.
+Lists active gateway agents and route mappings.
 
-## Quick Reference
+## Quick reference
 
-| Command | Description |
+| Command | Purpose |
 |---|---|
-| `/help` | Show help |
-| `/models` | List models |
-| `/model <id>` | Switch model |
-| `/model search <query>` | Search remote model catalogs |
-| `/model url <url>` | Pull model from URL |
-| `/providers` | List providers |
-| `/provider` | Interactive provider picker / manage (add, remove, test, list) |
-| `/default` | Show current defaults |
-| `/default provider <name>` | Set global default provider |
-| `/default model <id>` | Set global default model |
-| `/default project provider` | Set per-project default provider |
-| `/default project model` | Set per-project default model |
-| `/clear` | Clear conversation |
-| `/compact` | Compress context |
-| `/cost` | Token usage |
-| `/autorun` | Toggle auto-approve |
-| `/permissions` | Toggle confirmations |
-| `/sessions` | List sessions |
-| `/resume [id]` | Resume session |
-| `/name <name>` | Name session |
-| `/history` | Show history |
-| `/export` | Export to JSON |
-| `/update` | Check for updates |
-| `/instructions` | Show instructions |
-| `/plugins` | List loaded plugins |
-| `/checkpoint` | Manage checkpoints |
-| `/sandbox` | Sandbox info |
-| `/doctor` | Run health diagnostics |
-| `/docs [topic]` | Show documentation links |
-| `/local list` | List local models |
-| `/local add <path>` | Register model |
-| `/local scan` | Scan for models |
-| `/local search <q>` | Search HuggingFace |
-| `/local download <repo>` | Download model |
-| `/local remove <id>` | Remove model |
-| `/spinner [style]` | Change spinner |
-| `/workflow` | List workflows |
-| `/quit` | Exit |
-
-### Gateway Commands (Discord / Signal / Slack)
-
-| Command | Description |
-|---|---|
-| `jdai-help` | Show gateway commands |
-| `jdai-usage` | Usage statistics |
-| `jdai-status` | Agent/channel health |
-| `jdai-models` | List models/providers |
-| `jdai-switch <model>` | Switch agent model |
-| `jdai-clear [agent]` | Clear history |
-| `jdai-agents` | List running agents |
-
-## See also
-
-- [CLI Reference](cli.md) — command-line flags and options
-- [Tools Reference](tools.md) — built-in agent tools
-- [User Guide: Commands](../user-guide/commands.md)
+| `/help` | Command list |
+| `/models`, `/model`, `/model search`, `/model url` | Model browsing, switching, search, and pull by URL |
+| `/providers`, `/provider`, `/default ...` | Provider discovery, credential management, and defaults |
+| `/sessions`, `/resume`, `/name`, `/fork` | Session lifecycle |
+| `/clear`, `/compact`, `/context`, `/cost`, `/history`, `/export` | Context/session operations |
+| `/autorun`, `/permissions`, `/sandbox`, `/plan` | Safety and execution mode |
+| `/review`, `/security-review` | Code and security review |
+| `/local ...` | Local model operations |
+| `/mcp ...` | MCP server management |
+| `/checkpoint ...`, `/workflow ...` | Checkpointing and workflows |
+| `/theme`, `/vim`, `/spinner`, `/output-style`, `/stats`, `/config` | UX and runtime settings |
+| `/agents`, `/hooks`, `/memory`, `/init`, `/instructions`, `/plugins`, `/doctor`, `/docs` | Project and profile operations |
+| `/quit`, `/exit` | Exit session |
