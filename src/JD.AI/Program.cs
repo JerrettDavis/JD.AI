@@ -368,6 +368,8 @@ if (noSessionPersistence)
 if (debugMode)
 {
     session.Verbose = true;
+    var parsedCategories = JD.AI.Core.Tracing.DebugLogger.ParseCategories(debugCategories);
+    JD.AI.Core.Tracing.DebugLogger.Enable(parsedCategories);
     if (!printMode)
     {
         var cats = debugCategories != null ? $" (categories: {debugCategories})" : "";
@@ -813,6 +815,31 @@ interactiveInput.OnDoubleEscape += (sender, e) =>
             ChatRenderer.RenderInfo($"Rolled back to turn {idx}. Context restored.");
         }
     }
+};
+
+// Hook Shift+Tab → cycle permission mode (plan mode toggle)
+interactiveInput.OnTogglePlanMode += (_, _) =>
+{
+    session.PermissionMode = session.PermissionMode switch
+    {
+        JD.AI.Core.Agents.PermissionMode.Normal => JD.AI.Core.Agents.PermissionMode.Plan,
+        JD.AI.Core.Agents.PermissionMode.Plan => JD.AI.Core.Agents.PermissionMode.AcceptEdits,
+        JD.AI.Core.Agents.PermissionMode.AcceptEdits => JD.AI.Core.Agents.PermissionMode.Normal,
+        _ => JD.AI.Core.Agents.PermissionMode.Normal,
+    };
+    ChatRenderer.RenderInfo($"Permission mode: {session.PermissionMode}");
+};
+
+// Hook Alt+T → toggle extended thinking (future feature placeholder)
+interactiveInput.OnToggleExtendedThinking += (_, _) =>
+{
+    ChatRenderer.RenderInfo("Extended thinking is not yet available for this model.");
+};
+
+// Hook Alt+P → cycle through recent models
+interactiveInput.OnCycleModel += (_, _) =>
+{
+    ChatRenderer.RenderInfo("Use /model to switch models interactively.");
 };
 
 // 11. Render welcome banner

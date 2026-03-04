@@ -692,4 +692,36 @@ public sealed class SlashCommandRouterTests
         Assert.NotNull(result);
         Assert.Contains("Updated 1 plugin(s)", result, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public async Task Shortcuts_ReturnsKeyboardShortcuts()
+    {
+        var result = await _router.ExecuteAsync("/shortcuts");
+
+        Assert.NotNull(result);
+        Assert.Contains("Ctrl+L", result);
+        Assert.Contains("Ctrl+R", result);
+        Assert.Contains("Ctrl+U", result);
+        Assert.Contains("Ctrl+W", result);
+        Assert.Contains("Shift+Tab", result);
+        Assert.Contains("Alt+T", result);
+        Assert.Contains("Alt+P", result);
+    }
+
+    [Fact]
+    public async Task Help_ContainsShortcutsEntry()
+    {
+        var result = await _router.ExecuteAsync("/help");
+
+        Assert.NotNull(result);
+        Assert.Contains("/shortcuts", result);
+    }
+
+    [Fact]
+    public void SlashCommandCatalog_ContainsShortcutsEntry()
+    {
+        Assert.Contains(
+            SlashCommandCatalog.CompletionEntries,
+            e => string.Equals(e.Command, "/shortcuts", StringComparison.Ordinal));
+    }
 }
