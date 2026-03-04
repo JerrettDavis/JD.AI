@@ -5,6 +5,7 @@ using JD.AI.Core.Providers;
 using JD.AI.Core.Tracing;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
 
 namespace JD.AI.Core.Agents;
 
@@ -297,18 +298,27 @@ public sealed class AgentLoop
 
     /// <summary>
     /// Builds provider-appropriate execution settings for the current model.
-    /// Uses SK's unified <see cref="FunctionChoiceBehavior"/> instead of
-    /// OpenAI-specific <c>ToolCallBehavior</c> so that tool calling works
-    /// across all connector types (OpenAI, MEAI/Anthropic, native SK connectors).
+    /// Uses <see cref="OpenAIPromptExecutionSettings"/> for <c>MaxTokens</c> support
+    /// with SK's unified <see cref="FunctionChoiceBehavior"/> (not the deprecated
+    /// <c>ToolCallBehavior</c>) so tool calling works across all connector types.
+    /// MEAI adapters read <c>FunctionChoiceBehavior</c> and <c>ModelId</c> from the
+    /// base <see cref="PromptExecutionSettings"/> class.
     /// </summary>
-    private PromptExecutionSettings BuildExecutionSettings()
+    private OpenAIPromptExecutionSettings BuildExecutionSettings()
     {
         var supportsTools = _session.CurrentModel?.Capabilities
             .HasFlag(ModelCapabilities.ToolCalling) ?? false;
 
-        return new PromptExecutionSettings
+        var maxTokens = _session.CurrentModel?.MaxOutputTokens;
+        if (maxTokens is null or <= 0)
+        {
+            maxTokens = 4096;
+        }
+
+        return new OpenAIPromptExecutionSettings
         {
             ModelId = _session.CurrentModel?.Id,
+            MaxTokens = maxTokens,
             FunctionChoiceBehavior = supportsTools
                 ? FunctionChoiceBehavior.Auto()
                 : null,

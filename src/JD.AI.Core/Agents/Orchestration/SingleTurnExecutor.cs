@@ -5,6 +5,7 @@ using JD.AI.Core.Providers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
 
 namespace JD.AI.Core.Agents.Orchestration;
 
@@ -43,9 +44,16 @@ public sealed class SingleTurnExecutor : ISubagentExecutor
         var chat = kernel.GetRequiredService<IChatCompletionService>();
         var supportsTools = parentSession.CurrentModel?.Capabilities
             .HasFlag(ModelCapabilities.ToolCalling) ?? false;
-        var settings = new PromptExecutionSettings
+        var maxTokens = parentSession.CurrentModel?.MaxOutputTokens;
+        if (maxTokens is null or <= 0)
+        {
+            maxTokens = 4096;
+        }
+
+        var settings = new OpenAIPromptExecutionSettings
         {
             ModelId = parentSession.CurrentModel?.Id,
+            MaxTokens = maxTokens,
             FunctionChoiceBehavior = supportsTools
                 ? FunctionChoiceBehavior.Auto()
                 : null,
