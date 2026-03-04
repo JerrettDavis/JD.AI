@@ -15,6 +15,8 @@ public sealed class ToolAliasResolutionTests
     [InlineData("websearch", "web_search")]
     [InlineData("todo_read", "list_tasks")]
     [InlineData("todo_write", "update_task")]
+    [InlineData("exec", "run_command")]
+    [InlineData("process", "process")]
     [InlineData("run_command", "run_command")]
     public void OpenClawToolAliasResolver_ResolvesExpectedCanonicalName(
         string alias,

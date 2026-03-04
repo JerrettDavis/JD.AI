@@ -17,6 +17,8 @@ public static class OpenClawToolAliasResolver
             ["websearch"] = "web_search",
             ["todo_read"] = "list_tasks",
             ["todo_write"] = "update_task",
+            ["exec"] = "run_command",
+            ["process"] = "process",
         };
 
     public static string Resolve(string toolName)

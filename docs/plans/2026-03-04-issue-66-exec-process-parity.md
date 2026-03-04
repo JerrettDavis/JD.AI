@@ -33,3 +33,20 @@ Implement exec/process background execution parity with explicit session lifecyc
 - Acceptance criteria in #66 satisfied.
 - CI green with deterministic tests.
 - Docs updated with usage and guardrails.
+
+## Implementation Summary
+- Added native `exec`/`process` tooling via [`ExecProcessTools`](../../src/JD.AI.Core/Tools/ExecProcessTools.cs).
+- Added managed runtime session subsystem via [`ProcessSessionManager`](../../src/JD.AI.Core/Tools/ProcessSessionManager.cs) with:
+  - per-scope isolation (`sessionId::agentId`)
+  - background lifecycle (`list`, `poll`, `log`, `write`, `kill`, `clear`, `remove`)
+  - metadata persistence and orphan-recovery semantics
+  - timeout enforcement and bounded log buffers
+- Registered runtime tools in CLI startup (`Program.cs`) and safety tiers (`ToolConfirmationFilter`).
+- Updated OpenClaw alias resolution (`exec` → `run_command`, `process` → `process`).
+- Updated user-facing docs in `docs/reference/tools.md`.
+
+## Test/Coverage Notes
+- Added comprehensive tests:
+  - [`ProcessSessionManagerTests`](../../tests/JD.AI.Tests/ProcessSessionManagerTests.cs)
+  - [`ExecProcessToolsTests`](../../tests/JD.AI.Tests/ExecProcessToolsTests.cs)
+- Coverage validation for introduced files (`exec/process` subsystem) shows full line coverage under targeted coverage run.
