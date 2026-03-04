@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="JD.AI.Tests" />
+    <InternalsVisibleTo Include="JD.AI.Specs" />
     <InternalsVisibleTo Include="JD.AI" />
   </ItemGroup>
 
