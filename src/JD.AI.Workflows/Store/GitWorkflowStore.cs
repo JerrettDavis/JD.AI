@@ -5,9 +5,9 @@ using JD.AI.Core.Config;
 namespace JD.AI.Workflows.Store;
 
 /// <summary>
-/// Git-backed workflow store. Workflows are stored as <c>{name}/{version}.json</c>
-/// files inside a cloned Git repository. Operations pull before reading and push after
-/// writing so the store stays in sync across machines.
+/// Git-backed workflow store. Wraps a <see cref="FileWorkflowStore"/> whose base directory
+/// is a cloned Git repository. Operations pull before reading and push after writing so the
+/// store stays in sync across machines.
 /// </summary>
 /// <remarks>
 /// Uses the <c>git</c> CLI via <see cref="GitHelper"/> rather than LibGit2Sharp
@@ -17,13 +17,7 @@ public sealed class GitWorkflowStore : IWorkflowStore
 {
     private readonly string _repoUrl;
     private readonly string _localCachePath;
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Converters = { new JsonStringEnumConverter() },
-    };
+    private readonly FileWorkflowStore _local;
 
     /// <param name="repoUrl">Remote Git repository URL (HTTPS or SSH).</param>
     /// <param name="localCachePath">
@@ -35,6 +29,7 @@ public sealed class GitWorkflowStore : IWorkflowStore
         _repoUrl = repoUrl;
         _localCachePath = localCachePath
             ?? Path.Combine(DataDirectories.Root, "workflow-store");
+        _local = new FileWorkflowStore(_localCachePath);
     }
 
     /// <inheritdoc/>
@@ -43,26 +38,26 @@ public sealed class GitWorkflowStore : IWorkflowStore
         await EnsureRepoAsync(ct).ConfigureAwait(false);
         await PullAsync(ct).ConfigureAwait(false);
 
-        var dir = GetWorkflowDirectory(workflow.Name);
-        Directory.CreateDirectory(dir);
+        await _local.PublishAsync(workflow, ct).ConfigureAwait(false);
 
-        var path = GetVersionPath(workflow.Name, workflow.Version);
-        var json = JsonSerializer.Serialize(workflow, JsonOptions);
-        await File.WriteAllTextAsync(path, json, ct).ConfigureAwait(false);
+        var relativePath = Path.Combine(
+            FileWorkflowStore.Sanitize(workflow.Name),
+            $"{FileWorkflowStore.Sanitize(workflow.Version)}.json");
 
-        var relativePath = Path.GetRelativePath(_localCachePath, path);
-        var (addExit, _, addErr) = await GitHelper.RunAsync(_localCachePath, $"add \"{relativePath}\"", ct).ConfigureAwait(false);
+        var (addExit, _, addErr) = await GitHelper.RunAsync(
+            _localCachePath, $"add \"{relativePath}\"", ct).ConfigureAwait(false);
         if (addExit != 0)
             throw new InvalidOperationException($"Git add failed (exit {addExit}): {addErr}");
 
         var (commitExit, _, commitErr) = await GitHelper.RunAsync(
             _localCachePath,
-            $"commit -m \"publish: {Sanitize(workflow.Name)} v{Sanitize(workflow.Version)}\"",
+            $"commit -m \"publish: {FileWorkflowStore.Sanitize(workflow.Name)} v{FileWorkflowStore.Sanitize(workflow.Version)}\"",
             ct).ConfigureAwait(false);
         if (commitExit != 0)
             throw new InvalidOperationException($"Git commit failed (exit {commitExit}): {commitErr}");
 
-        var (pushExit, _, pushErr) = await GitHelper.RunAsync(_localCachePath, "push", ct).ConfigureAwait(false);
+        var (pushExit, _, pushErr) = await GitHelper.RunAsync(
+            _localCachePath, "push", ct).ConfigureAwait(false);
         if (pushExit != 0)
             throw new InvalidOperationException($"Git push failed (exit {pushExit}): {pushErr}");
     }
@@ -71,155 +66,46 @@ public sealed class GitWorkflowStore : IWorkflowStore
     public async Task<SharedWorkflow?> GetAsync(
         string nameOrId, string? version = null, CancellationToken ct = default)
     {
-        await EnsureRepoAsync(ct).ConfigureAwait(false);
-        await PullAsync(ct).ConfigureAwait(false);
-
-        if (version is not null)
-        {
-            var path = GetVersionPath(nameOrId, version);
-            if (File.Exists(path))
-                return await ReadAsync(path, ct).ConfigureAwait(false);
-        }
-        else
-        {
-            // Try as a name — return latest version
-            var dir = GetWorkflowDirectory(nameOrId);
-            if (Directory.Exists(dir))
-            {
-                var files = Directory.GetFiles(dir, "*.json");
-                if (files.Length > 0)
-                {
-                    var latest = GetLatestVersionFile(files);
-                    return await ReadAsync(latest, ct).ConfigureAwait(false);
-                }
-            }
-        }
-
-        // Fall back to searching by ID
-        var allWorkflows = await CatalogAsync(ct: ct).ConfigureAwait(false);
-        return allWorkflows.FirstOrDefault(w =>
-            string.Equals(w.Id, nameOrId, StringComparison.OrdinalIgnoreCase));
+        await SyncAsync(ct).ConfigureAwait(false);
+        return await _local.GetAsync(nameOrId, version, ct).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
     public async Task<IReadOnlyList<SharedWorkflow>> CatalogAsync(
         string? tag = null, string? author = null, CancellationToken ct = default)
     {
-        await EnsureRepoAsync(ct).ConfigureAwait(false);
-        await PullAsync(ct).ConfigureAwait(false);
-
-        if (!Directory.Exists(_localCachePath))
-            return [];
-
-        var results = new List<SharedWorkflow>();
-
-        foreach (var dir in Directory.GetDirectories(_localCachePath))
-        {
-            // Skip the .git directory
-            if (string.Equals(Path.GetFileName(dir), ".git", StringComparison.Ordinal)) continue;
-
-            var files = Directory.GetFiles(dir, "*.json");
-            if (files.Length == 0) continue;
-
-            // Return latest version only for catalog
-            var latest = GetLatestVersionFile(files);
-            var workflow = await ReadAsync(latest, ct).ConfigureAwait(false);
-            if (workflow is null) continue;
-
-            if (tag is not null &&
-                !workflow.Tags.Any(t => string.Equals(t, tag, StringComparison.OrdinalIgnoreCase)))
-                continue;
-
-            if (author is not null &&
-                !string.Equals(workflow.Author, author, StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            results.Add(workflow);
-        }
-
-        return results;
+        await SyncAsync(ct).ConfigureAwait(false);
+        return await _local.CatalogAsync(tag, author, ct).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
     public async Task<IReadOnlyList<SharedWorkflow>> SearchAsync(
         string query, CancellationToken ct = default)
     {
-        await EnsureRepoAsync(ct).ConfigureAwait(false);
-        await PullAsync(ct).ConfigureAwait(false);
-
-        if (!Directory.Exists(_localCachePath))
-            return [];
-
-        var allFiles = Directory.GetFiles(_localCachePath, "*.json", SearchOption.AllDirectories)
-            .Where(f => !IsGitPath(f))
-            .ToArray();
-
-        var results = new List<SharedWorkflow>();
-
-        foreach (var file in allFiles)
-        {
-            var workflow = await ReadAsync(file, ct).ConfigureAwait(false);
-            if (workflow is null) continue;
-
-            var matches =
-                workflow.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                workflow.Description.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                workflow.Author.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                workflow.Tags.Any(t => t.Contains(query, StringComparison.OrdinalIgnoreCase));
-
-            if (matches)
-                results.Add(workflow);
-        }
-
-        return results;
+        await SyncAsync(ct).ConfigureAwait(false);
+        return await _local.SearchAsync(query, ct).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
     public async Task<IReadOnlyList<SharedWorkflow>> VersionsAsync(
         string name, CancellationToken ct = default)
     {
-        await EnsureRepoAsync(ct).ConfigureAwait(false);
-        await PullAsync(ct).ConfigureAwait(false);
-
-        var dir = GetWorkflowDirectory(name);
-        if (!Directory.Exists(dir))
-            return [];
-
-        var files = Directory.GetFiles(dir, "*.json");
-        var results = new List<SharedWorkflow>(files.Length);
-
-        foreach (var file in files.OrderBy(ParseVersionFromPath))
-        {
-            var workflow = await ReadAsync(file, ct).ConfigureAwait(false);
-            if (workflow is not null)
-                results.Add(workflow);
-        }
-
-        return results;
+        await SyncAsync(ct).ConfigureAwait(false);
+        return await _local.VersionsAsync(name, ct).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
     public async Task<bool> InstallAsync(
         string nameOrId, string? version, string localDirectory, CancellationToken ct = default)
     {
-        var workflow = await GetAsync(nameOrId, version, ct).ConfigureAwait(false);
-        if (workflow is null)
-            return false;
+        await SyncAsync(ct).ConfigureAwait(false);
+        return await _local.InstallAsync(nameOrId, version, localDirectory, ct).ConfigureAwait(false);
+    }
 
-        Directory.CreateDirectory(localDirectory);
-
-        var fileName = $"{Sanitize(workflow.Name)}-{Sanitize(workflow.Version)}.json";
-        var destPath = Path.Combine(localDirectory, fileName);
-
-        // The local CLI catalog expects AgentWorkflowDefinition JSON, which is stored in
-        // SharedWorkflow.DefinitionJson. Prefer writing that directly; fall back to the
-        // wrapper object if it's missing.
-        var json = !string.IsNullOrWhiteSpace(workflow.DefinitionJson)
-            ? workflow.DefinitionJson!
-            : JsonSerializer.Serialize(workflow, JsonOptions);
-        await File.WriteAllTextAsync(destPath, json, ct).ConfigureAwait(false);
-
-        return true;
+    private async Task SyncAsync(CancellationToken ct)
+    {
+        await EnsureRepoAsync(ct).ConfigureAwait(false);
+        await PullAsync(ct).ConfigureAwait(false);
     }
 
     private async Task EnsureRepoAsync(CancellationToken ct)
@@ -255,43 +141,6 @@ public sealed class GitWorkflowStore : IWorkflowStore
         }
 #pragma warning disable CA1031
         catch { /* non-critical — work with local cache */ }
-#pragma warning restore CA1031
-    }
-
-    private string GetWorkflowDirectory(string name) =>
-        Path.Combine(_localCachePath, Sanitize(name));
-
-    private string GetVersionPath(string name, string version) =>
-        Path.Combine(GetWorkflowDirectory(name), $"{Sanitize(version)}.json");
-
-    private static string Sanitize(string input) =>
-        string.Concat(input.Select(c => char.IsLetterOrDigit(c) || c == '-' || c == '.' ? c : '_'));
-
-    private static string GetLatestVersionFile(string[] files) =>
-        files.OrderByDescending(ParseVersionFromPath).First();
-
-    private static Version ParseVersionFromPath(string path)
-    {
-        var name = Path.GetFileNameWithoutExtension(path);
-        return Version.TryParse(name, out var v) ? v : new Version(0, 0, 0);
-    }
-
-    private static bool IsGitPath(string path) =>
-        path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-            .Any(seg => string.Equals(seg, ".git", StringComparison.Ordinal));
-
-    private static async Task<SharedWorkflow?> ReadAsync(string path, CancellationToken ct)
-    {
-        try
-        {
-            var json = await File.ReadAllTextAsync(path, ct).ConfigureAwait(false);
-            return JsonSerializer.Deserialize<SharedWorkflow>(json, JsonOptions);
-        }
-#pragma warning disable CA1031
-        catch
-        {
-            return null;
-        }
 #pragma warning restore CA1031
     }
 }

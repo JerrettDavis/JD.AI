@@ -359,7 +359,7 @@ To pin a specific version, use the `@version` syntax:
 
 | Variable | Description | Default |
 |---|---|---|
-| `JDAI_WORKFLOW_STORE_REPO` | Reserved for future use. Currently, the workflow store is configured programmatically via `IWorkflowStore` injection. | — |
+| `JDAI_WORKFLOW_STORE_URL` | Git repository URL (HTTPS or SSH) for the shared workflow store. When set, uses `GitWorkflowStore`; otherwise falls back to a local `FileWorkflowStore` at `~/.jdai/workflow-store/`. | — |
 
 ### Local cache location
 

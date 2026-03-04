@@ -4,6 +4,8 @@ using JD.AI.Commands;
 using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Agents.Orchestration;
 using JD.AI.Core.Config;
+using JD.AI.Core.Governance;
+using JD.AI.Core.Governance.Audit;
 using JD.AI.Core.LocalModels;
 using JD.AI.Core.Mcp;
 using JD.AI.Core.Providers;
@@ -13,6 +15,7 @@ using JD.AI.Core.Providers.ModelSearch;
 using JD.AI.Rendering;
 using JD.AI.Tools;
 using JD.AI.Workflows;
+using JD.AI.Workflows.Store;
 using JD.SemanticKernel.Extensions.Compaction;
 using JD.SemanticKernel.Extensions.Hooks;
 using JD.SemanticKernel.Extensions.Plugins;
@@ -477,8 +480,42 @@ foreach (var dir in pluginDirs.Where(Directory.Exists))
 #pragma warning restore CA1031
 }
 
-// 8. Add tool confirmation filter
-kernel.AutoFunctionInvocationFilters.Add(new ToolConfirmationFilter(session));
+// 8. Load governance policies, audit, and budget
+var policies = PolicyLoader.Load(projectPath);
+IPolicyEvaluator? policyEvaluator = null;
+if (policies.Count > 0)
+{
+    var resolvedSpec = PolicyResolver.Resolve(policies);
+    policyEvaluator = new PolicyEvaluator(resolvedSpec);
+    if (!printMode) ChatRenderer.RenderInfo($"  Loaded {policies.Count} governance policy file(s)");
+}
+
+var auditSinks = new List<IAuditSink>();
+var auditDir = Path.Combine(DataDirectories.Root, "audit");
+using var fileAuditSink = new FileAuditSink(auditDir);
+auditSinks.Add(fileAuditSink);
+
+// If policies define additional audit sinks (ES, webhook), add them here
+var auditPolicy = policies
+    .SelectMany(p => p.Spec.Audit is { } a ? [a] : Array.Empty<AuditPolicy>())
+    .FirstOrDefault();
+if (auditPolicy is not null)
+{
+    if (!string.IsNullOrWhiteSpace(auditPolicy.Endpoint) && !string.IsNullOrWhiteSpace(auditPolicy.Index))
+        auditSinks.Add(new ElasticsearchAuditSink(
+            new HttpClient(), auditPolicy.Endpoint, auditPolicy.Index, auditPolicy.Token));
+    if (!string.IsNullOrWhiteSpace(auditPolicy.Url))
+        auditSinks.Add(new WebhookAuditSink(new HttpClient(), auditPolicy.Url));
+}
+
+var auditService = new AuditService(auditSinks);
+session.AuditService = auditService;
+
+using var budgetTracker = new BudgetTracker();
+
+// 8a. Add tool confirmation filter with governance
+kernel.AutoFunctionInvocationFilters.Add(
+    new ToolConfirmationFilter(session, policyEvaluator, auditService));
 
 // 8b. Load project instructions (JDAI.md, CLAUDE.md, AGENTS.md, etc.)
 var instructions = InstructionsLoader.Load();
@@ -595,7 +632,12 @@ var interactiveInput = new InteractiveInput(completionProvider)
     VimModeEnabled = tuiSettings.VimMode,
 };
 
-// 10a. Set up slash commands
+// 10a. Set up workflow store and slash commands
+var workflowStoreUrl = Environment.GetEnvironmentVariable("JDAI_WORKFLOW_STORE_URL");
+IWorkflowStore workflowStore = !string.IsNullOrWhiteSpace(workflowStoreUrl)
+    ? new GitWorkflowStore(workflowStoreUrl)
+    : new FileWorkflowStore(Path.Combine(DataDirectories.Root, "workflow-store"));
+
 var workflowCatalog = new FileWorkflowCatalog(Path.Combine(DataDirectories.Root, "workflows"));
 using var searchHttp = new HttpClient();
 var modelSearchAggregator = new ModelSearchAggregator(new IRemoteModelSearch[]
@@ -607,6 +649,7 @@ var modelSearchAggregator = new ModelSearchAggregator(new IRemoteModelSearch[]
 var commandRouter = new SlashCommandRouter(
     session, registry, instructions, checkpointStrategy,
     workflowCatalog: workflowCatalog,
+    workflowStore: workflowStore,
     getSpinnerStyle: () => spectreOutput.Style,
     onSpinnerStyleChanged: style => spectreOutput.Style = style,
     providerConfig: providerConfig,

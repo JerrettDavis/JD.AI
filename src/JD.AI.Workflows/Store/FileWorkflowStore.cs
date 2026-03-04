@@ -185,7 +185,7 @@ public sealed class FileWorkflowStore : IWorkflowStore
     private string GetVersionPath(string name, string version) =>
         Path.Combine(GetWorkflowDirectory(name), $"{Sanitize(version)}.json");
 
-    private static string Sanitize(string input) =>
+    internal static string Sanitize(string input) =>
         string.Concat(input.Select(c => char.IsLetterOrDigit(c) || c == '-' || c == '.' ? c : '_'));
 
     /// <summary>
