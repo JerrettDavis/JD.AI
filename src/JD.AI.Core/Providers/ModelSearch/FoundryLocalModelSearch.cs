@@ -19,7 +19,6 @@ public sealed class FoundryLocalModelSearch : IRemoteModelSearch
 
         try
         {
-            // List cached models
             var cached = await RunFoundryCommandAsync("models list", ct)
                 .ConfigureAwait(false);
 
@@ -35,12 +34,9 @@ public sealed class FoundryLocalModelSearch : IRemoteModelSearch
                     continue;
                 }
 
-                // First token is typically the model name
                 var name = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
                 if (name is null)
-                {
                     continue;
-                }
 
                 if (!string.IsNullOrWhiteSpace(query)
                     && !name.Contains(query, StringComparison.OrdinalIgnoreCase))
@@ -54,7 +50,8 @@ public sealed class FoundryLocalModelSearch : IRemoteModelSearch
                     ProviderName,
                     null,
                     "Installed",
-                    null));
+                    null,
+                    ModelCapabilityHeuristics.InferFromName(name)));
             }
 
             return results;
