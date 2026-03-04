@@ -166,7 +166,7 @@ public sealed class QuestionnaireSessionBddTests : TinyBddXunitBase
 
         await Given("a validation rule with min and a custom error", () => new QuestionValidation { Min = 10, ErrorMessage = "Value too small!" })
             .When("validating a number below the minimum", v => { result = QuestionnaireSession.ValidateNumber(v, 3); return v; })
-            .Then("the result is the custom error message", _ => result == "Value too small!")
+            .Then("the result is the custom error message", _ => string.Equals(result, "Value too small!", StringComparison.Ordinal))
             .AssertPassed();
     }
 

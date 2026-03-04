@@ -308,6 +308,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             .Title($"[bold]Search results for '{Markup.Escape(query)}'[/]")
             .AddColumn(new TableColumn("[bold]Provider[/]").NoWrap())
             .AddColumn(new TableColumn("[bold]Model[/]"))
+            .AddColumn(new TableColumn("[bold]Caps[/]").NoWrap())
             .AddColumn(new TableColumn("[bold]Size[/]").RightAligned())
             .AddColumn(new TableColumn("[bold]Status[/]"));
 
@@ -324,6 +325,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             table.AddRow(
                 Markup.Escape(r.ProviderName),
                 Markup.Escape(r.DisplayName),
+                r.Capabilities.ToBadge(),
                 Markup.Escape(r.Size ?? "-"),
                 statusMarkup);
         }
@@ -1324,7 +1326,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         lines.AppendLine($"Local models ({localProvider.Models.Count}):");
         foreach (var m in localProvider.Models)
         {
-            lines.AppendLine($"  • {m.Id} — {m.DisplayName}");
+            lines.AppendLine($"  {m.Capabilities.ToBadge()} {m.Id} — {m.DisplayName}");
         }
 
         return lines.ToString().TrimEnd();

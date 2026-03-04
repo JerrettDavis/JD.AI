@@ -37,11 +37,12 @@ internal static class ModelPicker
             .HighlightStyle(new Style(Color.Aqua, decoration: Decoration.Bold))
             .UseConverter(m =>
             {
+                var badge = m.Capabilities.ToBadge();
                 var active = currentModel != null &&
                              string.Equals(m.Id, currentModel.Id, StringComparison.Ordinal)
                     ? " ◄ active"
                     : "";
-                return $"[{m.ProviderName}] {Markup.Escape(m.DisplayName)}{active}";
+                return $"{badge} [{m.ProviderName}] {Markup.Escape(m.DisplayName)}{active}";
             });
 
         // Add choices grouped by provider, placing current model's provider first

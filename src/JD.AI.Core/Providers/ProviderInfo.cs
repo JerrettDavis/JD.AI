@@ -20,4 +20,5 @@ public sealed record ProviderModelInfo(
     int MaxOutputTokens = 16_384,
     decimal InputCostPerToken = 0m,
     decimal OutputCostPerToken = 0m,
-    bool HasMetadata = false);
+    bool HasMetadata = false,
+    ModelCapabilities Capabilities = ModelCapabilities.Chat | ModelCapabilities.ToolCalling);
