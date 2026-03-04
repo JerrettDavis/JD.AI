@@ -25,9 +25,42 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
     /// <summary>Update the model name (e.g. after a /model switch).</summary>
     public string? ModelName { get; set; }
 
-    public void RenderInfo(string message) => ChatRenderer.RenderInfo(message);
-    public void RenderWarning(string message) => ChatRenderer.RenderWarning(message);
-    public void RenderError(string message) => ChatRenderer.RenderError(message);
+    public void RenderInfo(string message)
+    {
+        PauseProgress();
+        ChatRenderer.RenderInfo(message);
+        ResumeProgress();
+    }
+
+    public void RenderWarning(string message)
+    {
+        PauseProgress();
+        ChatRenderer.RenderWarning(message);
+        ResumeProgress();
+    }
+
+    public void RenderError(string message)
+    {
+        PauseProgress();
+        ChatRenderer.RenderError(message);
+        ResumeProgress();
+    }
+
+    public void RenderToolCall(string toolName, string? args, string result)
+    {
+        PauseProgress();
+        ChatRenderer.RenderToolCall(toolName, args, result);
+        ResumeProgress();
+    }
+
+    public bool ConfirmToolCall(string toolName, string? args)
+    {
+        PauseProgress();
+        ChatRenderer.RenderWarning($"Tool: {toolName}({args})");
+        var confirmed = ChatRenderer.Confirm("Allow this tool to run?");
+        ResumeProgress();
+        return confirmed;
+    }
 
     public void BeginTurn()
     {
@@ -62,6 +95,12 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
     public void EndStreaming() => ChatRenderer.EndStreaming();
 
     public void Dispose() => StopProgress();
+
+    /// <summary>Temporarily pause the spinner (clear the line) without disposing it.</summary>
+    private void PauseProgress() => _progress?.Pause();
+
+    /// <summary>Resume the spinner after a pause.</summary>
+    private void ResumeProgress() => _progress?.Resume();
 
     private void StopProgress()
     {

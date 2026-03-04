@@ -1,4 +1,4 @@
-using JD.AI.Rendering;
+using JD.AI.Core.Agents;
 using JD.AI.Tools;
 using Microsoft.SemanticKernel;
 
@@ -6,7 +6,7 @@ namespace JD.AI.Agent;
 
 /// <summary>
 /// SK auto-function-invocation filter that enforces safety tiers
-/// and renders tool calls to the TUI.
+/// and renders tool calls to the TUI via <see cref="IAgentOutput"/>.
 /// </summary>
 public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
 {
@@ -74,6 +74,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
     {
         var functionName = context.Function.Name;
         var tier = ToolTiers.GetValueOrDefault(functionName, SafetyTier.AlwaysConfirm);
+        var output = AgentOutput.Current;
 
         // Check if we need confirmation
         var needsConfirm = !_session.SkipPermissions && !_session.AutoRunEnabled && tier switch
@@ -98,8 +99,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
 
         if (needsConfirm)
         {
-            ChatRenderer.RenderWarning($"Tool: {functionName}({args})");
-            if (!ChatRenderer.Confirm("Allow this tool to run?"))
+            if (!output.ConfirmToolCall(functionName, args))
             {
                 context.Result = new FunctionResult(context.Function, "User denied tool execution.");
                 return;
@@ -112,13 +112,13 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         }
         else
         {
-            ChatRenderer.RenderInfo($"  ▸ {functionName}({args})");
+            output.RenderInfo($"  ▸ {functionName}({args})");
         }
 
         await next(context).ConfigureAwait(false);
 
         // Render tool result
         var result = context.Result.GetValue<string>() ?? context.Result.ToString() ?? "";
-        ChatRenderer.RenderToolCall(functionName, args, result);
+        output.RenderToolCall(functionName, args, result);
     }
 }
