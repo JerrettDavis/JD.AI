@@ -37,8 +37,18 @@ public sealed class LocalModelDetectionSteps
     [Given(@"a local model detector with an inaccessible directory")]
     public void GivenALocalModelDetectorWithInaccessibleDir()
     {
-        // Use a non-existent path that will cause errors
-        var registry = new LocalModelRegistry("/nonexistent/inaccessible/models");
+        // Create a temporary directory so the registry constructor succeeds,
+        // then immediately delete it so that detection fails consistently
+        // across platforms (Windows and Linux both report "not found" style
+        // errors rather than "access denied" for truly inaccessible paths).
+        var dir = Path.Combine(Path.GetTempPath(), "jdai-inaccessible-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var registry = new LocalModelRegistry(dir);
+
+        // Remove the directory so scanning/loading fails gracefully
+        try { Directory.Delete(dir, recursive: true); }
+        catch { /* best effort */ }
+
         var detector = new LocalModelDetector(registry);
         _context.Set(detector, "Detector");
     }
