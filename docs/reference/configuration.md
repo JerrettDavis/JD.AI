@@ -168,16 +168,34 @@ File missing              → empty config (defaults)
 
 ## Skills, plugins, and hooks
 
-JD.AI loads Claude Code extensions from standard locations:
+JD.AI uses native `.jdai` locations for skills/plugins and keeps `.claude` skills as lower-precedence compatibility inputs.
+
+### Skills
 
 | Path | Scope |
 |---|---|
-| `~/.claude/skills/` | Personal skills (all projects) |
-| `~/.claude/plugins/` | Personal plugins (all projects) |
-| `.claude/skills/` | Project skills |
-| `.claude/plugins/` | Project plugins |
+| `<install>/skills/` | Bundled baseline skills |
+| `~/.jdai/skills/` | User-managed skills |
+| `.jdai/skills/` | Workspace skills |
+| `~/.claude/skills/` | Legacy compatibility skills (lower precedence) |
+| `.claude/skills/` | Legacy compatibility skills (lower precedence) |
 
-Extensions are registered as Semantic Kernel functions and filters at startup. See [Skills and Plugins](../developer-guide/plugins.md) for details.
+Skill runtime policy/config:
+
+| Path | Scope |
+|---|---|
+| `~/.jdai/skills.json` | User skill lifecycle config |
+| `.jdai/skills.json` | Workspace overrides |
+
+### Plugins and hooks
+
+| Path | Scope |
+|---|---|
+| `~/.jdai/plugins/` | Personal plugins |
+| `.jdai/plugins/` | Project plugins |
+| `~/.jdai/hooks.json` | Hook profiles and toggles |
+
+See [Skills and Plugins](../developer-guide/plugins.md) for lifecycle, precedence, and gating details.
 
 ## Data directory structure
 
@@ -186,6 +204,10 @@ Extensions are registered as Semantic Kernel functions and filters at startup. S
 ├── config.json          # Global defaults (managed by AtomicConfigStore)
 ├── config.json.bak      # Backup of previous config
 ├── config.json.lock     # File lock (transient)
+├── skills/              # User-managed skills
+├── skills.json          # User skills lifecycle config
+├── runtime/
+│   └── skills/          # Active staged skills for current runtime
 ├── credentials/         # Encrypted credential store
 ├── sessions.db          # SQLite session database
 ├── update-check.json    # NuGet update cache (24h TTL)
