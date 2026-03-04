@@ -1,5 +1,6 @@
 using FluentAssertions;
 using JD.AI.Telemetry.HealthChecks;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using NSubstitute;
 
@@ -29,6 +30,7 @@ public sealed class SessionStoreHealthCheckTests
         }
         finally
         {
+            SqliteConnection.ClearAllPools();
             if (File.Exists(dbPath)) File.Delete(dbPath);
         }
     }
@@ -51,6 +53,7 @@ public sealed class SessionStoreHealthCheckTests
         }
         finally
         {
+            SqliteConnection.ClearAllPools();
             if (File.Exists(dbPath)) File.Delete(dbPath);
         }
     }

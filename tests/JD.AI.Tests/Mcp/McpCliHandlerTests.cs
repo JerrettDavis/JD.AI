@@ -39,10 +39,28 @@ public sealed class McpCliHandlerTests : IDisposable
     [Fact]
     public async Task List_EmptyConfig_PrintsEmptyStateAndReturnsZero()
     {
-        var stdout = await CaptureStdoutAsync(() => McpCliHandler.RunAsync(["list"]));
+        var stdout = await CaptureStdoutAsync(() => McpCliHandler.RunAsync(["list", "--json"]));
 
         Assert.Equal(0, stdout.ExitCode);
-        Assert.Contains("No MCP servers", stdout.Output);
+
+        using var doc = JsonDocument.Parse(stdout.Output);
+        Assert.Equal(JsonValueKind.Array, doc.RootElement.ValueKind);
+
+        var jdAiCount = 0;
+        foreach (var entry in doc.RootElement.EnumerateArray())
+        {
+            if (!entry.TryGetProperty("sourceProvider", out var sourceProvider))
+            {
+                continue;
+            }
+
+            if (string.Equals(sourceProvider.GetString(), "JD.AI", StringComparison.OrdinalIgnoreCase))
+            {
+                jdAiCount++;
+            }
+        }
+
+        Assert.Equal(0, jdAiCount);
     }
 
     [Fact]
@@ -164,7 +182,26 @@ public sealed class McpCliHandlerTests : IDisposable
         // Must be valid JSON array
         using var doc = JsonDocument.Parse(result.Output);
         Assert.Equal(JsonValueKind.Array, doc.RootElement.ValueKind);
-        Assert.Equal(2, doc.RootElement.GetArrayLength());
+
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in doc.RootElement.EnumerateArray())
+        {
+            if (!entry.TryGetProperty("name", out var nameProp))
+            {
+                continue;
+            }
+
+            var name = nameProp.GetString();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                continue;
+            }
+
+            names.Add(name);
+        }
+
+        Assert.Contains("notion", names);
+        Assert.Contains("azure", names);
     }
 
     [Fact]

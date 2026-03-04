@@ -10,6 +10,7 @@ namespace JD.AI.Core.Plugins;
 /// Uses AssemblyLoadContext for isolation.
 /// </summary>
 public sealed class PluginLoader
+    : IPluginRuntime
 {
     private readonly ILogger<PluginLoader> _logger;
     private readonly List<LoadedPlugin> _plugins = [];
@@ -37,7 +38,7 @@ public sealed class PluginLoader
             ct.ThrowIfCancellationRequested();
             try
             {
-                var plugin = await LoadAssemblyAsync(dll, context, ct).ConfigureAwait(false);
+                var plugin = await LoadAssemblyAsync(dll, context, ct: ct).ConfigureAwait(false);
                 if (plugin is not null)
                     loaded.Add(plugin);
             }
@@ -49,15 +50,15 @@ public sealed class PluginLoader
 #pragma warning restore CA1031
         }
 
-        lock (_lock)
-            _plugins.AddRange(loaded);
-
         return loaded;
     }
 
     /// <summary>Load a single plugin assembly.</summary>
     public async Task<LoadedPlugin?> LoadAssemblyAsync(
-        string assemblyPath, IPluginContext context, CancellationToken ct = default)
+        string assemblyPath,
+        IPluginContext context,
+        string? pluginId = null,
+        CancellationToken ct = default)
     {
         var fullPath = Path.GetFullPath(assemblyPath);
         var alc = new PluginLoadContext(fullPath);
@@ -77,10 +78,14 @@ public sealed class PluginLoader
         var plugin = (IJdAiPlugin)Activator.CreateInstance(pluginType)!;
 
         var manifest = pluginType.GetCustomAttribute<JdAiPluginAttribute>();
+        var resolvedId = pluginId ??
+            manifest?.Id ??
+            plugin.Id;
 
         await plugin.InitializeAsync(context, ct).ConfigureAwait(false);
 
         var loaded = new LoadedPlugin(
+            Id: resolvedId,
             Plugin: plugin,
             Assembly: assembly,
             LoadContext: alc,
@@ -89,6 +94,13 @@ public sealed class PluginLoader
             Version: plugin.Version,
             LoadedAt: DateTimeOffset.UtcNow);
 
+        lock (_lock)
+        {
+            _plugins.RemoveAll(p =>
+                string.Equals(p.Id, loaded.Id, StringComparison.OrdinalIgnoreCase));
+            _plugins.Add(loaded);
+        }
+
         _logger.LogInformation("Loaded plugin: {Name} v{Version} from {Path}",
             loaded.Name, loaded.Version, assemblyPath);
 
@@ -96,23 +108,36 @@ public sealed class PluginLoader
     }
 
     /// <summary>Unload a plugin and its assembly.</summary>
-    public async Task UnloadAsync(string name, CancellationToken ct = default)
+    public async Task UnloadAsync(string nameOrId, CancellationToken ct = default)
     {
         LoadedPlugin? target;
         lock (_lock)
         {
             target = _plugins.FirstOrDefault(p =>
-                string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+                string.Equals(p.Name, nameOrId, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(p.Id, nameOrId, StringComparison.OrdinalIgnoreCase));
             if (target is not null)
                 _plugins.Remove(target);
         }
 
         if (target is null) return;
 
-        await target.Plugin.ShutdownAsync(ct).ConfigureAwait(false);
-        target.LoadContext.Unload();
+        try
+        {
+            await target.Plugin.ShutdownAsync(ct).ConfigureAwait(false);
+        }
+#pragma warning disable CA1031 // plugin faults are isolated by design
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Plugin shutdown failed for {Name}", target.Name);
+        }
+#pragma warning restore CA1031
+        finally
+        {
+            target.LoadContext.Unload();
+        }
 
-        _logger.LogInformation("Unloaded plugin: {Name}", name);
+        _logger.LogInformation("Unloaded plugin: {Name}", nameOrId);
     }
 
     /// <summary>Get all loaded plugins.</summary>
@@ -125,6 +150,7 @@ public sealed class PluginLoader
 
 /// <summary>Represents a loaded plugin with metadata.</summary>
 public sealed record LoadedPlugin(
+    string Id,
     IJdAiPlugin Plugin,
     Assembly Assembly,
     AssemblyLoadContext LoadContext,
@@ -136,6 +162,16 @@ public sealed record LoadedPlugin(
 /// <summary>Isolated load context for plugin assemblies.</summary>
 internal sealed class PluginLoadContext : AssemblyLoadContext
 {
+    private static readonly string[] SharedAssemblyPrefixes =
+    [
+        "JD.AI.Plugins.SDK",
+        "Microsoft.SemanticKernel",
+        "Microsoft.Extensions.AI",
+        "Microsoft.Extensions.Logging",
+        "System",
+        "netstandard",
+    ];
+
     private readonly AssemblyDependencyResolver _resolver;
 
     public PluginLoadContext(string pluginPath) : base(isCollectible: true)
@@ -145,6 +181,12 @@ internal sealed class PluginLoadContext : AssemblyLoadContext
 
     protected override Assembly? Load(AssemblyName assemblyName)
     {
+        if (SharedAssemblyPrefixes.Any(prefix =>
+            assemblyName.Name?.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) == true))
+        {
+            return null; // defer to host for shared dependencies
+        }
+
         var path = _resolver.ResolveAssemblyToPath(assemblyName);
         return path is not null ? LoadFromAssemblyPath(path) : null;
     }
