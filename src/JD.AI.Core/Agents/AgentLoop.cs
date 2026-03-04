@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using JD.AI.Core.PromptCaching;
+using JD.AI.Core.Tracing;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
@@ -26,6 +27,10 @@ public sealed class AgentLoop
     public async Task<string> RunTurnAsync(
         string userMessage, CancellationToken ct = default)
     {
+        var traceCtx = TraceContext.StartTurn(_session.SessionInfo?.Id, _session.TurnIndex);
+        var turnEntry = traceCtx.Timeline.BeginOperation("agent.turn");
+        DebugLogger.Log(DebugCategory.Agents, "turn={0} traceId={1}", traceCtx.TurnIndex, traceCtx.TraceId);
+
         await _session.RecordUserTurnAsync(userMessage).ConfigureAwait(false);
         _session.History.AddUserMessage(userMessage);
 
@@ -65,10 +70,17 @@ public sealed class AgentLoop
                 response, durationMs: sw.ElapsedMilliseconds,
                 tokensOut: tokenEstimate).ConfigureAwait(false);
 
+            turnEntry.Attributes["tokens_out"] = tokenEstimate.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            turnEntry.Complete();
+            _session.LastTimeline = traceCtx.Timeline;
+
             return response;
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
+            turnEntry.Complete("error", ex.Message);
+            _session.LastTimeline = traceCtx.Timeline;
+
             var errorMsg = $"Error: {ex.Message}";
             AgentOutput.Current.RenderError(errorMsg);
 
@@ -87,6 +99,10 @@ public sealed class AgentLoop
     public async Task<string> RunTurnStreamingAsync(
         string userMessage, CancellationToken ct = default)
     {
+        var traceCtx = TraceContext.StartTurn(_session.SessionInfo?.Id, _session.TurnIndex);
+        var turnEntry = traceCtx.Timeline.BeginOperation("agent.turn");
+        DebugLogger.Log(DebugCategory.Agents, "turn={0} traceId={1} streaming=true", traceCtx.TurnIndex, traceCtx.TraceId);
+
         await _session.RecordUserTurnAsync(userMessage).ConfigureAwait(false);
         _session.History.AddUserMessage(userMessage);
 
@@ -227,12 +243,18 @@ public sealed class AgentLoop
                 durationMs: sw.ElapsedMilliseconds,
                 tokensOut: tokenEstimate).ConfigureAwait(false);
 
+            turnEntry.Attributes["tokens_out"] = tokenEstimate.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            turnEntry.Complete();
+            _session.LastTimeline = traceCtx.Timeline;
+
             return response;
         }
         catch (OperationCanceledException)
         {
             output.EndStreaming();
             sw.Stop();
+            turnEntry.Complete("cancelled");
+            _session.LastTimeline = traceCtx.Timeline;
             output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, 0, totalBytes));
             throw; // Let caller handle cancellation
         }
@@ -240,6 +262,8 @@ public sealed class AgentLoop
         {
             output.EndStreaming();
             sw.Stop();
+            turnEntry.Complete("error", ex.Message);
+            _session.LastTimeline = traceCtx.Timeline;
             output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, 0, totalBytes));
             var errorMsg = $"Error: {ex.Message}";
             AgentOutput.Current.RenderError(errorMsg);
