@@ -437,11 +437,6 @@ public static class ChatRenderer
         if (string.IsNullOrEmpty(value))
             return string.Empty;
 
-        return value
-            .Replace("\\", "\\\\", StringComparison.Ordinal)
-            .Replace("\"", "\\\"", StringComparison.Ordinal)
-            .Replace("\r", "\\r", StringComparison.Ordinal)
-            .Replace("\n", "\\n", StringComparison.Ordinal)
-            .Replace("\t", "\\t", StringComparison.Ordinal);
+        return JsonEncodedText.Encode(value).ToString();
     }
 }

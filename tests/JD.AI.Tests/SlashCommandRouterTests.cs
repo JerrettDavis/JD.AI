@@ -520,4 +520,71 @@ public sealed class SlashCommandRouterTests
         Assert.NotNull(result);
         Assert.Contains("unavailable", result, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public async Task Review_WithTargetOutsideGitRepo_ReturnsFailureMessage()
+    {
+        var originalDirectory = Directory.GetCurrentDirectory();
+        var tempDirectory = Path.Combine(Path.GetTempPath(), $"jdai-review-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDirectory);
+
+        try
+        {
+            Directory.SetCurrentDirectory(tempDirectory);
+            var result = await _router.ExecuteAsync("/review --target main");
+
+            Assert.NotNull(result);
+            Assert.Contains("Review failed:", result, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("git", result, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(originalDirectory);
+            Directory.Delete(tempDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task AgentsList_WithCorruptJson_ReturnsEmptyStateMessage()
+    {
+        var tempDirectory = Path.Combine(Path.GetTempPath(), $"jdai-agents-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDirectory);
+        DataDirectories.SetRoot(tempDirectory);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(tempDirectory, "agents.json"), "{{not valid json}}");
+            var result = await _router.ExecuteAsync("/agents list");
+
+            Assert.NotNull(result);
+            Assert.Contains("No agent profiles configured", result, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            DataDirectories.Reset();
+            Directory.Delete(tempDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task HooksList_WithCorruptJson_ReturnsEmptyStateMessage()
+    {
+        var tempDirectory = Path.Combine(Path.GetTempPath(), $"jdai-hooks-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDirectory);
+        DataDirectories.SetRoot(tempDirectory);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(tempDirectory, "hooks.json"), "{{not valid json}}");
+            var result = await _router.ExecuteAsync("/hooks list");
+
+            Assert.NotNull(result);
+            Assert.Contains("No hooks configured", result, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            DataDirectories.Reset();
+            Directory.Delete(tempDirectory, recursive: true);
+        }
+    }
 }

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
@@ -1127,25 +1128,27 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
     private async Task<string> RunReviewAsync(string? arg, bool securityMode, CancellationToken ct)
     {
-        var request = await ParseReviewArgsAsync(arg, securityMode, ct).ConfigureAwait(false);
-        if (request is null)
+        try
         {
-            return securityMode
-                ? "Usage: /security-review [--full] [--branch <name> --target <name>]"
-                : "Usage: /review [--branch <name> --target <name>]";
-        }
+            var request = await ParseReviewArgsAsync(arg, securityMode, ct).ConfigureAwait(false);
+            if (request is null)
+            {
+                return securityMode
+                    ? "Usage: /security-review [--full] [--branch <name> --target <name>]"
+                    : "Usage: /review [--branch <name> --target <name>]";
+            }
 
-        if (request.SecurityMode)
-            return await RunSecurityReviewAsync(request, ct).ConfigureAwait(false);
+            if (request.SecurityMode)
+                return await RunSecurityReviewAsync(request, ct).ConfigureAwait(false);
 
-        var (diff, files) = await GetReviewDiffAndFilesAsync(request, ct).ConfigureAwait(false);
-        if (string.IsNullOrWhiteSpace(diff))
-            return "No changes to review.";
+            var (diff, files) = await GetReviewDiffAndFilesAsync(request, ct).ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(diff))
+                return "No changes to review.";
 
-        var fileContext = await BuildFileContextAsync(files, ct).ConfigureAwait(false);
-        var trimmedDiff = TrimTo(diff, 50_000);
+            var fileContext = await BuildFileContextAsync(files, ct).ConfigureAwait(false);
+            var trimmedDiff = TrimTo(diff, 50_000);
 
-        var prompt = $$"""
+            var prompt = $$"""
             Review the following code changes and return findings in exactly this format:
 
             ## Critical
@@ -1172,8 +1175,6 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             {{fileContext}}
             """;
 
-        try
-        {
             var reviewed = await RunModelAnalysisAsync(prompt, ct).ConfigureAwait(false);
             if (string.IsNullOrWhiteSpace(reviewed))
                 return "Review completed, but no findings were returned.";
@@ -1355,7 +1356,12 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         }
 
         if (target is not null && branch is null)
+        {
             branch = await GetCurrentBranchAsync(ct).ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(branch))
+                throw new InvalidOperationException(
+                    "Unable to determine current git branch for --target comparison.");
+        }
 
         if (branch is not null && target is null)
             target = "main";
@@ -1370,17 +1376,24 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         {
             var args = $"{request.Target}...{request.Branch}";
             var diffResult = await RunGitCommandAsync($"diff {args}", ct).ConfigureAwait(false);
+            EnsureGitCommandSucceeded($"diff {args}", diffResult);
             var filesOutput = await RunGitCommandAsync($"diff --name-only {args}", ct).ConfigureAwait(false);
+            EnsureGitCommandSucceeded($"diff --name-only {args}", filesOutput);
             return (diffResult.StdOut, SplitLines(filesOutput.StdOut));
         }
 
         var unstaged = await RunGitCommandAsync("diff", ct).ConfigureAwait(false);
+        EnsureGitCommandSucceeded("diff", unstaged);
         var staged = await RunGitCommandAsync("diff --cached", ct).ConfigureAwait(false);
+        EnsureGitCommandSucceeded("diff --cached", staged);
         var diff = $"{unstaged.StdOut}\n{staged.StdOut}".Trim();
 
         var unstagedFiles = await RunGitCommandAsync("diff --name-only", ct).ConfigureAwait(false);
+        EnsureGitCommandSucceeded("diff --name-only", unstagedFiles);
         var stagedFiles = await RunGitCommandAsync("diff --cached --name-only", ct).ConfigureAwait(false);
+        EnsureGitCommandSucceeded("diff --cached --name-only", stagedFiles);
         var untrackedFiles = await RunGitCommandAsync("ls-files --others --exclude-standard", ct).ConfigureAwait(false);
+        EnsureGitCommandSucceeded("ls-files --others --exclude-standard", untrackedFiles);
 
         var files = SplitLines($"{unstagedFiles.StdOut}\n{stagedFiles.StdOut}\n{untrackedFiles.StdOut}")
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -1394,6 +1407,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         if (request.FullScan)
         {
             var all = await RunGitCommandAsync("ls-files", ct).ConfigureAwait(false);
+            EnsureGitCommandSucceeded("ls-files", all);
             return SplitLines(all.StdOut);
         }
 
@@ -1463,30 +1477,57 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             .Where(l => !string.IsNullOrWhiteSpace(l))
             .ToList();
 
+    private static void EnsureGitCommandSucceeded(
+        string command,
+        (int ExitCode, string StdOut, string StdErr) result)
+    {
+        if (result.ExitCode == 0)
+            return;
+
+        throw new InvalidOperationException(FormatGitError(command, result));
+    }
+
+    private static string FormatGitError(
+        string command,
+        (int ExitCode, string StdOut, string StdErr) result)
+    {
+        var error = string.IsNullOrWhiteSpace(result.StdErr)
+            ? "No error output."
+            : result.StdErr.Trim();
+        return $"`git {command}` failed (exit {result.ExitCode}): {error}";
+    }
+
     private static async Task<(int ExitCode, string StdOut, string StdErr)> RunGitCommandAsync(
         string args, CancellationToken ct)
     {
-        var psi = new ProcessStartInfo
+        try
         {
-            FileName = "git",
-            Arguments = $"--no-pager {args}",
-            WorkingDirectory = Directory.GetCurrentDirectory(),
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
+            var psi = new ProcessStartInfo
+            {
+                FileName = "git",
+                Arguments = $"--no-pager {args}",
+                WorkingDirectory = Directory.GetCurrentDirectory(),
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
 
-        using var process = new Process { StartInfo = psi };
-        process.Start();
+            using var process = new Process { StartInfo = psi };
+            process.Start();
 
-        var stdoutTask = process.StandardOutput.ReadToEndAsync(ct);
-        var stderrTask = process.StandardError.ReadToEndAsync(ct);
-        await process.WaitForExitAsync(ct).ConfigureAwait(false);
+            var stdoutTask = process.StandardOutput.ReadToEndAsync(ct);
+            var stderrTask = process.StandardError.ReadToEndAsync(ct);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
 
-        var stdout = await stdoutTask.ConfigureAwait(false);
-        var stderr = await stderrTask.ConfigureAwait(false);
-        return (process.ExitCode, stdout, stderr);
+            var stdout = await stdoutTask.ConfigureAwait(false);
+            var stderr = await stderrTask.ConfigureAwait(false);
+            return (process.ExitCode, stdout, stderr);
+        }
+        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
+        {
+            return (-1, string.Empty, $"Failed to run git: {ex.Message}");
+        }
     }
 
     private static async Task<string?> GetCurrentBranchAsync(CancellationToken ct)
@@ -2140,8 +2181,15 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         if (!File.Exists(AgentsPath))
             return [];
 
-        var json = await File.ReadAllTextAsync(AgentsPath, ct).ConfigureAwait(false);
-        return JsonSerializer.Deserialize<List<AgentProfile>>(json, JsonOptions) ?? [];
+        try
+        {
+            var json = await File.ReadAllTextAsync(AgentsPath, ct).ConfigureAwait(false);
+            return JsonSerializer.Deserialize<List<AgentProfile>>(json, JsonOptions) ?? [];
+        }
+        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
+        {
+            return [];
+        }
     }
 
     private static async Task SaveAgentsAsync(List<AgentProfile> profiles, CancellationToken ct)
@@ -2156,8 +2204,15 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         if (!File.Exists(HooksPath))
             return [];
 
-        var json = await File.ReadAllTextAsync(HooksPath, ct).ConfigureAwait(false);
-        return JsonSerializer.Deserialize<List<HookProfile>>(json, JsonOptions) ?? [];
+        try
+        {
+            var json = await File.ReadAllTextAsync(HooksPath, ct).ConfigureAwait(false);
+            return JsonSerializer.Deserialize<List<HookProfile>>(json, JsonOptions) ?? [];
+        }
+        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
+        {
+            return [];
+        }
     }
 
     private static async Task SaveHooksAsync(List<HookProfile> hooks, CancellationToken ct)
