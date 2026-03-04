@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Text.Json;
+using JD.AI.Core.Agents;
 using Microsoft.Data.Sqlite;
 
 namespace JD.AI.Core.Sessions;
@@ -87,6 +89,28 @@ public sealed class SessionStore : IDisposable
             CREATE INDEX IF NOT EXISTS idx_files_touched_turn ON files_touched(turn_id);
             """;
         await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+
+        // Migrate: add model_switch_history and fork_points columns if missing
+        await MigrateAddColumnAsync(conn, "sessions", "model_switch_history", "TEXT").ConfigureAwait(false);
+        await MigrateAddColumnAsync(conn, "sessions", "fork_points", "TEXT").ConfigureAwait(false);
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "CA2100:Review SQL queries for security vulnerabilities", Justification = "Parameters are internal column names, not user input")]
+    private static async Task MigrateAddColumnAsync(SqliteConnection conn, string table, string column, string type)
+    {
+        using var pragma = conn.CreateCommand();
+        pragma.CommandText = $"PRAGMA table_info({table})";
+        using var reader = await pragma.ExecuteReaderAsync().ConfigureAwait(false);
+        while (await reader.ReadAsync().ConfigureAwait(false))
+        {
+            if (string.Equals(reader.GetString(1), column, StringComparison.Ordinal))
+                return;
+        }
+        reader.Close();
+
+        using var alter = conn.CreateCommand();
+        alter.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {type}";
+        await alter.ExecuteNonQueryAsync().ConfigureAwait(false);
     }
 
     public async Task CreateSessionAsync(SessionInfo session)
@@ -95,8 +119,9 @@ public sealed class SessionStore : IDisposable
         using var cmd = conn.CreateCommand();
         cmd.CommandText = """
             INSERT INTO sessions (id, name, project_path, project_hash, model_id, provider_name,
-                                  created_at, updated_at, total_tokens, message_count, is_active)
-            VALUES ($id, $name, $pp, $ph, $mid, $pn, $ca, $ua, $tt, $mc, $ia)
+                                  created_at, updated_at, total_tokens, message_count, is_active,
+                                  model_switch_history, fork_points)
+            VALUES ($id, $name, $pp, $ph, $mid, $pn, $ca, $ua, $tt, $mc, $ia, $msh, $fp)
             """;
         cmd.Parameters.AddWithValue("$id", session.Id);
         cmd.Parameters.AddWithValue("$name", (object?)session.Name ?? DBNull.Value);
@@ -109,6 +134,8 @@ public sealed class SessionStore : IDisposable
         cmd.Parameters.AddWithValue("$tt", session.TotalTokens);
         cmd.Parameters.AddWithValue("$mc", session.MessageCount);
         cmd.Parameters.AddWithValue("$ia", session.IsActive ? 1 : 0);
+        cmd.Parameters.AddWithValue("$msh", SerializeJson(session.ModelSwitchHistory));
+        cmd.Parameters.AddWithValue("$fp", SerializeJson(session.ForkPoints));
         await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
     }
 
@@ -118,7 +145,8 @@ public sealed class SessionStore : IDisposable
         using var cmd = conn.CreateCommand();
         cmd.CommandText = """
             UPDATE sessions SET name=$name, updated_at=$ua, total_tokens=$tt,
-                                message_count=$mc, is_active=$ia
+                                message_count=$mc, is_active=$ia,
+                                model_switch_history=$msh, fork_points=$fp
             WHERE id=$id
             """;
         cmd.Parameters.AddWithValue("$id", session.Id);
@@ -127,6 +155,8 @@ public sealed class SessionStore : IDisposable
         cmd.Parameters.AddWithValue("$tt", session.TotalTokens);
         cmd.Parameters.AddWithValue("$mc", session.MessageCount);
         cmd.Parameters.AddWithValue("$ia", session.IsActive ? 1 : 0);
+        cmd.Parameters.AddWithValue("$msh", SerializeJson(session.ModelSwitchHistory));
+        cmd.Parameters.AddWithValue("$fp", SerializeJson(session.ForkPoints));
         await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
     }
 
@@ -328,20 +358,39 @@ public sealed class SessionStore : IDisposable
 
     // ── Row readers ─────────────────────────────────────
 
-    private static SessionInfo ReadSession(SqliteDataReader r) => new()
+    private static SessionInfo ReadSession(SqliteDataReader r)
     {
-        Id = r.GetString(r.GetOrdinal("id")),
-        Name = r.IsDBNull(r.GetOrdinal("name")) ? null : r.GetString(r.GetOrdinal("name")),
-        ProjectPath = r.GetString(r.GetOrdinal("project_path")),
-        ProjectHash = r.GetString(r.GetOrdinal("project_hash")),
-        ModelId = r.IsDBNull(r.GetOrdinal("model_id")) ? null : r.GetString(r.GetOrdinal("model_id")),
-        ProviderName = r.IsDBNull(r.GetOrdinal("provider_name")) ? null : r.GetString(r.GetOrdinal("provider_name")),
-        CreatedAt = DateTime.Parse(r.GetString(r.GetOrdinal("created_at"))),
-        UpdatedAt = DateTime.Parse(r.GetString(r.GetOrdinal("updated_at"))),
-        TotalTokens = r.GetInt64(r.GetOrdinal("total_tokens")),
-        MessageCount = r.GetInt32(r.GetOrdinal("message_count")),
-        IsActive = r.GetInt32(r.GetOrdinal("is_active")) == 1,
-    };
+        var session = new SessionInfo
+        {
+            Id = r.GetString(r.GetOrdinal("id")),
+            Name = r.IsDBNull(r.GetOrdinal("name")) ? null : r.GetString(r.GetOrdinal("name")),
+            ProjectPath = r.GetString(r.GetOrdinal("project_path")),
+            ProjectHash = r.GetString(r.GetOrdinal("project_hash")),
+            ModelId = r.IsDBNull(r.GetOrdinal("model_id")) ? null : r.GetString(r.GetOrdinal("model_id")),
+            ProviderName = r.IsDBNull(r.GetOrdinal("provider_name")) ? null : r.GetString(r.GetOrdinal("provider_name")),
+            CreatedAt = DateTime.Parse(r.GetString(r.GetOrdinal("created_at"))),
+            UpdatedAt = DateTime.Parse(r.GetString(r.GetOrdinal("updated_at"))),
+            TotalTokens = r.GetInt64(r.GetOrdinal("total_tokens")),
+            MessageCount = r.GetInt32(r.GetOrdinal("message_count")),
+            IsActive = r.GetInt32(r.GetOrdinal("is_active")) == 1,
+        };
+
+        var mshOrd = r.GetOrdinal("model_switch_history");
+        if (!r.IsDBNull(mshOrd))
+        {
+            var list = JsonSerializer.Deserialize<List<ModelSwitchRecord>>(r.GetString(mshOrd));
+            if (list != null) session.ModelSwitchHistory.AddRange(list);
+        }
+
+        var fpOrd = r.GetOrdinal("fork_points");
+        if (!r.IsDBNull(fpOrd))
+        {
+            var list = JsonSerializer.Deserialize<List<ForkPoint>>(r.GetString(fpOrd));
+            if (list != null) session.ForkPoints.AddRange(list);
+        }
+
+        return session;
+    }
 
     private static TurnRecord ReadTurn(SqliteDataReader r) => new()
     {
@@ -379,6 +428,9 @@ public sealed class SessionStore : IDisposable
         Operation = r.GetString(r.GetOrdinal("operation")),
         CreatedAt = DateTime.Parse(r.GetString(r.GetOrdinal("created_at"))),
     };
+
+    private static string SerializeJson<T>(T value) =>
+        JsonSerializer.Serialize(value);
 
     public void Dispose()
     {

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using JD.AI.Core.Agents;
 
 namespace JD.AI.Core.Sessions;
 
@@ -18,6 +19,14 @@ public sealed class SessionInfo
     public long TotalTokens { get; set; }
     public int MessageCount { get; set; }
     public bool IsActive { get; set; } = true;
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "MA0016:Prefer using collection abstraction instead of implementation", Justification = "POCO for serialization")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1002:Do not expose generic lists", Justification = "POCO for JSON serialization")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only", Justification = "POCO for JSON serialization")]
+    public List<ModelSwitchRecord> ModelSwitchHistory { get; set; } = [];
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "MA0016:Prefer using collection abstraction instead of implementation", Justification = "POCO for serialization")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1002:Do not expose generic lists", Justification = "POCO for JSON serialization")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only", Justification = "POCO for JSON serialization")]
+    public List<ForkPoint> ForkPoints { get; set; } = [];
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "MA0016:Prefer using collection abstraction instead of implementation", Justification = "POCO for serialization")]
     public Collection<TurnRecord> Turns { get; init; } = new Collection<TurnRecord>();
 }

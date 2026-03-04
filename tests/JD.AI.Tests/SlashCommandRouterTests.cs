@@ -54,13 +54,15 @@ public sealed class SlashCommandRouterTests
     }
 
     [Fact]
-    public async Task Provider_ReturnsCurrentModel()
+    public async Task Provider_NoProviders_ReturnsNoProvidersMessage()
     {
+        _registry.DetectProvidersAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<ProviderInfo>());
+
         var result = await _router.ExecuteAsync("/provider");
 
         Assert.NotNull(result);
-        Assert.Contains("Test Model", result);
-        Assert.Contains("TestProvider", result);
+        Assert.Contains("No providers detected", result);
     }
 
     [Fact]
