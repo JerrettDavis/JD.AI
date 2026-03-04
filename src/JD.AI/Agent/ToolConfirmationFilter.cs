@@ -86,6 +86,14 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["migration_export"] = SafetyTier.AutoApprove,
             ["migration_convert"] = SafetyTier.ConfirmOnce,
 
+            // Policy/governance tools — read-only
+            ["policy_evaluate"] = SafetyTier.AutoApprove,
+            ["policy_list"] = SafetyTier.AutoApprove,
+            ["policy_validate"] = SafetyTier.AutoApprove,
+            ["policy_export"] = SafetyTier.AutoApprove,
+            ["audit_query"] = SafetyTier.AutoApprove,
+            ["rbac_check"] = SafetyTier.AutoApprove,
+
             // Write ops — confirm once per session
             ["write_file"] = SafetyTier.ConfirmOnce,
             ["edit_file"] = SafetyTier.ConfirmOnce,
