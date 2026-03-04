@@ -210,6 +210,8 @@ jdai --provider anthropic
 
 > [!NOTE]
 > This is separate from the Claude Code provider, which uses OAuth via the CLI.
+>
+> JD.AI automatically enables Anthropic prompt caching for larger prompts by default. Control it with `/config set prompt_cache on|off` and `/config set prompt_cache_ttl 5m|1h`.
 
 ### Google Gemini
 

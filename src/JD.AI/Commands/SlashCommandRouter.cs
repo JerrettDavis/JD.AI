@@ -8,6 +8,7 @@ using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Config;
 using JD.AI.Core.Mcp;
 using JD.AI.Core.Plugins;
+using JD.AI.Core.PromptCaching;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Providers.Credentials;
 using JD.AI.Core.Providers.ModelSearch;
@@ -1960,6 +1961,12 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             MaxTokens = 2200,
             Temperature = 0.1,
         };
+        PromptCachePolicy.Apply(
+            settings,
+            _session.CurrentModel,
+            history,
+            _session.PromptCachingEnabled,
+            _session.PromptCacheTtl);
 
         var result = await chat.GetChatMessageContentAsync(
             history,
@@ -2173,6 +2180,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
               vim_mode: {{vim.ToString().ToLowerInvariant()}}
               output_style: {{output.ToString().ToLowerInvariant()}}
               spinner_style: {{spinner.ToString().ToLowerInvariant()}}
+              prompt_cache: {{_session.PromptCachingEnabled.ToString().ToLowerInvariant()}}
+              prompt_cache_ttl: {{PromptCachePolicy.ToToken(_session.PromptCacheTtl)}}
               autorun: {{_session.AutoRunEnabled.ToString().ToLowerInvariant()}}
               permissions: {{(!_session.SkipPermissions).ToString().ToLowerInvariant()}}
               plan_mode: {{_session.PlanMode.ToString().ToLowerInvariant()}}
@@ -2195,6 +2204,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "vim_mode" => $"vim_mode={(_getVimMode?.Invoke() ?? settings.VimMode).ToString().ToLowerInvariant()}",
             "output_style" => $"output_style={(_getOutputStyle?.Invoke() ?? settings.OutputStyle).ToString().ToLowerInvariant()}",
             "spinner_style" => $"spinner_style={(_getSpinnerStyle?.Invoke() ?? settings.SpinnerStyle).ToString().ToLowerInvariant()}",
+            "prompt_cache" => $"prompt_cache={_session.PromptCachingEnabled.ToString().ToLowerInvariant()}",
+            "prompt_cache_ttl" => $"prompt_cache_ttl={PromptCachePolicy.ToToken(_session.PromptCacheTtl)}",
             "autorun" => $"autorun={_session.AutoRunEnabled.ToString().ToLowerInvariant()}",
             "permissions" => $"permissions={(!_session.SkipPermissions).ToString().ToLowerInvariant()}",
             "plan_mode" => $"plan_mode={_session.PlanMode.ToString().ToLowerInvariant()}",
@@ -2243,6 +2254,20 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                 _onSpinnerStyleChanged?.Invoke(spinner);
                 SaveSettings(settings with { SpinnerStyle = spinner });
                 return $"spinner_style={spinner.ToString().ToLowerInvariant()}";
+
+            case "prompt_cache":
+                if (!TryParseOnOff(value, out var promptCacheEnabled))
+                    return "prompt_cache expects on/off.";
+                _session.PromptCachingEnabled = promptCacheEnabled;
+                SaveSettings(settings with { PromptCacheEnabled = promptCacheEnabled });
+                return $"prompt_cache={promptCacheEnabled.ToString().ToLowerInvariant()}";
+
+            case "prompt_cache_ttl":
+                if (!PromptCachePolicy.TryParseTtl(value, out var ttl))
+                    return "prompt_cache_ttl expects 5m or 1h.";
+                _session.PromptCacheTtl = ttl;
+                SaveSettings(settings with { PromptCacheTtl = ttl });
+                return $"prompt_cache_ttl={PromptCachePolicy.ToToken(ttl)}";
 
             case "autorun":
                 if (!TryParseOnOff(value, out var autorun))

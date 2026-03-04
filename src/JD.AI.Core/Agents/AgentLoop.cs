@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using JD.AI.Core.PromptCaching;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
@@ -35,6 +36,12 @@ public sealed class AgentLoop
             ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
             MaxTokens = 4096,
         };
+        PromptCachePolicy.Apply(
+            settings,
+            _session.CurrentModel,
+            _session.History,
+            _session.PromptCachingEnabled,
+            _session.PromptCacheTtl);
 
         var sw = Stopwatch.StartNew();
 
@@ -90,6 +97,12 @@ public sealed class AgentLoop
             ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
             MaxTokens = 4096,
         };
+        PromptCachePolicy.Apply(
+            settings,
+            _session.CurrentModel,
+            _session.History,
+            _session.PromptCachingEnabled,
+            _session.PromptCacheTtl);
 
         var sw = Stopwatch.StartNew();
         var output = AgentOutput.Current;

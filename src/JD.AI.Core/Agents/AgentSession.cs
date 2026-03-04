@@ -1,3 +1,4 @@
+using JD.AI.Core.PromptCaching;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Sessions;
 using JD.SemanticKernel.Extensions.Compaction;
@@ -47,6 +48,16 @@ public sealed class AgentSession
     /// Toggled via the /plan slash command.
     /// </summary>
     public bool PlanMode { get; set; }
+
+    /// <summary>
+    /// When true, supported providers can automatically enable prompt caching.
+    /// </summary>
+    public bool PromptCachingEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Prompt cache time-to-live used when prompt caching is enabled.
+    /// </summary>
+    public PromptCacheTtl PromptCacheTtl { get; set; } = PromptCacheTtl.FiveMinutes;
 
     /// <summary>
     /// When true, emit verbose diagnostics (tool calls, arguments) to stderr.

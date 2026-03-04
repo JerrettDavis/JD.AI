@@ -19,6 +19,7 @@ For tutorials and explanations, see the [User Guide](../user-guide/index.md) and
 | [Providers Reference](providers.md) | Provider comparison table, capabilities matrix, credential resolution, env vars |
 | [Environment Variables](environment-variables.md) | Consolidated reference of all environment variables by category |
 | [Configuration Reference](configuration.md) | config.json schema, JDAI.md syntax, per-project overrides, precedence chain |
+| [Prompt Caching Reference](prompt-caching.md) | Automatic prompt caching behavior, thresholds, TTL options, and runtime controls |
 
 ## Quick links
 

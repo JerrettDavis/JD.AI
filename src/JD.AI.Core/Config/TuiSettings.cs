@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using JD.AI.Core.PromptCaching;
 
 namespace JD.AI.Core.Config;
 
@@ -28,6 +29,12 @@ public sealed record TuiSettings
 
     /// <summary>Assistant output rendering style.</summary>
     public OutputStyle OutputStyle { get; init; } = OutputStyle.Rich;
+
+    /// <summary>When true, supported providers may auto-enable prompt caching.</summary>
+    public bool PromptCacheEnabled { get; init; } = true;
+
+    /// <summary>Prompt cache TTL (5m default, optional 1h where supported).</summary>
+    public PromptCacheTtl PromptCacheTtl { get; init; } = PromptCacheTtl.FiveMinutes;
 
     /// <summary>Load settings from the data directory, returning defaults if not found.</summary>
     public static TuiSettings Load()

@@ -512,6 +512,25 @@ public sealed class SlashCommandRouterTests
         Assert.NotNull(result);
         Assert.Contains("theme", result, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("vim_mode", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("prompt_cache", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("prompt_cache_ttl", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Config_SetPromptCache_UpdatesSessionState()
+    {
+        var setEnabled = await _router.ExecuteAsync("/config set prompt_cache off");
+        var setTtl = await _router.ExecuteAsync("/config set prompt_cache_ttl 1h");
+        var getEnabled = await _router.ExecuteAsync("/config get prompt_cache");
+        var getTtl = await _router.ExecuteAsync("/config get prompt_cache_ttl");
+
+        Assert.NotNull(setEnabled);
+        Assert.NotNull(setTtl);
+        Assert.NotNull(getEnabled);
+        Assert.NotNull(getTtl);
+        Assert.False(_session.PromptCachingEnabled);
+        Assert.Equal("prompt_cache=false", getEnabled);
+        Assert.Equal("prompt_cache_ttl=1h", getTtl);
     }
 
     [Fact]

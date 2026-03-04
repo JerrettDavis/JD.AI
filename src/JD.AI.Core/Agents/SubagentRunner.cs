@@ -1,4 +1,5 @@
 using System.Text;
+using JD.AI.Core.PromptCaching;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -42,6 +43,12 @@ public sealed class SubagentRunner
             ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
             MaxTokens = 4096,
         };
+        PromptCachePolicy.Apply(
+            settings,
+            _parentSession.CurrentModel,
+            history,
+            _parentSession.PromptCachingEnabled,
+            _parentSession.PromptCacheTtl);
 
         try
         {
