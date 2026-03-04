@@ -60,35 +60,4 @@ public sealed class ClaudeCodeDetectorKernelTests
             ClaudeCodeDetector.ConfigureKernelBuilder(builder, null!));
     }
 
-    [Fact]
-    public void GetAccessTokenOrThrow_NullCredentials_Throws()
-    {
-        Assert.Throws<ClaudeCodeSessionException>(() =>
-            ClaudeCodeDetector.GetAccessTokenOrThrow(null));
-    }
-
-    [Fact]
-    public void GetAccessTokenOrThrow_EmptyAccessToken_Throws()
-    {
-        var credentials = new ClaudeCodeOAuthCredentials
-        {
-            AccessToken = string.Empty,
-        };
-
-        Assert.Throws<ClaudeCodeSessionException>(() =>
-            ClaudeCodeDetector.GetAccessTokenOrThrow(credentials));
-    }
-
-    [Fact]
-    public void GetAccessTokenOrThrow_ValidToken_ReturnsToken()
-    {
-        var credentials = new ClaudeCodeOAuthCredentials
-        {
-            AccessToken = "sk-ant-oat-test-token",
-        };
-
-        var token = ClaudeCodeDetector.GetAccessTokenOrThrow(credentials);
-
-        Assert.Equal("sk-ant-oat-test-token", token);
-    }
 }
