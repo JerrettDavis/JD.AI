@@ -858,7 +858,8 @@ var commandRouter = new SlashCommandRouter(
     onVimModeChanged: enabled => interactiveInput.VimModeEnabled = enabled,
     getOutputStyle: () => ChatRenderer.CurrentOutputStyle,
     onOutputStyleChanged: ChatRenderer.SetOutputStyle,
-    usageMeter: usageMeter);
+    usageMeter: usageMeter,
+    policyEvaluator: policyEvaluator);
 
 // Hook double-ESC at empty prompt → open history viewer
 interactiveInput.OnDoubleEscape += (sender, e) =>
