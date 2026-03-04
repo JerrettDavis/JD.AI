@@ -556,6 +556,7 @@ kernel.Plugins.AddFromType<ParityDocsTools>("parityDocs");
 kernel.Plugins.AddFromType<McpTransportTools>("mcp");
 kernel.Plugins.AddFromType<MigrationTools>("migration");
 kernel.Plugins.AddFromType<SkillParityTools>("skillParity");
+kernel.Plugins.AddFromType<McpEcosystemTools>("mcpEcosystem");
 kernel.Plugins.AddFromObject(new MemoryTools(), "memory");
 kernel.Plugins.AddFromObject(new TaskTools(), "tasks");
 var usageTools = new UsageTools();
