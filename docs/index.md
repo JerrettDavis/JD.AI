@@ -42,8 +42,8 @@ JD.AI auto-detects available providers. No manual configuration needed.
 | Feature | Description |
 |---------|-------------|
 | **Multi-provider** | [Claude Code, GitHub Copilot, Ollama, OpenAI Codex, Local Models](articles/providers.md) — auto-detected on startup |
-| **25+ slash commands** | [Model switching, sessions, context management](articles/commands-reference.md) |
-| **16 tool categories** | [Files, search, shell, git, web, memory, subagents, think, environment, tasks, code execution, clipboard, questions, diff/patch, batch edit, usage tracking](articles/tools-reference.md) |
+| **35+ slash commands** | [Model switching, sessions, reviews, memory, profiles, and workflows](articles/commands-reference.md) |
+| **17 tool categories** | [Files, search, shell, git, web, web search, memory, subagents, think, environment, tasks, code execution, clipboard, questions, diff/patch, batch edit, usage tracking](articles/tools-reference.md) |
 | **5 subagent types** | [Explore, task, plan, review, general-purpose](articles/subagents.md) |
 | **Team orchestration** | [Sequential, fan-out, supervisor, debate](articles/orchestration.md) strategies |
 | **Session persistence** | [Save, load, export conversations](articles/persistence.md) across sessions |
@@ -66,12 +66,13 @@ JD.AI auto-detects available providers. No manual configuration needed.
 
 - [Best Practices](articles/best-practices.md) — Tips for effective prompting and context management
 - [Common Workflows](articles/common-workflows.md) — Bug fixing, refactoring, testing, PRs
+- [Interactive Mode](articles/interactive-mode.md) — Prompt behavior, keybindings, vim mode, and streaming controls
 - [Configuration](articles/configuration.md) — JDAI.md and project settings
 
 ### Reference
 
 - [Tools Reference](articles/tools-reference.md) — All tools with parameters and examples
-- [Commands Reference](articles/commands-reference.md) — All 25+ slash commands
+- [Commands Reference](articles/commands-reference.md) — All 35+ slash commands
 - [CLI Reference](articles/cli-reference.md) — Flags, environment variables, exit codes
 - [AI Providers](articles/providers.md) — Provider setup and comparison
 
@@ -85,4 +86,4 @@ JD.AI auto-detects available providers. No manual configuration needed.
 ### Support
 
 - [Troubleshooting](articles/troubleshooting.md) — Common issues and solutions
-- [API Reference](api/) — Generated API documentation
+- API Reference — Generated API documentation is available under `/api` in the published docs site

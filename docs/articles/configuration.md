@@ -1,132 +1,109 @@
 # Configuration
 
-JD.AI is configured through project instruction files and runtime commands. No external config files or environment variables are required to get started — sensible defaults apply out of the box.
+JD.AI configuration comes from three layers:
 
-## Project instructions (JDAI.md)
+- Project instruction files (`JDAI.md`, `CLAUDE.md`, `AGENTS.md`, and compatible variants)
+- Runtime command settings (`/config`, `/theme`, `/vim`, `/spinner`, `/output-style`)
+- Environment variables and CLI flags
 
-`JDAI.md` is a special file that JD.AI reads at the start of every session. Place it in your repository root to declare build commands, code style rules, and project-specific conventions. JD.AI injects its contents into the system prompt so every response respects your project's standards.
+## Project instructions (`JDAI.md` and compatible files)
 
-### File search order
+JD.AI loads instruction files into the system prompt at startup.
 
-JD.AI searches for instruction files in this priority order:
+### Search order
 
-1. `JDAI.md` — JD.AI native format
-2. `CLAUDE.md` — Claude Code compatibility
-3. `AGENTS.md` — Codex CLI compatibility
-4. `.github/copilot-instructions.md` — Copilot compatibility
-5. `.jdai/instructions.md` — dot-directory variant
+1. `JDAI.md`
+2. `CLAUDE.md`
+3. `AGENTS.md`
+4. `.github/copilot-instructions.md`
+5. `.jdai/instructions.md`
 
-All discovered files are merged into the system prompt, with `JDAI.md` taking the highest priority when directives overlap.
+Use `/instructions` to inspect what was loaded.
 
-### Writing effective instructions
-
-A good instruction file is concise and focused on information the AI cannot infer from the code alone.
-
-**Good JDAI.md example:**
+### Quick starter template
 
 ```markdown
-# Build & Test
-- Build: `dotnet build MyProject.slnx`
-- Test: `dotnet test --filter "Category!=Integration"`
-- Format: `dotnet format MyProject.slnx`
-- Lint: build must pass with zero warnings
+# Build and Test
+- Build: `dotnet build JD.AI.slnx`
+- Test: `dotnet test JD.AI.slnx`
+- Format: `dotnet format JD.AI.slnx --verify-no-changes`
 
 # Code Style
 - File-scoped namespaces
-- XML doc comments on all public APIs
-- Async/await throughout (no .Result or .Wait())
-- ILogger<T> for logging, never Console.WriteLine
+- Nullable reference types enabled
+- Public APIs require XML docs
 
-# Git Conventions
-- Conventional commits (feat:, fix:, chore:, etc.)
-- PR branches: feature/, fix/, chore/
-- Always rebase on main before merging
-
-# Project Notes
-- Authentication module is in src/Auth/ — uses JWT
-- Database migrations: `dotnet ef database update`
+# Repo conventions
+- Conventional commits
+- Feature work must include tests
 ```
 
-**What to include:**
+## Runtime command settings
 
-| ✅ Include | ❌ Exclude |
+JD.AI persists TUI/runtime settings in:
+
+- `~/.jdai/tui-settings.json` (or resolved JD.AI data root)
+
+The following commands update persisted state:
+
+- `/spinner`
+- `/theme`
+- `/vim`
+- `/output-style`
+- `/config set ...`
+
+### `/config` keys
+
+| Key | Meaning | Example |
+|---|---|---|
+| `theme` | Terminal theme token | `/config set theme nord` |
+| `vim_mode` | Vim editing mode | `/config set vim_mode on` |
+| `output_style` | Output renderer mode | `/config set output_style compact` |
+| `spinner_style` | Spinner/progress style | `/config set spinner_style rich` |
+| `autorun` | Auto-run tool confirmation behavior | `/config set autorun off` |
+| `permissions` | Global permission checks | `/config set permissions on` |
+| `plan_mode` | Plan mode state | `/config set plan_mode off` |
+
+## Data directory resolution
+
+JD.AI data root is resolved in this order:
+
+1. `JDAI_DATA_DIR` (if set)
+2. Current user profile `~/.jdai`
+3. Existing `.jdai` under discovered user profiles
+4. Machine fallback (`%ProgramData%/JD.AI` on Windows, `/var/lib/jdai` on Linux/macOS)
+
+## Data files and folders
+
+| Path | Purpose |
 |---|---|
-| Build/test commands | Obvious language conventions |
-| Code style rules that differ from defaults | Standard patterns the AI already knows |
-| Project-specific conventions | Detailed API documentation |
-| Architecture decisions | File-by-file code descriptions |
-| Environment quirks | Information that changes frequently |
-
-### View loaded instructions
-
-```text
-/instructions    # Show all loaded instruction content
-```
-
-## Directory structure
-
-JD.AI stores local state in `~/.jdai/`:
-
-```text
-~/.jdai/
-├── sessions.db          # SQLite session database
-├── update-check.json    # NuGet update cache
-├── exports/             # Exported session JSON files
-└── models/              # Local GGUF models and registry
-    └── registry.json    # Model manifest
-```
-
-## Data directories
-
-JD.AI stores local state and models in the following directories:
-
-```text
-~/.jdai/
-├── sessions.db          # SQLite session database
-├── update-check.json    # NuGet update cache
-├── exports/             # Exported session JSON files
-└── models/              # Local GGUF models and registry
-    └── registry.json    # Model manifest
-```
-
-## Skills, plugins, and hooks
-
-JD.AI loads Claude Code extensions from standard locations:
-
-- `~/.claude/skills/` — Personal skills
-- `~/.claude/plugins/` — Personal plugins
-- `.claude/skills/` — Project skills
-- `.claude/plugins/` — Project plugins
-
-These extensions are registered as Semantic Kernel functions and filters at startup.
-
-See [Skills and Plugins](skills-and-plugins.md) for details.
-
-## Runtime configuration
-
-### Auto-approve mode
-
-```text
-/autorun        # Toggle auto-approve for tools
-/permissions    # Toggle all permission checks
-```
-
-### Context management
-
-```text
-/compact        # Force context compaction
-/clear          # Clear conversation history
-```
+| `sessions.db` | Session persistence store |
+| `vectors.db` | Vector memory database |
+| `exports/` | Exported session JSON |
+| `models/` | Local GGUF model registry/storage |
+| `workflows/` | Workflow catalog artifacts |
+| `agents.json` | Local agent profiles (`/agents`) |
+| `hooks.json` | Local hook profiles (`/hooks`) |
+| `tui-settings.json` | Theme/vim/spinner/output settings |
+| `update-check.json` | Update check cache |
 
 ## Environment variables
 
 | Variable | Description | Default |
 |---|---|---|
+| `JDAI_DATA_DIR` | Override JD.AI data directory root | auto-resolved |
 | `OLLAMA_ENDPOINT` | Ollama API URL | `http://localhost:11434` |
 | `OLLAMA_CHAT_MODEL` | Default Ollama chat model | `llama3.2:latest` |
-| `OLLAMA_EMBEDDING_MODEL` | Default embedding model | `all-minilm:latest` |
-| `OPENAI_API_KEY` | OpenAI / Codex API key (if not using CLI auth) | — |
-| `CODEX_TOKEN` | Codex CLI access token override | — |
-| `JDAI_MODELS_DIR` | Local model storage and registry directory | `~/.jdai/models/` |
-| `HF_HOME` | HuggingFace cache directory (for local model scanning) | `~/.cache/huggingface/` |
-| `HF_TOKEN` | HuggingFace API token for authenticated access | — |
+| `OLLAMA_EMBEDDING_MODEL` | Default Ollama embedding model | `all-minilm:latest` |
+| `OPENAI_API_KEY` | OpenAI/Codex API key | — |
+| `CODEX_TOKEN` | Codex token override | — |
+| `JDAI_MODELS_DIR` | Local model directory override | `~/.jdai/models/` |
+| `HF_HOME` | HuggingFace cache path | `~/.cache/huggingface/` |
+| `HF_TOKEN` | HuggingFace API token | — |
+
+## Related docs
+
+- [Interactive Mode](interactive-mode.md)
+- [Commands Reference](commands-reference.md)
+- [CLI Reference](cli-reference.md)
+- [Tools Reference](tools-reference.md)
