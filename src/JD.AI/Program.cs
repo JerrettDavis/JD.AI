@@ -16,6 +16,7 @@ using JD.AI.Core.Providers.Credentials;
 using JD.AI.Core.Providers.Metadata;
 using JD.AI.Core.Providers.ModelSearch;
 using JD.AI.Core.Safety;
+using JD.AI.Core.Skills;
 using JD.AI.Core.Tools;
 using JD.AI.Core.Usage;
 using JD.AI.Rendering;
@@ -579,48 +580,117 @@ kernel.Plugins.AddFromObject(
 var channelRegistry = new ChannelRegistry();
 kernel.Plugins.AddFromObject(new ChannelOpsTools(channelRegistry), "channels");
 
-// 7. Load Claude Code skills, plugins, and hooks if available
-var skillDirs = new[]
+// 7. Load managed skills with precedence + metadata gating + hot reload support
+var userClaudeSkillsDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "skills");
+var workspaceClaudeSkillsDir = Path.Combine(Directory.GetCurrentDirectory(), ".claude", "skills");
+var managedSkillsDir = Path.Combine(DataDirectories.Root, "skills");
+var workspaceSkillsDir = Path.Combine(Directory.GetCurrentDirectory(), ".jdai", "skills");
+var bundledSkillsDir = Path.Combine(AppContext.BaseDirectory, "skills");
+var userSkillsConfigPath = Path.Combine(DataDirectories.Root, "skills.json");
+var workspaceSkillsConfigPath = Path.Combine(Directory.GetCurrentDirectory(), ".jdai", "skills.json");
+
+using var skillLifecycleManager = new SkillLifecycleManager(
+    [
+        new SkillSourceDirectory("bundled", bundledSkillsDir, SkillSourceKind.Bundled, 0),
+        new SkillSourceDirectory("managed-legacy", userClaudeSkillsDir, SkillSourceKind.Managed, -1),
+        new SkillSourceDirectory("managed", managedSkillsDir, SkillSourceKind.Managed, 0),
+        new SkillSourceDirectory("workspace-legacy", workspaceClaudeSkillsDir, SkillSourceKind.Workspace, -1),
+        new SkillSourceDirectory("workspace", workspaceSkillsDir, SkillSourceKind.Workspace, 0),
+    ],
+    userConfigPath: userSkillsConfigPath,
+    workspaceConfigPath: workspaceSkillsConfigPath);
+
+var loadedSkillPluginNames = new HashSet<string>(StringComparer.Ordinal);
+var skillsStagingDir = Path.Combine(DataDirectories.Root, "runtime", "skills");
+
+void CopyDirectory(string sourceDir, string targetDir)
 {
-    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "skills"),
-    Path.Combine(Directory.GetCurrentDirectory(), ".claude", "skills"),
-    Path.Combine(Directory.GetCurrentDirectory(), ".jdai", "skills"),
-};
-
-var skillIndex = 0;
-foreach (var dir in skillDirs.Where(Directory.Exists))
-{
-    try
+    Directory.CreateDirectory(targetDir);
+    foreach (var file in Directory.EnumerateFiles(sourceDir))
     {
-        // Each directory gets a unique plugin name to avoid duplicate key errors
-        var suffix = skillIndex == 0 ? "" : $"_{skillIndex}";
-        var pluginName = $"Skills{suffix}";
-        skillIndex++;
-
-        var builder = Kernel.CreateBuilder();
-        JD.SemanticKernel.Extensions.Skills.KernelBuilderExtensions.UseSkills(
-            builder, dir, opts => opts.PluginName = pluginName);
-        var skillKernel = builder.Build();
-        foreach (var plugin in skillKernel.Plugins)
-        {
-            if (kernel.Plugins.TryGetPlugin(plugin.Name, out _))
-            {
-                if (!printMode) ChatRenderer.RenderWarning($"  Skipped duplicate skill plugin '{plugin.Name}' from {dir}");
-                continue;
-            }
-
-            kernel.Plugins.Add(plugin);
-        }
-
-        if (!printMode) ChatRenderer.RenderInfo($"  Loaded skills from {dir}");
+        var destination = Path.Combine(targetDir, Path.GetFileName(file));
+        File.Copy(file, destination, overwrite: true);
     }
-#pragma warning disable CA1031 // non-fatal
-    catch (Exception ex)
+
+    foreach (var dir in Directory.EnumerateDirectories(sourceDir))
     {
-        if (!printMode) ChatRenderer.RenderWarning($"  Failed to load skills from {dir}: {ex.Message}");
+        var destination = Path.Combine(targetDir, Path.GetFileName(dir));
+        CopyDirectory(dir, destination);
     }
-#pragma warning restore CA1031
 }
+
+void StageSkills(IReadOnlyList<ActiveSkill> activeSkills)
+{
+    if (Directory.Exists(skillsStagingDir))
+        Directory.Delete(skillsStagingDir, recursive: true);
+
+    Directory.CreateDirectory(skillsStagingDir);
+
+    foreach (var skill in activeSkills.OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase))
+    {
+        var folderName = string.Concat(
+            skill.SkillKey.Select(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_' ? ch : '_'));
+        if (string.IsNullOrWhiteSpace(folderName))
+            folderName = $"skill_{Guid.NewGuid():N}";
+
+        var destination = Path.Combine(skillsStagingDir, folderName);
+        if (Directory.Exists(destination))
+            destination = Path.Combine(skillsStagingDir, $"{folderName}_{Guid.NewGuid():N}");
+
+        CopyDirectory(skill.DirectoryPath, destination);
+    }
+}
+
+void UnloadManagedSkillPlugins()
+{
+    foreach (var pluginName in loadedSkillPluginNames.ToArray())
+    {
+        if (kernel.Plugins.TryGetPlugin(pluginName, out var plugin))
+            kernel.Plugins.Remove(plugin);
+    }
+
+    loadedSkillPluginNames.Clear();
+}
+
+void ApplySkillsSnapshot(SkillSnapshot snapshot, bool announceReload)
+{
+    UnloadManagedSkillPlugins();
+
+    if (snapshot.ActiveSkills.Count == 0)
+    {
+        if (!printMode && announceReload)
+            ChatRenderer.RenderInfo("  Skills reloaded (0 active).");
+        return;
+    }
+
+    StageSkills(snapshot.ActiveSkills);
+    var builder = Kernel.CreateBuilder();
+    JD.SemanticKernel.Extensions.Skills.KernelBuilderExtensions.UseSkills(
+        builder, skillsStagingDir, opts => opts.PluginName = "skillsManaged");
+    var skillKernel = builder.Build();
+
+    foreach (var plugin in skillKernel.Plugins)
+    {
+        if (kernel.Plugins.TryGetPlugin(plugin.Name, out var existing))
+            kernel.Plugins.Remove(existing);
+
+        kernel.Plugins.Add(plugin);
+        loadedSkillPluginNames.Add(plugin.Name);
+    }
+
+    if (!printMode && announceReload)
+        ChatRenderer.RenderInfo($"  Skills reloaded ({snapshot.ActiveSkills.Count} active).");
+}
+
+void RefreshSkills(bool announceReload)
+{
+    if (!skillLifecycleManager.TryRefresh(out var snapshot))
+        return;
+
+    ApplySkillsSnapshot(snapshot, announceReload);
+}
+
+RefreshSkills(announceReload: false);
 
 var pluginDirs = new[]
 {
@@ -884,6 +954,13 @@ var usageMeter = new SqliteUsageMeter(DataDirectories.UsageDb);
 await usageMeter.InitializeAsync();
 session.UsageMeter = usageMeter;
 
+string GetSkillsStatus() => skillLifecycleManager.FormatStatusReport();
+string ReloadSkills()
+{
+    RefreshSkills(announceReload: true);
+    return skillLifecycleManager.FormatStatusReport();
+}
+
 var commandRouter = new SlashCommandRouter(
     session, registry, instructions, checkpointStrategy,
     pluginLoader: pluginLoader,
@@ -903,7 +980,9 @@ var commandRouter = new SlashCommandRouter(
     getOutputStyle: () => ChatRenderer.CurrentOutputStyle,
     onOutputStyleChanged: ChatRenderer.SetOutputStyle,
     usageMeter: usageMeter,
-    policyEvaluator: policyEvaluator);
+    policyEvaluator: policyEvaluator,
+    getSkillsStatus: GetSkillsStatus,
+    reloadSkills: ReloadSkills);
 
 // Hook double-ESC at empty prompt → open history viewer
 interactiveInput.OnDoubleEscape += (sender, e) =>
@@ -1032,7 +1111,8 @@ if (printMode)
             return 1;
         }
 
-        lastResponse = await printAgentLoop.RunTurnAsync(currentPrintMessage).ConfigureAwait(false);
+        using (skillLifecycleManager.BeginRunScope())
+            lastResponse = await printAgentLoop.RunTurnAsync(currentPrintMessage).ConfigureAwait(false);
         currentPrintMessage = null;
     }
 
@@ -1064,7 +1144,8 @@ if (printMode)
             {
                 // Retry once with schema feedback
                 var retryPrompt = JD.AI.Core.Agents.OutputSchemaValidator.GenerateRetryPrompt(errors, schema);
-                lastResponse = await printAgentLoop.RunTurnAsync(retryPrompt).ConfigureAwait(false);
+                using (skillLifecycleManager.BeginRunScope())
+                    lastResponse = await printAgentLoop.RunTurnAsync(retryPrompt).ConfigureAwait(false);
                 errors = JD.AI.Core.Agents.OutputSchemaValidator.Validate(lastResponse, schema);
                 if (errors.Count > 0)
                 {
@@ -1133,6 +1214,8 @@ Console.CancelKeyPress += (_, e) =>
 
 while (!appCts.IsCancellationRequested)
 {
+    RefreshSkills(announceReload: true);
+
     var inputResult = ChatRenderer.ReadInputStructured(interactiveInput);
 
     if (inputResult is null)
@@ -1249,9 +1332,12 @@ while (!appCts.IsCancellationRequested)
 
         try
         {
-            await agentLoop
-                .RunTurnStreamingAsync(currentMessage, turnMonitor.Token)
-                .ConfigureAwait(false);
+            using (skillLifecycleManager.BeginRunScope())
+            {
+                await agentLoop
+                    .RunTurnStreamingAsync(currentMessage, turnMonitor.Token)
+                    .ConfigureAwait(false);
+            }
         }
         catch (OperationCanceledException) when (!appCts.IsCancellationRequested)
         {
