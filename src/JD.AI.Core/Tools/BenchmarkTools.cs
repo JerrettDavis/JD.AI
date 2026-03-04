@@ -13,6 +13,8 @@ namespace JD.AI.Core.Tools;
 /// </summary>
 public sealed class BenchmarkTools
 {
+    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+
     private readonly Kernel _kernel;
 
     public BenchmarkTools(Kernel kernel)
@@ -269,7 +271,7 @@ public sealed class BenchmarkTools
             capabilities = entries
         };
 
-        return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+        return JsonSerializer.Serialize(result, s_jsonOptions);
     }
 
     [KernelFunction("benchmark_regression")]
