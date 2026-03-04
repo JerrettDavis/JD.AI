@@ -14,6 +14,8 @@ namespace JD.AI.Core.Tools;
 /// </summary>
 public sealed class PolicyTools
 {
+    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+
     private readonly IPolicyEvaluator? _policyEvaluator;
     private readonly AuditService? _auditService;
 
@@ -431,7 +433,7 @@ public sealed class PolicyTools
         try
         {
             var spec = _policyEvaluator.GetResolvedPolicy();
-            return JsonSerializer.Serialize(spec, new JsonSerializerOptions { WriteIndented = true });
+            return JsonSerializer.Serialize(spec, s_jsonOptions);
         }
 #pragma warning disable CA1031
         catch (Exception ex)
