@@ -8,6 +8,7 @@ using JD.AI.Core.Sessions;
 using JD.AI.Core.Tools;
 using JD.AI.Rendering;
 using JD.AI.Workflows;
+using JD.AI.Workflows.Store;
 using JD.SemanticKernel.Extensions.Mcp;
 
 namespace JD.AI.Commands;
@@ -23,6 +24,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private readonly ICheckpointStrategy? _checkpointStrategy;
     private readonly PluginLoader? _pluginLoader;
     private readonly IWorkflowCatalog? _workflowCatalog;
+    private readonly IWorkflowStore? _workflowStore;
     private readonly WorkflowEmitter _workflowEmitter;
     private readonly Action<SpinnerStyle>? _onSpinnerStyleChanged;
     private readonly Func<SpinnerStyle>? _getSpinnerStyle;
@@ -37,7 +39,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         IWorkflowCatalog? workflowCatalog = null,
         Func<SpinnerStyle>? getSpinnerStyle = null,
         Action<SpinnerStyle>? onSpinnerStyleChanged = null,
-        McpManager? mcpManager = null)
+        McpManager? mcpManager = null,
+        IWorkflowStore? workflowStore = null)
     {
         _session = session;
         _registry = registry;
@@ -45,6 +48,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         _checkpointStrategy = checkpointStrategy;
         _pluginLoader = pluginLoader;
         _workflowCatalog = workflowCatalog;
+        _workflowStore = workflowStore;
         _workflowEmitter = new WorkflowEmitter();
         _getSpinnerStyle = getSpinnerStyle;
         _onSpinnerStyleChanged = onSpinnerStyleChanged;
@@ -120,7 +124,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /plugins        — List loaded plugins
           /checkpoint     — List, restore, or clear checkpoints
           /sandbox        — Show sandbox mode info
-          /workflow       — Manage workflows (list|show|export|replay|refine)
+          /workflow       — Manage workflows (list|show|export|replay|refine|catalog|publish|install|search|versions)
           /spinner [style] — Set progress style (none|minimal|normal|rich|nerdy)
           /local <cmd>    — Manage local models (list|add|scan|remove|search|download)
           /mcp [cmd]      — Manage MCP servers (list|add|remove|enable|disable)
@@ -453,7 +457,16 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "REPLAY" => "Usage: /workflow replay <name> [version]",
             "REFINE" when param is not null => RefineWorkflowInfo(param),
             "REFINE" => "Usage: /workflow refine <name>",
-            _ => "Usage: /workflow [list|show <name>|export <name> [format]|replay <name> [version]|refine <name>]",
+            "CATALOG" => await CatalogSharedWorkflowsAsync(param, ct).ConfigureAwait(false),
+            "PUBLISH" when param is not null => await PublishWorkflowAsync(param, ct).ConfigureAwait(false),
+            "PUBLISH" => "Usage: /workflow publish <name>",
+            "INSTALL" when param is not null => await InstallWorkflowAsync(param, ct).ConfigureAwait(false),
+            "INSTALL" => "Usage: /workflow install <name[@version]>",
+            "SEARCH" when param is not null => await SearchWorkflowsAsync(param, ct).ConfigureAwait(false),
+            "SEARCH" => "Usage: /workflow search <query>",
+            "VERSIONS" when param is not null => await ShowWorkflowVersionsAsync(param, ct).ConfigureAwait(false),
+            "VERSIONS" => "Usage: /workflow versions <name>",
+            _ => "Usage: /workflow [list|show <name>|export <name> [format]|replay <name> [version]|refine <name>|catalog|publish <name>|install <name[@version]>|search <query>|versions <name>]",
         };
     }
 
@@ -522,6 +535,133 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private static string RefineWorkflowInfo(string name) =>
         $"To refine '{name}', export it (e.g. /workflow export {name} csharp), " +
         "edit the steps, then save a new version via the agent.";
+
+    // ── Shared workflow store commands ────────────────────────
+
+    private static string WorkflowStoreNotConfigured =>
+        "Shared workflow store not configured. Set JDAI_WORKFLOW_STORE_REPO to enable.";
+
+    private async Task<string> CatalogSharedWorkflowsAsync(string? param, CancellationToken ct)
+    {
+        if (_workflowStore is null)
+            return WorkflowStoreNotConfigured;
+
+        // Parse optional tag= or author= filters from param
+        string? tag = null;
+        string? author = null;
+        if (param is not null)
+        {
+            foreach (var part in param.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (part.StartsWith("tag=", StringComparison.OrdinalIgnoreCase))
+                    tag = part[4..];
+                else if (part.StartsWith("author=", StringComparison.OrdinalIgnoreCase))
+                    author = part[7..];
+            }
+        }
+
+        var workflows = await _workflowStore.CatalogAsync(tag, author, ct).ConfigureAwait(false);
+        if (workflows.Count == 0)
+            return "No shared workflows in the store catalog.";
+
+        var lines = workflows.Select(w =>
+        {
+            var tags = w.Tags.Count > 0 ? $" [{string.Join(", ", w.Tags)}]" : "";
+            var vis = w.Visibility != WorkflowVisibility.Team ? $" ({w.Visibility})" : "";
+            return $"  {w.Name} v{w.Version}{tags}{vis} — {w.Author} — {w.Description}";
+        });
+        return $"Shared Workflow Catalog ({workflows.Count}):\n{string.Join('\n', lines)}";
+    }
+
+    private async Task<string> PublishWorkflowAsync(string name, CancellationToken ct)
+    {
+        if (_workflowStore is null)
+            return WorkflowStoreNotConfigured;
+
+        if (_workflowCatalog is null)
+            return "Workflow catalog not configured.";
+
+        var definition = await _workflowCatalog.GetAsync(name, ct: ct).ConfigureAwait(false);
+        if (definition is null)
+            return $"Workflow '{name}' not found in local catalog.";
+
+        var artifact = _workflowEmitter.Emit(definition, WorkflowExportFormat.Json);
+
+        var shared = new SharedWorkflow
+        {
+            Name = definition.Name,
+            Version = definition.Version,
+            Description = definition.Description,
+            Tags = definition.Tags,
+            DefinitionJson = artifact.Content,
+        };
+
+        await _workflowStore.PublishAsync(shared, ct).ConfigureAwait(false);
+        return $"Published '{definition.Name}' v{definition.Version} to shared store.";
+    }
+
+    private async Task<string> InstallWorkflowAsync(string param, CancellationToken ct)
+    {
+        if (_workflowStore is null)
+            return WorkflowStoreNotConfigured;
+
+        // Parse name[@version]
+        string nameOrId;
+        string? version = null;
+        var atIndex = param.IndexOf('@');
+        if (atIndex >= 0)
+        {
+            nameOrId = param[..atIndex].Trim();
+            version = param[(atIndex + 1)..].Trim();
+        }
+        else
+        {
+            nameOrId = param.Trim();
+        }
+
+        var localDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".jdai",
+            "workflows");
+
+        var installed = await _workflowStore.InstallAsync(nameOrId, version, localDir, ct)
+            .ConfigureAwait(false);
+
+        return installed
+            ? $"Installed '{nameOrId}'{(version is not null ? $" v{version}" : "")} to {localDir}"
+            : $"Workflow '{nameOrId}'{(version is not null ? $" v{version}" : "")} not found in store.";
+    }
+
+    private async Task<string> SearchWorkflowsAsync(string query, CancellationToken ct)
+    {
+        if (_workflowStore is null)
+            return WorkflowStoreNotConfigured;
+
+        var results = await _workflowStore.SearchAsync(query, ct).ConfigureAwait(false);
+        if (results.Count == 0)
+            return $"No workflows found matching '{query}'.";
+
+        var lines = results.Select(w =>
+        {
+            var tags = w.Tags.Count > 0 ? $" [{string.Join(", ", w.Tags)}]" : "";
+            return $"  {w.Name} v{w.Version}{tags} — {w.Author} — {w.Description}";
+        });
+        return $"Search results for '{query}' ({results.Count}):\n{string.Join('\n', lines)}";
+    }
+
+    private async Task<string> ShowWorkflowVersionsAsync(string name, CancellationToken ct)
+    {
+        if (_workflowStore is null)
+            return WorkflowStoreNotConfigured;
+
+        var versions = await _workflowStore.VersionsAsync(name, ct).ConfigureAwait(false);
+        if (versions.Count == 0)
+            return $"No versions found for workflow '{name}'.";
+
+        var lines = versions.Select(w =>
+            $"  v{w.Version} — published {w.PublishedAt:yyyy-MM-dd HH:mm} UTC by {w.Author}");
+        return $"Versions of '{name}' ({versions.Count}):\n{string.Join('\n', lines)}";
+    }
 
     private static string FlattenSteps(IEnumerable<AgentStepDefinition> steps, int indent)
     {
