@@ -61,10 +61,16 @@ public sealed class MultiTurnExecutor : ISubagentExecutor
         var chat = kernel.GetRequiredService<IChatCompletionService>();
         var supportsTools = parentSession.CurrentModel?.Capabilities
             .HasFlag(ModelCapabilities.ToolCalling) ?? false;
+        var maxTokens = parentSession.CurrentModel?.MaxOutputTokens;
+        if (maxTokens is null or <= 0)
+        {
+            maxTokens = 4096;
+        }
+
         var settings = new OpenAIPromptExecutionSettings
         {
             ModelId = parentSession.CurrentModel?.Id,
-            MaxTokens = 4096,
+            MaxTokens = maxTokens,
             FunctionChoiceBehavior = supportsTools
                 ? FunctionChoiceBehavior.Auto()
                 : null,

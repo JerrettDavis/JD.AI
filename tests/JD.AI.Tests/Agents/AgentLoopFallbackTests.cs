@@ -4,115 +4,78 @@ namespace JD.AI.Tests.Agents;
 
 public sealed class AgentLoopFallbackTests
 {
+    private static readonly System.Reflection.MethodInfo IsRetriableErrorMethod =
+        typeof(AgentLoop).GetMethod(
+            "IsRetriableError",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+        ?? throw new InvalidOperationException("IsRetriableError method not found");
+
+    private static bool InvokeIsRetriableError(Exception ex) =>
+        (bool)IsRetriableErrorMethod.Invoke(null, [ex])!;
+
     [Fact]
     public void IsRetriableError_HttpRequestException429_ReturnsTrue()
     {
-        // Use reflection to test the private static method
-        var method = typeof(AgentLoop).GetMethod("IsRetriableError",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        Assert.NotNull(method);
-
         var ex = new HttpRequestException("Too Many Requests", null, System.Net.HttpStatusCode.TooManyRequests);
-        var result = (bool)method.Invoke(null, [ex])!;
-        Assert.True(result);
+        Assert.True(InvokeIsRetriableError(ex));
     }
 
     [Fact]
     public void IsRetriableError_HttpRequestException503_ReturnsTrue()
     {
-        var method = typeof(AgentLoop).GetMethod("IsRetriableError",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        Assert.NotNull(method);
-
         var ex = new HttpRequestException("Service Unavailable", null, System.Net.HttpStatusCode.ServiceUnavailable);
-        var result = (bool)method.Invoke(null, [ex])!;
-        Assert.True(result);
+        Assert.True(InvokeIsRetriableError(ex));
     }
 
     [Fact]
     public void IsRetriableError_TimeoutException_ReturnsTrue()
     {
-        var method = typeof(AgentLoop).GetMethod("IsRetriableError",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        Assert.NotNull(method);
-
         var ex = new TimeoutException("Request timed out");
-        var result = (bool)method.Invoke(null, [ex])!;
-        Assert.True(result);
+        Assert.True(InvokeIsRetriableError(ex));
     }
 
     [Fact]
     public void IsRetriableError_HttpRequestException500_ReturnsTrue()
     {
-        var method = typeof(AgentLoop).GetMethod("IsRetriableError",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        Assert.NotNull(method);
-
         var ex = new HttpRequestException("Internal Server Error", null, System.Net.HttpStatusCode.InternalServerError);
-        var result = (bool)method.Invoke(null, [ex])!;
-        Assert.True(result);
+        Assert.True(InvokeIsRetriableError(ex));
     }
 
     [Fact]
     public void IsRetriableError_InnerHttpException500_ReturnsTrue()
     {
-        var method = typeof(AgentLoop).GetMethod("IsRetriableError",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        Assert.NotNull(method);
-
         var inner = new HttpRequestException("500", null, System.Net.HttpStatusCode.InternalServerError);
         var ex = new InvalidOperationException("Wrapper", inner);
-        var result = (bool)method.Invoke(null, [ex])!;
-        Assert.True(result);
+        Assert.True(InvokeIsRetriableError(ex));
     }
 
     [Fact]
     public void IsRetriableError_ModelFieldRequired_ReturnsTrue()
     {
-        var method = typeof(AgentLoop).GetMethod("IsRetriableError",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        Assert.NotNull(method);
-
         var ex = new InvalidOperationException(
             "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"model: Field required\"}}");
-        var result = (bool)method.Invoke(null, [ex])!;
-        Assert.True(result);
+        Assert.True(InvokeIsRetriableError(ex));
     }
 
     [Fact]
     public void IsRetriableError_GenericException_ReturnsFalse()
     {
-        var method = typeof(AgentLoop).GetMethod("IsRetriableError",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        Assert.NotNull(method);
-
         var ex = new InvalidOperationException("Something else");
-        var result = (bool)method.Invoke(null, [ex])!;
-        Assert.False(result);
+        Assert.False(InvokeIsRetriableError(ex));
     }
 
     [Fact]
     public void IsRetriableError_MessageContainsRateLimit_ReturnsTrue()
     {
-        var method = typeof(AgentLoop).GetMethod("IsRetriableError",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        Assert.NotNull(method);
-
         var ex = new InvalidOperationException("rate limit exceeded");
-        var result = (bool)method.Invoke(null, [ex])!;
-        Assert.True(result);
+        Assert.True(InvokeIsRetriableError(ex));
     }
 
     [Fact]
     public void IsRetriableError_InnerHttpException429_ReturnsTrue()
     {
-        var method = typeof(AgentLoop).GetMethod("IsRetriableError",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        Assert.NotNull(method);
-
         var inner = new HttpRequestException("429", null, System.Net.HttpStatusCode.TooManyRequests);
         var ex = new InvalidOperationException("Wrapper", inner);
-        var result = (bool)method.Invoke(null, [ex])!;
-        Assert.True(result);
+        Assert.True(InvokeIsRetriableError(ex));
     }
 }
