@@ -5,6 +5,7 @@ using JD.AI.Core.Mcp;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Providers.Credentials;
+using JD.AI.Core.Providers.ModelSearch;
 using JD.AI.Core.Sessions;
 using JD.AI.Core.Tools;
 using JD.AI.Rendering;
@@ -30,6 +31,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private readonly Action<SpinnerStyle>? _onSpinnerStyleChanged;
     private readonly Func<SpinnerStyle>? _getSpinnerStyle;
     private readonly McpManager _mcpManager;
+    private readonly AtomicConfigStore? _configStore;
+    private readonly ModelSearchAggregator? _modelSearchAggregator;
 
     public SlashCommandRouter(
         AgentSession session,
@@ -41,7 +44,9 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         Func<SpinnerStyle>? getSpinnerStyle = null,
         Action<SpinnerStyle>? onSpinnerStyleChanged = null,
         ProviderConfigurationManager? providerConfig = null,
-        McpManager? mcpManager = null)
+        McpManager? mcpManager = null,
+        AtomicConfigStore? configStore = null,
+        ModelSearchAggregator? modelSearchAggregator = null)
     {
         _session = session;
         _registry = registry;
@@ -54,6 +59,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         _onSpinnerStyleChanged = onSpinnerStyleChanged;
         _providerConfig = providerConfig;
         _mcpManager = mcpManager ?? new McpManager();
+        _configStore = configStore;
+        _modelSearchAggregator = modelSearchAggregator;
     }
 
     public bool IsSlashCommand(string input) =>
@@ -98,6 +105,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/PLAN" or "/JDAI-PLAN" => TogglePlanMode(),
             "/DOCTOR" or "/JDAI-DOCTOR" => await RunDoctorAsync(ct).ConfigureAwait(false),
             "/FORK" or "/JDAI-FORK" => await ForkSessionAsync(parts, ct).ConfigureAwait(false),
+            "/DEFAULT" or "/JDAI-DEFAULT" => await HandleDefaultAsync(arg, ct).ConfigureAwait(false),
             "/QUIT" or "/EXIT" or "/JDAI-QUIT" or "/JDAI-EXIT" => null, // Signal exit
             _ => $"Unknown command: {parts[0]}. Type /help for available commands.",
         };
@@ -108,6 +116,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /help           — Show this help
           /models         — Browse and switch models interactively
           /model [id]     — Switch model (interactive picker or by name)
+          /model search   — Search for models across all providers
+          /model url      — Pull a model by URL or identifier
           /providers      — List detected providers
           /provider       — Show current provider (subcommands: add, remove, test, list)
           /clear          — Clear chat history
@@ -136,6 +146,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /plan           — Toggle plan mode (explore only)
           /doctor         — Run self-diagnostics
           /fork [name]    — Fork conversation to new session
+          /default        — Manage default provider/model (global & per-project)
           /quit           — Exit jdai
         """;
 
@@ -161,6 +172,24 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
     private async Task<string> SwitchModelAsync(string? modelId, CancellationToken ct)
     {
+        // Route subcommands: /model search <query>, /model url <url>
+        if (modelId is not null)
+        {
+            if (modelId.StartsWith("search ", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(modelId, "search", StringComparison.OrdinalIgnoreCase))
+            {
+                var query = modelId.Length > 7 ? modelId[7..].Trim() : string.Empty;
+                return await HandleModelSearchAsync(query, ct).ConfigureAwait(false);
+            }
+
+            if (modelId.StartsWith("url ", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(modelId, "url", StringComparison.OrdinalIgnoreCase))
+            {
+                var url = modelId.Length > 4 ? modelId[4..].Trim() : string.Empty;
+                return await HandleModelUrlAsync(url, ct).ConfigureAwait(false);
+            }
+        }
+
         var models = await _registry.GetModelsAsync(ct).ConfigureAwait(false);
 
         // No argument: show interactive picker
@@ -194,6 +223,187 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         return $"Switched to {model.DisplayName} ({model.ProviderName})";
     }
 
+    private async Task<string> HandleModelSearchAsync(string query, CancellationToken ct)
+    {
+        if (_modelSearchAggregator is null)
+            return "Model search is not available (no search providers configured).";
+
+        if (string.IsNullOrWhiteSpace(query))
+            return "Usage: /model search <query>";
+
+        IReadOnlyList<RemoteModelResult> results;
+        try
+        {
+            results = await _modelSearchAggregator.SearchAllAsync(query, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return $"Search failed: {ex.Message}";
+        }
+
+        if (results.Count == 0)
+            return $"No models found for '{query}'.";
+
+        // Display results table
+        var table = new Table()
+            .Border(TableBorder.Rounded)
+            .Title($"[bold]Search results for '{Markup.Escape(query)}'[/]")
+            .AddColumn(new TableColumn("[bold]Provider[/]").NoWrap())
+            .AddColumn(new TableColumn("[bold]Model[/]"))
+            .AddColumn(new TableColumn("[bold]Size[/]").RightAligned())
+            .AddColumn(new TableColumn("[bold]Status[/]"));
+
+        foreach (var r in results)
+        {
+            var statusMarkup = r.Status switch
+            {
+                "Installed" => "[green]Installed[/]",
+                "Available" or "Pull" => $"[yellow]{Markup.Escape(r.Status)}[/]",
+                "Download" => "[blue]Download[/]",
+                _ => Markup.Escape(r.Status),
+            };
+
+            table.AddRow(
+                Markup.Escape(r.ProviderName),
+                Markup.Escape(r.DisplayName),
+                Markup.Escape(r.Size ?? "-"),
+                statusMarkup);
+        }
+
+        AnsiConsole.Write(table);
+
+        // Interactive selection
+        var choices = results
+            .Select(r => $"{r.ProviderName}: {r.DisplayName}")
+            .Append("Cancel")
+            .ToList();
+
+        var selection = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("Select a model to pull:")
+                .PageSize(15)
+                .AddChoices(choices));
+
+        if (string.Equals(selection, "Cancel", StringComparison.Ordinal))
+            return "Model search cancelled.";
+
+        var selectedIndex = choices.IndexOf(selection);
+        var selected = results[selectedIndex];
+
+        if (string.Equals(selected.Status, "Installed", StringComparison.Ordinal))
+        {
+            // Already installed — switch to it
+            var models = await _registry.GetModelsAsync(ct).ConfigureAwait(false);
+            var match = models.FirstOrDefault(m =>
+                m.Id.Contains(selected.Id, StringComparison.OrdinalIgnoreCase));
+            if (match is not null)
+            {
+                _session.SwitchModel(match);
+                return $"Switched to {match.DisplayName} ({match.ProviderName})";
+            }
+
+            return $"Model '{selected.DisplayName}' is installed but not found in the provider registry.";
+        }
+
+        // Pull the model
+        return await PullAndSwitchAsync(selected, ct).ConfigureAwait(false);
+    }
+
+    private async Task<string> HandleModelUrlAsync(string url, CancellationToken ct)
+    {
+        if (_modelSearchAggregator is null)
+            return "Model search is not available (no search providers configured).";
+
+        if (string.IsNullOrWhiteSpace(url))
+            return "Usage: /model url <model-url-or-name>";
+
+        // Auto-detect provider from URL
+        string providerName;
+        string modelId;
+
+        if (url.Contains("huggingface.co", StringComparison.OrdinalIgnoreCase))
+        {
+            providerName = "HuggingFace";
+            // Extract repo id from URL: https://huggingface.co/org/model → org/model
+            var uri = url.Replace("https://huggingface.co/", "", StringComparison.OrdinalIgnoreCase)
+                         .Replace("http://huggingface.co/", "", StringComparison.OrdinalIgnoreCase);
+            modelId = uri.Split('/', StringSplitOptions.RemoveEmptyEntries) is { Length: >= 2 } segments
+                ? $"{segments[0]}/{segments[1]}"
+                : uri.TrimEnd('/');
+        }
+        else if (url.Contains("foundry", StringComparison.OrdinalIgnoreCase))
+        {
+            providerName = "Foundry Local";
+            modelId = url;
+        }
+        else
+        {
+            // Default to Ollama (model name format)
+            providerName = "Ollama";
+            modelId = url;
+        }
+
+        var result = new RemoteModelResult(modelId, modelId, providerName, null, "Pull", null);
+        return await PullAndSwitchAsync(result, ct).ConfigureAwait(false);
+    }
+
+    private async Task<string> PullAndSwitchAsync(RemoteModelResult selected, CancellationToken ct)
+    {
+        bool pullOk = false;
+        string? pullError = null;
+
+        try
+        {
+            await AnsiConsole.Status()
+                .Spinner(Spinner.Known.Dots)
+                .StartAsync($"Pulling {selected.DisplayName}...", async ctx =>
+                {
+                    var progress = new Progress<string>(msg => ctx.Status($"[dim]{Markup.Escape(msg)}[/]"));
+                    pullOk = await PullModelDirectAsync(selected, progress, ct).ConfigureAwait(false);
+                }).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            pullError = ex.Message;
+        }
+
+        if (!pullOk)
+            return pullError is not null
+                ? $"Failed to pull '{selected.DisplayName}': {pullError}"
+                : $"Failed to pull '{selected.DisplayName}'. The provider may not support pulling.";
+
+        // Re-detect providers and find the newly pulled model
+        var models = await _registry.GetModelsAsync(ct).ConfigureAwait(false);
+        var match = models.FirstOrDefault(m =>
+            m.Id.Contains(selected.Id, StringComparison.OrdinalIgnoreCase));
+
+        if (match is not null)
+        {
+            _session.SwitchModel(match);
+            return $"Pulled and switched to {match.DisplayName} ({match.ProviderName})";
+        }
+
+        return $"Pulled '{selected.DisplayName}' successfully, but it was not found in the provider registry. You may need to restart.";
+    }
+
+    private async Task<bool> PullModelDirectAsync(
+        RemoteModelResult model, IProgress<string> progress, CancellationToken ct)
+    {
+        // Create a temporary provider instance matching the model's provider
+        IRemoteModelSearch? searcher = model.ProviderName switch
+        {
+            "Ollama" => new OllamaModelSearch(new HttpClient()),
+            "HuggingFace" => new HuggingFaceModelSearch(new HttpClient()),
+            "Foundry Local" => new FoundryLocalModelSearch(),
+            _ => null,
+        };
+
+        if (searcher is null)
+            return false;
+
+        return await searcher.PullAsync(model, progress, ct).ConfigureAwait(false);
+    }
+
     private async Task<string> ListProvidersAsync(CancellationToken ct)
     {
         var providers = await _registry.DetectProvidersAsync(ct).ConfigureAwait(false);
@@ -214,7 +424,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private async Task<string> HandleProviderCommandAsync(string? arg, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(arg))
-            return GetCurrentProvider();
+            return await ProviderPickerAsync(ct).ConfigureAwait(false);
 
         var subParts = arg.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
         var subCmd = subParts[0].ToUpperInvariant();
@@ -233,14 +443,20 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private async Task<string> ProviderListAsync(CancellationToken ct)
     {
         var providers = await _registry.DetectProvidersAsync(ct).ConfigureAwait(false);
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine("Providers:");
-        sb.AppendLine($"  {"Name",-20} {"Status",-12} {"Models",-8} {"Auth"}");
-        sb.AppendLine($"  {"----",-20} {"------",-12} {"------",-8} {"----"}");
+        var activeProviderName = _session.CurrentModel?.ProviderName;
+
+        var table = new Table()
+            .Border(TableBorder.Rounded)
+            .Title("[bold]Providers[/]")
+            .AddColumn(new TableColumn("[bold]Provider[/]").NoWrap())
+            .AddColumn(new TableColumn("[bold]Auth[/]"))
+            .AddColumn(new TableColumn("[bold]Status[/]"))
+            .AddColumn(new TableColumn("[bold]Models[/]").RightAligned())
+            .AddColumn(new TableColumn("[bold]Endpoint[/]"));
 
         foreach (var p in providers)
         {
-            var status = p.IsAvailable ? "✓ Active" : "✗ Inactive";
+            var isActive = string.Equals(p.Name, activeProviderName, StringComparison.Ordinal);
             var modelCount = p.Models.Count.ToString(System.Globalization.CultureInfo.InvariantCulture);
             var auth = p.Name switch
             {
@@ -249,10 +465,117 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                 "Local Models" => "File",
                 _ => "API Key",
             };
-            sb.AppendLine($"  {p.Name,-20} {status,-12} {modelCount,-8} {auth}");
+
+            string status;
+            if (isActive)
+                status = "[green]● Active ◄ active[/]";
+            else if (p.IsAvailable)
+                status = "[yellow]✓ Ready[/]";
+            else
+                status = "[red]✗ No key[/]";
+
+            var name = isActive
+                ? $"[green]{Markup.Escape(p.Name)}[/]"
+                : Markup.Escape(p.Name);
+
+            var endpoint = Markup.Escape(p.StatusMessage ?? "-");
+
+            table.AddRow(name, auth, status, modelCount, endpoint);
         }
 
-        return sb.ToString();
+        AnsiConsole.Write(table);
+        return string.Empty;
+    }
+
+    private async Task<string> ProviderPickerAsync(CancellationToken ct)
+    {
+        var providers = await _registry.DetectProvidersAsync(ct).ConfigureAwait(false);
+        if (providers.Count == 0)
+            return "No providers detected. Use /provider add <name> to configure one.";
+
+        var activeProviderName = _session.CurrentModel?.ProviderName;
+
+        var activeChoices = new List<string>();
+        var configuredChoices = new List<string>();
+        var availableChoices = new List<string>();
+
+        foreach (var p in providers)
+        {
+            var modelCount = p.Models.Count.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (p.IsAvailable && string.Equals(p.Name, activeProviderName, StringComparison.Ordinal))
+            {
+                activeChoices.Add($"● {p.Name}  ({modelCount} models)");
+            }
+            else if (p.IsAvailable)
+            {
+                configuredChoices.Add($"✓ {p.Name}  ({modelCount} models)");
+            }
+            else
+            {
+                availableChoices.Add($"✗ {p.Name}");
+            }
+        }
+
+        const string configureNew = "+ Configure new provider...";
+
+        var prompt = new SelectionPrompt<string>()
+            .Title("[bold]Switch Provider[/]")
+            .PageSize(15)
+            .HighlightStyle(new Style(Color.Aqua, decoration: Decoration.Bold));
+
+        if (activeChoices.Count > 0)
+            prompt.AddChoiceGroup("Active", activeChoices);
+        if (configuredChoices.Count > 0)
+            prompt.AddChoiceGroup("Configured", configuredChoices);
+        if (availableChoices.Count > 0)
+            prompt.AddChoiceGroup("Available to Configure", availableChoices);
+
+        prompt.AddChoice(configureNew);
+
+        string choice;
+        try
+        {
+            choice = AnsiConsole.Prompt(prompt);
+        }
+        catch (InvalidOperationException)
+        {
+            return "Selection cancelled.";
+        }
+
+        if (string.Equals(choice, configureNew, StringComparison.Ordinal))
+            return await ProviderAddAsync(null, ct).ConfigureAwait(false);
+
+        // Extract provider name from choice (remove status icon and model count suffix)
+        var providerName = choice
+            .TrimStart('●', '✓', '✗', ' ')
+            .Split("  (", StringSplitOptions.None)[0]
+            .Trim();
+
+        var selected = providers.FirstOrDefault(p =>
+            string.Equals(p.Name, providerName, StringComparison.Ordinal));
+
+        if (selected is null)
+            return $"Provider '{providerName}' not found.";
+
+        if (!selected.IsAvailable)
+            return await ProviderAddAsync(providerName.ToLowerInvariant(), ct).ConfigureAwait(false);
+
+        if (selected.Models.Count == 0)
+            return $"{selected.Name} has no models available.";
+
+        if (selected.Models.Count == 1)
+        {
+            _session.SwitchModel(selected.Models[0]);
+            return $"Switched to {selected.Models[0].DisplayName} ({selected.Name})";
+        }
+
+        // Multiple models — show model picker
+        var model = ModelPicker.Pick(selected.Models, _session.CurrentModel);
+        if (model is null)
+            return "Model selection cancelled.";
+
+        _session.SwitchModel(model);
+        return $"Switched to {model.DisplayName} ({selected.Name})";
     }
 
     private async Task<string> ProviderAddAsync(string? providerName, CancellationToken ct)
@@ -1241,5 +1564,95 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         var forkName = cmdParts.Length > 1 ? string.Join(' ', cmdParts.Skip(1)) : null;
         var forkedSession = await _session.ForkSessionAsync(forkName).ConfigureAwait(false);
         return $"Forked to new session: {forkedSession?.Id ?? "failed"}";
+    }
+
+    private async Task<string> HandleDefaultAsync(string? arg, CancellationToken ct)
+    {
+        if (_configStore is null)
+        {
+            return "Default settings not available (config store not initialized).";
+        }
+
+        var projectPath = _session.SessionInfo?.ProjectPath ?? Directory.GetCurrentDirectory();
+
+        // No arguments → show current defaults
+        if (string.IsNullOrWhiteSpace(arg))
+        {
+            var config = await _configStore.ReadAsync(ct).ConfigureAwait(false);
+            var globalProvider = config.Defaults.Provider ?? "(not set)";
+            var globalModel = config.Defaults.Model ?? "(not set)";
+
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("Global defaults:");
+            sb.AppendLine($"  Provider: {globalProvider}");
+            sb.AppendLine($"  Model:    {globalModel}");
+
+            if (config.ProjectDefaults.TryGetValue(projectPath, out var proj))
+            {
+                sb.AppendLine();
+                sb.AppendLine($"Project defaults ({projectPath}):");
+                sb.AppendLine($"  Provider: {proj.Provider ?? "(not set)"}");
+                sb.AppendLine($"  Model:    {proj.Model ?? "(not set)"}");
+            }
+            else
+            {
+                sb.AppendLine();
+                sb.AppendLine($"No project defaults for {projectPath}.");
+            }
+
+            return sb.ToString().TrimEnd();
+        }
+
+        var tokens = arg.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        // /default project provider <name> | /default project model <id>
+        if (tokens.Length >= 3
+            && string.Equals(tokens[0], "project", StringComparison.OrdinalIgnoreCase))
+        {
+            var subCmd = tokens[1];
+            var value = string.Join(' ', tokens.Skip(2));
+
+            if (string.Equals(subCmd, "provider", StringComparison.OrdinalIgnoreCase))
+            {
+                await _configStore.SetDefaultProviderAsync(value, projectPath, ct).ConfigureAwait(false);
+                return $"Project default provider set to '{value}' for {projectPath}.";
+            }
+
+            if (string.Equals(subCmd, "model", StringComparison.OrdinalIgnoreCase))
+            {
+                await _configStore.SetDefaultModelAsync(value, projectPath, ct).ConfigureAwait(false);
+                return $"Project default model set to '{value}' for {projectPath}.";
+            }
+
+            return "Usage: /default project provider <name> | /default project model <id>";
+        }
+
+        // /default provider <name> | /default model <id>
+        if (tokens.Length >= 2)
+        {
+            var subCmd = tokens[0];
+            var value = string.Join(' ', tokens.Skip(1));
+
+            if (string.Equals(subCmd, "provider", StringComparison.OrdinalIgnoreCase))
+            {
+                await _configStore.SetDefaultProviderAsync(value, ct: ct).ConfigureAwait(false);
+                return $"Global default provider set to '{value}'.";
+            }
+
+            if (string.Equals(subCmd, "model", StringComparison.OrdinalIgnoreCase))
+            {
+                await _configStore.SetDefaultModelAsync(value, ct: ct).ConfigureAwait(false);
+                return $"Global default model set to '{value}'.";
+            }
+        }
+
+        return """
+            Usage:
+              /default                        — Show current defaults
+              /default provider <name>        — Set global default provider
+              /default model <id>             — Set global default model
+              /default project provider <name> — Set project default provider
+              /default project model <id>     — Set project default model
+            """;
     }
 }

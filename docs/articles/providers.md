@@ -268,7 +268,7 @@ Use slash commands to manage providers and models at any time during a session:
 
 ```text
 /providers               # List all detected providers with status
-/provider                # Show current provider and model
+/provider                # Interactive picker to switch providers
 /provider list           # Detailed provider list with auth method and model count
 /provider add openai     # Configure an API-key provider interactively
 /provider remove openai  # Remove stored credentials for a provider
@@ -276,7 +276,42 @@ Use slash commands to manage providers and models at any time during a session:
 /provider test openai    # Test a specific provider
 /models                  # List all available models across providers
 /model qwen3:30b         # Switch to a specific model
+/default                 # Show current default provider and model
+/default provider openai # Set global default provider
+/default model gpt-4o    # Set global default model
 ```
+
+### Mid-session model switching
+
+When you switch models or providers during an active conversation, JD.AI uses a **ConversationTransformer** to handle the transition. You are prompted to choose a transition mode:
+
+| Mode | Description |
+|---|---|
+| **Preserve** | Keep the full conversation history as-is for the new model |
+| **Compact** | Summarize the conversation before switching (reduces token usage) |
+| **Transform** | Re-format messages to match the new model's expected style |
+| **Fresh** | Start a clean conversation with the new model (history is discarded) |
+| **Cancel** | Abort the switch and stay on the current model |
+
+### Fork points and reverting
+
+Each model switch creates a **fork point** in the session history. You can revert to a previous fork point to undo a switch and return to the prior model and conversation state. Use `/history` to view fork points and double-ESC to roll back.
+
+### Remote model search
+
+Search for models across remote catalogs without leaving JD.AI:
+
+```text
+/model search llama 70b           # Search Ollama, HuggingFace, and Foundry Local
+/model search codestral           # Find Mistral's code model
+/model url https://ollama.com/library/deepseek-coder   # Pull from a direct URL
+```
+
+Supported catalogs:
+
+- **Ollama** — searches the Ollama model library
+- **HuggingFace** — searches GGUF-tagged repositories on HuggingFace Hub
+- **Foundry Local** — searches the Microsoft Foundry Local model catalog
 
 ## Credential resolution
 

@@ -28,6 +28,25 @@ Switch to a different model. The model ID can be partial — JD.AI fuzzy-matches
 /model llama3.2
 ```
 
+### `/model search <query>`
+
+Search remote model catalogs (Ollama, HuggingFace, Foundry Local) for models matching the query. Results include model ID, source, and download information.
+
+```text
+/model search llama 70b
+/model search codestral
+/model search phi-3
+```
+
+### `/model url <url>`
+
+Pull a model directly from a URL. Supports Ollama model URLs, HuggingFace repository URLs, and direct GGUF download links.
+
+```text
+/model url https://ollama.com/library/llama3.2
+/model url https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF
+```
+
 ### `/providers`
 
 List all detected AI providers with their connection status and available model count.
@@ -41,7 +60,7 @@ Detecting providers...
 
 ### `/provider`
 
-Manage and inspect providers. Without arguments, shows the currently active provider and model.
+Manage and inspect providers. Without arguments, shows an interactive picker to switch between available providers.
 
 **Subcommands:**
 
@@ -63,6 +82,46 @@ Manage and inspect providers. Without arguments, shows the currently active prov
 /provider add openai-compat # Prompts for alias, base URL, and API key
 /provider test              # Tests all configured providers
 /provider remove mistral    # Removes Mistral credentials
+```
+
+## Defaults Management
+
+### `/default`
+
+Show the current default provider and model (both global and per-project).
+
+### `/default provider <name>`
+
+Set the global default provider. This provider is used when no per-project or session override is active.
+
+```text
+/default provider openai
+/default provider ollama
+```
+
+### `/default model <id>`
+
+Set the global default model. This model is used when no per-project or session override is active.
+
+```text
+/default model gpt-4o
+/default model claude-sonnet-4
+```
+
+### `/default project provider <name>`
+
+Set the default provider for the current project. Overrides the global default when working in this project directory.
+
+```text
+/default project provider anthropic
+```
+
+### `/default project model <id>`
+
+Set the default model for the current project. Overrides the global default when working in this project directory.
+
+```text
+/default project model llama3.2:latest
 ```
 
 ## Context Management
@@ -335,8 +394,15 @@ Lists all running agents, their models, turn counts, uptime, and routing table m
 | `/help` | Show help |
 | `/models` | List models |
 | `/model <id>` | Switch model |
+| `/model search <query>` | Search remote model catalogs |
+| `/model url <url>` | Pull model from URL |
 | `/providers` | List providers |
-| `/provider` | Show current provider / manage (add, remove, test, list) |
+| `/provider` | Interactive provider picker / manage (add, remove, test, list) |
+| `/default` | Show current defaults |
+| `/default provider <name>` | Set global default provider |
+| `/default model <id>` | Set global default model |
+| `/default project provider` | Set per-project default provider |
+| `/default project model` | Set per-project default model |
 | `/clear` | Clear conversation |
 | `/compact` | Compress context |
 | `/cost` | Token usage |
