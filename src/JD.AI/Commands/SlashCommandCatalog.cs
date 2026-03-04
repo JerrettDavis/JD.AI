@@ -57,6 +57,7 @@ public static class SlashCommandCatalog
         new("/vim", "Toggle vim editing mode"),
         new("/stats", "Show session and historical usage statistics"),
         new("/config", "List/get/set command settings"),
+        new("/skills", "Show or reload managed skills status"),
         new("/agents", "Manage local agent profiles"),
         new("/hooks", "Manage local hook profiles"),
         new("/memory", "View/edit JDAI.md project memory"),
