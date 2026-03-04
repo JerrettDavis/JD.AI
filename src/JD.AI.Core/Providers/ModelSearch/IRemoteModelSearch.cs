@@ -19,4 +19,5 @@ public sealed record RemoteModelResult(
     string ProviderName,
     string? Size,
     string Status,
-    string? Description);
+    string? Description,
+    ModelCapabilities Capabilities = ModelCapabilities.Chat | ModelCapabilities.ToolCalling);
