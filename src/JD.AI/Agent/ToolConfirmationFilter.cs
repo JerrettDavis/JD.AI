@@ -76,6 +76,9 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["pdf_analyze"] = SafetyTier.AutoApprove,
             ["media_view"] = SafetyTier.AutoApprove,
 
+            // Browser tools — status is read-only
+            ["browser_status"] = SafetyTier.AutoApprove,
+
             // Write ops — confirm once per session
             ["write_file"] = SafetyTier.ConfirmOnce,
             ["edit_file"] = SafetyTier.ConfirmOnce,
@@ -111,6 +114,13 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["github_create_pr"] = SafetyTier.ConfirmOnce,
             ["github_merge_pr"] = SafetyTier.ConfirmOnce,
             ["github_pr_review"] = SafetyTier.ConfirmOnce,
+
+            // Browser tools — write/navigate ops confirm once
+            ["browser_open"] = SafetyTier.ConfirmOnce,
+            ["browser_screenshot"] = SafetyTier.ConfirmOnce,
+            ["browser_pdf"] = SafetyTier.ConfirmOnce,
+            ["browser_content"] = SafetyTier.ConfirmOnce,
+            ["browser_console"] = SafetyTier.ConfirmOnce,
 
             // Dangerous — always confirm
             ["run_command"] = SafetyTier.AlwaysConfirm,
