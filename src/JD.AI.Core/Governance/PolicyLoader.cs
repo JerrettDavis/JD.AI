@@ -31,6 +31,22 @@ public static class PolicyLoader
         var globalPoliciesDir = Path.Combine(DataDirectories.Root, PoliciesSubDir);
         documents.AddRange(PolicyParser.ParseDirectory(globalPoliciesDir));
 
+        // Organization-level policies: {JDAI_ORG_CONFIG}/policies/
+        var orgConfigPath = DataDirectories.OrgConfigPath;
+        if (!string.IsNullOrWhiteSpace(orgConfigPath))
+        {
+            var orgPoliciesDir = Path.Combine(orgConfigPath, PoliciesSubDir);
+            var orgDocs = PolicyParser.ParseDirectory(orgPoliciesDir)
+                .Select(d =>
+                {
+                    if (d.Metadata.Scope == PolicyScope.User)
+                        d.Metadata.Scope = PolicyScope.Organization;
+                    return d;
+                });
+
+            documents.AddRange(orgDocs);
+        }
+
         // Project-level policies: {project}/.jdai/policies/
         if (!string.IsNullOrWhiteSpace(projectPath))
         {

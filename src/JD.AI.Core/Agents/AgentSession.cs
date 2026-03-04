@@ -13,6 +13,8 @@ namespace JD.AI.Core.Agents;
 public sealed class AgentSession
 {
     private readonly IProviderRegistry _registry;
+    private readonly List<ModelSwitchRecord> _modelSwitchHistory = [];
+    private readonly List<ForkPoint> _forkPoints = [];
     private Kernel _kernel;
     private int _turnIndex;
 
@@ -35,7 +37,12 @@ public sealed class AgentSession
 
     public ChatHistory History { get; } = new();
     public ProviderModelInfo? CurrentModel { get; private set; }
+    public IReadOnlyList<ModelSwitchRecord> ModelSwitchHistory => _modelSwitchHistory;
+    public IReadOnlyList<ForkPoint> ForkPoints => _forkPoints;
     public bool AutoRunEnabled { get; set; }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1003:Use generic event handler instances", Justification = "ProviderModelInfo is the event data")]
+    public event EventHandler<ProviderModelInfo>? ModelChanged;
 
     /// <summary>
     /// When true, ALL tool confirmations are bypassed — no safety prompts at all.
@@ -117,10 +124,19 @@ public sealed class AgentSession
         SessionInfo.UpdatedAt = DateTime.UtcNow;
 
         await Store.SaveTurnAsync(turn).ConfigureAwait(false);
+        SyncModelHistoryToSession();
         await Store.UpdateSessionAsync(SessionInfo).ConfigureAwait(false);
     }
 
-    /// <summary>Record a tool call on the current turn.</summary>
+    /// <summary>Sync in-memory model switch history and fork points to SessionInfo for persistence.</summary>
+    private void SyncModelHistoryToSession()
+    {
+        if (SessionInfo == null) return;
+        SessionInfo.ModelSwitchHistory.Clear();
+        SessionInfo.ModelSwitchHistory.AddRange(_modelSwitchHistory);
+        SessionInfo.ForkPoints.Clear();
+        SessionInfo.ForkPoints.AddRange(_forkPoints);
+    }
     public void RecordToolCall(string toolName, string? arguments, string? result, string status, long durationMs)
     {
         if (CurrentTurn == null) return;
@@ -159,6 +175,11 @@ public sealed class AgentSession
             if (SessionInfo != null)
             {
                 _turnIndex = SessionInfo.Turns.Count;
+                // Restore model switch history and fork points
+                _modelSwitchHistory.Clear();
+                _modelSwitchHistory.AddRange(SessionInfo.ModelSwitchHistory);
+                _forkPoints.Clear();
+                _forkPoints.AddRange(SessionInfo.ForkPoints);
                 // Restore chat history from persisted turns
                 foreach (var turn in SessionInfo.Turns)
                 {
@@ -283,10 +304,55 @@ public sealed class AgentSession
     }
 
     /// <summary>
+    /// Switches provider/model with conversation transformation.
+    /// </summary>
+    public async Task SwitchProviderAsync(
+        ProviderModelInfo newModel,
+        SwitchMode mode,
+        CancellationToken ct = default)
+    {
+        var transformer = new ConversationTransformer();
+        var (transformed, briefing) = await transformer.TransformAsync(
+            History, _kernel, newModel, mode, ct).ConfigureAwait(false);
+
+        if (!ReferenceEquals(transformed, History))
+        {
+            History.Clear();
+            foreach (var msg in transformed)
+            {
+                History.Add(msg);
+            }
+        }
+
+        SwitchModel(newModel, mode.ToString());
+
+        if (mode == SwitchMode.Transform && briefing is not null)
+        {
+            History.AddAssistantMessage(briefing);
+        }
+    }
+
+    /// <summary>
     /// Switches the backing LLM while preserving chat history and tools.
     /// </summary>
-    public void SwitchModel(ProviderModelInfo model)
+    public void SwitchModel(ProviderModelInfo model) => SwitchModel(model, "preserve");
+
+    /// <summary>
+    /// Switches the backing LLM with an explicit switch mode.
+    /// </summary>
+    public void SwitchModel(ProviderModelInfo model, string switchMode)
     {
+        // Capture fork point from current state
+        _forkPoints.Add(new ForkPoint
+        {
+            Id = _forkPoints.Count + 1,
+            Timestamp = DateTimeOffset.UtcNow,
+            ModelId = CurrentModel?.Id ?? string.Empty,
+            ProviderName = CurrentModel?.ProviderName ?? string.Empty,
+            TurnIndex = _turnIndex,
+            MessageCount = History.Count,
+        });
+
         var newKernel = _registry.BuildKernel(model);
 
         // Re-register plugins from the old kernel
@@ -297,6 +363,15 @@ public sealed class AgentSession
 
         _kernel = newKernel;
         CurrentModel = model;
+
+        // Record switch history
+        _modelSwitchHistory.Add(new ModelSwitchRecord(
+            DateTimeOffset.UtcNow,
+            model.Id,
+            model.ProviderName,
+            switchMode));
+
+        ModelChanged?.Invoke(this, model);
     }
 
     /// <summary>

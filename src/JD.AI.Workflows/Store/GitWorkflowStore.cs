@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using JD.AI.Core.Config;
 
 namespace JD.AI.Workflows.Store;
 
@@ -27,16 +28,13 @@ public sealed class GitWorkflowStore : IWorkflowStore
     /// <param name="repoUrl">Remote Git repository URL (HTTPS or SSH).</param>
     /// <param name="localCachePath">
     ///   Local path where the repo is cloned.
-    ///   Defaults to <c>~/.jdai/workflow-store</c>.
+    ///   Defaults to a subdirectory of the data root (honors <c>JDAI_DATA_DIR</c>).
     /// </param>
     public GitWorkflowStore(string repoUrl, string? localCachePath = null)
     {
         _repoUrl = repoUrl;
         _localCachePath = localCachePath
-            ?? Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                ".jdai",
-                "workflow-store");
+            ?? Path.Combine(DataDirectories.Root, "workflow-store");
     }
 
     /// <inheritdoc/>
@@ -52,12 +50,20 @@ public sealed class GitWorkflowStore : IWorkflowStore
         var json = JsonSerializer.Serialize(workflow, JsonOptions);
         await File.WriteAllTextAsync(path, json, ct).ConfigureAwait(false);
 
-        await GitHelper.RunAsync(_localCachePath, $"add \"{path}\"", ct).ConfigureAwait(false);
-        await GitHelper.RunAsync(
+        var (addExit, _, addErr) = await GitHelper.RunAsync(_localCachePath, $"add \"{path}\"", ct).ConfigureAwait(false);
+        if (addExit != 0)
+            throw new InvalidOperationException($"Git add failed (exit {addExit}): {addErr}");
+
+        var (commitExit, _, commitErr) = await GitHelper.RunAsync(
             _localCachePath,
-            $"commit -m \"publish: {workflow.Name} v{workflow.Version}\"",
+            $"commit -m \"publish: {Sanitize(workflow.Name)} v{Sanitize(workflow.Version)}\"",
             ct).ConfigureAwait(false);
-        await GitHelper.RunAsync(_localCachePath, "push", ct).ConfigureAwait(false);
+        if (commitExit != 0)
+            throw new InvalidOperationException($"Git commit failed (exit {commitExit}): {commitErr}");
+
+        var (pushExit, _, pushErr) = await GitHelper.RunAsync(_localCachePath, "push", ct).ConfigureAwait(false);
+        if (pushExit != 0)
+            throw new InvalidOperationException($"Git push failed (exit {pushExit}): {pushErr}");
     }
 
     /// <inheritdoc/>
@@ -201,7 +207,13 @@ public sealed class GitWorkflowStore : IWorkflowStore
 
         var fileName = $"{Sanitize(workflow.Name)}-{Sanitize(workflow.Version)}.json";
         var destPath = Path.Combine(localDirectory, fileName);
-        var json = JsonSerializer.Serialize(workflow, JsonOptions);
+
+        // The local CLI catalog expects AgentWorkflowDefinition JSON, which is stored in
+        // SharedWorkflow.DefinitionJson. Prefer writing that directly; fall back to the
+        // wrapper object if it's missing.
+        var json = !string.IsNullOrWhiteSpace(workflow.DefinitionJson)
+            ? workflow.DefinitionJson!
+            : JsonSerializer.Serialize(workflow, JsonOptions);
         await File.WriteAllTextAsync(destPath, json, ct).ConfigureAwait(false);
 
         return true;
@@ -209,6 +221,8 @@ public sealed class GitWorkflowStore : IWorkflowStore
 
     private async Task EnsureRepoAsync(CancellationToken ct)
     {
+        await GitHelper.EnsureGitAvailableAsync(ct).ConfigureAwait(false);
+
         if (Directory.Exists(Path.Combine(_localCachePath, ".git")))
             return;
 

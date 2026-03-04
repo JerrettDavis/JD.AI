@@ -7,6 +7,8 @@ using JD.AI.Core.Config;
 using JD.AI.Core.LocalModels;
 using JD.AI.Core.Mcp;
 using JD.AI.Core.Providers;
+using JD.AI.Core.Providers.Credentials;
+using JD.AI.Core.Providers.ModelSearch;
 using JD.AI.Rendering;
 using JD.AI.Tools;
 using JD.AI.Workflows;
@@ -138,14 +140,28 @@ if (!printMode)
 }
 
 // 1. Build provider registry with all detectors
+var credentialStore = new EncryptedFileStore();
+var providerConfig = new ProviderConfigurationManager(credentialStore);
+
 var detectors = new IProviderDetector[]
 {
+    // OAuth / credential-harvesting providers
     new ClaudeCodeDetector(),
     new CopilotDetector(),
     new OpenAICodexDetector(),
+    // Local providers
     new OllamaDetector(),
     new FoundryLocalDetector(),
     new LocalModelDetector(),
+    // API key providers
+    new OpenAIDetector(providerConfig),
+    new AzureOpenAIDetector(providerConfig),
+    new AnthropicDetector(providerConfig),
+    new GoogleGeminiDetector(providerConfig),
+    new MistralDetector(providerConfig),
+    new AmazonBedrockDetector(providerConfig),
+    new HuggingFaceDetector(providerConfig),
+    new OpenAICompatibleDetector(providerConfig),
 };
 var registry = new ProviderRegistry(detectors);
 
@@ -168,7 +184,8 @@ if (allModels.Count == 0)
     return 1;
 }
 
-// 3. Let user pick a model (or use CLI flags / first available)
+// 3. Let user pick a model (or use CLI flags / per-project defaults / global defaults / first available)
+using var configStore = new AtomicConfigStore();
 ProviderModelInfo selectedModel;
 if (cliModel != null)
 {
@@ -211,18 +228,50 @@ else if (cliProvider != null)
                 .UseConverter(m => Markup.Escape($"[{m.ProviderName}] {m.DisplayName}"))
                 .AddChoices(candidates));
 }
-else if (allModels.Count == 1 || printMode)
-{
-    selectedModel = allModels[0];
-}
 else
 {
-    selectedModel = AnsiConsole.Prompt(
-        new SelectionPrompt<ProviderModelInfo>()
-            .Title("Select a model:")
-            .PageSize(15)
-            .UseConverter(m => Markup.Escape($"[{m.ProviderName}] {m.DisplayName}"))
-            .AddChoices(allModels));
+    // Check per-project then global defaults from config store
+    var cfgProjectPath = Directory.GetCurrentDirectory();
+    var defaultModel = await configStore.GetDefaultModelAsync(cfgProjectPath).ConfigureAwait(false);
+    var defaultProvider = await configStore.GetDefaultProviderAsync(cfgProjectPath).ConfigureAwait(false);
+
+    List<ProviderModelInfo>? defaultCandidates = null;
+
+    if (defaultModel is not null)
+    {
+        defaultCandidates = allModels.Where(m =>
+            m.DisplayName.Contains(defaultModel, StringComparison.OrdinalIgnoreCase) ||
+            m.Id.Contains(defaultModel, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        if (defaultProvider is not null)
+        {
+            defaultCandidates = defaultCandidates.Where(m =>
+                m.ProviderName.Contains(defaultProvider, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+    }
+    else if (defaultProvider is not null)
+    {
+        defaultCandidates = allModels.Where(m =>
+            m.ProviderName.Contains(defaultProvider, StringComparison.OrdinalIgnoreCase)).ToList();
+    }
+
+    if (defaultCandidates is { Count: > 0 })
+    {
+        selectedModel = defaultCandidates[0];
+    }
+    else if (allModels.Count == 1 || printMode)
+    {
+        selectedModel = allModels[0];
+    }
+    else
+    {
+        selectedModel = AnsiConsole.Prompt(
+            new SelectionPrompt<ProviderModelInfo>()
+                .Title("Select a model:")
+                .PageSize(15)
+                .UseConverter(m => Markup.Escape($"[{m.ProviderName}] {m.DisplayName}"))
+                .AddChoices(allModels));
+    }
 }
 
 // 4. Build initial kernel with the selected model
@@ -264,6 +313,62 @@ if (!isNewSession)
     await session.InitializePersistenceAsync(projectPath, resumeId).ConfigureAwait(false);
     if (resumeId != null && session.SessionInfo != null)
     {
+        // Restore last-used model from session's model switch history
+        var lastSwitch = session.SessionInfo.ModelSwitchHistory.LastOrDefault();
+        if (lastSwitch != null)
+        {
+            var restored = allModels.FirstOrDefault(m =>
+                string.Equals(m.Id, lastSwitch.ModelId, StringComparison.Ordinal) &&
+                string.Equals(m.ProviderName, lastSwitch.ProviderName, StringComparison.Ordinal));
+            if (restored != null)
+            {
+                selectedModel = restored;
+                kernel = registry.BuildKernel(selectedModel);
+                session = new AgentSession(registry, kernel, selectedModel)
+                {
+                    Store = session.Store,
+                    SessionInfo = session.SessionInfo,
+                    SkipPermissions = session.SkipPermissions,
+                    Verbose = session.Verbose,
+                };
+                // Re-restore history into the new session's ChatHistory
+                foreach (var turn in session.SessionInfo.Turns)
+                {
+                    if (string.Equals(turn.Role, "user", StringComparison.Ordinal))
+                        session.History.AddUserMessage(turn.Content ?? string.Empty);
+                    else if (string.Equals(turn.Role, "assistant", StringComparison.Ordinal))
+                        session.History.AddAssistantMessage(turn.Content ?? string.Empty);
+                }
+                if (!printMode) ChatRenderer.RenderInfo($"Restored model: [{restored.ProviderName}] {restored.DisplayName}");
+            }
+        }
+        else if (session.SessionInfo.ModelId != null && session.SessionInfo.ProviderName != null)
+        {
+            // Fallback: use the session's original model_id/provider_name
+            var restored = allModels.FirstOrDefault(m =>
+                string.Equals(m.Id, session.SessionInfo.ModelId, StringComparison.Ordinal) &&
+                string.Equals(m.ProviderName, session.SessionInfo.ProviderName, StringComparison.Ordinal));
+            if (restored != null && !string.Equals(restored.Id, selectedModel.Id, StringComparison.Ordinal))
+            {
+                selectedModel = restored;
+                kernel = registry.BuildKernel(selectedModel);
+                session = new AgentSession(registry, kernel, selectedModel)
+                {
+                    Store = session.Store,
+                    SessionInfo = session.SessionInfo,
+                    SkipPermissions = session.SkipPermissions,
+                    Verbose = session.Verbose,
+                };
+                foreach (var turn in session.SessionInfo.Turns)
+                {
+                    if (string.Equals(turn.Role, "user", StringComparison.Ordinal))
+                        session.History.AddUserMessage(turn.Content ?? string.Empty);
+                    else if (string.Equals(turn.Role, "assistant", StringComparison.Ordinal))
+                        session.History.AddAssistantMessage(turn.Content ?? string.Empty);
+                }
+                if (!printMode) ChatRenderer.RenderInfo($"Restored model: [{restored.ProviderName}] {restored.DisplayName}");
+            }
+        }
         if (!printMode) ChatRenderer.RenderInfo($"Resumed session: {session.SessionInfo.Name ?? session.SessionInfo.Id} ({session.SessionInfo.Turns.Count} turns)");
     }
 }
@@ -479,19 +584,35 @@ AgentOutput.Current = spectreOutput;
 
 // 10. Set up slash commands
 var workflowCatalog = new FileWorkflowCatalog(Path.Combine(DataDirectories.Root, "workflows"));
+var searchHttp = new HttpClient();
+var modelSearchAggregator = new ModelSearchAggregator(new IRemoteModelSearch[]
+{
+    new OllamaModelSearch(searchHttp),
+    new HuggingFaceModelSearch(searchHttp),
+    new FoundryLocalModelSearch(),
+});
 var commandRouter = new SlashCommandRouter(
     session, registry, instructions, checkpointStrategy,
     workflowCatalog: workflowCatalog,
     getSpinnerStyle: () => spectreOutput.Style,
-    onSpinnerStyleChanged: style => spectreOutput.Style = style);
+    onSpinnerStyleChanged: style => spectreOutput.Style = style,
+    providerConfig: providerConfig,
+    configStore: configStore,
+    modelSearchAggregator: modelSearchAggregator);
 
 // 10. Build interactive input with command completions
 var completionProvider = new CompletionProvider();
 completionProvider.Register("/help", "Show available commands");
 completionProvider.Register("/models", "List available models");
 completionProvider.Register("/model", "Switch to a model");
+completionProvider.Register("/model search", "Search for models across all providers");
+completionProvider.Register("/model url", "Pull a model by URL or identifier");
 completionProvider.Register("/providers", "List detected providers");
-completionProvider.Register("/provider", "Show current provider");
+completionProvider.Register("/provider", "Manage provider (add|remove|test|list)");
+completionProvider.Register("/provider add", "Configure an API-key provider");
+completionProvider.Register("/provider remove", "Remove provider credentials");
+completionProvider.Register("/provider test", "Test provider connectivity");
+completionProvider.Register("/provider list", "List all providers with status");
 completionProvider.Register("/clear", "Clear chat history");
 completionProvider.Register("/compact", "Force context compaction");
 completionProvider.Register("/cost", "Show token usage");
@@ -517,6 +638,11 @@ completionProvider.Register("/init", "Initialize JDAI.md project file");
 completionProvider.Register("/plan", "Toggle plan mode (explore only)");
 completionProvider.Register("/doctor", "Run self-diagnostics");
 completionProvider.Register("/fork", "Fork conversation to new session");
+completionProvider.Register("/default", "Manage default provider/model settings");
+completionProvider.Register("/default provider", "Set global default provider");
+completionProvider.Register("/default model", "Set global default model");
+completionProvider.Register("/default project provider", "Set project default provider");
+completionProvider.Register("/default project model", "Set project default model");
 completionProvider.Register("/quit", "Exit jdai");
 completionProvider.Register("/exit", "Exit jdai");
 var interactiveInput = new InteractiveInput(completionProvider);

@@ -87,6 +87,7 @@ JD.AI stores local state in `~/.jdai/`:
 
 ```text
 ~/.jdai/
+├── config.json          # Global default provider/model
 ├── sessions.db          # SQLite session database
 ├── budget.json          # Budget tracking (daily/monthly spend)
 ├── org-config-path      # Path to org config repo (optional)
@@ -114,6 +115,57 @@ JD.AI loads Claude Code extensions from standard locations:
 These extensions are registered as Semantic Kernel functions and filters at startup.
 
 See [Skills and Plugins](skills-and-plugins.md) for details.
+
+## Default provider and model
+
+JD.AI supports persistent defaults for provider and model selection at both global and per-project levels.
+
+### Global defaults
+
+Global defaults are stored in `~/.jdai/config.json` and apply to all sessions unless overridden:
+
+```json
+{
+  "defaultProvider": "openai",
+  "defaultModel": "gpt-4o"
+}
+```
+
+Set global defaults with:
+
+```text
+/default provider openai     # Set global default provider
+/default model gpt-4o        # Set global default model
+/default                     # Show current defaults
+```
+
+### Per-project defaults
+
+Per-project defaults are stored in `.jdai/defaults.json` in the project root and override global defaults when working in that directory:
+
+```json
+{
+  "defaultProvider": "ollama",
+  "defaultModel": "llama3.2:latest"
+}
+```
+
+Set per-project defaults with:
+
+```text
+/default project provider ollama
+/default project model llama3.2:latest
+```
+
+### Resolution priority
+
+When determining which provider and model to use, JD.AI resolves through this priority chain:
+
+1. **CLI flags** — `--provider` and `--model` arguments passed at launch
+2. **Session state** — provider/model set during the current session via `/model` or `/provider`
+3. **Per-project defaults** — `.jdai/defaults.json` in the project root
+4. **Global defaults** — `~/.jdai/config.json`
+5. **First available** — the first provider with a valid connection (startup detection order)
 
 ## Runtime configuration
 
@@ -170,6 +222,10 @@ Each model carries its own context window size. Claude models use 200k; GPT-4o a
 | `JDAI_ORG_CONFIG` | Path to organization config repo for org-level instructions | — |
 | `JDAI_WORKFLOW_STORE_REPO` | Git repo URL for shared workflow store | — |
 | `JDAI_DATA_DIR` | Override root data directory (all JD.AI state) | `~/.jdai/` |
+| `OTEL_SERVICE_NAME` | Override `Gateway:Telemetry:ServiceName` in traces/metrics | `"jdai"` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Activate OTLP exporter and set its endpoint (e.g. `http://localhost:4317`) | — |
+
+See [Observability](observability.md) for full telemetry configuration and exporter options.
 
 ## See also
 

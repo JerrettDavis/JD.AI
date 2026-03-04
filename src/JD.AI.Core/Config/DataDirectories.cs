@@ -72,9 +72,14 @@ public static class DataDirectories
             var configFile = Path.Combine(Root, "org-config-path");
             if (File.Exists(configFile))
             {
-                var storedPath = File.ReadAllText(configFile).Trim();
-                if (Directory.Exists(storedPath))
-                    return storedPath;
+                try
+                {
+                    var storedPath = File.ReadAllText(configFile).Trim();
+                    if (Directory.Exists(storedPath))
+                        return storedPath;
+                }
+                catch (IOException) { /* Treat unreadable org config as "no org config". */ }
+                catch (UnauthorizedAccessException) { /* Treat permission issues as "no org config". */ }
             }
 
             return null;

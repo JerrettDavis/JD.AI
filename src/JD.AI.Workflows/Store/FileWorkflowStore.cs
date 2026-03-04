@@ -169,7 +169,12 @@ public sealed class FileWorkflowStore : IWorkflowStore
 
         var fileName = $"{Sanitize(workflow.Name)}-{Sanitize(workflow.Version)}.json";
         var destPath = Path.Combine(localDirectory, fileName);
-        var json = JsonSerializer.Serialize(workflow, JsonOptions);
+
+        // The local CLI catalog expects AgentWorkflowDefinition JSON, stored in
+        // SharedWorkflow.DefinitionJson. Write that directly if available.
+        var json = !string.IsNullOrWhiteSpace(workflow.DefinitionJson)
+            ? workflow.DefinitionJson!
+            : JsonSerializer.Serialize(workflow, JsonOptions);
         await File.WriteAllTextAsync(destPath, json, ct).ConfigureAwait(false);
 
         return true;

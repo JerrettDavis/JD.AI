@@ -14,7 +14,7 @@ internal static class GitHelper
         string arguments,
         CancellationToken ct = default)
     {
-        var psi = new ProcessStartInfo("git", arguments)
+        var psi = new ProcessStartInfo("git")
         {
             WorkingDirectory = workingDirectory,
             RedirectStandardOutput = true,
@@ -22,6 +22,10 @@ internal static class GitHelper
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+
+        // Use ArgumentList for safe argument passing (no shell quoting issues)
+        foreach (var arg in SplitArguments(arguments))
+            psi.ArgumentList.Add(arg);
 
         using var process = Process.Start(psi)
             ?? throw new InvalidOperationException("Failed to start git process.");
@@ -40,13 +44,14 @@ internal static class GitHelper
     /// <summary>Throws if git is not available on the PATH.</summary>
     public static async Task EnsureGitAvailableAsync(CancellationToken ct = default)
     {
-        var psi = new ProcessStartInfo("git", "--version")
+        var psi = new ProcessStartInfo("git")
         {
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+        psi.ArgumentList.Add("--version");
 
         try
         {
@@ -61,5 +66,36 @@ internal static class GitHelper
             throw new InvalidOperationException(
                 "git is not available on PATH. Install git to use the GitWorkflowStore.", ex);
         }
+    }
+
+    /// <summary>Splits a space-delimited argument string, respecting quoted segments.</summary>
+    internal static IEnumerable<string> SplitArguments(string arguments)
+    {
+        var inQuote = false;
+        var current = new System.Text.StringBuilder();
+
+        foreach (var ch in arguments)
+        {
+            if (ch == '"')
+            {
+                inQuote = !inQuote;
+                continue;
+            }
+
+            if (ch == ' ' && !inQuote)
+            {
+                if (current.Length > 0)
+                {
+                    yield return current.ToString();
+                    current.Clear();
+                }
+                continue;
+            }
+
+            current.Append(ch);
+        }
+
+        if (current.Length > 0)
+            yield return current.ToString();
     }
 }

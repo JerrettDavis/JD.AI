@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using JD.AI.Core.Governance;
 using JD.AI.Core.Governance.Audit;
 using JD.AI.Rendering;
@@ -152,6 +153,10 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         await EmitAuditEventAsync(functionName, args, "ok", policyResult).ConfigureAwait(false);
     }
 
+    // Argument keys whose values should not be logged in audit events
+    private static readonly HashSet<string> RedactedArgKeys =
+        new(StringComparer.OrdinalIgnoreCase) { "content", "code", "input", "body", "password", "secret", "token" };
+
     private async Task EmitAuditEventAsync(
         string toolName, string args, string status, PolicyEvaluationResult? policyResult)
     {
@@ -169,9 +174,28 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             Action = "tool.invoke",
             Resource = toolName,
             SessionId = _session.SessionInfo?.Id,
-            Detail = $"status={status}; args={args}",
+            TraceId = Activity.Current?.TraceId.ToString(),
+            Detail = $"status={status}; args={RedactArgs(args)}",
             PolicyResult = policyResult?.Decision,
             Severity = severity,
         }).ConfigureAwait(false);
+    }
+
+    private static string RedactArgs(string args)
+    {
+        // Redact values for sensitive argument keys (e.g. content=..., body=...)
+        foreach (var key in RedactedArgKeys)
+        {
+            var prefix = $"{key}=";
+            var idx = args.IndexOf(prefix, StringComparison.OrdinalIgnoreCase);
+            if (idx < 0) continue;
+
+            var valueStart = idx + prefix.Length;
+            var nextComma = args.IndexOf(", ", valueStart, StringComparison.Ordinal);
+            var valueEnd = nextComma >= 0 ? nextComma : args.Length;
+            args = string.Concat(args.AsSpan(0, valueStart), "[REDACTED]", args.AsSpan(valueEnd));
+        }
+
+        return args;
     }
 }

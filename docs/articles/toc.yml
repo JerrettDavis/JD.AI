@@ -34,6 +34,8 @@
   href: org-instructions.md
 - name: Gateway API
   href: gateway-api.md
+- name: Observability
+  href: observability.md
 - name: Channel Adapters
   href: channels.md
 - name: Plugin SDK

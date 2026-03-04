@@ -287,7 +287,8 @@ public class FileWorkflowStoreTests : IDisposable
 
         var installedFile = Directory.GetFiles(installDir, "*.json").Single();
         var content = await File.ReadAllTextAsync(installedFile);
-        content.Should().Contain("verify-wf");
+        // InstallAsync writes DefinitionJson when available (local catalog format)
+        content.Should().Contain("verified");
     }
 
     // ── Get ───────────────────────────────────────────────────
