@@ -2,6 +2,8 @@ using System.Diagnostics;
 using JD.AI.Core.Agents;
 using JD.AI.Core.Governance;
 using JD.AI.Core.Governance.Audit;
+using JD.AI.Core.Safety;
+using JD.AI.Core.Tools;
 using JD.AI.Core.Tracing;
 using JD.AI.Tools;
 using Microsoft.SemanticKernel;
@@ -19,6 +21,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
     private readonly AgentSession _session;
     private readonly IPolicyEvaluator? _policyEvaluator;
     private readonly AuditService? _auditService;
+    private readonly CircuitBreaker? _circuitBreaker;
     private readonly HashSet<string> _confirmedOnce = new(StringComparer.Ordinal);
 
     // Safety tier mappings
@@ -44,6 +47,80 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["read_clipboard"] = SafetyTier.AutoApprove,
             ["get_usage"] = SafetyTier.AutoApprove,
             ["create_patch"] = SafetyTier.AutoApprove,
+            ["sessions_list"] = SafetyTier.AutoApprove,
+            ["sessions_history"] = SafetyTier.AutoApprove,
+            ["session_status"] = SafetyTier.AutoApprove,
+            ["agents_list"] = SafetyTier.AutoApprove,
+            ["channel_list"] = SafetyTier.AutoApprove,
+            ["channel_status"] = SafetyTier.AutoApprove,
+            ["cron_list"] = SafetyTier.AutoApprove,
+            ["cron_history"] = SafetyTier.AutoApprove,
+            ["gateway_status"] = SafetyTier.AutoApprove,
+            ["gateway_config"] = SafetyTier.AutoApprove,
+            ["gateway_channels"] = SafetyTier.AutoApprove,
+            ["gateway_agents"] = SafetyTier.AutoApprove,
+            ["gateway_sessions"] = SafetyTier.AutoApprove,
+
+            // GitHub tools — read-only ops auto-approve
+            ["github_list_issues"] = SafetyTier.AutoApprove,
+            ["github_get_issue"] = SafetyTier.AutoApprove,
+            ["github_list_prs"] = SafetyTier.AutoApprove,
+            ["github_get_pr"] = SafetyTier.AutoApprove,
+            ["github_pr_checks"] = SafetyTier.AutoApprove,
+            ["github_repo_info"] = SafetyTier.AutoApprove,
+            ["github_search_issues"] = SafetyTier.AutoApprove,
+            ["github_list_runs"] = SafetyTier.AutoApprove,
+            ["github_run_details"] = SafetyTier.AutoApprove,
+            ["github_list_releases"] = SafetyTier.AutoApprove,
+            ["github_auth_status"] = SafetyTier.AutoApprove,
+            ["image_analyze"] = SafetyTier.AutoApprove,
+            ["pdf_analyze"] = SafetyTier.AutoApprove,
+            ["media_view"] = SafetyTier.AutoApprove,
+
+            // Browser tools — status is read-only
+            ["browser_status"] = SafetyTier.AutoApprove,
+
+            // Migration tools — read-only
+            ["migration_scan"] = SafetyTier.AutoApprove,
+            ["migration_analyze"] = SafetyTier.AutoApprove,
+            ["migration_parity"] = SafetyTier.AutoApprove,
+            ["migration_export"] = SafetyTier.AutoApprove,
+            ["migration_convert"] = SafetyTier.ConfirmOnce,
+
+            // Policy/governance tools — read-only
+            ["policy_evaluate"] = SafetyTier.AutoApprove,
+            ["policy_list"] = SafetyTier.AutoApprove,
+            ["policy_validate"] = SafetyTier.AutoApprove,
+            ["policy_export"] = SafetyTier.AutoApprove,
+            ["audit_query"] = SafetyTier.AutoApprove,
+            ["rbac_check"] = SafetyTier.AutoApprove,
+
+            // Skills parity tools — read-only
+            ["skills_parity_matrix"] = SafetyTier.AutoApprove,
+            ["skills_pack_overview"] = SafetyTier.AutoApprove,
+            ["skills_gap_analysis"] = SafetyTier.AutoApprove,
+            ["skills_detail"] = SafetyTier.AutoApprove,
+            ["skills_parity_export"] = SafetyTier.AutoApprove,
+
+            // Parity documentation tools — read-only
+            ["parity_compatibility_matrix"] = SafetyTier.AutoApprove,
+            ["parity_migration_guide"] = SafetyTier.AutoApprove,
+            ["parity_governance_runbook"] = SafetyTier.AutoApprove,
+            ["parity_threat_model"] = SafetyTier.AutoApprove,
+            ["parity_export"] = SafetyTier.AutoApprove,
+
+            // Benchmark tools — read-only introspection
+            ["benchmark_scorecard"] = SafetyTier.AutoApprove,
+            ["benchmark_export"] = SafetyTier.AutoApprove,
+            ["benchmark_regression"] = SafetyTier.AutoApprove,
+            ["benchmark_run"] = SafetyTier.ConfirmOnce, // invokes tools
+
+            // MCP transport tools — read-only
+            ["mcp_list_servers"] = SafetyTier.AutoApprove,
+            ["mcp_transport_matrix"] = SafetyTier.AutoApprove,
+            ["mcp_diagnose"] = SafetyTier.AutoApprove,
+            ["mcp_credential_status"] = SafetyTier.AutoApprove,
+            ["mcp_export_config"] = SafetyTier.AutoApprove,
 
             // Write ops — confirm once per session
             ["write_file"] = SafetyTier.ConfirmOnce,
@@ -61,9 +138,39 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["write_clipboard"] = SafetyTier.ConfirmOnce,
             ["spawn_agent"] = SafetyTier.ConfirmOnce,
             ["spawn_team"] = SafetyTier.ConfirmOnce,
+            ["sessions_spawn"] = SafetyTier.ConfirmOnce,
+            ["sessions_send"] = SafetyTier.ConfirmOnce,
+            ["cron_add"] = SafetyTier.ConfirmOnce,
+            ["cron_update"] = SafetyTier.ConfirmOnce,
+            ["cron_remove"] = SafetyTier.ConfirmOnce,
+            ["cron_run"] = SafetyTier.ConfirmOnce,
+            ["channel_send"] = SafetyTier.ConfirmOnce,
+            ["channel_connect"] = SafetyTier.ConfirmOnce,
+            ["channel_disconnect"] = SafetyTier.ConfirmOnce,
             ["apply_patch"] = SafetyTier.ConfirmOnce,
             ["batch_edit_files"] = SafetyTier.ConfirmOnce,
             ["reset_usage"] = SafetyTier.ConfirmOnce,
+
+            // GitHub tools — write ops confirm once
+            ["github_create_issue"] = SafetyTier.ConfirmOnce,
+            ["github_close_issue"] = SafetyTier.ConfirmOnce,
+            ["github_create_pr"] = SafetyTier.ConfirmOnce,
+            ["github_merge_pr"] = SafetyTier.ConfirmOnce,
+            ["github_pr_review"] = SafetyTier.ConfirmOnce,
+
+            // Browser tools — write/navigate ops confirm once
+            ["browser_open"] = SafetyTier.ConfirmOnce,
+            ["browser_screenshot"] = SafetyTier.ConfirmOnce,
+            ["browser_pdf"] = SafetyTier.ConfirmOnce,
+            ["browser_content"] = SafetyTier.ConfirmOnce,
+            ["browser_console"] = SafetyTier.ConfirmOnce,
+
+            // Capability introspection — read-only
+            ["capability_list"] = SafetyTier.AutoApprove,
+            ["capability_detail"] = SafetyTier.AutoApprove,
+            ["capability_usage"] = SafetyTier.AutoApprove,
+            ["capability_gaps"] = SafetyTier.AutoApprove,
+            ["capability_scaffold"] = SafetyTier.AutoApprove,
 
             // Dangerous — always confirm
             ["run_command"] = SafetyTier.AlwaysConfirm,
@@ -71,14 +178,19 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["execute_code"] = SafetyTier.AlwaysConfirm,
         };
 
+    internal static string ResolvePolicyToolName(string functionName) =>
+        OpenClawToolAliasResolver.Resolve(functionName);
+
     public ToolConfirmationFilter(
         AgentSession session,
         IPolicyEvaluator? policyEvaluator = null,
-        AuditService? auditService = null)
+        AuditService? auditService = null,
+        CircuitBreaker? circuitBreaker = null)
     {
         _session = session;
         _policyEvaluator = policyEvaluator;
         _auditService = auditService;
+        _circuitBreaker = circuitBreaker;
     }
 
     public async Task OnAutoFunctionInvocationAsync(
@@ -86,7 +198,8 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         Func<AutoFunctionInvocationContext, Task> next)
     {
         var functionName = context.Function.Name;
-        var tier = ToolTiers.GetValueOrDefault(functionName, SafetyTier.AlwaysConfirm);
+        var canonicalToolName = ResolvePolicyToolName(functionName);
+        var tier = ToolTiers.GetValueOrDefault(canonicalToolName, SafetyTier.AlwaysConfirm);
         var output = AgentOutput.Current;
 
         // Check if we need confirmation based on permission mode
@@ -113,7 +226,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
                 needsConfirm = !_session.SkipPermissions && !_session.AutoRunEnabled && tier switch
                 {
                     SafetyTier.AutoApprove => false,
-                    SafetyTier.ConfirmOnce => !_confirmedOnce.Contains(functionName),
+                    SafetyTier.ConfirmOnce => !_confirmedOnce.Contains(canonicalToolName),
                     SafetyTier.AlwaysConfirm => true,
                     _ => true,
                 };
@@ -143,7 +256,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         PolicyEvaluationResult? policyResult = null;
         if (_policyEvaluator is not null)
         {
-            policyResult = _policyEvaluator.EvaluateTool(functionName, new PolicyContext(
+            policyResult = _policyEvaluator.EvaluateTool(canonicalToolName, new PolicyContext(
                 ProjectPath: _session.SessionInfo?.ProjectPath));
 
             if (policyResult.Decision == PolicyDecision.Deny)
@@ -151,8 +264,42 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
                 output.RenderWarning($"Policy blocked: {functionName} — {policyResult.Reason}");
                 context.Result = new FunctionResult(context.Function, $"Blocked by policy: {policyResult.Reason}");
 
-                await EmitAuditEventAsync(functionName, context.Arguments, "denied", policyResult).ConfigureAwait(false);
+                await EmitAuditEventAsync(functionName, canonicalToolName, context.Arguments, "denied", policyResult)
+                    .ConfigureAwait(false);
                 return;
+            }
+        }
+
+        // ── Circuit breaker / loop detection ────────────────
+        if (_circuitBreaker is not null)
+        {
+            var argsHash = args.GetHashCode(StringComparison.Ordinal).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var cbResult = _circuitBreaker.Evaluate(canonicalToolName, argsHash, agentId: _session.SessionInfo?.Id);
+
+            if (cbResult.Action == CircuitAction.Block)
+            {
+                output.RenderWarning($"  ⚡ Circuit breaker: {cbResult.Message}");
+                output.RenderInfo("  💡 Hint: Try a different approach or use /circuit-reset to manually reset.");
+                context.Result = new FunctionResult(context.Function,
+                    $"Blocked by circuit breaker: {cbResult.Message}");
+
+                Telemetry.Meters.CircuitBreakerTrips.Add(1,
+                    new KeyValuePair<string, object?>("jdai.tool.name", functionName),
+                    new KeyValuePair<string, object?>("jdai.tool.canonical_name", canonicalToolName));
+
+                await EmitAuditEventAsync(functionName, canonicalToolName, context.Arguments, "circuit_breaker_block", policyResult)
+                    .ConfigureAwait(false);
+                return;
+            }
+
+            if (cbResult.Action == CircuitAction.Warn)
+            {
+                output.RenderWarning($"  ⚠ Loop warning: {cbResult.Message}");
+
+                Telemetry.Meters.LoopDetections.Add(1,
+                    new KeyValuePair<string, object?>("jdai.tool.name", functionName),
+                    new KeyValuePair<string, object?>("jdai.tool.canonical_name", canonicalToolName),
+                    new KeyValuePair<string, object?>("jdai.safety.decision", "warning"));
             }
         }
 
@@ -163,13 +310,14 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             if (!output.ConfirmToolCall(functionName, args))
             {
                 context.Result = new FunctionResult(context.Function, "User denied tool execution.");
-                await EmitAuditEventAsync(functionName, context.Arguments, "user_denied", policyResult).ConfigureAwait(false);
+                await EmitAuditEventAsync(functionName, canonicalToolName, context.Arguments, "user_denied", policyResult)
+                    .ConfigureAwait(false);
                 return;
             }
 
             if (tier == SafetyTier.ConfirmOnce)
             {
-                _confirmedOnce.Add(functionName);
+                _confirmedOnce.Add(canonicalToolName);
             }
         }
         else
@@ -180,8 +328,13 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         // ── Tool execution with OTel + timeline tracing ─────────────────
         using var activity = ToolActivity.StartActivity("jdai.tool.invoke");
         activity?.SetTag("jdai.tool.name", functionName);
+        activity?.SetTag("jdai.tool.canonical_name", canonicalToolName);
         activity?.SetTag("jdai.tool.safety_tier", tier.ToString());
         activity?.SetTag("jdai.tool.permission_mode", _session.PermissionMode.ToString());
+        if (_circuitBreaker is not null)
+        {
+            activity?.SetTag("jdai.safety.circuit_state", _circuitBreaker.State.ToString());
+        }
 
         var timeline = TraceContext.CurrentContext.Timeline;
         var timelineEntry = timeline.BeginOperation(
@@ -204,14 +357,16 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
 
         // Record metric
         JD.AI.Telemetry.Meters.ToolCalls.Add(1,
-            new KeyValuePair<string, object?>("jdai.tool.name", functionName));
+            new KeyValuePair<string, object?>("jdai.tool.name", functionName),
+            new KeyValuePair<string, object?>("jdai.tool.canonical_name", canonicalToolName));
 
         // Render tool result
         var result = context.Result.GetValue<string>() ?? context.Result.ToString() ?? "";
         output.RenderToolCall(functionName, args, result);
 
         // ── Audit ────────────────────────────────────────────
-        await EmitAuditEventAsync(functionName, context.Arguments, "ok", policyResult).ConfigureAwait(false);
+        await EmitAuditEventAsync(functionName, canonicalToolName, context.Arguments, "ok", policyResult)
+            .ConfigureAwait(false);
     }
 
     // Argument keys whose values should not be logged in audit events
@@ -219,7 +374,11 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         new(StringComparer.OrdinalIgnoreCase) { "content", "code", "input", "body", "password", "secret", "token" };
 
     private async Task EmitAuditEventAsync(
-        string toolName, KernelArguments? arguments, string status, PolicyEvaluationResult? policyResult)
+        string toolName,
+        string canonicalToolName,
+        KernelArguments? arguments,
+        string status,
+        PolicyEvaluationResult? policyResult)
     {
         if (_auditService is null) return;
 
@@ -233,10 +392,10 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         await _auditService.EmitAsync(new AuditEvent
         {
             Action = "tool.invoke",
-            Resource = toolName,
+            Resource = canonicalToolName,
             SessionId = _session.SessionInfo?.Id,
             TraceId = Activity.Current?.TraceId.ToString(),
-            Detail = $"status={status}; args={BuildRedactedArgs(arguments)}",
+            Detail = $"status={status}; alias={toolName}; canonical={canonicalToolName}; args={BuildRedactedArgs(arguments)}",
             PolicyResult = policyResult?.Decision,
             Severity = severity,
         }).ConfigureAwait(false);

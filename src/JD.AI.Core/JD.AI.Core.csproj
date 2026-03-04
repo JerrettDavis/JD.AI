@@ -33,6 +33,8 @@
     <PackageReference Include="System.Security.Cryptography.ProtectedData" />
     <PackageReference Include="YamlDotNet" />
     <PackageReference Include="HtmlAgilityPack" />
+    <PackageReference Include="UglyToad.PdfPig" />
+    <PackageReference Include="SixLabors.ImageSharp" />
     <PackageReference Include="LLamaSharp" />
     <PackageReference Include="LLamaSharp.Backend.Cpu" />
   </ItemGroup>
