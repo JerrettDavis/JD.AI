@@ -547,12 +547,16 @@ kernel.Plugins.AddFromType<ClipboardTools>("clipboard");
 kernel.Plugins.AddFromType<DiffTools>("diff");
 kernel.Plugins.AddFromType<BatchEditTools>("batchEdit");
 kernel.Plugins.AddFromObject(new MemoryTools(), "memory");
-kernel.Plugins.AddFromObject(new TaskTools(), "tasks");
+var taskTools = new TaskTools();
+kernel.Plugins.AddFromObject(taskTools, "tasks");
 var usageTools = new UsageTools();
 usageTools.SetModel(selectedModel);
 kernel.Plugins.AddFromObject(usageTools, "usage");
 kernel.Plugins.AddFromObject(
     new QuestionTools(req => QuestionnaireSession.Run(req)), "questions");
+var webSearchTools = new WebSearchTools();
+kernel.ImportPluginFromObject(webSearchTools, "WebSearchTools");
+kernel.ImportPluginFromObject(new OpenClawCompatibilityTools(taskTools, webSearchTools), "openclaw");
 
 // 7. Load Claude Code skills, plugins, and hooks if available
 var skillDirs = new[]
@@ -719,9 +723,6 @@ kernel.ImportPluginFromObject(new SubagentTools(orchestrator), "SubagentTools");
 ICheckpointStrategy checkpointStrategy = Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), ".git"))
     ? new StashCheckpointStrategy()
     : new DirectoryCheckpointStrategy();
-
-// 8e. Register web search tools
-kernel.ImportPluginFromObject(new WebSearchTools(), "WebSearchTools");
 
 // 8f. Tool filtering (--allowedTools / --disallowedTools)
 if (allowedTools is { Length: > 0 })
