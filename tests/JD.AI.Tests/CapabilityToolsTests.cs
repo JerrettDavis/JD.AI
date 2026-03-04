@@ -211,7 +211,7 @@ public class CapabilityToolsTests
 
     // ── Fake tool plugins for testing ────────────────────────
 
-    public sealed class FakeToolsA
+    internal sealed class FakeToolsA
     {
         [Microsoft.SemanticKernel.KernelFunction("read_file")]
         [System.ComponentModel.Description("Read a file from disk")]
@@ -227,7 +227,7 @@ public class CapabilityToolsTests
             => "Written";
     }
 
-    public sealed class FakeToolsB
+    internal sealed class FakeToolsB
     {
         [Microsoft.SemanticKernel.KernelFunction("git_status")]
         [System.ComponentModel.Description("Show git status")]
