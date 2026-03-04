@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using JD.AI.Agent;
+using JD.AI.Core.Agents;
 using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Config;
 using JD.AI.Core.Mcp;
@@ -805,6 +806,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             string.Equals(arg, "false", StringComparison.OrdinalIgnoreCase))
         {
             _session.SkipPermissions = true;
+            _session.PermissionMode = PermissionMode.BypassAll;
             return "⚠ Permission checks DISABLED — all tools will run without confirmation.";
         }
 
@@ -812,10 +814,34 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             string.Equals(arg, "true", StringComparison.OrdinalIgnoreCase))
         {
             _session.SkipPermissions = false;
+            _session.PermissionMode = PermissionMode.Normal;
             return "Permission checks enabled — safety tiers apply.";
         }
 
-        return $"Permission checks are {(_session.SkipPermissions ? "OFF (all skipped)" : "ON")}. Usage: /permissions [on|off]";
+        // Named permission modes
+        if (string.Equals(arg, "plan", StringComparison.OrdinalIgnoreCase))
+        {
+            _session.PermissionMode = PermissionMode.Plan;
+            _session.SkipPermissions = false;
+            return "🔒 Plan mode — read-only tools only. Write and shell operations blocked.";
+        }
+
+        if (string.Equals(arg, "acceptEdits", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(arg, "accept-edits", StringComparison.OrdinalIgnoreCase))
+        {
+            _session.PermissionMode = PermissionMode.AcceptEdits;
+            _session.SkipPermissions = false;
+            return "📝 Accept-edits mode — file writes auto-approved, shell still requires confirmation.";
+        }
+
+        if (string.Equals(arg, "normal", StringComparison.OrdinalIgnoreCase))
+        {
+            _session.PermissionMode = PermissionMode.Normal;
+            _session.SkipPermissions = false;
+            return "Permission checks enabled — safety tiers apply.";
+        }
+
+        return $"Permission mode: {_session.PermissionMode}. Usage: /permissions [on|off|plan|acceptEdits|normal]";
     }
 
     // ── Session commands ──────────────────────────────────
