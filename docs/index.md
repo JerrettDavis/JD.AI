@@ -52,7 +52,7 @@ JD.AI auto-detects available providers. No manual configuration needed.
 | **Workflows** | [Composable multi-step automation](developer-guide/workflows.md) with /workflow commands |
 | **Observability** | [OpenTelemetry tracing, metrics, health checks](operations/observability.md) |
 | **Git checkpointing** | [Safe rollback with stash/directory/commit](user-guide/checkpointing.md) strategies |
-| **Skills & plugins** | [Claude Code skills/plugins/hooks](developer-guide/plugins.md) integration |
+| **Skills & plugins** | [Native managed skills/plugins/hooks lifecycle](developer-guide/plugins.md) |
 | **Auto-update** | Check and apply updates via NuGet from your terminal |
 
 ![Subagent execution and team orchestration](images/demo-orchestration.png)
