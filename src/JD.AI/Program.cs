@@ -552,6 +552,7 @@ kernel.Plugins.AddFromType<ClipboardTools>("clipboard");
 kernel.Plugins.AddFromType<DiffTools>("diff");
 kernel.Plugins.AddFromType<BatchEditTools>("batchEdit");
 kernel.Plugins.AddFromType<MultimodalTools>("multimodal");
+kernel.Plugins.AddFromType<MigrationTools>("migration");
 kernel.Plugins.AddFromObject(new MemoryTools(), "memory");
 kernel.Plugins.AddFromObject(new TaskTools(), "tasks");
 var usageTools = new UsageTools();
