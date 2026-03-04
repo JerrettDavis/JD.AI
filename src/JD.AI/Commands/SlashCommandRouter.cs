@@ -1808,7 +1808,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             if (refreshed.Count > 0 && refreshed[0].HasMetadata)
             {
                 model = refreshed[0];
-                _session.SwitchModel(model);
+                _session.UpdateModelMetadata(model);
             }
         }
 

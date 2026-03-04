@@ -50,7 +50,8 @@ public sealed class GitWorkflowStore : IWorkflowStore
         var json = JsonSerializer.Serialize(workflow, JsonOptions);
         await File.WriteAllTextAsync(path, json, ct).ConfigureAwait(false);
 
-        var (addExit, _, addErr) = await GitHelper.RunAsync(_localCachePath, $"add \"{path}\"", ct).ConfigureAwait(false);
+        var relativePath = Path.GetRelativePath(_localCachePath, path);
+        var (addExit, _, addErr) = await GitHelper.RunAsync(_localCachePath, $"add \"{relativePath}\"", ct).ConfigureAwait(false);
         if (addExit != 0)
             throw new InvalidOperationException($"Git add failed (exit {addExit}): {addErr}");
 
@@ -146,12 +147,14 @@ public sealed class GitWorkflowStore : IWorkflowStore
         await EnsureRepoAsync(ct).ConfigureAwait(false);
         await PullAsync(ct).ConfigureAwait(false);
 
+        if (!Directory.Exists(_localCachePath))
+            return [];
+
         var allFiles = Directory.GetFiles(_localCachePath, "*.json", SearchOption.AllDirectories)
-            .Where(f => !f.Contains(Path.DirectorySeparatorChar + ".git" + Path.DirectorySeparatorChar))
+            .Where(f => !IsGitPath(f))
             .ToArray();
 
         var results = new List<SharedWorkflow>();
-        var lowerQuery = query.ToLowerInvariant();
 
         foreach (var file in allFiles)
         {
@@ -159,10 +162,10 @@ public sealed class GitWorkflowStore : IWorkflowStore
             if (workflow is null) continue;
 
             var matches =
-                workflow.Name.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase) ||
-                workflow.Description.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase) ||
-                workflow.Author.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase) ||
-                workflow.Tags.Any(t => t.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase));
+                workflow.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                workflow.Description.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                workflow.Author.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                workflow.Tags.Any(t => t.Contains(query, StringComparison.OrdinalIgnoreCase));
 
             if (matches)
                 results.Add(workflow);
@@ -272,6 +275,10 @@ public sealed class GitWorkflowStore : IWorkflowStore
         var name = Path.GetFileNameWithoutExtension(path);
         return Version.TryParse(name, out var v) ? v : new Version(0, 0, 0);
     }
+
+    private static bool IsGitPath(string path) =>
+        path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            .Any(seg => string.Equals(seg, ".git", StringComparison.Ordinal));
 
     private static async Task<SharedWorkflow?> ReadAsync(string path, CancellationToken ct)
     {

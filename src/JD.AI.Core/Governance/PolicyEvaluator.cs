@@ -105,6 +105,6 @@ public sealed class PolicyEvaluator : IPolicyEvaluator
             .Replace("\\*", ".*", StringComparison.Ordinal)
             .Replace("\\?", ".", StringComparison.Ordinal) + "$";
 
-        return Regex.IsMatch(value, regexPattern, RegexOptions.IgnoreCase);
+        return Regex.IsMatch(value, regexPattern, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
     }
 }

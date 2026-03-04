@@ -336,6 +336,14 @@ public sealed class AgentSession
     }
 
     /// <summary>
+    /// Updates only the metadata fields on the current model (no kernel rebuild or fork point).
+    /// </summary>
+    public void UpdateModelMetadata(ProviderModelInfo enrichedModel)
+    {
+        CurrentModel = enrichedModel;
+    }
+
+    /// <summary>
     /// Switches the backing LLM while preserving chat history and tools.
     /// </summary>
     public void SwitchModel(ProviderModelInfo model) => SwitchModel(model, "preserve");

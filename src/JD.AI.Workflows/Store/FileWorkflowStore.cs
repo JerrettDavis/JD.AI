@@ -116,7 +116,6 @@ public sealed class FileWorkflowStore : IWorkflowStore
 
         var allFiles = Directory.GetFiles(_baseDirectory, "*.json", SearchOption.AllDirectories);
         var results = new List<SharedWorkflow>();
-        var lowerQuery = query.ToLowerInvariant();
 
         foreach (var file in allFiles)
         {
@@ -124,10 +123,10 @@ public sealed class FileWorkflowStore : IWorkflowStore
             if (workflow is null) continue;
 
             var matches =
-                workflow.Name.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase) ||
-                workflow.Description.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase) ||
-                workflow.Author.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase) ||
-                workflow.Tags.Any(t => t.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase));
+                workflow.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                workflow.Description.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                workflow.Author.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                workflow.Tags.Any(t => t.Contains(query, StringComparison.OrdinalIgnoreCase));
 
             if (matches)
                 results.Add(workflow);
