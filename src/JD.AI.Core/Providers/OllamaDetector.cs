@@ -38,7 +38,7 @@ public sealed class OllamaDetector : IProviderDetector
                 {
                     var name = m.Name ?? "unknown";
                     var caps = await ProbeCapabilitiesAsync(name, ct).ConfigureAwait(false);
-                    return new ProviderModelInfo(name, name, ProviderName, caps);
+                    return new ProviderModelInfo(name, name, ProviderName, Capabilities: caps);
                 });
             var models = await Task.WhenAll(tasks).ConfigureAwait(false);
 

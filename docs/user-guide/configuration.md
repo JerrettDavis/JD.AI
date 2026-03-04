@@ -136,6 +136,15 @@ JD.AI stores local state in `~/.jdai/`:
 
 See [Provider Setup](provider-setup.md) for the full list of provider-specific environment variables.
 
+### Governance and workflow store
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `JDAI_ORG_CONFIG` | Path to organization policy YAML directory | — |
+| `JDAI_WORKFLOW_STORE_URL` | Git remote URL for shared workflow store | — (local file store) |
+
+See [Governance & Policies](governance.md) for the full governance configuration reference, and [Environment Variables](../reference/environment-variables.md) for the complete list.
+
 ## Runtime commands
 
 | Command | Description |
@@ -162,4 +171,7 @@ See [Prompt Caching Reference](../reference/prompt-caching.md) for thresholds an
 - [Provider Setup](provider-setup.md) — provider credentials and environment variables
 - [Sessions & History](sessions.md) — session storage and persistence
 - [Checkpointing](checkpointing.md) — checkpoint strategy configuration
+- [Governance & Policies](governance.md) — policy documents, budget limits, tool/provider restrictions
+- [Audit Logging](audit-logging.md) — audit sinks and compliance logging
+- [Shared Workflow Store](workflow-store.md) — publishing and installing shared workflows
 - [Configuration Reference](../reference/configuration.md) — full reference

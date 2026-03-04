@@ -26,5 +26,13 @@
   href: clipboard-and-input.md
 - name: Interactive Mode
   href: interactive-mode.md
+- name: Governance & Policies
+  href: governance.md
+- name: Audit Logging
+  href: audit-logging.md
+- name: Organization Instructions
+  href: org-instructions.md
+- name: Shared Workflow Store
+  href: workflow-store.md
 - name: Troubleshooting
   href: troubleshooting.md
