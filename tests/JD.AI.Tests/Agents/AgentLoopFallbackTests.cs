@@ -42,6 +42,44 @@ public sealed class AgentLoopFallbackTests
     }
 
     [Fact]
+    public void IsRetriableError_HttpRequestException500_ReturnsTrue()
+    {
+        var method = typeof(AgentLoop).GetMethod("IsRetriableError",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        Assert.NotNull(method);
+
+        var ex = new HttpRequestException("Internal Server Error", null, System.Net.HttpStatusCode.InternalServerError);
+        var result = (bool)method.Invoke(null, [ex])!;
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void IsRetriableError_InnerHttpException500_ReturnsTrue()
+    {
+        var method = typeof(AgentLoop).GetMethod("IsRetriableError",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        Assert.NotNull(method);
+
+        var inner = new HttpRequestException("500", null, System.Net.HttpStatusCode.InternalServerError);
+        var ex = new InvalidOperationException("Wrapper", inner);
+        var result = (bool)method.Invoke(null, [ex])!;
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void IsRetriableError_ModelFieldRequired_ReturnsTrue()
+    {
+        var method = typeof(AgentLoop).GetMethod("IsRetriableError",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        Assert.NotNull(method);
+
+        var ex = new InvalidOperationException(
+            "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"model: Field required\"}}");
+        var result = (bool)method.Invoke(null, [ex])!;
+        Assert.True(result);
+    }
+
+    [Fact]
     public void IsRetriableError_GenericException_ReturnsFalse()
     {
         var method = typeof(AgentLoop).GetMethod("IsRetriableError",
