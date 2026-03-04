@@ -361,6 +361,8 @@ if (noSessionPersistence)
 if (debugMode)
 {
     session.Verbose = true;
+    var parsedCategories = JD.AI.Core.Tracing.DebugLogger.ParseCategories(debugCategories);
+    JD.AI.Core.Tracing.DebugLogger.Enable(parsedCategories);
     if (!printMode)
     {
         var cats = debugCategories != null ? $" (categories: {debugCategories})" : "";

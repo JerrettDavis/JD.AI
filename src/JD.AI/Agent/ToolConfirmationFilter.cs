@@ -2,6 +2,7 @@ using System.Diagnostics;
 using JD.AI.Core.Agents;
 using JD.AI.Core.Governance;
 using JD.AI.Core.Governance.Audit;
+using JD.AI.Core.Tracing;
 using JD.AI.Tools;
 using Microsoft.SemanticKernel;
 
@@ -176,16 +177,28 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             output.RenderInfo($"  ▸ {functionName}({args})");
         }
 
-        // ── Tool execution with OTel tracing ─────────────────
+        // ── Tool execution with OTel + timeline tracing ─────────────────
         using var activity = ToolActivity.StartActivity("jdai.tool.invoke");
         activity?.SetTag("jdai.tool.name", functionName);
         activity?.SetTag("jdai.tool.safety_tier", tier.ToString());
         activity?.SetTag("jdai.tool.permission_mode", _session.PermissionMode.ToString());
+
+        var timeline = TraceContext.CurrentContext.Timeline;
+        var timelineEntry = timeline.BeginOperation(
+            $"tool.{functionName}",
+            attributes: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["safety_tier"] = tier.ToString(),
+            });
+
         var sw = Stopwatch.StartNew();
-
         await next(context).ConfigureAwait(false);
-
         sw.Stop();
+
+        timelineEntry.Complete();
+        DebugLogger.Log(DebugCategory.Tools, "{0}: args={1}, duration={2}ms",
+            functionName, args, sw.ElapsedMilliseconds);
+
         activity?.SetTag("jdai.tool.duration_ms", sw.ElapsedMilliseconds);
         activity?.SetStatus(ActivityStatusCode.Ok);
 

@@ -63,6 +63,7 @@ public static class SlashCommandCatalog
         new("/default project model", "Set project default model"),
         new("/model-info", "Show model metadata (context, cost, capabilities)"),
         new("/model-info refresh", "Force-refresh model metadata from LiteLLM"),
+        new("/trace", "Show execution timeline for the last turn"),
         new("/quit", "Exit jdai"),
         new("/exit", "Exit jdai"),
     ];
