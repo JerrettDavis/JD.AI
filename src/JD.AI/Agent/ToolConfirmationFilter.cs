@@ -1,3 +1,5 @@
+using JD.AI.Core.Governance;
+using JD.AI.Core.Governance.Audit;
 using JD.AI.Rendering;
 using JD.AI.Tools;
 using Microsoft.SemanticKernel;
@@ -5,12 +7,14 @@ using Microsoft.SemanticKernel;
 namespace JD.AI.Agent;
 
 /// <summary>
-/// SK auto-function-invocation filter that enforces safety tiers
-/// and renders tool calls to the TUI.
+/// SK auto-function-invocation filter that enforces safety tiers,
+/// policy-based governance, and renders tool calls to the TUI.
 /// </summary>
 public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
 {
     private readonly AgentSession _session;
+    private readonly IPolicyEvaluator? _policyEvaluator;
+    private readonly AuditService? _auditService;
     private readonly HashSet<string> _confirmedOnce = new(StringComparer.Ordinal);
 
     // Safety tier mappings
@@ -63,9 +67,14 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["execute_code"] = SafetyTier.AlwaysConfirm,
         };
 
-    public ToolConfirmationFilter(AgentSession session)
+    public ToolConfirmationFilter(
+        AgentSession session,
+        IPolicyEvaluator? policyEvaluator = null,
+        AuditService? auditService = null)
     {
         _session = session;
+        _policyEvaluator = policyEvaluator;
+        _auditService = auditService;
     }
 
     public async Task OnAutoFunctionInvocationAsync(
@@ -74,15 +83,6 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
     {
         var functionName = context.Function.Name;
         var tier = ToolTiers.GetValueOrDefault(functionName, SafetyTier.AlwaysConfirm);
-
-        // Check if we need confirmation
-        var needsConfirm = !_session.SkipPermissions && !_session.AutoRunEnabled && tier switch
-        {
-            SafetyTier.AutoApprove => false,
-            SafetyTier.ConfirmOnce => !_confirmedOnce.Contains(functionName),
-            SafetyTier.AlwaysConfirm => true,
-            _ => true,
-        };
 
         // Build argument summary for display
         var args = string.Join(", ", (context.Arguments ?? [])
@@ -96,12 +96,39 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
                 return $"{kv.Key}={val}";
             }));
 
+        // ── Policy evaluation ────────────────────────────────
+        PolicyEvaluationResult? policyResult = null;
+        if (_policyEvaluator is not null)
+        {
+            policyResult = _policyEvaluator.EvaluateTool(functionName, new PolicyContext(
+                ProjectPath: _session.SessionInfo?.ProjectPath));
+
+            if (policyResult.Decision == PolicyDecision.Deny)
+            {
+                ChatRenderer.RenderWarning($"Policy blocked: {functionName} — {policyResult.Reason}");
+                context.Result = new FunctionResult(context.Function, $"Blocked by policy: {policyResult.Reason}");
+
+                await EmitAuditEventAsync(functionName, args, "denied", policyResult).ConfigureAwait(false);
+                return;
+            }
+        }
+
+        // ── Safety tier confirmation ─────────────────────────
+        var needsConfirm = !_session.SkipPermissions && !_session.AutoRunEnabled && tier switch
+        {
+            SafetyTier.AutoApprove => false,
+            SafetyTier.ConfirmOnce => !_confirmedOnce.Contains(functionName),
+            SafetyTier.AlwaysConfirm => true,
+            _ => true,
+        };
+
         if (needsConfirm)
         {
             ChatRenderer.RenderWarning($"Tool: {functionName}({args})");
             if (!ChatRenderer.Confirm("Allow this tool to run?"))
             {
                 context.Result = new FunctionResult(context.Function, "User denied tool execution.");
+                await EmitAuditEventAsync(functionName, args, "user_denied", policyResult).ConfigureAwait(false);
                 return;
             }
 
@@ -120,5 +147,31 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         // Render tool result
         var result = context.Result.GetValue<string>() ?? context.Result.ToString() ?? "";
         ChatRenderer.RenderToolCall(functionName, args, result);
+
+        // ── Audit ────────────────────────────────────────────
+        await EmitAuditEventAsync(functionName, args, "ok", policyResult).ConfigureAwait(false);
+    }
+
+    private async Task EmitAuditEventAsync(
+        string toolName, string args, string status, PolicyEvaluationResult? policyResult)
+    {
+        if (_auditService is null) return;
+
+        var severity = status switch
+        {
+            "denied" => AuditSeverity.Warning,
+            "user_denied" => AuditSeverity.Info,
+            _ => AuditSeverity.Debug,
+        };
+
+        await _auditService.EmitAsync(new AuditEvent
+        {
+            Action = "tool.invoke",
+            Resource = toolName,
+            SessionId = _session.SessionInfo?.Id,
+            Detail = $"status={status}; args={args}",
+            PolicyResult = policyResult?.Decision,
+            Severity = severity,
+        }).ConfigureAwait(false);
     }
 }

@@ -1,3 +1,4 @@
+using JD.AI.Core.Governance.Audit;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Sessions;
 using JD.SemanticKernel.Extensions.Compaction;
@@ -24,6 +25,9 @@ public sealed class AgentSession
         _kernel = initialKernel;
         CurrentModel = initialModel;
     }
+
+    /// <summary>Optional audit service for emitting session lifecycle events.</summary>
+    public AuditService? AuditService { get; set; }
 
     public ChatHistory History { get; } = new();
     public ProviderModelInfo? CurrentModel { get; private set; }
@@ -173,6 +177,17 @@ public sealed class AgentSession
             ProviderName = CurrentModel?.ProviderName,
         };
         await Store.CreateSessionAsync(SessionInfo).ConfigureAwait(false);
+
+        if (AuditService is not null)
+        {
+            await AuditService.EmitAsync(new AuditEvent
+            {
+                Action = "session.create",
+                SessionId = SessionInfo.Id,
+                Resource = projectPath,
+                Severity = AuditSeverity.Info,
+            }).ConfigureAwait(false);
+        }
     }
 
     /// <summary>Export the current session to JSON.</summary>
@@ -186,6 +201,19 @@ public sealed class AgentSession
     public async Task CloseSessionAsync()
     {
         if (SessionInfo == null || Store == null) return;
+
+        if (AuditService is not null)
+        {
+            await AuditService.EmitAsync(new AuditEvent
+            {
+                Action = "session.close",
+                SessionId = SessionInfo.Id,
+                Resource = SessionInfo.ProjectPath,
+                Detail = $"turns={SessionInfo.MessageCount}; tokens={SessionInfo.TotalTokens}",
+                Severity = AuditSeverity.Info,
+            }).ConfigureAwait(false);
+        }
+
         SessionInfo.IsActive = false;
         await Store.CloseSessionAsync(SessionInfo.Id).ConfigureAwait(false);
         await ExportSessionAsync().ConfigureAwait(false);
