@@ -110,8 +110,21 @@ public sealed class SessionStore : IDisposable
 
         using var alter = conn.CreateCommand();
         alter.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {type}";
-        await alter.ExecuteNonQueryAsync().ConfigureAwait(false);
+        try
+        {
+            await alter.ExecuteNonQueryAsync().ConfigureAwait(false);
+        }
+        catch (SqliteException ex) when (IsDuplicateColumnError(ex, column))
+        {
+            // Concurrent initialization can race between PRAGMA check and ALTER.
+            // Treat "duplicate column" as success to keep initialization idempotent.
+        }
     }
+
+    private static bool IsDuplicateColumnError(SqliteException ex, string column) =>
+        ex.SqliteErrorCode == 1 &&
+        ex.Message.Contains("duplicate column name", StringComparison.OrdinalIgnoreCase) &&
+        ex.Message.Contains(column, StringComparison.OrdinalIgnoreCase);
 
     public async Task CreateSessionAsync(SessionInfo session)
     {
