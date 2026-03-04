@@ -21,6 +21,12 @@ public sealed record TuiSettings
     /// <summary>The spinner/progress display style during LLM turns.</summary>
     public SpinnerStyle SpinnerStyle { get; init; } = SpinnerStyle.Normal;
 
+    /// <summary>Maximum percentage of context window the system prompt should use (0-100). Default: 20.</summary>
+    public int SystemPromptBudgetPercent { get; init; } = 20;
+
+    /// <summary>System prompt compaction mode: Off, Auto (compact when over budget), Always.</summary>
+    public SystemPromptCompaction SystemPromptCompaction { get; init; } = SystemPromptCompaction.Off;
+
     /// <summary>Color theme used by the terminal renderer.</summary>
     public TuiTheme Theme { get; init; } = TuiTheme.DefaultDark;
 
@@ -46,7 +52,11 @@ public sealed record TuiSettings
         try
         {
             var json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize<TuiSettings>(json, JsonOptions) ?? new TuiSettings();
+            var settings = JsonSerializer.Deserialize<TuiSettings>(json, JsonOptions) ?? new TuiSettings();
+            return settings with
+            {
+                SystemPromptBudgetPercent = Math.Clamp(settings.SystemPromptBudgetPercent, 0, 100),
+            };
         }
 #pragma warning disable CA1031 // Best-effort deserialization
         catch (Exception)

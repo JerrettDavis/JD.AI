@@ -1,3 +1,4 @@
+using JD.AI.Core.Providers.Metadata;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Providers;
@@ -9,16 +10,23 @@ namespace JD.AI.Core.Providers;
 public sealed class ProviderRegistry : IProviderRegistry
 {
     private readonly IReadOnlyList<IProviderDetector> _detectors;
+    private readonly ModelMetadataProvider? _metadataProvider;
     private List<ProviderInfo>? _cached;
 
-    public ProviderRegistry(IEnumerable<IProviderDetector> detectors)
+    public ProviderRegistry(
+        IEnumerable<IProviderDetector> detectors,
+        ModelMetadataProvider? metadataProvider = null)
     {
         _detectors = detectors.ToList();
+        _metadataProvider = metadataProvider;
     }
 
     public async Task<IReadOnlyList<ProviderInfo>> DetectProvidersAsync(
         CancellationToken ct = default)
     {
+        // Kick off metadata loading concurrently with detector probes
+        var metadataTask = _metadataProvider?.LoadAsync(ct: ct);
+
         var results = new List<ProviderInfo>();
         foreach (var detector in _detectors)
         {
@@ -35,6 +43,21 @@ public sealed class ProviderRegistry : IProviderRegistry
                     IsAvailable: false,
                     StatusMessage: ex.Message,
                     Models: []));
+            }
+        }
+
+        // Await metadata and enrich models
+        if (metadataTask is not null)
+        {
+            await metadataTask.ConfigureAwait(false);
+            for (var i = 0; i < results.Count; i++)
+            {
+                var provider = results[i];
+                if (provider.IsAvailable && provider.Models.Count > 0)
+                {
+                    var enriched = _metadataProvider!.Enrich(provider.Models);
+                    results[i] = provider with { Models = enriched };
+                }
             }
         }
 

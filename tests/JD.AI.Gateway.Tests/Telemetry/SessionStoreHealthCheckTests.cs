@@ -10,16 +10,20 @@ public sealed class SessionStoreHealthCheckTests
     [Fact]
     public async Task CheckHealthAsync_WhenDbExists_ReturnsHealthy()
     {
-        // Use a temp directory for the test database
         var dbPath = Path.Combine(Path.GetTempPath(), $"jdai-test-{Guid.NewGuid():N}.db");
         try
         {
-            // Initialize DB with the sessions table
-            await using var conn = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath}");
+            // Initialize DB with the sessions table, then close before health check
+            var conn = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath}");
             await conn.OpenAsync();
-            await using var cmd = conn.CreateCommand();
+            var cmd = conn.CreateCommand();
             cmd.CommandText = "CREATE TABLE sessions (id TEXT PRIMARY KEY)";
             await cmd.ExecuteNonQueryAsync();
+            await cmd.DisposeAsync();
+            await conn.DisposeAsync();
+
+            // Clear SQLite connection pool so the file is fully released
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
 
             var check = new SessionStoreHealthCheck(dbPath);
             var result = await check.CheckHealthAsync(BuildContext());
@@ -29,6 +33,7 @@ public sealed class SessionStoreHealthCheckTests
         }
         finally
         {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             if (File.Exists(dbPath)) File.Delete(dbPath);
         }
     }
@@ -39,9 +44,13 @@ public sealed class SessionStoreHealthCheckTests
         var dbPath = Path.Combine(Path.GetTempPath(), $"jdai-test-{Guid.NewGuid():N}.db");
         try
         {
-            // Create an empty database (no tables)
-            await using var conn = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath}");
+            // Create an empty database (no tables), then close
+            var conn = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath}");
             await conn.OpenAsync();
+            await conn.DisposeAsync();
+
+            // Clear SQLite connection pool so the file is fully released
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
 
             var check = new SessionStoreHealthCheck(dbPath);
             var result = await check.CheckHealthAsync(BuildContext());
@@ -51,6 +60,7 @@ public sealed class SessionStoreHealthCheckTests
         }
         finally
         {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             if (File.Exists(dbPath)) File.Delete(dbPath);
         }
     }

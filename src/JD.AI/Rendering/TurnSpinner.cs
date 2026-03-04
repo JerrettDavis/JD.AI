@@ -70,7 +70,7 @@ internal sealed class TurnSpinner : IDisposable
         _timer.Dispose();
     }
 
-    private static string FormatElapsed(TimeSpan ts) =>
+    internal static string FormatElapsed(TimeSpan ts) =>
         ts.TotalMinutes >= 1
             ? $"{ts.Minutes}m {ts.Seconds:D2}s"
             : $"{ts.TotalSeconds:F1}s";

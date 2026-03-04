@@ -11,11 +11,13 @@ using JD.AI.Core.Plugins;
 using JD.AI.Core.PromptCaching;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Providers.Credentials;
+using JD.AI.Core.Providers.Metadata;
 using JD.AI.Core.Providers.ModelSearch;
 using JD.AI.Core.Sessions;
 using JD.AI.Core.Tools;
 using JD.AI.Rendering;
 using JD.AI.Workflows;
+using JD.AI.Workflows.Store;
 using JD.SemanticKernel.Extensions.Mcp;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -36,6 +38,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private readonly ICheckpointStrategy? _checkpointStrategy;
     private readonly PluginLoader? _pluginLoader;
     private readonly IWorkflowCatalog? _workflowCatalog;
+    private readonly IWorkflowStore? _workflowStore;
     private readonly WorkflowEmitter _workflowEmitter;
     private readonly Action<SpinnerStyle>? _onSpinnerStyleChanged;
     private readonly Func<SpinnerStyle>? _getSpinnerStyle;
@@ -48,6 +51,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private readonly Func<OutputStyle>? _getOutputStyle;
     private readonly AtomicConfigStore? _configStore;
     private readonly ModelSearchAggregator? _modelSearchAggregator;
+    private readonly ModelMetadataProvider? _metadataProvider;
 
     public SlashCommandRouter(
         AgentSession session,
@@ -62,6 +66,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         McpManager? mcpManager = null,
         AtomicConfigStore? configStore = null,
         ModelSearchAggregator? modelSearchAggregator = null,
+        IWorkflowStore? workflowStore = null,
+        ModelMetadataProvider? metadataProvider = null,
         Func<TuiTheme>? getTheme = null,
         Action<TuiTheme>? onThemeChanged = null,
         Func<bool>? getVimMode = null,
@@ -75,6 +81,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         _checkpointStrategy = checkpointStrategy;
         _pluginLoader = pluginLoader;
         _workflowCatalog = workflowCatalog;
+        _workflowStore = workflowStore;
         _workflowEmitter = new WorkflowEmitter();
         _getSpinnerStyle = getSpinnerStyle;
         _onSpinnerStyleChanged = onSpinnerStyleChanged;
@@ -88,6 +95,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         _onOutputStyleChanged = onOutputStyleChanged;
         _configStore = configStore;
         _modelSearchAggregator = modelSearchAggregator;
+        _metadataProvider = metadataProvider;
     }
 
     public bool IsSlashCommand(string input) =>
@@ -126,6 +134,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/LOCAL" or "/JDAI-LOCAL" => await HandleLocalModelAsync(arg, ct).ConfigureAwait(false),
             "/MCP" or "/JDAI-MCP" => await HandleMcpAsync(arg, ct).ConfigureAwait(false),
             "/CONTEXT" or "/JDAI-CONTEXT" => GetContextUsage(),
+            "/COMPACT-SYSTEM-PROMPT" or "/JDAI-COMPACT-SYSTEM-PROMPT" => await CompactSystemPromptAsync(arg, ct).ConfigureAwait(false),
             "/COPY" or "/JDAI-COPY" => await CopyLastResponseInstanceAsync().ConfigureAwait(false),
             "/DIFF" or "/JDAI-DIFF" => await ShowDiffAsync(ct).ConfigureAwait(false),
             "/INIT" or "/JDAI-INIT" => await InitProjectFileAsync(ct).ConfigureAwait(false),
@@ -143,6 +152,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/MEMORY" or "/JDAI-MEMORY" => await HandleMemoryAsync(arg, ct).ConfigureAwait(false),
             "/OUTPUT" or "/OUTPUT-STYLE" or "/JDAI-OUTPUT-STYLE" => HandleOutputStyle(arg),
             "/DEFAULT" or "/JDAI-DEFAULT" => await HandleDefaultAsync(arg, ct).ConfigureAwait(false),
+            "/MODEL-INFO" or "/JDAI-MODEL-INFO" => await HandleModelInfoAsync(arg, ct).ConfigureAwait(false),
             "/QUIT" or "/EXIT" or "/JDAI-QUIT" or "/JDAI-EXIT" => null, // Signal exit
             _ => $"Unknown command: {parts[0]}. Type /help for available commands.",
         };
@@ -172,11 +182,12 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /plugins        — List loaded plugins
           /checkpoint     — List, restore, or clear checkpoints
           /sandbox        — Show sandbox mode info
-          /workflow       — Manage workflows (list|show|export|replay|refine)
+          /workflow       — Manage workflows (list|show|export|replay|refine|catalog|publish|install|search|versions)
           /spinner [style] — Set progress style (none|minimal|normal|rich|nerdy)
           /local <cmd>    — Manage local models (list|add|scan|remove|search|download)
           /mcp [cmd]      — Manage MCP servers (list|add|remove|enable|disable)
           /context        — Show context window usage
+          /compact-system-prompt [off|auto|always] — Compact system prompt or set mode
           /copy           — Copy last response to clipboard
           /diff           — Show uncommitted changes
           /init           — Initialize JDAI.md project file
@@ -194,6 +205,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /memory         — View/edit project memory (JDAI.md)
           /output-style [style] — Set output format (rich|plain|compact|json)
           /default        — Manage default provider/model (global & per-project)
+          /model-info [refresh] — Show model metadata (context, cost, capabilities)
           /quit           — Exit jdai
         """;
 
@@ -1011,7 +1023,16 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "REPLAY" => "Usage: /workflow replay <name> [version]",
             "REFINE" when param is not null => RefineWorkflowInfo(param),
             "REFINE" => "Usage: /workflow refine <name>",
-            _ => "Usage: /workflow [list|show <name>|export <name> [format]|replay <name> [version]|refine <name>]",
+            "CATALOG" => await CatalogSharedWorkflowsAsync(param, ct).ConfigureAwait(false),
+            "PUBLISH" when param is not null => await PublishWorkflowAsync(param, ct).ConfigureAwait(false),
+            "PUBLISH" => "Usage: /workflow publish <name>",
+            "INSTALL" when param is not null => await InstallWorkflowAsync(param, ct).ConfigureAwait(false),
+            "INSTALL" => "Usage: /workflow install <name[@version]>",
+            "SEARCH" when param is not null => await SearchWorkflowsAsync(param, ct).ConfigureAwait(false),
+            "SEARCH" => "Usage: /workflow search <query>",
+            "VERSIONS" when param is not null => await ShowWorkflowVersionsAsync(param, ct).ConfigureAwait(false),
+            "VERSIONS" => "Usage: /workflow versions <name>",
+            _ => "Usage: /workflow [list|show <name>|export <name> [format]|replay <name> [version]|refine <name>|catalog|publish <name>|install <name[@version]>|search <query>|versions <name>]",
         };
     }
 
@@ -1080,6 +1101,132 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private static string RefineWorkflowInfo(string name) =>
         $"To refine '{name}', export it (e.g. /workflow export {name} csharp), " +
         "edit the steps, then save a new version via the agent.";
+
+    // ── Shared workflow store commands ────────────────────────
+
+    private static string WorkflowStoreNotConfigured =>
+        "Shared workflow store not configured. Inject an IWorkflowStore implementation to enable store commands.";
+
+    private async Task<string> CatalogSharedWorkflowsAsync(string? param, CancellationToken ct)
+    {
+        if (_workflowStore is null)
+            return WorkflowStoreNotConfigured;
+
+        // Parse optional tag= or author= filters from param
+        string? tag = null;
+        string? author = null;
+        if (param is not null)
+        {
+            foreach (var part in param.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (part.StartsWith("tag=", StringComparison.OrdinalIgnoreCase))
+                    tag = part[4..];
+                else if (part.StartsWith("author=", StringComparison.OrdinalIgnoreCase))
+                    author = part[7..];
+            }
+        }
+
+        var workflows = await _workflowStore.CatalogAsync(tag, author, ct).ConfigureAwait(false);
+        if (workflows.Count == 0)
+            return "No shared workflows in the store catalog.";
+
+        var lines = workflows.Select(w =>
+        {
+            var tags = w.Tags.Count > 0 ? $" [{string.Join(", ", w.Tags)}]" : "";
+            var vis = w.Visibility != WorkflowVisibility.Team ? $" ({w.Visibility})" : "";
+            return $"  {w.Name} v{w.Version}{tags}{vis} — {w.Author} — {w.Description}";
+        });
+        return $"Shared Workflow Catalog ({workflows.Count}):\n{string.Join('\n', lines)}";
+    }
+
+    private async Task<string> PublishWorkflowAsync(string name, CancellationToken ct)
+    {
+        if (_workflowStore is null)
+            return WorkflowStoreNotConfigured;
+
+        if (_workflowCatalog is null)
+            return "Workflow catalog not configured.";
+
+        var definition = await _workflowCatalog.GetAsync(name, ct: ct).ConfigureAwait(false);
+        if (definition is null)
+            return $"Workflow '{name}' not found in local catalog.";
+
+        var artifact = _workflowEmitter.Emit(definition, WorkflowExportFormat.Json);
+
+        var shared = new SharedWorkflow
+        {
+            Name = definition.Name,
+            Version = definition.Version,
+            Description = definition.Description,
+            Author = Environment.UserName,
+            PublishedAt = DateTimeOffset.UtcNow,
+            Tags = definition.Tags,
+            DefinitionJson = artifact.Content,
+        };
+
+        await _workflowStore.PublishAsync(shared, ct).ConfigureAwait(false);
+        return $"Published '{definition.Name}' v{definition.Version} to shared store.";
+    }
+
+    private async Task<string> InstallWorkflowAsync(string param, CancellationToken ct)
+    {
+        if (_workflowStore is null)
+            return WorkflowStoreNotConfigured;
+
+        // Parse name[@version]
+        string nameOrId;
+        string? version = null;
+        var atIndex = param.IndexOf('@');
+        if (atIndex >= 0)
+        {
+            nameOrId = param[..atIndex].Trim();
+            version = param[(atIndex + 1)..].Trim();
+        }
+        else
+        {
+            nameOrId = param.Trim();
+        }
+
+        var localDir = Path.Combine(DataDirectories.Root, "workflows");
+
+        var installed = await _workflowStore.InstallAsync(nameOrId, version, localDir, ct)
+            .ConfigureAwait(false);
+
+        return installed
+            ? $"Installed '{nameOrId}'{(version is not null ? $" v{version}" : "")} to {localDir}"
+            : $"Workflow '{nameOrId}'{(version is not null ? $" v{version}" : "")} not found in store.";
+    }
+
+    private async Task<string> SearchWorkflowsAsync(string query, CancellationToken ct)
+    {
+        if (_workflowStore is null)
+            return WorkflowStoreNotConfigured;
+
+        var results = await _workflowStore.SearchAsync(query, ct).ConfigureAwait(false);
+        if (results.Count == 0)
+            return $"No workflows found matching '{query}'.";
+
+        var lines = results.Select(w =>
+        {
+            var tags = w.Tags.Count > 0 ? $" [{string.Join(", ", w.Tags)}]" : "";
+            return $"  {w.Name} v{w.Version}{tags} — {w.Author} — {w.Description}";
+        });
+        return $"Search results for '{query}' ({results.Count}):\n{string.Join('\n', lines)}";
+    }
+
+    private async Task<string> ShowWorkflowVersionsAsync(string name, CancellationToken ct)
+    {
+        if (_workflowStore is null)
+            return WorkflowStoreNotConfigured;
+
+        var versions = await _workflowStore.VersionsAsync(name, ct).ConfigureAwait(false);
+        if (versions.Count == 0)
+            return $"No versions found for workflow '{name}'.";
+
+        var lines = versions.Select(w =>
+            $"  v{w.Version} — published {w.PublishedAt:yyyy-MM-dd HH:mm} UTC by {w.Author}");
+        return $"Versions of '{name}' ({versions.Count}):\n{string.Join('\n', lines)}";
+    }
 
     private static string FlattenSteps(IEnumerable<AgentStepDefinition> steps, int indent)
     {
@@ -1482,12 +1629,47 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private string GetContextUsage()
     {
         var used = JD.SemanticKernel.Extensions.Compaction.TokenEstimator.EstimateTokens(_session.History);
-        var max = 128000;
+        var max = _session.CurrentModel?.ContextWindowTokens ?? 128_000;
         var pct = (double)used / max * 100;
         var filledCount = (int)(pct / 2);
         if (filledCount > 50) filledCount = 50;
         var bar = new string('█', filledCount) + new string('░', 50 - filledCount);
         return $"Context: [{bar}] {used:N0}/{max:N0} tokens ({pct:F1}%)";
+    }
+
+    private async Task<string> CompactSystemPromptAsync(string? arg, CancellationToken ct)
+    {
+        // No arg: compact now (one-shot)
+        if (string.IsNullOrWhiteSpace(arg))
+        {
+            var contextWindow = _session.CurrentModel?.ContextWindowTokens ?? 128_000;
+            var settings = TuiSettings.Load();
+            var budgetTokens = (int)(contextWindow * (settings.SystemPromptBudgetPercent / 100.0));
+            var before = _session.SystemPromptTokens;
+
+            if (before == 0)
+                return "No system prompt to compact.";
+
+            var after = await _session.CompactSystemPromptAsync(budgetTokens, ct).ConfigureAwait(false);
+            return before == after
+                ? $"System prompt already within budget ({before:N0} tokens ≤ {budgetTokens:N0} budget)."
+                : $"System prompt compacted: {before:N0} → {after:N0} tokens (budget: {budgetTokens:N0}).";
+        }
+
+        // off/auto/always: persist setting
+        if (!Enum.TryParse<SystemPromptCompaction>(arg.Trim(), ignoreCase: true, out var mode))
+        {
+            return $"Unknown mode: '{arg}'. Available: off, auto, always";
+        }
+
+        var current = TuiSettings.Load();
+        var updated = current with { SystemPromptCompaction = mode };
+        try { updated.Save(); }
+#pragma warning disable CA1031
+        catch { /* best-effort persist */ }
+#pragma warning restore CA1031
+
+        return $"System prompt compaction set to: {mode.ToString().ToLowerInvariant()}";
     }
 
     private async Task<string> CopyLastResponseInstanceAsync()
@@ -1613,6 +1795,53 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         var forkName = cmdParts.Length > 1 ? string.Join(' ', cmdParts.Skip(1)) : null;
         var forkedSession = await _session.ForkSessionAsync(forkName).ConfigureAwait(false);
         return $"Forked to new session: {forkedSession?.Id ?? "failed"}";
+    }
+
+    private async Task<string> HandleModelInfoAsync(string? arg, CancellationToken ct)
+    {
+        var model = _session.CurrentModel;
+        if (model is null)
+            return "No model selected.";
+
+        if (string.Equals(arg?.Trim(), "refresh", StringComparison.OrdinalIgnoreCase)
+            && _metadataProvider is not null)
+        {
+            await _metadataProvider.LoadAsync(forceRefresh: true, ct).ConfigureAwait(false);
+            var refreshed = _metadataProvider.Enrich([model]);
+            if (refreshed.Count > 0 && refreshed[0].HasMetadata)
+            {
+                model = refreshed[0];
+                _session.UpdateModelMetadata(model);
+            }
+        }
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("=== Model Info ===");
+        sb.AppendLine($"  Name:           {model.DisplayName}");
+        sb.AppendLine($"  Provider:       {model.ProviderName}");
+        sb.AppendLine($"  ID:             {model.Id}");
+        sb.AppendLine($"  Context window: {model.ContextWindowTokens:N0} tokens");
+        sb.AppendLine($"  Max output:     {model.MaxOutputTokens:N0} tokens");
+
+        if (model.HasMetadata)
+        {
+            sb.AppendLine($"  Input cost:     ${model.InputCostPerToken}/token");
+            sb.AppendLine($"  Output cost:    ${model.OutputCostPerToken}/token");
+            sb.AppendLine($"  Source:         LiteLLM catalog");
+        }
+        else
+        {
+            sb.AppendLine("  Cost data:      Not available (using defaults)");
+        }
+
+        if (_metadataProvider is not null)
+        {
+            sb.AppendLine($"  Catalog size:   {_metadataProvider.EntryCount:N0} models");
+            if (_metadataProvider.LastFetched is { } fetched)
+                sb.AppendLine($"  Last fetched:   {fetched:yyyy-MM-dd HH:mm} UTC");
+        }
+
+        return sb.ToString();
     }
 
     // ── /review, /security-review ──────────────────────────

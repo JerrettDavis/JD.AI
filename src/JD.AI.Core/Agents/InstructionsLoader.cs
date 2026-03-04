@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using JD.AI.Core.Config;
 
 namespace JD.AI.Core.Agents;
 
@@ -21,12 +22,31 @@ public static class InstructionsLoader
     /// <summary>
     /// Scans from <paramref name="startDir"/> up to the git root for instruction files.
     /// Returns merged content from all found files, with JDAI.md content first.
+    /// Org-level instructions (from <see cref="DataDirectories.OrgConfigPath"/>) are prepended.
     /// </summary>
     public static InstructionsResult Load(string? startDir = null)
     {
         startDir ??= Directory.GetCurrentDirectory();
         var result = new InstructionsResult();
 
+        // 1. Organization-level instructions (prepended)
+        var orgPath = DataDirectories.OrgConfigPath;
+        if (orgPath is not null)
+        {
+            foreach (var fileName in InstructionFileNames)
+            {
+                var path = Path.Combine(orgPath, fileName);
+                if (!File.Exists(path)) continue;
+
+                var content = File.ReadAllText(path);
+                if (string.IsNullOrWhiteSpace(content)) continue;
+
+                content = ProcessIncludes(content, Path.GetDirectoryName(path)!);
+                result.Add(new InstructionFile($"org:{fileName}", path, content));
+            }
+        }
+
+        // 2. Project-level instructions (existing behavior)
         var directories = GetDirectoryChain(startDir);
 
         foreach (var fileName in InstructionFileNames)

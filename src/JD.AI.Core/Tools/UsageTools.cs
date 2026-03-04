@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text;
+using JD.AI.Core.Providers;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -13,6 +14,12 @@ public sealed class UsageTools
     private long _completionTokens;
     private int _toolCalls;
     private int _turns;
+    private ProviderModelInfo? _currentModel;
+
+    /// <summary>
+    /// Sets the current model for accurate cost calculation when metadata is available.
+    /// </summary>
+    public void SetModel(ProviderModelInfo model) => _currentModel = model;
 
     /// <summary>
     /// Records token usage for a turn. Called by the agent loop after each response.
@@ -46,22 +53,35 @@ public sealed class UsageTools
         sb.AppendLine($"Total tokens: {total:N0}");
         sb.AppendLine($"Tool calls: {tools}");
         sb.AppendLine();
-        sb.AppendLine("=== Estimated Cost ===");
 
-        // Common pricing tiers (approximate, may be outdated)
-        var costs = new (string Model, decimal PromptPer1K, decimal CompletionPer1K)[]
+        if (_currentModel?.HasMetadata == true)
         {
-            ("Claude Sonnet 4", 0.003m, 0.015m),
-            ("Claude Haiku 4", 0.0008m, 0.004m),
-            ("GPT-4.1", 0.002m, 0.008m),
-            ("GPT-5-mini", 0.00015m, 0.0006m),
-            ("Local (Ollama/LLamaSharp)", 0m, 0m),
-        };
+            sb.AppendLine($"=== Cost ({_currentModel.DisplayName}) ===");
+            var cost = (prompt * _currentModel.InputCostPerToken)
+                     + (completion * _currentModel.OutputCostPerToken);
+            sb.AppendLine($"  Input:  ${prompt * _currentModel.InputCostPerToken:F6}");
+            sb.AppendLine($"  Output: ${completion * _currentModel.OutputCostPerToken:F6}");
+            sb.AppendLine($"  Total:  ${cost:F6}");
+        }
+        else
+        {
+            sb.AppendLine("=== Estimated Cost ===");
 
-        foreach (var (model, promptRate, completionRate) in costs)
-        {
-            var cost = (prompt / 1000m * promptRate) + (completion / 1000m * completionRate);
-            sb.AppendLine($"  {model}: ${cost:F4}");
+            // Common pricing tiers (approximate, may be outdated)
+            var costs = new (string Model, decimal PromptPer1K, decimal CompletionPer1K)[]
+            {
+                ("Claude Sonnet 4", 0.003m, 0.015m),
+                ("Claude Haiku 4", 0.0008m, 0.004m),
+                ("GPT-4.1", 0.002m, 0.008m),
+                ("GPT-5-mini", 0.00015m, 0.0006m),
+                ("Local (Ollama/LLamaSharp)", 0m, 0m),
+            };
+
+            foreach (var (model, promptRate, completionRate) in costs)
+            {
+                var cost = (prompt / 1000m * promptRate) + (completion / 1000m * completionRate);
+                sb.AppendLine($"  {model}: ${cost:F4}");
+            }
         }
 
         return sb.ToString();
