@@ -108,8 +108,8 @@ const screenshots = [
         '  [green]✅[/green] [bold]Claude Code[/bold]: Authenticated',
         '  [green]✅[/green] [bold]GitHub Copilot[/bold]: Authenticated — 3 model(s)',
         '  [green]✅[/green] [bold]Ollama[/bold]: 59 model(s) available',
-        '  [dim]Loaded skills from ~/.claude/skills[/dim]',
-        '  [dim]Loaded plugins from ~/.claude/plugins[/dim]',
+        '  [dim]Loaded skills from ~/.jdai/skills[/dim]',
+        '  [dim]Loaded plugins from ~/.jdai/plugins[/dim]',
       ]),
       box('Welcome', [
         '[bold]jdai[/bold] — Semantic Kernel TUI Agent',

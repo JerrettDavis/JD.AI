@@ -218,16 +218,54 @@ plugins/
 
 ## File-based skills
 
-Skills are markdown files (`SKILL.md`) that provide instructions and context to the AI agent. JD.AI loads skills through the `JD.SemanticKernel.Extensions` bridge.
+Skills are markdown files (`SKILL.md`) that provide instructions and context to the AI agent. JD.AI loads skills through a native lifecycle manager with deterministic precedence, schema validation, eligibility gating, and hot reload.
 
-### Skill locations
+### Skill source precedence
 
 | Location | Path | Scope |
 |----------|------|-------|
-| Personal | `~/.claude/skills/<name>/SKILL.md` | All projects |
-| Project | `.claude/skills/<name>/SKILL.md` | This project only |
+| Bundled | `<install>/skills/<name>/SKILL.md` | Product-shipped baseline |
+| Managed | `~/.jdai/skills/<name>/SKILL.md` | User-global skills |
+| Workspace | `.jdai/skills/<name>/SKILL.md` | Repository-local skills |
+| Legacy (compat) | `~/.claude/skills/<name>/SKILL.md` | Imported with lower precedence |
+| Legacy (compat) | `.claude/skills/<name>/SKILL.md` | Imported with lower precedence |
 
-Project skills take precedence when names collide.
+When two skills share the same `name`, precedence is `workspace > managed > bundled`, then source order as a tie-breaker. Lower-precedence duplicates are retained in status output as `shadowed`.
+
+### Runtime config (`skills.json`)
+
+| Location | Path | Scope |
+|----------|------|-------|
+| User | `~/.jdai/skills.json` | User-wide skill policy and entries |
+| Workspace | `.jdai/skills.json` | Repo-local overrides |
+
+```json
+{
+  "skills": {
+    "load": {
+      "watch": true,
+      "watchDebounceMs": 250
+    },
+    "allowBundled": ["code-review"],
+    "entries": {
+      "my-skill": {
+        "enabled": true,
+        "apiKey": "env-or-secret-source",
+        "env": {
+          "MY_TOKEN": "value"
+        },
+        "config": {
+          "feature": {
+            "enabled": true
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+`allowBundled` is optional and only applies to bundled skills. When present, bundled skills not listed are excluded.
 
 ### SKILL.md format
 
@@ -252,10 +290,42 @@ When reviewing code:
 
 At startup, JD.AI:
 
-1. Scans `~/.claude/skills/` for personal skills
-2. Scans `.claude/skills/` in the project directory
-3. Parses YAML frontmatter (`name`, `description`, `allowed-tools`)
-4. Registers each skill as available context
+1. Discovers `SKILL.md` files from bundled, managed, workspace, and legacy compatibility sources
+2. Parses and schema-validates frontmatter
+3. Resolves conflicts by precedence
+4. Applies eligibility gates (`os`, `requires.bins`, `requires.anyBins`, `requires.env`, `requires.config`, and config-based disable)
+5. Registers only eligible skills into the runtime plugin set
+
+### Frontmatter metadata gates
+
+JD.AI supports provider metadata under `metadata.jdai` (or `metadata.openclaw` for compatibility):
+
+- `skillKey`
+- `always`
+- `primaryEnv`
+- `os`
+- `requires.bins`
+- `requires.anyBins`
+- `requires.env`
+- `requires.config`
+
+Unknown keys are rejected as invalid schema and surfaced in status output.
+
+### Status and reload commands
+
+Use interactive commands to inspect and refresh skills:
+
+```text
+/skills          # same as /skills status
+/skills status   # deterministic eligibility report
+/skills reload   # force refresh from filesystem/config
+```
+
+The status report includes explicit states (`active`, `excluded`, `shadowed`, `invalid`) with reason codes.
+
+### Run-scoped environment injection
+
+Environment variables configured in `skills.json` are injected only for the current turn execution scope and restored immediately after the run completes. Values are not persisted to transcript history.
 
 ### Semantic Kernel mapping
 
@@ -308,7 +378,7 @@ LLM tool_call → PreToolUse hooks → Tool execution → PostToolUse hooks → 
 ### Plugin directory with hooks
 
 ```text
-.claude/plugins/my-plugin/
+.jdai/plugins/my-plugin/
 ├── plugin.json              # Manifest
 ├── skills/
 │   └── my-skill/SKILL.md   # Plugin skills
