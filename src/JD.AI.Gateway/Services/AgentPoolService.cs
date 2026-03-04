@@ -124,10 +124,11 @@ public sealed class AgentPoolService : IHostedService
             // Cancellations are not actionable failures; leave span status as Unset.
             throw;
         }
-        catch
+        catch (Exception ex)
         {
             sw.Stop();
-            turnActivity?.SetStatus(ActivityStatusCode.Error);
+            turnActivity?.AddException(ex);
+            turnActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             Meters.ProviderErrors.Add(1,
                 new KeyValuePair<string, object?>("gen_ai.system", agent.Provider));
             throw;
@@ -173,6 +174,7 @@ public sealed class AgentPoolService : IHostedService
             catch (Exception ex) when (attempt < MaxRetries && IsTransientOllamaError(ex) && !ct.IsCancellationRequested)
             {
                 sw.Stop();
+                providerActivity?.AddException(ex);
                 providerActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
 
                 var delay = BaseRetryDelay * Math.Pow(2, attempt);
@@ -189,6 +191,7 @@ public sealed class AgentPoolService : IHostedService
             catch (Exception ex)
             {
                 sw.Stop();
+                providerActivity?.AddException(ex);
                 providerActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                 throw;
             }

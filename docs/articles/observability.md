@@ -82,6 +82,7 @@ Telemetry is configured under `Gateway:Telemetry`:
 | `Enabled` | `bool` | `true` | Set `false` to disable all OTel instrumentation |
 | `ServiceName` | `string` | `"jdai"` | Logical service name in traces and metrics. Overridden by `OTEL_SERVICE_NAME` if set. |
 | `Exporter` | `string` | `"console"` | See exporter table below |
+| `OtlpProtocol` | `string` | `"grpc"` | OTLP transport: `"grpc"` (port 4317) or `"http"` (HTTP/protobuf, port 4318). Only used when `Exporter` is `"otlp"`. |
 | `Endpoint` | `string?` | `null` | Exporter endpoint URI; uses exporter default if absent or invalid |
 
 #### Exporters
@@ -89,7 +90,7 @@ Telemetry is configured under `Gateway:Telemetry`:
 | `Exporter` value | Traces | Metrics | Notes |
 |---|---|---|---|
 | `"console"` | ✔ stdout | ✔ stdout | Default; useful for development |
-| `"otlp"` | ✔ OTLP/gRPC | ✔ OTLP/gRPC | Connects to Jaeger, Grafana, Honeycomb, etc. |
+| `"otlp"` | ✔ OTLP | ✔ OTLP | Connects to Jaeger, Grafana, Honeycomb, etc. Protocol set by `OtlpProtocol` (`"grpc"` or `"http"`). |
 | `"zipkin"` | ✔ Zipkin HTTP | ✔ console | Zipkin does not support metrics; metrics fall back to console |
 
 #### Environment variables
@@ -107,12 +108,17 @@ Standard OpenTelemetry environment variables take precedence over `appsettings.j
 # Start Jaeger all-in-one
 docker run -d --name jaeger \
   -p 4317:4317 \
+  -p 4318:4318 \
   -p 16686:16686 \
   jaegertracing/all-in-one:latest
 
-# Point JD.AI at it
+# Option 1: OTLP/gRPC (default)
 export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 dotnet run --project src/JD.AI.Gateway
+
+# Option 2: OTLP/HTTP/protobuf
+# Gateway:Telemetry:OtlpProtocol=http
+# OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 ```
 
 Open the Jaeger UI at `http://localhost:16686` and search for service `jdai`.

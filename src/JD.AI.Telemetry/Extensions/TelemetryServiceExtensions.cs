@@ -2,6 +2,7 @@ using JD.AI.Core.Config;
 using JD.AI.Telemetry.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -91,6 +92,7 @@ public static class TelemetryServiceExtensions
                 {
                     if (TryParseEndpoint(endpoint, out var uri))
                         o.Endpoint = uri;
+                    o.Protocol = ResolveOtlpProtocol(config);
                 });
                 break;
 
@@ -120,6 +122,7 @@ public static class TelemetryServiceExtensions
                 {
                     if (TryParseEndpoint(endpoint, out var uri))
                         o.Endpoint = uri;
+                    o.Protocol = ResolveOtlpProtocol(config);
                 });
                 break;
 
@@ -133,6 +136,17 @@ public static class TelemetryServiceExtensions
                 break;
         }
     }
+
+    /// <summary>
+    /// Maps <see cref="TelemetryConfig.OtlpProtocol"/> to the <see cref="OtlpExportProtocol"/>
+    /// enum value.  Defaults to gRPC when the configured value is absent or unrecognized.
+    /// </summary>
+    private static OtlpExportProtocol ResolveOtlpProtocol(TelemetryConfig config) =>
+        config.OtlpProtocol?.Trim().ToLowerInvariant() switch
+        {
+            "http" or "http/protobuf" => OtlpExportProtocol.HttpProtobuf,
+            _ => OtlpExportProtocol.Grpc,
+        };
 
     /// <summary>
     /// Returns <c>true</c> and the parsed <paramref name="uri"/> when
