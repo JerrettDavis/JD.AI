@@ -543,6 +543,7 @@ kernel.Plugins.AddFromType<ShellTools>("shell");
 kernel.Plugins.AddFromType<GitTools>("git");
 kernel.Plugins.AddFromType<GitHubTools>("github");
 kernel.Plugins.AddFromType<WebTools>("web");
+kernel.Plugins.AddFromType<BrowserTools>("browser");
 kernel.Plugins.AddFromType<ThinkTools>("think");
 kernel.Plugins.AddFromType<EnvironmentTools>("environment");
 kernel.Plugins.AddFromType<NotebookTools>("notebook");
