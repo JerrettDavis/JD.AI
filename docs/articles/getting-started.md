@@ -310,6 +310,7 @@ Create a `JDAI.md` file in your repository root to set project-specific instruct
 ## What's next
 
 - [Quickstart](quickstart.md) — Walk through your first real task
+- [Interactive Mode](interactive-mode.md) — Prompt controls, keybindings, and streaming interactions
 - [Best Practices](best-practices.md) — Tips for effective prompting
-- [Commands Reference](commands-reference.md) — All 23+ slash commands
+- [Commands Reference](commands-reference.md) — All 35+ slash commands
 - [Providers](providers.md) — Detailed provider documentation

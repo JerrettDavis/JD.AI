@@ -26,6 +26,16 @@ public sealed class CompletionProviderTests
         provider.Register("/instructions", "Show loaded project instructions");
         provider.Register("/checkpoint", "List, restore, or clear checkpoints");
         provider.Register("/sandbox", "Show or change sandbox mode");
+        provider.Register("/review", "Review current code changes");
+        provider.Register("/security-review", "Run a security-focused code review");
+        provider.Register("/theme", "Set terminal theme");
+        provider.Register("/vim", "Toggle vim editing mode");
+        provider.Register("/stats", "Show session and historical stats");
+        provider.Register("/config", "Manage settings");
+        provider.Register("/agents", "Manage agent profiles");
+        provider.Register("/hooks", "Manage hook profiles");
+        provider.Register("/memory", "View or edit JDAI.md");
+        provider.Register("/output-style", "Set output rendering style");
         provider.Register("/quit", "Exit jdai");
         provider.Register("/exit", "Exit jdai");
         return provider;
@@ -50,7 +60,7 @@ public sealed class CompletionProviderTests
     {
         var provider = BuildProvider();
         var results = provider.GetCompletions("/");
-        Assert.Equal(21, results.Count);
+        Assert.Equal(31, results.Count);
     }
 
     [Fact]
@@ -87,9 +97,10 @@ public sealed class CompletionProviderTests
     {
         var provider = BuildProvider();
         var results = provider.GetCompletions("/H");
-        Assert.Equal(2, results.Count);
+        Assert.Equal(3, results.Count);
         Assert.Contains(results, r => string.Equals(r.Text, "/help", StringComparison.Ordinal));
         Assert.Contains(results, r => string.Equals(r.Text, "/history", StringComparison.Ordinal));
+        Assert.Contains(results, r => string.Equals(r.Text, "/hooks", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -122,18 +133,19 @@ public sealed class CompletionProviderTests
     {
         var provider = BuildProvider();
         var results = provider.GetCompletions("/co");
-        // /compact, /cost
+        // /compact, /config, /cost
         Assert.Equal("/compact", results[0].Text);
-        Assert.Equal("/cost", results[1].Text);
+        Assert.Equal("/config", results[1].Text);
+        Assert.Equal("/cost", results[2].Text);
     }
 
     [Fact]
-    public void GetCompletions_SlashC_Returns4Items()
+    public void GetCompletions_SlashC_Returns5Items()
     {
         var provider = BuildProvider();
         var results = provider.GetCompletions("/c");
-        // /clear, /compact, /cost, /checkpoint
-        Assert.Equal(4, results.Count);
+        // /checkpoint, /clear, /compact, /config, /cost
+        Assert.Equal(5, results.Count);
     }
 
     [Fact]
