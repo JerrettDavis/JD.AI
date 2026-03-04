@@ -191,6 +191,8 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["run_command"] = SafetyTier.AlwaysConfirm,
             ["web_search"] = SafetyTier.AlwaysConfirm,
             ["execute_code"] = SafetyTier.AlwaysConfirm,
+            ["exec"] = SafetyTier.AlwaysConfirm,
+            ["process"] = SafetyTier.AlwaysConfirm,
         };
 
     internal static string ResolvePolicyToolName(string functionName) =>
