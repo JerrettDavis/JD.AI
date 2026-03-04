@@ -122,6 +122,13 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["mcp_credential_status"] = SafetyTier.AutoApprove,
             ["mcp_export_config"] = SafetyTier.AutoApprove,
 
+            // MCP ecosystem tools — read-only except sync
+            ["mcp_import_scan"] = SafetyTier.AutoApprove,
+            ["mcp_drift"] = SafetyTier.AutoApprove,
+            ["mcp_quarantine"] = SafetyTier.AutoApprove,
+            ["mcp_ecosystem_export"] = SafetyTier.AutoApprove,
+            ["mcp_sync"] = SafetyTier.ConfirmOnce, // writes config
+
             // Write ops — confirm once per session
             ["write_file"] = SafetyTier.ConfirmOnce,
             ["edit_file"] = SafetyTier.ConfirmOnce,
