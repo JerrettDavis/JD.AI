@@ -72,6 +72,9 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["github_run_details"] = SafetyTier.AutoApprove,
             ["github_list_releases"] = SafetyTier.AutoApprove,
             ["github_auth_status"] = SafetyTier.AutoApprove,
+            ["image_analyze"] = SafetyTier.AutoApprove,
+            ["pdf_analyze"] = SafetyTier.AutoApprove,
+            ["media_view"] = SafetyTier.AutoApprove,
 
             // Write ops — confirm once per session
             ["write_file"] = SafetyTier.ConfirmOnce,
