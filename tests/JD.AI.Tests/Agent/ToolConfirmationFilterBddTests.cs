@@ -155,10 +155,10 @@ public sealed class ToolConfirmationFilterBddTests : TinyBddXunitBase
         string? result = null;
 
         await Given("arguments with mixed keys", () => new KernelArguments
-            {
-                ["query"] = "search term",
-                ["password"] = "s3cret"
-            })
+        {
+            ["query"] = "search term",
+            ["password"] = "s3cret"
+        })
             .When("building redacted args", args =>
             {
                 result = ToolConfirmationFilter.BuildRedactedArgs(args);
