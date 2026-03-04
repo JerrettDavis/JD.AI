@@ -397,3 +397,224 @@ public sealed class MapReduceStrategyTests
         Assert.Equal(4, strategy.MaxParallelism);
     }
 }
+
+public sealed class BlackboardStrategyTests
+{
+    private readonly ISubagentExecutor _executor = Substitute.For<ISubagentExecutor>();
+    private readonly AgentSession _session;
+
+    public BlackboardStrategyTests()
+    {
+        var registry = Substitute.For<IProviderRegistry>();
+        var kernel = Kernel.CreateBuilder().Build();
+        var model = new ProviderModelInfo("test", "Test", "TestProvider");
+        _session = new AgentSession(registry, kernel, model);
+    }
+
+    [Fact]
+    public void Name_ReturnsBlackboard()
+    {
+        var strategy = new BlackboardStrategy();
+        Assert.Equal("blackboard", strategy.Name);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_AllAgentsContribute()
+    {
+        var strategy = new BlackboardStrategy { MaxIterations = 1 };
+        var context = new TeamContext("Analyze this system");
+
+        var agents = new List<SubagentConfig>
+        {
+            new() { Name = "arch", Prompt = "analyze", Perspective = "architecture" },
+            new() { Name = "sec", Prompt = "analyze", Perspective = "security" },
+        };
+
+        _executor.ExecuteAsync(Arg.Any<SubagentConfig>(), Arg.Any<AgentSession>(),
+                Arg.Any<TeamContext>(), Arg.Any<Action<SubagentProgress>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var name = callInfo.Arg<SubagentConfig>().Name;
+                return new AgentResult
+                {
+                    AgentName = name,
+                    Output = $"Analysis from {name}",
+                    Success = true,
+                };
+            });
+
+        var result = await strategy.ExecuteAsync(agents, context, _executor, _session);
+
+        Assert.True(result.Success);
+        Assert.Equal("blackboard", result.Strategy);
+        Assert.Contains("Analysis from arch", result.Output);
+        Assert.Contains("Analysis from sec", result.Output);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConvergesWhenAllSignal()
+    {
+        var strategy = new BlackboardStrategy { MaxIterations = 3 };
+        var context = new TeamContext("Analyze");
+
+        var agents = new List<SubagentConfig>
+        {
+            new() { Name = "agent1", Prompt = "analyze" },
+        };
+
+        _executor.ExecuteAsync(Arg.Any<SubagentConfig>(), Arg.Any<AgentSession>(),
+                Arg.Any<TeamContext>(), Arg.Any<Action<SubagentProgress>>(), Arg.Any<CancellationToken>())
+            .Returns(new AgentResult { AgentName = "agent1", Output = "[CONVERGED]", Success = true });
+
+        var result = await strategy.ExecuteAsync(agents, context, _executor, _session);
+
+        Assert.True(result.Success);
+        // Should have only 1 call since it converged immediately
+        await _executor.Received(1).ExecuteAsync(
+            Arg.Any<SubagentConfig>(), Arg.Any<AgentSession>(),
+            Arg.Any<TeamContext>(), Arg.Any<Action<SubagentProgress>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WritesScratchpad()
+    {
+        var strategy = new BlackboardStrategy { MaxIterations = 1 };
+        var context = new TeamContext("Test");
+
+        var agents = new List<SubagentConfig>
+        {
+            new() { Name = "agent1", Prompt = "test" },
+        };
+
+        _executor.ExecuteAsync(Arg.Any<SubagentConfig>(), Arg.Any<AgentSession>(),
+                Arg.Any<TeamContext>(), Arg.Any<Action<SubagentProgress>>(), Arg.Any<CancellationToken>())
+            .Returns(new AgentResult { AgentName = "agent1", Output = "contribution", Success = true });
+
+        await strategy.ExecuteAsync(agents, context, _executor, _session);
+
+        Assert.NotNull(context.ReadScratchpad("blackboard:0:agent1"));
+        Assert.NotNull(context.ReadScratchpad("blackboard:state"));
+    }
+
+    [Fact]
+    public void MaxIterations_DefaultsToThree()
+    {
+        var strategy = new BlackboardStrategy();
+        Assert.Equal(3, strategy.MaxIterations);
+    }
+}
+
+public sealed class PipelineStrategyTests
+{
+    private readonly ISubagentExecutor _executor = Substitute.For<ISubagentExecutor>();
+    private readonly AgentSession _session;
+
+    public PipelineStrategyTests()
+    {
+        var registry = Substitute.For<IProviderRegistry>();
+        var kernel = Kernel.CreateBuilder().Build();
+        var model = new ProviderModelInfo("test", "Test", "TestProvider");
+        _session = new AgentSession(registry, kernel, model);
+    }
+
+    [Fact]
+    public void Name_ReturnsPipeline()
+    {
+        var strategy = new PipelineStrategy();
+        Assert.Equal("pipeline", strategy.Name);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_PassesOutputBetweenStages()
+    {
+        var strategy = new PipelineStrategy();
+        var context = new TeamContext("raw data");
+
+        var agents = new List<SubagentConfig>
+        {
+            new() { Name = "parser", Prompt = "parse", Perspective = "data parsing" },
+            new() { Name = "analyzer", Prompt = "analyze", Perspective = "data analysis" },
+            new() { Name = "formatter", Prompt = "format", Perspective = "output formatting" },
+        };
+
+        _executor.ExecuteAsync(Arg.Any<SubagentConfig>(), Arg.Any<AgentSession>(),
+                Arg.Any<TeamContext>(), Arg.Any<Action<SubagentProgress>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var name = callInfo.Arg<SubagentConfig>().Name;
+                return new AgentResult
+                {
+                    AgentName = name,
+                    Output = $"processed-by-{name}",
+                    Success = true,
+                };
+            });
+
+        var result = await strategy.ExecuteAsync(agents, context, _executor, _session);
+
+        Assert.True(result.Success);
+        Assert.Equal("pipeline", result.Strategy);
+        Assert.Equal(3, result.AgentResults.Count);
+        Assert.Equal("processed-by-formatter", result.Output);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_FailFast_HaltsOnFailure()
+    {
+        var strategy = new PipelineStrategy { FailFast = true };
+        var context = new TeamContext("input");
+
+        var agents = new List<SubagentConfig>
+        {
+            new() { Name = "stage1", Prompt = "process" },
+            new() { Name = "stage2", Prompt = "process" },
+            new() { Name = "stage3", Prompt = "process" },
+        };
+
+        _executor.ExecuteAsync(Arg.Any<SubagentConfig>(), Arg.Any<AgentSession>(),
+                Arg.Any<TeamContext>(), Arg.Any<Action<SubagentProgress>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var name = callInfo.Arg<SubagentConfig>().Name;
+                return new AgentResult
+                {
+                    AgentName = name,
+                    Output = $"out-{name}",
+                    Success = !string.Equals(name, "stage2", StringComparison.Ordinal), // stage2 fails
+                };
+            });
+
+        var result = await strategy.ExecuteAsync(agents, context, _executor, _session);
+
+        Assert.False(result.Success);
+        Assert.Equal(2, result.AgentResults.Count); // stage3 never ran
+        Assert.Contains("failed", result.Output);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WritesScratchpad()
+    {
+        var strategy = new PipelineStrategy();
+        var context = new TeamContext("input");
+
+        var agents = new List<SubagentConfig>
+        {
+            new() { Name = "s1", Prompt = "process" },
+        };
+
+        _executor.ExecuteAsync(Arg.Any<SubagentConfig>(), Arg.Any<AgentSession>(),
+                Arg.Any<TeamContext>(), Arg.Any<Action<SubagentProgress>>(), Arg.Any<CancellationToken>())
+            .Returns(new AgentResult { AgentName = "s1", Output = "result", Success = true });
+
+        await strategy.ExecuteAsync(agents, context, _executor, _session);
+
+        Assert.Equal("result", context.ReadScratchpad("pipeline:0:s1"));
+    }
+
+    [Fact]
+    public void FailFast_DefaultsToTrue()
+    {
+        var strategy = new PipelineStrategy();
+        Assert.True(strategy.FailFast);
+    }
+}

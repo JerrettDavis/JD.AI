@@ -1266,6 +1266,12 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "LIST" or "" => await ListWorkflowsAsync(ct).ConfigureAwait(false),
             "SHOW" when param is not null => await ShowWorkflowAsync(param, ct).ConfigureAwait(false),
             "SHOW" => "Usage: /workflow show <name>",
+            "CREATE" when param is not null => await CreateWorkflowAsync(param, ct).ConfigureAwait(false),
+            "CREATE" => "Usage: /workflow create <description>  — Generate a workflow from a natural language description",
+            "COMPOSE" when param is not null => await ComposeWorkflowsAsync(param, ct).ConfigureAwait(false),
+            "COMPOSE" => "Usage: /workflow compose <name> <workflow1> <workflow2> [...]  — Combine workflows",
+            "DRY-RUN" or "DRYRUN" when param is not null => await DryRunWorkflowAsync(param, ct).ConfigureAwait(false),
+            "DRY-RUN" or "DRYRUN" => "Usage: /workflow dry-run <name>  — Preview workflow execution without running",
             "EXPORT" when param is not null => await ExportWorkflowAsync(param, ct).ConfigureAwait(false),
             "EXPORT" => "Usage: /workflow export <name> [json|csharp|mermaid]",
             "REPLAY" when param is not null => await ReplayWorkflowAsync(param, ct).ConfigureAwait(false),
@@ -1281,7 +1287,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "SEARCH" => "Usage: /workflow search <query>",
             "VERSIONS" when param is not null => await ShowWorkflowVersionsAsync(param, ct).ConfigureAwait(false),
             "VERSIONS" => "Usage: /workflow versions <name>",
-            _ => "Usage: /workflow [list|show <name>|export <name> [format]|replay <name> [version]|refine <name>|catalog|publish <name>|install <name[@version]>|search <query>|versions <name>]",
+            _ => "Usage: /workflow [list|show|create|compose|dry-run|export|replay|refine|catalog|publish|install|search|versions]",
         };
     }
 
@@ -1498,6 +1504,111 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         }
 
         return sb.ToString();
+    }
+
+    private async Task<string> CreateWorkflowAsync(string description, CancellationToken ct)
+    {
+        // Parse optional --name flag: /workflow create --name my-wf Build, test, deploy
+        string? name = null;
+        var desc = description;
+        if (desc.StartsWith("--name ", StringComparison.OrdinalIgnoreCase))
+        {
+            var parts = desc.Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length >= 3)
+            {
+                name = parts[1];
+                desc = parts[2];
+            }
+        }
+
+        var generator = new WorkflowGenerator();
+        var workflow = generator.Generate(desc, name);
+
+        await _workflowCatalog!.SaveAsync(workflow, ct).ConfigureAwait(false);
+
+        var emitter = _workflowEmitter;
+        var mermaid = emitter.Emit(workflow, WorkflowExportFormat.Mermaid);
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"✅ Created workflow '{workflow.Name}' v{workflow.Version} ({workflow.Steps.Count} steps)");
+        if (workflow.Tags.Count > 0)
+            sb.AppendLine($"   Tags: {string.Join(", ", workflow.Tags)}");
+        sb.AppendLine();
+        sb.AppendLine("Steps:");
+        sb.Append(FlattenSteps(workflow.Steps, 1));
+        sb.AppendLine();
+        sb.AppendLine("Diagram:");
+        sb.AppendLine(mermaid.Content);
+        sb.AppendLine();
+        sb.AppendLine($"Use '/workflow show {workflow.Name}' to view JSON, '/workflow dry-run {workflow.Name}' to preview execution.");
+        return sb.ToString().TrimEnd();
+    }
+
+    private async Task<string> DryRunWorkflowAsync(string name, CancellationToken ct)
+    {
+        var workflow = await _workflowCatalog!.GetAsync(name, ct: ct).ConfigureAwait(false);
+        if (workflow is null)
+            return $"Workflow '{name}' not found. Use '/workflow list' to see available workflows.";
+
+        // Collect available tool names from the kernel
+        HashSet<string>? availableTools = null;
+        if (_session?.Kernel is not null)
+        {
+            availableTools = [];
+            foreach (var plugin in _session.Kernel.Plugins)
+            {
+                foreach (var fn in plugin)
+                    availableTools.Add($"{plugin.Name}-{fn.Name}");
+            }
+        }
+
+        var generator = new WorkflowGenerator();
+        var result = generator.DryRun(workflow, availableTools);
+        return WorkflowGenerator.FormatDryRun(result);
+    }
+
+    private async Task<string> ComposeWorkflowsAsync(string param, CancellationToken ct)
+    {
+        var parts = param.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length < 3)
+            return "Usage: /workflow compose <name> <workflow1> <workflow2> [...]";
+
+        var compositeName = parts[0];
+        var workflowNames = parts[1..];
+        var workflows = new List<AgentWorkflowDefinition>();
+        var missing = new List<string>();
+
+        foreach (var wfName in workflowNames)
+        {
+            var wf = await _workflowCatalog!.GetAsync(wfName, ct: ct).ConfigureAwait(false);
+            if (wf is null)
+                missing.Add(wfName);
+            else
+                workflows.Add(wf);
+        }
+
+        if (missing.Count > 0)
+            return $"Workflows not found: {string.Join(", ", missing)}. Use '/workflow list' to see available.";
+
+        var generator = new WorkflowGenerator();
+        var composite = generator.Compose(compositeName, workflows);
+        await _workflowCatalog!.SaveAsync(composite, ct).ConfigureAwait(false);
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"✅ Composed '{compositeName}' from {workflows.Count} workflows:");
+        foreach (var wf in workflows)
+            sb.AppendLine($"  → {wf.Name} ({wf.Steps.Count} steps)");
+        sb.AppendLine($"\nTotal steps: {composite.Steps.Sum(s => CountStepsRecursive(s))}");
+        sb.AppendLine($"Use '/workflow dry-run {compositeName}' to preview execution.");
+        return sb.ToString().TrimEnd();
+    }
+
+    private static int CountStepsRecursive(AgentStepDefinition step)
+    {
+        var count = 1;
+        foreach (var sub in step.SubSteps)
+            count += CountStepsRecursive(sub);
+        return count;
     }
 
     // ── Spinner/progress style ──────────────────────────────

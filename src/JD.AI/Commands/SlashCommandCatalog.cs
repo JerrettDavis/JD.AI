@@ -41,7 +41,7 @@ public static class SlashCommandCatalog
         new("/plugins info", "Show plugin details"),
         new("/checkpoint", "List, restore, or clear checkpoints"),
         new("/sandbox", "Show or change sandbox mode"),
-        new("/workflow", "Manage workflows (list|show|export|replay|refine)"),
+        new("/workflow", "Manage workflows (list|show|create|dry-run|export|replay|refine|publish|search)"),
         new("/spinner", "Set progress style (none|minimal|normal|rich|nerdy)"),
         new("/mcp", "Manage MCP servers (list|add|remove|enable|disable)"),
         new("/context", "Show context window usage"),
