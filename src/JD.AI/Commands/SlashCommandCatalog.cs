@@ -64,6 +64,7 @@ public static class SlashCommandCatalog
         new("/model-info", "Show model metadata (context, cost, capabilities)"),
         new("/model-info refresh", "Force-refresh model metadata from LiteLLM"),
         new("/trace", "Show execution timeline for the last turn"),
+        new("/shortcuts", "List keyboard shortcuts"),
         new("/quit", "Exit jdai"),
         new("/exit", "Exit jdai"),
     ];
