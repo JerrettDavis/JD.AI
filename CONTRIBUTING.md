@@ -75,6 +75,18 @@ The solution contains **17 projects** (14 src + 3 test), organized by layer:
 | **UI** | `Dashboard.Wasm` |
 | **Tests** | `JD.AI.Tests` (unit), `JD.AI.Gateway.Tests`, `JD.AI.IntegrationTests` |
 
+## DRY Extension Points
+
+To reduce boilerplate and keep changes localized, use these shared extension points:
+
+- **API-key providers**: derive from [`ApiKeyProviderDetectorBase`](src/JD.AI.Core/Providers/ApiKeyProviderDetectorBase.cs) and override:
+  - `KnownModels`
+  - `ConfigureKernel(...)`
+- **Slash command completions**: add or update completion entries in [`SlashCommandCatalog`](src/JD.AI/Commands/SlashCommandCatalog.cs).  
+  Do not duplicate completion registrations in `Program.cs` or tests.
+
+When adding commands/providers, update the corresponding unit tests (`CompletionProviderTests`, provider detector tests).
+
 ## Commit Messages
 
 We use [Conventional Commits](https://www.conventionalcommits.org/):

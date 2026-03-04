@@ -7,12 +7,9 @@ namespace JD.AI.Core.Providers;
 /// Detects HuggingFace Inference API availability via API key.
 /// Uses the official Microsoft.SemanticKernel.Connectors.HuggingFace package.
 /// </summary>
-public sealed class HuggingFaceDetector : IProviderDetector
+public sealed class HuggingFaceDetector : ApiKeyProviderDetectorBase
 {
-    private readonly ProviderConfigurationManager _config;
-    private string? _apiKey;
-
-    private static readonly ProviderModelInfo[] KnownModels =
+    private static readonly ProviderModelInfo[] KnownModelsCatalog =
     [
         new("meta-llama/Llama-3.3-70B-Instruct", "Llama 3.3 70B", "HuggingFace"),
         new("meta-llama/Llama-3.1-8B-Instruct", "Llama 3.1 8B", "HuggingFace"),
@@ -22,38 +19,18 @@ public sealed class HuggingFaceDetector : IProviderDetector
     ];
 
     public HuggingFaceDetector(ProviderConfigurationManager config)
+        : base(config, providerName: "HuggingFace", providerKey: "huggingface")
     {
-        _config = config;
     }
 
-    public string ProviderName => "HuggingFace";
+    protected override IReadOnlyList<ProviderModelInfo> KnownModels => KnownModelsCatalog;
 
-    public async Task<ProviderInfo> DetectAsync(CancellationToken ct = default)
+    protected override void ConfigureKernel(IKernelBuilder builder, ProviderModelInfo model, string apiKey)
     {
-        _apiKey = await _config.GetCredentialAsync("huggingface", "apikey", ct)
-            .ConfigureAwait(false);
-
-        if (string.IsNullOrEmpty(_apiKey))
-        {
-            return new ProviderInfo(ProviderName, IsAvailable: false,
-                StatusMessage: "No API key configured", Models: []);
-        }
-
-        return new ProviderInfo(ProviderName, IsAvailable: true,
-            StatusMessage: $"Authenticated - {KnownModels.Length} model(s)",
-            Models: KnownModels.ToList());
-    }
-
-    public Kernel BuildKernel(ProviderModelInfo model)
-    {
-        var builder = Kernel.CreateBuilder();
-
 #pragma warning disable SKEXP0070
         builder.AddHuggingFaceChatCompletion(
             model: model.Id,
-            apiKey: _apiKey ?? throw new InvalidOperationException("HuggingFace API key not available."));
+            apiKey: apiKey);
 #pragma warning restore SKEXP0070
-
-        return builder.Build();
     }
 }
