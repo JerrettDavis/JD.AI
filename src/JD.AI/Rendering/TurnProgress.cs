@@ -90,20 +90,20 @@ internal sealed class TurnProgress : IDisposable
 
     // ── Style formatters ──────────────────────────────────
 
-    private string FormatMinimal(TimeSpan elapsed)
+    internal string FormatMinimal(TimeSpan elapsed)
     {
         // Alternating dot: subtle, minimal
         var dot = _frame++ % 2 == 0 ? "·" : " ";
         return $"  {dot} {FormatElapsed(elapsed)}";
     }
 
-    private string FormatNormal(TimeSpan elapsed)
+    internal string FormatNormal(TimeSpan elapsed)
     {
         var spinner = BrailleFrames[_frame++ % BrailleFrames.Length];
         return $"  \x1b[36m{spinner}\x1b[0m Thinking... \x1b[2m{FormatElapsed(elapsed)}\x1b[0m";
     }
 
-    private string FormatRich(TimeSpan elapsed)
+    internal string FormatRich(TimeSpan elapsed)
     {
         var spinner = BrailleFrames[_frame++ % BrailleFrames.Length];
         var bar = BuildProgressBar(elapsed);
@@ -111,7 +111,7 @@ internal sealed class TurnProgress : IDisposable
                $"\x1b[2m{FormatElapsed(elapsed)}\x1b[0m";
     }
 
-    private string FormatNerdy(TimeSpan elapsed)
+    internal string FormatNerdy(TimeSpan elapsed)
     {
         var spinner = BrailleFrames[_frame++ % BrailleFrames.Length];
         var bar = BuildProgressBar(elapsed);
@@ -122,7 +122,7 @@ internal sealed class TurnProgress : IDisposable
                $"\x1b[2m{FormatElapsed(elapsed)}{model} │ awaiting first token\x1b[0m";
     }
 
-    private static string BuildProgressBar(TimeSpan elapsed)
+    internal static string BuildProgressBar(TimeSpan elapsed)
     {
         // Indeterminate progress: bouncing highlight across 10 chars
         const int width = 10;
@@ -136,7 +136,7 @@ internal sealed class TurnProgress : IDisposable
         return new string(chars);
     }
 
-    private static string FormatElapsed(TimeSpan ts) =>
+    internal static string FormatElapsed(TimeSpan ts) =>
         ts.TotalMinutes >= 1
             ? $"{ts.Minutes}m {ts.Seconds:D2}s"
             : $"{ts.TotalSeconds:F1}s";

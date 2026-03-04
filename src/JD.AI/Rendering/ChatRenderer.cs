@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using JD.AI.Core.Config;
 using Spectre.Console;
@@ -86,6 +87,7 @@ public static class ChatRenderer
     /// Moves the cursor up to the prompt line, rewrites it in dim,
     /// then returns to the next line for output.
     /// </summary>
+    [ExcludeFromCodeCoverage]
     public static void DimInputLine(string text)
     {
         try
@@ -240,6 +242,7 @@ public static class ChatRenderer
     }
 
     /// <summary>Prompt for user input with interactive completions.</summary>
+    [ExcludeFromCodeCoverage]
     public static string? ReadInput(InteractiveInput? input = null)
     {
         AnsiConsole.Markup($"[bold {_palette.PromptColor}]>[/] ");
@@ -251,6 +254,7 @@ public static class ChatRenderer
     }
 
     /// <summary>Prompt for user input, returning structured result with attachments.</summary>
+    [ExcludeFromCodeCoverage]
     public static InputResult? ReadInputStructured(InteractiveInput input)
     {
         AnsiConsole.Markup($"[bold {_palette.PromptColor}]>[/] ");
@@ -258,6 +262,7 @@ public static class ChatRenderer
     }
 
     /// <summary>Ask the user for confirmation.</summary>
+    [ExcludeFromCodeCoverage]
     public static bool Confirm(string message)
     {
         AnsiConsole.Markup($"[{_palette.WarningColor}]{Markup.Escape(message)}[/] [dim]([green]y[/]/[red]n[/])[/] [dim](y)[/]: ");
@@ -430,12 +435,12 @@ public static class ChatRenderer
                $"{Markup.Escape(ttft)}{modelPart} ──[/]";
     }
 
-    private static string FormatElapsedMetric(long ms) =>
+    internal static string FormatElapsedMetric(long ms) =>
         ms >= 60_000
             ? $"{ms / 60_000}m {ms % 60_000 / 1000}s"
             : $"{ms / 1000.0:F1}s";
 
-    private static string FormatBytes(long bytes) =>
+    internal static string FormatBytes(long bytes) =>
         bytes switch
         {
             >= 1_048_576 => $"{bytes / 1_048_576.0:F1} MB",
@@ -443,7 +448,7 @@ public static class ChatRenderer
             _ => $"{bytes} B",
         };
 
-    private static string EscapeJsonString(string value)
+    internal static string EscapeJsonString(string value)
     {
         if (string.IsNullOrEmpty(value))
             return string.Empty;

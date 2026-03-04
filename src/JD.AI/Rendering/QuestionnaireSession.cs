@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using JD.AI.Core.Questions;
 using Spectre.Console;
 
@@ -71,6 +72,7 @@ public sealed class QuestionnaireSession
 
     // ── Private helpers ──────────────────────────────────────────────────────
 
+    [ExcludeFromCodeCoverage]
     private static void RenderHeader(AskQuestionsRequest request)
     {
         var content = new Markup($"[bold]{Markup.Escape(request.Title)}[/]" +
@@ -90,6 +92,7 @@ public sealed class QuestionnaireSession
     /// <summary>
     /// Asks a single question and returns the validated answer, or null if cancelled.
     /// </summary>
+    [ExcludeFromCodeCoverage]
     private static string? AskQuestion(Question question, bool allowCancel)
     {
         var promptSuffix = question.Required ? " [red]*[/]" : " [dim](optional)[/]";
@@ -108,6 +111,7 @@ public sealed class QuestionnaireSession
         };
     }
 
+    [ExcludeFromCodeCoverage]
     private static string? AskText(Question question, bool allowCancel)
     {
         while (true)
@@ -146,6 +150,7 @@ public sealed class QuestionnaireSession
         }
     }
 
+    [ExcludeFromCodeCoverage]
     private static string? AskNumber(Question question, bool allowCancel)
     {
         while (true)
@@ -191,6 +196,7 @@ public sealed class QuestionnaireSession
         }
     }
 
+    [ExcludeFromCodeCoverage]
     private static string? AskConfirm(Question question, bool allowCancel)
     {
         var defaultYes = string.Equals(question.DefaultValue, "yes", StringComparison.OrdinalIgnoreCase)
@@ -225,6 +231,7 @@ public sealed class QuestionnaireSession
         }
     }
 
+    [ExcludeFromCodeCoverage]
     private static string? AskSingleSelect(Question question, bool allowCancel)
     {
         if (question.Options.Count == 0)
@@ -250,6 +257,7 @@ public sealed class QuestionnaireSession
         return selected;
     }
 
+    [ExcludeFromCodeCoverage]
     private static string? AskMultiSelect(Question question, bool allowCancel)
     {
         if (question.Options.Count == 0)
@@ -292,6 +300,7 @@ public sealed class QuestionnaireSession
     /// <summary>
     /// Shows the summary screen and returns true if the user confirms, false if they cancel.
     /// </summary>
+    [ExcludeFromCodeCoverage]
     private static bool ShowReviewScreen(AskQuestionsRequest request, Dictionary<string, string> answers)
     {
         while (true)
@@ -358,7 +367,7 @@ public sealed class QuestionnaireSession
 
     // ── Validation helpers ───────────────────────────────────────────────────
 
-    private static string? ValidateText(QuestionValidation? v, string value)
+    internal static string? ValidateText(QuestionValidation? v, string value)
     {
         if (v is null) return null;
 
@@ -385,7 +394,7 @@ public sealed class QuestionnaireSession
         return null;
     }
 
-    private static string? ValidateNumber(QuestionValidation? v, double value)
+    internal static string? ValidateNumber(QuestionValidation? v, double value)
     {
         if (v is null) return null;
 

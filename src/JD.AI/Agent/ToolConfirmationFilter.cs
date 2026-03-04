@@ -185,7 +185,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
     /// Builds a redacted argument string from structured KernelArguments.
     /// Redacts at the key/value level to avoid delimiter-based parsing issues.
     /// </summary>
-    private static string BuildRedactedArgs(KernelArguments? arguments)
+    internal static string BuildRedactedArgs(KernelArguments? arguments)
     {
         if (arguments is null || arguments.Count == 0)
             return "";
