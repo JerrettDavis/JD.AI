@@ -20,6 +20,15 @@ public sealed record TuiSettings
     /// <summary>The spinner/progress display style during LLM turns.</summary>
     public SpinnerStyle SpinnerStyle { get; init; } = SpinnerStyle.Normal;
 
+    /// <summary>Color theme used by the terminal renderer.</summary>
+    public TuiTheme Theme { get; init; } = TuiTheme.DefaultDark;
+
+    /// <summary>When true, interactive input uses vim-style key bindings.</summary>
+    public bool VimMode { get; init; }
+
+    /// <summary>Assistant output rendering style.</summary>
+    public OutputStyle OutputStyle { get; init; } = OutputStyle.Rich;
+
     /// <summary>Load settings from the data directory, returning defaults if not found.</summary>
     public static TuiSettings Load()
     {

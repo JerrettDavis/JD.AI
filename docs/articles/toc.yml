@@ -4,6 +4,8 @@
   href: getting-started.md
 - name: Quickstart
   href: quickstart.md
+- name: Interactive Mode
+  href: interactive-mode.md
 - name: Best Practices
   href: best-practices.md
 - name: Common Workflows
