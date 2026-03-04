@@ -7,12 +7,9 @@ namespace JD.AI.Core.Providers;
 /// Detects Mistral AI availability via API key.
 /// Uses the official Microsoft.SemanticKernel.Connectors.MistralAI package.
 /// </summary>
-public sealed class MistralDetector : IProviderDetector
+public sealed class MistralDetector : ApiKeyProviderDetectorBase
 {
-    private readonly ProviderConfigurationManager _config;
-    private string? _apiKey;
-
-    private static readonly ProviderModelInfo[] KnownModels =
+    private static readonly ProviderModelInfo[] KnownModelsCatalog =
     [
         new("mistral-large-latest", "Mistral Large", "Mistral"),
         new("mistral-medium-latest", "Mistral Medium", "Mistral"),
@@ -23,38 +20,18 @@ public sealed class MistralDetector : IProviderDetector
     ];
 
     public MistralDetector(ProviderConfigurationManager config)
+        : base(config, providerName: "Mistral", providerKey: "mistral")
     {
-        _config = config;
     }
 
-    public string ProviderName => "Mistral";
+    protected override IReadOnlyList<ProviderModelInfo> KnownModels => KnownModelsCatalog;
 
-    public async Task<ProviderInfo> DetectAsync(CancellationToken ct = default)
+    protected override void ConfigureKernel(IKernelBuilder builder, ProviderModelInfo model, string apiKey)
     {
-        _apiKey = await _config.GetCredentialAsync("mistral", "apikey", ct)
-            .ConfigureAwait(false);
-
-        if (string.IsNullOrEmpty(_apiKey))
-        {
-            return new ProviderInfo(ProviderName, IsAvailable: false,
-                StatusMessage: "No API key configured", Models: []);
-        }
-
-        return new ProviderInfo(ProviderName, IsAvailable: true,
-            StatusMessage: $"Authenticated - {KnownModels.Length} model(s)",
-            Models: KnownModels.ToList());
-    }
-
-    public Kernel BuildKernel(ProviderModelInfo model)
-    {
-        var builder = Kernel.CreateBuilder();
-
 #pragma warning disable SKEXP0070
         builder.AddMistralChatCompletion(
             modelId: model.Id,
-            apiKey: _apiKey ?? throw new InvalidOperationException("Mistral API key not available."));
+            apiKey: apiKey);
 #pragma warning restore SKEXP0070
-
-        return builder.Build();
     }
 }
