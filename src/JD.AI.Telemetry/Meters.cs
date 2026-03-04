@@ -49,6 +49,20 @@ public static class Meters
             unit: "errors",
             description: "Number of provider errors after retry exhaustion.");
 
+    /// <summary>Number of loop detection events (warnings and hard-stops).</summary>
+    public static readonly Counter<long> LoopDetections =
+        AgentMeter.CreateCounter<long>(
+            "jdai.safety.loop_detections",
+            unit: "events",
+            description: "Number of tool loop detection events.");
+
+    /// <summary>Number of circuit breaker trips.</summary>
+    public static readonly Counter<long> CircuitBreakerTrips =
+        AgentMeter.CreateCounter<long>(
+            "jdai.safety.circuit_breaker_trips",
+            unit: "trips",
+            description: "Number of circuit breaker trip events.");
+
     /// <summary>Provider API call latency in milliseconds.</summary>
     public static readonly Histogram<double> ProviderLatency =
         AgentMeter.CreateHistogram<double>(
