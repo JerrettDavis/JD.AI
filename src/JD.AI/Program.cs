@@ -4,6 +4,7 @@ using JD.AI.Commands;
 using JD.AI.Core.Agents;
 using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Agents.Orchestration;
+using JD.AI.Core.Channels;
 using JD.AI.Core.Config;
 using JD.AI.Core.Governance;
 using JD.AI.Core.Governance.Audit;
@@ -14,6 +15,8 @@ using JD.AI.Core.Providers;
 using JD.AI.Core.Providers.Credentials;
 using JD.AI.Core.Providers.Metadata;
 using JD.AI.Core.Providers.ModelSearch;
+using JD.AI.Core.Safety;
+using JD.AI.Core.Tools;
 using JD.AI.Core.Usage;
 using JD.AI.Rendering;
 using JD.AI.Tools;
@@ -539,20 +542,42 @@ kernel.Plugins.AddFromType<FileTools>("file");
 kernel.Plugins.AddFromType<SearchTools>("search");
 kernel.Plugins.AddFromType<ShellTools>("shell");
 kernel.Plugins.AddFromType<GitTools>("git");
+kernel.Plugins.AddFromType<GitHubTools>("github");
 kernel.Plugins.AddFromType<WebTools>("web");
+kernel.Plugins.AddFromType<BrowserTools>("browser");
 kernel.Plugins.AddFromType<ThinkTools>("think");
 kernel.Plugins.AddFromType<EnvironmentTools>("environment");
 kernel.Plugins.AddFromType<NotebookTools>("notebook");
 kernel.Plugins.AddFromType<ClipboardTools>("clipboard");
 kernel.Plugins.AddFromType<DiffTools>("diff");
 kernel.Plugins.AddFromType<BatchEditTools>("batchEdit");
+kernel.Plugins.AddFromType<MultimodalTools>("multimodal");
+kernel.Plugins.AddFromType<ParityDocsTools>("parityDocs");
+kernel.Plugins.AddFromType<McpTransportTools>("mcp");
+kernel.Plugins.AddFromType<MigrationTools>("migration");
+kernel.Plugins.AddFromType<SkillParityTools>("skillParity");
 kernel.Plugins.AddFromObject(new MemoryTools(), "memory");
-kernel.Plugins.AddFromObject(new TaskTools(), "tasks");
+var taskTools = new TaskTools();
+kernel.Plugins.AddFromObject(taskTools, "tasks");
 var usageTools = new UsageTools();
 usageTools.SetModel(selectedModel);
 kernel.Plugins.AddFromObject(usageTools, "usage");
+var capabilityTools = new CapabilityTools(kernel);
+kernel.Plugins.AddFromObject(capabilityTools, "capabilities");
+kernel.Plugins.AddFromObject(new BenchmarkTools(kernel), "benchmark");
 kernel.Plugins.AddFromObject(
     new QuestionTools(req => QuestionnaireSession.Run(req)), "questions");
+var webSearchTools = new WebSearchTools();
+kernel.ImportPluginFromObject(webSearchTools, "WebSearchTools");
+kernel.ImportPluginFromObject(new OpenClawCompatibilityTools(taskTools, webSearchTools), "openclaw");
+kernel.Plugins.AddFromObject(new SessionOrchestrationTools(session), "sessions");
+kernel.Plugins.AddFromObject(new SchedulerTools(), "scheduler");
+kernel.Plugins.AddFromObject(
+    new GatewayOpsTools(Environment.GetEnvironmentVariable("JDAI_GATEWAY_URL")), "gateway");
+
+// Channel ops tools — only registered when a channel registry is available
+var channelRegistry = new ChannelRegistry();
+kernel.Plugins.AddFromObject(new ChannelOpsTools(channelRegistry), "channels");
 
 // 7. Load Claude Code skills, plugins, and hooks if available
 var skillDirs = new[]
@@ -700,11 +725,33 @@ if (governanceBudget is not null)
     budgetPolicy.MaxSessionUsd ??= governanceBudget.MaxSessionUsd;
 }
 
-// 8a. Add tool confirmation filter with governance
-kernel.AutoFunctionInvocationFilters.Add(
-    new ToolConfirmationFilter(session, policyEvaluator, auditService));
+// 8a. Create circuit breaker for tool loop detection
+CircuitBreaker? circuitBreaker = null;
+{
+    var cbPolicy = policies
+        .SelectMany(p => p.Spec.CircuitBreaker is { } cb ? [cb] : Array.Empty<CircuitBreakerPolicy>())
+        .FirstOrDefault();
 
-// 8b. Load project instructions (JDAI.md, CLAUDE.md, AGENTS.md, etc.)
+    var detector = new ToolLoopDetector(
+        windowSize: cbPolicy?.WindowSize ?? 50,
+        repetitionWarningThreshold: cbPolicy?.RepetitionWarningThreshold ?? 3,
+        repetitionHardStopThreshold: cbPolicy?.RepetitionHardStopThreshold ?? 5,
+        pingPongThreshold: cbPolicy?.PingPongThreshold ?? 4);
+
+    circuitBreaker = new CircuitBreaker(
+        detector,
+        cooldownPeriod: TimeSpan.FromSeconds(cbPolicy?.CooldownSeconds ?? 30),
+        hardenedMode: cbPolicy?.Hardened ?? false);
+}
+
+// 8b. Add tool confirmation filter with governance + circuit breaker
+kernel.AutoFunctionInvocationFilters.Add(
+    new ToolConfirmationFilter(session, policyEvaluator, auditService, circuitBreaker));
+
+// 8b2. Register policy tools (needs policyEvaluator + auditService from step 8)
+kernel.Plugins.AddFromObject(new PolicyTools(policyEvaluator, auditService), "policy");
+
+// 8c. Load project instructions (JDAI.md, CLAUDE.md, AGENTS.md, etc.)
 var instructions = InstructionsLoader.Load();
 if (instructions.HasInstructions)
 {
@@ -719,9 +766,6 @@ kernel.ImportPluginFromObject(new SubagentTools(orchestrator), "SubagentTools");
 ICheckpointStrategy checkpointStrategy = Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), ".git"))
     ? new StashCheckpointStrategy()
     : new DirectoryCheckpointStrategy();
-
-// 8e. Register web search tools
-kernel.ImportPluginFromObject(new WebSearchTools(), "WebSearchTools");
 
 // 8f. Tool filtering (--allowedTools / --disallowedTools)
 if (allowedTools is { Length: > 0 })
