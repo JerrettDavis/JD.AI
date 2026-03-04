@@ -53,6 +53,21 @@ public sealed class AgentSession
     public bool SkipPermissions { get; set; }
 
     /// <summary>
+    /// Controls the permission model for tool invocations within the session.
+    /// </summary>
+    public PermissionMode PermissionMode { get; set; } = PermissionMode.Normal;
+
+    /// <summary>
+    /// Fallback model chain — used when the primary model returns 429/503/timeout.
+    /// </summary>
+    public IReadOnlyList<string> FallbackModels { get; set; } = [];
+
+    /// <summary>
+    /// When true, session persistence is disabled entirely.
+    /// </summary>
+    public bool NoSessionPersistence { get; set; }
+
+    /// <summary>
     /// When true, the agent operates in plan-only mode (read/explore, no file writes).
     /// Toggled via the /plan slash command.
     /// </summary>

@@ -109,6 +109,33 @@ var allowedTools = args.SkipWhile(a => !string.Equals(a, "--allowedTools", Strin
 var disallowedTools = args.SkipWhile(a => !string.Equals(a, "--disallowedTools", StringComparison.OrdinalIgnoreCase))
     .Skip(1).FirstOrDefault()?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
+// Permission mode (plan / acceptEdits / dontAsk / normal)
+var permissionModeStr = args.SkipWhile(a => !string.Equals(a, "--permission-mode", StringComparison.OrdinalIgnoreCase))
+    .Skip(1).FirstOrDefault();
+
+// Fallback model chain
+var fallbackModelStr = args.SkipWhile(a => !string.Equals(a, "--fallback-model", StringComparison.OrdinalIgnoreCase))
+    .Skip(1).FirstOrDefault();
+var fallbackModels = fallbackModelStr?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
+
+// Session management flags
+var cliSessionId = args.SkipWhile(a => !string.Equals(a, "--session-id", StringComparison.OrdinalIgnoreCase))
+    .Skip(1).FirstOrDefault();
+var forkSession = args.Contains("--fork-session");
+var noSessionPersistence = args.Contains("--no-session-persistence");
+
+// Debug logging
+var debugMode = args.Contains("--debug");
+var debugCategories = debugMode
+    ? args.SkipWhile(a => !string.Equals(a, "--debug", StringComparison.OrdinalIgnoreCase))
+        .Skip(1).FirstOrDefault()
+    : null;
+// If --debug value starts with '-' it's a different flag, not categories
+if (debugCategories != null && debugCategories.StartsWith('-'))
+{
+    debugCategories = null;
+}
+
 // Read piped stdin if available (e.g. `cat file | jdai -p "query"`)
 string? pipedInput = null;
 if (Console.IsInputRedirected)
@@ -297,10 +324,65 @@ if (verboseMode)
     session.Verbose = true;
 }
 
+// Apply permission mode
+if (permissionModeStr != null)
+{
+    session.PermissionMode = permissionModeStr.ToUpperInvariant() switch
+    {
+        "PLAN" => JD.AI.Core.Agents.PermissionMode.Plan,
+        "ACCEPTEDITS" => JD.AI.Core.Agents.PermissionMode.AcceptEdits,
+        "DONTASK" => JD.AI.Core.Agents.PermissionMode.BypassAll,
+        "NORMAL" => JD.AI.Core.Agents.PermissionMode.Normal,
+        _ => JD.AI.Core.Agents.PermissionMode.Normal,
+    };
+    if (!printMode)
+    {
+        ChatRenderer.RenderInfo($"Permission mode: {session.PermissionMode}");
+    }
+}
+
+// Apply fallback models
+if (fallbackModels.Length > 0)
+{
+    session.FallbackModels = fallbackModels;
+    if (!printMode)
+    {
+        ChatRenderer.RenderInfo($"Fallback models: {string.Join(" → ", fallbackModels)}");
+    }
+}
+
+// Apply session persistence flag
+if (noSessionPersistence)
+{
+    session.NoSessionPersistence = true;
+}
+
+// Debug logging
+if (debugMode)
+{
+    session.Verbose = true;
+    if (!printMode)
+    {
+        var cats = debugCategories != null ? $" (categories: {debugCategories})" : "";
+        ChatRenderer.RenderInfo($"Debug logging enabled{cats}");
+    }
+}
+
 // Initialize session persistence
 var projectPath = Directory.GetCurrentDirectory();
-if (!isNewSession)
+if (noSessionPersistence)
 {
+    // --no-session-persistence: skip all session I/O
+    if (!printMode) ChatRenderer.RenderInfo("Session persistence disabled.");
+}
+else if (!isNewSession)
+{
+    // Use explicit --session-id if provided
+    if (cliSessionId != null)
+    {
+        resumeId = cliSessionId;
+    }
+
     // --continue: auto-resume the most recent session for this project
     if (continueSession && resumeId == null)
     {
@@ -336,6 +418,9 @@ if (!isNewSession)
                     SessionInfo = session.SessionInfo,
                     SkipPermissions = session.SkipPermissions,
                     Verbose = session.Verbose,
+                    PermissionMode = session.PermissionMode,
+                    FallbackModels = session.FallbackModels,
+                    NoSessionPersistence = session.NoSessionPersistence,
                 };
                 // Re-restore history into the new session's ChatHistory
                 foreach (var turn in session.SessionInfo.Turns)
@@ -364,6 +449,9 @@ if (!isNewSession)
                     SessionInfo = session.SessionInfo,
                     SkipPermissions = session.SkipPermissions,
                     Verbose = session.Verbose,
+                    PermissionMode = session.PermissionMode,
+                    FallbackModels = session.FallbackModels,
+                    NoSessionPersistence = session.NoSessionPersistence,
                 };
                 foreach (var turn in session.SessionInfo.Turns)
                 {
@@ -376,6 +464,13 @@ if (!isNewSession)
             }
         }
         if (!printMode) ChatRenderer.RenderInfo($"Resumed session: {session.SessionInfo.Name ?? session.SessionInfo.Id} ({session.SessionInfo.Turns.Count} turns)");
+
+        // --fork-session: fork from the resumed session
+        if (forkSession)
+        {
+            await session.ForkSessionAsync("CLI fork").ConfigureAwait(false);
+            if (!printMode) ChatRenderer.RenderInfo("Forked session — changes diverge from here.");
+        }
     }
 }
 else
