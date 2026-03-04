@@ -552,6 +552,48 @@ public sealed class SlashCommandRouterTests
     }
 
     [Fact]
+    public async Task Skills_WithoutLifecycleManager_ReturnsNotInitialized()
+    {
+        var result = await _router.ExecuteAsync("/skills");
+
+        Assert.NotNull(result);
+        Assert.Contains("not initialized", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Skills_Status_UsesProvidedStatusDelegate()
+    {
+        var router = new SlashCommandRouter(
+            _session,
+            _registry,
+            getSkillsStatus: () => "Skills: 2 active / 5 discovered");
+
+        var result = await router.ExecuteAsync("/skills status");
+
+        Assert.Equal("Skills: 2 active / 5 discovered", result);
+    }
+
+    [Fact]
+    public async Task Skills_Reload_UsesProvidedReloadDelegate()
+    {
+        var called = false;
+        var router = new SlashCommandRouter(
+            _session,
+            _registry,
+            getSkillsStatus: () => "status",
+            reloadSkills: () =>
+            {
+                called = true;
+                return "reloaded";
+            });
+
+        var result = await router.ExecuteAsync("/skills reload");
+
+        Assert.True(called);
+        Assert.Equal("reloaded", result);
+    }
+
+    [Fact]
     public async Task Stats_WithoutSession_UsesFallback()
     {
         var result = await _router.ExecuteAsync("/stats");
