@@ -94,6 +94,13 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["audit_query"] = SafetyTier.AutoApprove,
             ["rbac_check"] = SafetyTier.AutoApprove,
 
+            // Skills parity tools — read-only
+            ["skills_parity_matrix"] = SafetyTier.AutoApprove,
+            ["skills_pack_overview"] = SafetyTier.AutoApprove,
+            ["skills_gap_analysis"] = SafetyTier.AutoApprove,
+            ["skills_detail"] = SafetyTier.AutoApprove,
+            ["skills_parity_export"] = SafetyTier.AutoApprove,
+
             // Write ops — confirm once per session
             ["write_file"] = SafetyTier.ConfirmOnce,
             ["edit_file"] = SafetyTier.ConfirmOnce,
