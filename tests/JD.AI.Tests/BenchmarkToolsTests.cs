@@ -190,7 +190,7 @@ public class BenchmarkToolsTests
 
     // ── Fake tool plugins for testing ────────────────────────
 
-    public sealed class FakeFileTools
+    internal sealed class FakeFileTools
     {
         [KernelFunction("read_file")]
         [System.ComponentModel.Description("Read a file")]
@@ -218,7 +218,7 @@ public class BenchmarkToolsTests
             => "dir listing";
     }
 
-    public sealed class FakeGitTools
+    internal sealed class FakeGitTools
     {
         [KernelFunction("git_status")]
         [System.ComponentModel.Description("Git status")]
@@ -239,7 +239,7 @@ public class BenchmarkToolsTests
             => "committed";
     }
 
-    public sealed class FakeSearchTools
+    internal sealed class FakeSearchTools
     {
         [KernelFunction("grep")]
         [System.ComponentModel.Description("Search")]
@@ -254,7 +254,7 @@ public class BenchmarkToolsTests
             => "files";
     }
 
-    public sealed class FakeMetaTools
+    internal sealed class FakeMetaTools
     {
         [KernelFunction("think")]
         [System.ComponentModel.Description("Think")]
