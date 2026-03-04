@@ -740,6 +740,9 @@ CircuitBreaker? circuitBreaker = null;
 kernel.AutoFunctionInvocationFilters.Add(
     new ToolConfirmationFilter(session, policyEvaluator, auditService, circuitBreaker));
 
+// 8b2. Register policy tools (needs policyEvaluator + auditService from step 8)
+kernel.Plugins.AddFromObject(new PolicyTools(policyEvaluator, auditService), "policy");
+
 // 8c. Load project instructions (JDAI.md, CLAUDE.md, AGENTS.md, etc.)
 var instructions = InstructionsLoader.Load();
 if (instructions.HasInstructions)
