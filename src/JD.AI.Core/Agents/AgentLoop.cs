@@ -304,7 +304,7 @@ public sealed class AgentLoop
     /// MEAI adapters read <c>FunctionChoiceBehavior</c> and <c>ModelId</c> from the
     /// base <see cref="PromptExecutionSettings"/> class.
     /// </summary>
-    private PromptExecutionSettings BuildExecutionSettings()
+    private OpenAIPromptExecutionSettings BuildExecutionSettings()
     {
         var supportsTools = _session.CurrentModel?.Capabilities
             .HasFlag(ModelCapabilities.ToolCalling) ?? false;
