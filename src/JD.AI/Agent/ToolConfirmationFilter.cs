@@ -108,6 +108,12 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["parity_threat_model"] = SafetyTier.AutoApprove,
             ["parity_export"] = SafetyTier.AutoApprove,
 
+            // Benchmark tools — read-only introspection
+            ["benchmark_scorecard"] = SafetyTier.AutoApprove,
+            ["benchmark_export"] = SafetyTier.AutoApprove,
+            ["benchmark_regression"] = SafetyTier.AutoApprove,
+            ["benchmark_run"] = SafetyTier.ConfirmOnce, // invokes tools
+
             // Write ops — confirm once per session
             ["write_file"] = SafetyTier.ConfirmOnce,
             ["edit_file"] = SafetyTier.ConfirmOnce,

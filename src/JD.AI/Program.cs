@@ -562,6 +562,7 @@ usageTools.SetModel(selectedModel);
 kernel.Plugins.AddFromObject(usageTools, "usage");
 var capabilityTools = new CapabilityTools(kernel);
 kernel.Plugins.AddFromObject(capabilityTools, "capabilities");
+kernel.Plugins.AddFromObject(new BenchmarkTools(kernel), "benchmark");
 kernel.Plugins.AddFromObject(
     new QuestionTools(req => QuestionnaireSession.Run(req)), "questions");
 kernel.Plugins.AddFromObject(new SessionOrchestrationTools(session), "sessions");
