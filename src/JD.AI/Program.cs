@@ -569,6 +569,8 @@ kernel.Plugins.AddFromObject(capabilityTools, "capabilities");
 kernel.Plugins.AddFromObject(new BenchmarkTools(kernel), "benchmark");
 kernel.Plugins.AddFromObject(
     new QuestionTools(req => QuestionnaireSession.Run(req)), "questions");
+var processSessionManager = new ProcessSessionManager();
+kernel.Plugins.AddFromObject(new ExecProcessTools(processSessionManager), "runtime");
 var webSearchTools = new WebSearchTools();
 kernel.ImportPluginFromObject(webSearchTools, "WebSearchTools");
 kernel.ImportPluginFromObject(new OpenClawCompatibilityTools(taskTools, webSearchTools), "openclaw");
