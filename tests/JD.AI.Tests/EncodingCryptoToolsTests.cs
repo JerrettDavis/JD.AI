@@ -70,11 +70,11 @@ public sealed class EncodingCryptoToolsTests
     [Fact]
     public void Base64_RoundTrip_PreservesText()
     {
-        const string original = "The quick brown fox jumps over the lazy dog 🦊";
-        var encoded = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(original));
+        const string Original = "The quick brown fox jumps over the lazy dog 🦊";
+        var encoded = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(Original));
         var result = EncodingCryptoTools.DecodeBase64(encoded);
 
-        Assert.Contains(original, result);
+        Assert.Contains(Original, result);
     }
 
     // ── URL Encode ──────────────────────────────────────────
@@ -126,11 +126,11 @@ public sealed class EncodingCryptoToolsTests
     [Fact]
     public void Url_RoundTrip_PreservesText()
     {
-        const string original = "q=hello world&lang=c#&version=10.0";
-        var encoded = Uri.EscapeDataString(original);
+        const string Original = "q=hello world&lang=c#&version=10.0";
+        var encoded = Uri.EscapeDataString(Original);
         var result = EncodingCryptoTools.DecodeUrl(encoded);
 
-        Assert.Contains(original, result);
+        Assert.Contains(Original, result);
     }
 
     // ── JWT Decode ──────────────────────────────────────────
