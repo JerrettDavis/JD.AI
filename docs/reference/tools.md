@@ -6,7 +6,7 @@ description: "All built-in tools — file, search, shell, git, web, memory, suba
 
 JD.AI provides a set of built-in tools that the AI agent invokes automatically during conversations. Each tool call is confirmed before execution unless overridden by [`/autorun`](../user-guide/common-workflows.md), [`/permissions`](../user-guide/common-workflows.md), or the `--dangerously-skip-permissions` CLI flag.
 
-Tools are grouped into seventeen categories: **File**, **Search**, **Shell**, **Git**, **Web**, **Web Search**, **Memory**, **Subagent**, **Think**, **Environment**, **Tasks**, **Code Execution**, **Clipboard**, **Questions**, **Diff/Patch**, **Batch Edit**, and **Usage Tracking**.
+Tools are grouped into eighteen categories: **File**, **Search**, **Shell**, **Exec/Process Sessions**, **Git**, **Web**, **Web Search**, **Memory**, **Subagent**, **Think**, **Environment**, **Tasks**, **Code Execution**, **Clipboard**, **Questions**, **Diff/Patch**, **Batch Edit**, and **Usage Tracking**.
 
 ![Tool execution showing file reading and grep](../images/demo-tools.png)
 
@@ -67,6 +67,31 @@ Tools are grouped into seventeen categories: **File**, **Search**, **Shell**, **
 ```text
 > run the tests
 ⚡ Tool: run_command(command: "dotnet test", timeoutSeconds: 120)
+```
+
+## Exec/process session tools
+
+| Function | Description |
+|----------|-------------|
+| `exec` | Execute a command in foreground or background with process-session tracking. |
+| `process` | Manage process sessions via `list`, `poll`, `log`, `write`, `kill`, `clear`, `remove`. |
+
+### Parameters
+
+- **`exec`** — `command` (string), `cwd` (string?, default cwd), `yieldMs` (int, default `250`), `background` (bool, default `false`), `timeoutMs` (int, default `60000`, `0` disables timeout), `pty` (bool, default `false`), `host` (string, currently only `"local"`).
+- **`process`** — `action` (string), `id` (string?, required for single-session actions), `input` (string?, for `write`), `yieldMs` (int, poll wait), `maxChars` (int, default `4000`), `force` (bool, for `clear`/`remove`).
+
+### Example
+
+```text
+> start tests in background
+⚡ Tool: exec(command: "dotnet test", background: true, yieldMs: 500)
+
+> poll that process
+⚡ Tool: process(action: "poll", id: "proc-000001", yieldMs: 1000)
+
+> fetch latest logs
+⚡ Tool: process(action: "log", id: "proc-000001", maxChars: 8000)
 ```
 
 ## Git tools
@@ -366,6 +391,8 @@ JD.AI also exposes OpenClaw-style aliases so external tool contracts can map cle
 | `websearch` | `web_search` |
 | `todo_read` | `list_tasks` |
 | `todo_write` | `update_task` / task mutations |
+| `exec` | `run_command` semantics + managed process sessions |
+| `process` | native process session control |
 
 ### Shared compatibility envelope parameters
 
