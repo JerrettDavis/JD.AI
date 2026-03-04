@@ -73,10 +73,10 @@ public sealed class BuildExecutionSettingsTests
     [Fact]
     public void Settings_MaxTokens_ReflectsModelMaxOutputTokens()
     {
-        const int expectedMaxOutputTokens = 8192;
+        const int ExpectedMaxOutputTokens = 8192;
         var model = new ProviderModelInfo(
             "gpt-4.1", "GPT-4.1", "OpenAI",
-            MaxOutputTokens: expectedMaxOutputTokens);
+            MaxOutputTokens: ExpectedMaxOutputTokens);
         var settings = Build(CreateLoop(model));
 
         var openAiSettings = Assert.IsType<OpenAIPromptExecutionSettings>(settings);
