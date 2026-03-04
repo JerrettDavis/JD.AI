@@ -1,3 +1,7 @@
+using System.Diagnostics;
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using JD.AI.Agent;
 using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Config;
@@ -12,10 +16,6 @@ using JD.SemanticKernel.Extensions.Mcp;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
-using System.Diagnostics;
-using System.Text;
-using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace JD.AI.Commands;
 
