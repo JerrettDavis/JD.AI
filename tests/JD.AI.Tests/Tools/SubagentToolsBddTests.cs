@@ -29,10 +29,10 @@ public sealed class SubagentToolsBddTests : TinyBddXunitBase
             })
             .Then("all fields are populated correctly", _ =>
                 configs!.Count == 1 &&
-                configs[0].Name == "analyzer" &&
+                string.Equals(configs[0].Name, "analyzer", StringComparison.Ordinal) &&
                 configs[0].Type == SubagentType.Explore &&
-                configs[0].Prompt == "Analyze the code" &&
-                configs[0].Perspective == "optimist")
+                string.Equals(configs[0].Prompt, "Analyze the code", StringComparison.Ordinal) &&
+                string.Equals(configs[0].Perspective, "optimist", StringComparison.Ordinal))
             .AssertPassed();
     }
 
@@ -96,7 +96,7 @@ public sealed class SubagentToolsBddTests : TinyBddXunitBase
                 configs = SubagentTools.ParseAgentConfigs(j);
                 return j;
             })
-            .Then("perspective is parsed correctly", _ => configs![0].Perspective == "skeptic")
+            .Then("perspective is parsed correctly", _ => string.Equals(configs![0].Perspective, "skeptic", StringComparison.Ordinal))
             .AssertPassed();
     }
 
@@ -165,7 +165,7 @@ public sealed class SubagentToolsBddTests : TinyBddXunitBase
                 configs = SubagentTools.ParseAgentConfigs(j);
                 return j;
             })
-            .Then("prompt defaults to empty string", _ => configs![0].Prompt == "")
+            .Then("prompt defaults to empty string", _ => configs![0].Prompt != null && configs![0].Prompt.Length == 0)
             .AssertPassed();
     }
 
@@ -181,7 +181,7 @@ public sealed class SubagentToolsBddTests : TinyBddXunitBase
                 configs = SubagentTools.ParseAgentConfigs(j);
                 return j;
             })
-            .Then("name defaults to 'agent'", _ => configs![0].Name == "agent")
+            .Then("name defaults to 'agent'", _ => string.Equals(configs![0].Name, "agent", StringComparison.Ordinal))
             .AssertPassed();
     }
 

@@ -22,7 +22,7 @@ public sealed class FileMentionExpanderBddTests : TinyBddXunitBase
                 result = FileMentionExpander.Expand(input);
                 return input;
             })
-            .Then("the result is the original text", _ => result == "just some plain text")
+            .Then("the result is the original text", _ => string.Equals(result, "just some plain text", StringComparison.Ordinal))
             .AssertPassed();
     }
 
@@ -34,7 +34,7 @@ public sealed class FileMentionExpanderBddTests : TinyBddXunitBase
 
         try
         {
-            File.WriteAllText(fileName, "hello world");
+            await File.WriteAllTextAsync(fileName, "hello world");
 
             await Given("input with @mention of an existing file", () => $"check @{fileName}")
                 .When("Expand is called", input =>
@@ -77,8 +77,8 @@ public sealed class FileMentionExpanderBddTests : TinyBddXunitBase
 
         try
         {
-            File.WriteAllText(fileName1, "content one");
-            File.WriteAllText(fileName2, "content two");
+            await File.WriteAllTextAsync(fileName1, "content one");
+            await File.WriteAllTextAsync(fileName2, "content two");
 
             await Given("input with two @mentions of existing files", () => $"@{fileName1} and @{fileName2}")
                 .When("Expand is called", input =>
@@ -107,7 +107,7 @@ public sealed class FileMentionExpanderBddTests : TinyBddXunitBase
         try
         {
             Directory.CreateDirectory(subDir);
-            File.WriteAllText(fileName, "nested content");
+            await File.WriteAllTextAsync(fileName, "nested content");
 
             await Given("input with relative path @mention", () => $"see @{fileName}")
                 .When("Expand is called", input =>
@@ -134,7 +134,7 @@ public sealed class FileMentionExpanderBddTests : TinyBddXunitBase
 
         try
         {
-            File.WriteAllText(fileName, "real content");
+            await File.WriteAllTextAsync(fileName, "real content");
 
             await Given("input with one existing and one non-existing @mention", () =>
                     $"@{fileName} and @no-such-file.txt")

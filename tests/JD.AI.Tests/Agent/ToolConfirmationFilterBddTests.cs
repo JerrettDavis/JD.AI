@@ -23,7 +23,7 @@ public sealed class ToolConfirmationFilterBddTests : TinyBddXunitBase
                 result = ToolConfirmationFilter.BuildRedactedArgs(args);
                 return args;
             })
-            .Then("result is empty string", _ => result == "")
+            .Then("result is empty string", _ => result != null && result.Length == 0)
             .AssertPassed();
     }
 
@@ -38,7 +38,7 @@ public sealed class ToolConfirmationFilterBddTests : TinyBddXunitBase
                 result = ToolConfirmationFilter.BuildRedactedArgs(args);
                 return args;
             })
-            .Then("result is empty string", _ => result == "")
+            .Then("result is empty string", _ => result != null && result.Length == 0)
             .AssertPassed();
     }
 

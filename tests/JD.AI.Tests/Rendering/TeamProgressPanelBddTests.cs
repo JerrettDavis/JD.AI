@@ -129,7 +129,7 @@ public sealed class TeamProgressPanelBddTests : TinyBddXunitBase
                 icon = TeamProgressPanel.GetStatusIcon(status);
                 return status;
             })
-            .Then("icon is open circle", _ => icon == "\u25cb")
+            .Then("icon is open circle", _ => string.Equals(icon, "\u25cb", StringComparison.Ordinal))
             .AssertPassed();
     }
 
@@ -144,7 +144,7 @@ public sealed class TeamProgressPanelBddTests : TinyBddXunitBase
                 icon = TeamProgressPanel.GetStatusIcon(status);
                 return status;
             })
-            .Then("icon is filled circle", _ => icon == "\u25cf")
+            .Then("icon is filled circle", _ => string.Equals(icon, "\u25cf", StringComparison.Ordinal))
             .AssertPassed();
     }
 
@@ -159,7 +159,7 @@ public sealed class TeamProgressPanelBddTests : TinyBddXunitBase
                 icon = TeamProgressPanel.GetStatusIcon(status);
                 return status;
             })
-            .Then("icon is cross mark", _ => icon == "\u2717")
+            .Then("icon is cross mark", _ => string.Equals(icon, "\u2717", StringComparison.Ordinal))
             .AssertPassed();
     }
 
@@ -174,7 +174,7 @@ public sealed class TeamProgressPanelBddTests : TinyBddXunitBase
                 color = TeamProgressPanel.GetStatusColor(status);
                 return status;
             })
-            .Then("color is green", _ => color == "green")
+            .Then("color is green", _ => string.Equals(color, "green", StringComparison.Ordinal))
             .AssertPassed();
     }
 
@@ -189,7 +189,7 @@ public sealed class TeamProgressPanelBddTests : TinyBddXunitBase
                 color = TeamProgressPanel.GetStatusColor(status);
                 return status;
             })
-            .Then("color is red", _ => color == "red")
+            .Then("color is red", _ => string.Equals(color, "red", StringComparison.Ordinal))
             .AssertPassed();
     }
 
@@ -204,7 +204,7 @@ public sealed class TeamProgressPanelBddTests : TinyBddXunitBase
                 color = TeamProgressPanel.GetStatusColor(status);
                 return status;
             })
-            .Then("color is yellow", _ => color == "yellow")
+            .Then("color is yellow", _ => string.Equals(color, "yellow", StringComparison.Ordinal))
             .AssertPassed();
     }
 }

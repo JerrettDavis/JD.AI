@@ -88,7 +88,7 @@ public sealed class TurnProgressBddTests : TinyBddXunitBase
                 result = TurnProgress.FormatElapsed(ts);
                 return ts;
             })
-            .Then("the result is '30.0s'", _ => result == "30.0s")
+            .Then("the result is '30.0s'", _ => string.Equals(result, "30.0s", StringComparison.Ordinal))
             .AssertPassed();
     }
 
@@ -103,7 +103,7 @@ public sealed class TurnProgressBddTests : TinyBddXunitBase
                 result = TurnProgress.FormatElapsed(ts);
                 return ts;
             })
-            .Then("the result is '2m 05s'", _ => result == "2m 05s")
+            .Then("the result is '2m 05s'", _ => string.Equals(result, "2m 05s", StringComparison.Ordinal))
             .AssertPassed();
     }
 
@@ -118,7 +118,7 @@ public sealed class TurnProgressBddTests : TinyBddXunitBase
                 result = TurnProgress.FormatElapsed(ts);
                 return ts;
             })
-            .Then("the result is '0.0s'", _ => result == "0.0s")
+            .Then("the result is '0.0s'", _ => string.Equals(result, "0.0s", StringComparison.Ordinal))
             .AssertPassed();
     }
 

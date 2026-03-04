@@ -76,7 +76,7 @@ public sealed class QuestionnaireSessionBddTests : TinyBddXunitBase
 
         await Given("a validation rule with maxLength and a custom error", () => new QuestionValidation { MaxLength = 5, ErrorMessage = "Too long!" })
             .When("validating text that exceeds the limit", v => { result = QuestionnaireSession.ValidateText(v, "exceeds limit"); return v; })
-            .Then("the result is the custom error message", _ => result == "Too long!")
+            .Then("the result is the custom error message", _ => string.Equals(result, "Too long!", StringComparison.Ordinal))
             .AssertPassed();
     }
 

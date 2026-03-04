@@ -114,7 +114,7 @@ public sealed class TurnSpinnerBddTests : TinyBddXunitBase
                 result = TurnSpinner.FormatElapsed(ts);
                 return ts;
             })
-            .Then("the result is '30.0s'", _ => result == "30.0s")
+            .Then("the result is '30.0s'", _ => string.Equals(result, "30.0s", StringComparison.Ordinal))
             .AssertPassed();
     }
 
@@ -129,7 +129,7 @@ public sealed class TurnSpinnerBddTests : TinyBddXunitBase
                 result = TurnSpinner.FormatElapsed(ts);
                 return ts;
             })
-            .Then("the result is '1m 30s'", _ => result == "1m 30s")
+            .Then("the result is '1m 30s'", _ => string.Equals(result, "1m 30s", StringComparison.Ordinal))
             .AssertPassed();
     }
 }

@@ -28,7 +28,7 @@ public sealed class ChatRendererBddTests : TinyBddXunitBase, IDisposable
 
         await Given("an elapsed time of 45000 milliseconds", () => 45000L)
             .When("formatting the elapsed metric", ms => { result = ChatRenderer.FormatElapsedMetric(ms); return ms; })
-            .Then("the result is '45.0s'", _ => result == "45.0s")
+            .Then("the result is '45.0s'", _ => string.Equals(result, "45.0s", StringComparison.Ordinal))
             .AssertPassed();
     }
 
@@ -39,7 +39,7 @@ public sealed class ChatRendererBddTests : TinyBddXunitBase, IDisposable
 
         await Given("an elapsed time of 90000 milliseconds", () => 90000L)
             .When("formatting the elapsed metric", ms => { result = ChatRenderer.FormatElapsedMetric(ms); return ms; })
-            .Then("the result is '1m 30s'", _ => result == "1m 30s")
+            .Then("the result is '1m 30s'", _ => string.Equals(result, "1m 30s", StringComparison.Ordinal))
             .AssertPassed();
     }
 
@@ -50,7 +50,7 @@ public sealed class ChatRendererBddTests : TinyBddXunitBase, IDisposable
 
         await Given("an elapsed time of 500 milliseconds", () => 500L)
             .When("formatting the elapsed metric", ms => { result = ChatRenderer.FormatElapsedMetric(ms); return ms; })
-            .Then("the result is '0.5s'", _ => result == "0.5s")
+            .Then("the result is '0.5s'", _ => string.Equals(result, "0.5s", StringComparison.Ordinal))
             .AssertPassed();
     }
 
@@ -61,7 +61,7 @@ public sealed class ChatRendererBddTests : TinyBddXunitBase, IDisposable
 
         await Given("an elapsed time of 60000 milliseconds", () => 60000L)
             .When("formatting the elapsed metric", ms => { result = ChatRenderer.FormatElapsedMetric(ms); return ms; })
-            .Then("the result is '1m 0s'", _ => result == "1m 0s")
+            .Then("the result is '1m 0s'", _ => string.Equals(result, "1m 0s", StringComparison.Ordinal))
             .AssertPassed();
     }
 
@@ -72,7 +72,7 @@ public sealed class ChatRendererBddTests : TinyBddXunitBase, IDisposable
 
         await Given("an elapsed time of 0 milliseconds", () => 0L)
             .When("formatting the elapsed metric", ms => { result = ChatRenderer.FormatElapsedMetric(ms); return ms; })
-            .Then("the result is '0.0s'", _ => result == "0.0s")
+            .Then("the result is '0.0s'", _ => string.Equals(result, "0.0s", StringComparison.Ordinal))
             .AssertPassed();
     }
 
@@ -85,7 +85,7 @@ public sealed class ChatRendererBddTests : TinyBddXunitBase, IDisposable
 
         await Given("a byte count of 500", () => 500L)
             .When("formatting the bytes", bytes => { result = ChatRenderer.FormatBytes(bytes); return bytes; })
-            .Then("the result is '500 B'", _ => result == "500 B")
+            .Then("the result is '500 B'", _ => string.Equals(result, "500 B", StringComparison.Ordinal))
             .AssertPassed();
     }
 
@@ -96,7 +96,7 @@ public sealed class ChatRendererBddTests : TinyBddXunitBase, IDisposable
 
         await Given("a byte count of 1024", () => 1024L)
             .When("formatting the bytes", bytes => { result = ChatRenderer.FormatBytes(bytes); return bytes; })
-            .Then("the result is '1.0 KB'", _ => result == "1.0 KB")
+            .Then("the result is '1.0 KB'", _ => string.Equals(result, "1.0 KB", StringComparison.Ordinal))
             .AssertPassed();
     }
 
@@ -107,7 +107,7 @@ public sealed class ChatRendererBddTests : TinyBddXunitBase, IDisposable
 
         await Given("a byte count of 2048", () => 2048L)
             .When("formatting the bytes", bytes => { result = ChatRenderer.FormatBytes(bytes); return bytes; })
-            .Then("the result is '2.0 KB'", _ => result == "2.0 KB")
+            .Then("the result is '2.0 KB'", _ => string.Equals(result, "2.0 KB", StringComparison.Ordinal))
             .AssertPassed();
     }
 
@@ -118,7 +118,7 @@ public sealed class ChatRendererBddTests : TinyBddXunitBase, IDisposable
 
         await Given("a byte count of 1048576", () => 1048576L)
             .When("formatting the bytes", bytes => { result = ChatRenderer.FormatBytes(bytes); return bytes; })
-            .Then("the result is '1.0 MB'", _ => result == "1.0 MB")
+            .Then("the result is '1.0 MB'", _ => string.Equals(result, "1.0 MB", StringComparison.Ordinal))
             .AssertPassed();
     }
 
@@ -129,7 +129,7 @@ public sealed class ChatRendererBddTests : TinyBddXunitBase, IDisposable
 
         await Given("a byte count of 5242880", () => 5242880L)
             .When("formatting the bytes", bytes => { result = ChatRenderer.FormatBytes(bytes); return bytes; })
-            .Then("the result is '5.0 MB'", _ => result == "5.0 MB")
+            .Then("the result is '5.0 MB'", _ => string.Equals(result, "5.0 MB", StringComparison.Ordinal))
             .AssertPassed();
     }
 
@@ -142,7 +142,7 @@ public sealed class ChatRendererBddTests : TinyBddXunitBase, IDisposable
 
         await Given("an empty string", () => string.Empty)
             .When("escaping for JSON", value => { result = ChatRenderer.EscapeJsonString(value); return value; })
-            .Then("the result is empty", _ => result == string.Empty)
+            .Then("the result is empty", _ => result != null && result.Length == 0)
             .AssertPassed();
     }
 

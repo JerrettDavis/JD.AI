@@ -28,7 +28,7 @@ public sealed class SpectreAgentOutputBddTests : TinyBddXunitBase
                 return input;
             })
             .Then("Style and ModelName are set correctly", _ =>
-                capturedStyle == SpinnerStyle.Rich && capturedModel == "gpt-4o")
+                capturedStyle == SpinnerStyle.Rich && string.Equals(capturedModel, "gpt-4o", StringComparison.Ordinal))
             .AssertPassed();
     }
 
