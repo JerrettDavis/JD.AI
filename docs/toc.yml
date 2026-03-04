@@ -1,4 +1,10 @@
-- name: Documentation
-  href: articles/
+- name: User Guide
+  href: user-guide/
+- name: Developer Guide
+  href: developer-guide/
+- name: Operations
+  href: operations/
+- name: Reference
+  href: reference/
 - name: API Reference
   href: api/

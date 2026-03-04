@@ -1,0 +1,24 @@
+- name: Architecture Overview
+  href: index.md
+- name: Extending JD.AI
+  href: extending.md
+- name: Custom Tools
+  href: custom-tools.md
+- name: Custom Providers
+  href: custom-providers.md
+- name: Plugin SDK
+  href: plugins.md
+- name: Subagents
+  href: subagents.md
+- name: Team Orchestration
+  href: orchestration.md
+- name: Workflows
+  href: workflows.md
+- name: MCP Integration
+  href: mcp-integration.md
+- name: Channel Adapters
+  href: channels.md
+- name: Gateway API
+  href: gateway-api.md
+- name: OpenClaw Integration
+  href: openclaw-integration.md
