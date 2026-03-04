@@ -559,6 +559,7 @@ kernel.Plugins.AddFromType<MigrationTools>("migration");
 kernel.Plugins.AddFromType<SkillParityTools>("skillParity");
 kernel.Plugins.AddFromType<McpEcosystemTools>("mcpEcosystem");
 kernel.Plugins.AddFromType<TailscaleTools>("tailscale");
+kernel.Plugins.AddFromType<EncodingCryptoTools>("encoding");
 kernel.Plugins.AddFromObject(new MemoryTools(), "memory");
 var taskTools = new TaskTools();
 kernel.Plugins.AddFromObject(taskTools, "tasks");
