@@ -351,6 +351,32 @@ Track token usage and estimated costs for the current session. The agent loop ca
 - **`get_usage`** — No parameters. Returns session token counts (prompt, completion, total), tool call count, turn count, and estimated costs for several model pricing tiers.
 - **`reset_usage`** — No parameters. Resets all session usage counters to zero.
 
+## OpenClaw compatibility aliases
+
+JD.AI also exposes OpenClaw-style aliases so external tool contracts can map cleanly to native tools:
+
+| Alias | Canonical JD.AI tool |
+|-------|----------------------|
+| `bash` | `run_command` |
+| `read` | `read_file` |
+| `write` | `write_file` |
+| `edit` | `edit_file` |
+| `ls` | `list_directory` |
+| `webfetch` | `web_fetch` |
+| `websearch` | `web_search` |
+| `todo_read` | `list_tasks` |
+| `todo_write` | `update_task` / task mutations |
+
+### Shared compatibility envelope parameters
+
+The aliases support additional optional parameters:
+
+- `summary` — return a compact response.
+- `maxResultChars` — hard-cap output length.
+- `noContext` — exclude actual tool output from model/session context.
+- `noStream` — compatibility flag (currently no effect on tool output handling).
+- `timeoutMs` — timeout override for alias tools that support execution timeouts.
+
 ## Tool safety tiers
 
 Every tool belongs to a safety tier that controls how confirmation is handled:
