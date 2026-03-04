@@ -30,11 +30,11 @@ public sealed class DataRedactorTests
     public void Redact_NoPatterns_ReturnsInputUnchanged()
     {
         var redactor = new DataRedactor([]);
-        const string input = "api_key=should-not-be-redacted";
+        const string Input = "api_key=should-not-be-redacted";
 
-        var result = redactor.Redact(input);
+        var result = redactor.Redact(Input);
 
-        Assert.Equal(input, result);
+        Assert.Equal(Input, result);
     }
 
     [Fact]
@@ -78,11 +78,11 @@ public sealed class DataRedactorTests
     public void Redact_InputWithNoSensitiveContent_ReturnsInputUnchanged()
     {
         var redactor = new DataRedactor(["(?i)api[_-]?key\\s*[:=]\\s*\\S+"]);
-        const string input = "This is a safe message with no secrets.";
+        const string Input = "This is a safe message with no secrets.";
 
-        var result = redactor.Redact(input);
+        var result = redactor.Redact(Input);
 
-        Assert.Equal(input, result);
+        Assert.Equal(Input, result);
     }
 
     [Fact]
@@ -156,11 +156,11 @@ public sealed class DataRedactorTests
     [Fact]
     public void DataRedactorNone_IsPassThrough()
     {
-        const string input = "api_key=secret password=pass123 sensitive data";
+        const string Input = "api_key=secret password=pass123 sensitive data";
 
-        var result = DataRedactor.None.Redact(input);
+        var result = DataRedactor.None.Redact(Input);
 
-        Assert.Equal(input, result);
+        Assert.Equal(Input, result);
     }
 
     [Fact]
@@ -181,9 +181,9 @@ public sealed class DataRedactorTests
     public void Redact_BlankPatterns_AreIgnored()
     {
         var redactor = new DataRedactor(["", "   ", "(?i)password\\s*[:=]\\s*\\S+"]);
-        const string input = "password=s3cret";
+        const string Input = "password=s3cret";
 
-        var result = redactor.Redact(input);
+        var result = redactor.Redact(Input);
 
         Assert.Contains("[REDACTED]", result, StringComparison.Ordinal);
     }

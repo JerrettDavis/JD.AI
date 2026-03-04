@@ -10,10 +10,10 @@ public sealed class PolicyResolverTests
         PolicyScope scope,
         int priority = 0,
         PolicySpec? spec = null) => new()
-    {
-        Metadata = new PolicyMetadata { Name = name, Scope = scope, Priority = priority },
-        Spec = spec ?? new PolicySpec(),
-    };
+        {
+            Metadata = new PolicyMetadata { Name = name, Scope = scope, Priority = priority },
+            Spec = spec ?? new PolicySpec(),
+        };
 
     [Fact]
     public void Resolve_EmptyList_ReturnsEmptySpec()
