@@ -104,11 +104,14 @@ public sealed class ClaudeCodeDetector : IProviderDetector
         builder.Services.AddSingleton<IChatClient>(sp =>
         {
             var sessionProvider = sp.GetRequiredService<ClaudeCodeSessionProvider>();
-            var credentials = sessionProvider
-                .GetCredentialsAsync(CancellationToken.None)
+            var token = sessionProvider
+                .GetTokenAsync(CancellationToken.None)
                 .GetAwaiter()
                 .GetResult();
-            var accessToken = GetAccessTokenOrThrow(credentials);
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                throw new ClaudeCodeSessionException("No Claude token available.");
+            }
 
             var httpClient = new HttpClient(new ClaudeCodeSessionHttpHandler(sessionProvider))
             {
@@ -116,7 +119,7 @@ public sealed class ClaudeCodeDetector : IProviderDetector
             };
 
             var anthropicClient = new AnthropicClient(
-                new APIAuthentication(accessToken),
+                new APIAuthentication(token),
                 httpClient);
 
             return new AnthropicPromptCachingChatClient(anthropicClient.Messages);
@@ -125,17 +128,6 @@ public sealed class ClaudeCodeDetector : IProviderDetector
         builder.Services.AddSingleton<IChatCompletionService>(sp =>
             sp.GetRequiredService<IChatClient>()
               .AsChatCompletionService(sp));
-    }
-
-    internal static string GetAccessTokenOrThrow(ClaudeCodeOAuthCredentials? credentials)
-    {
-        if (credentials is null ||
-            string.IsNullOrWhiteSpace(credentials.AccessToken))
-        {
-            throw new ClaudeCodeSessionException("No Claude access token available.");
-        }
-
-        return credentials.AccessToken;
     }
 
     /// <summary>
