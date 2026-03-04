@@ -127,7 +127,7 @@ public sealed class MultimodalToolsTests : IDisposable
     public async Task AnalyzeImage_UnsupportedFormat_ReturnsError()
     {
         var path = Path.Combine(_tempDir, "test.xyz");
-        File.WriteAllText(path, "not an image");
+        await File.WriteAllTextAsync(path, "not an image");
 
         var result = await MultimodalTools.AnalyzeImageAsync(path);
 
@@ -159,7 +159,7 @@ public sealed class MultimodalToolsTests : IDisposable
     public async Task AnalyzeImage_Svg_ShowsTextInfo()
     {
         var svgPath = Path.Combine(_tempDir, "test.svg");
-        File.WriteAllText(svgPath, "<svg viewBox=\"0 0 100 100\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"50\" cy=\"50\" r=\"40\"/></svg>");
+        await File.WriteAllTextAsync(svgPath, "<svg viewBox=\"0 0 100 100\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"50\" cy=\"50\" r=\"40\"/></svg>");
 
         var result = await MultimodalTools.AnalyzeImageAsync(svgPath);
 
@@ -195,7 +195,7 @@ public sealed class MultimodalToolsTests : IDisposable
     public async Task AnalyzePdf_NotPdf_ReturnsError()
     {
         var path = Path.Combine(_tempDir, "test.txt");
-        File.WriteAllText(path, "not a pdf");
+        await File.WriteAllTextAsync(path, "not a pdf");
 
         var result = await MultimodalTools.AnalyzePdfAsync(path);
 
@@ -253,7 +253,7 @@ public sealed class MultimodalToolsTests : IDisposable
     public async Task MediaView_OtherFile_ShowsBasicInfo()
     {
         var path = Path.Combine(_tempDir, "data.csv");
-        File.WriteAllText(path, "a,b,c\n1,2,3");
+        await File.WriteAllTextAsync(path, "a,b,c\n1,2,3");
 
         var result = await MultimodalTools.MediaViewAsync(path);
 
@@ -279,7 +279,7 @@ public sealed class MultimodalToolsTests : IDisposable
         // so we need an actual large file — use sparse or just verify the check exists)
         var path = Path.Combine(_tempDir, "huge.png");
         // Create a small file and verify the size check message format
-        File.WriteAllBytes(path, new byte[100]);
+        await File.WriteAllBytesAsync(path, new byte[100]);
         // The file is small, so it should succeed, but let's verify the error message format
         // by testing with a non-image that triggers the size check
         var result = await MultimodalTools.AnalyzeImageAsync(path);
