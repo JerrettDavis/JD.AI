@@ -4,6 +4,7 @@ using JD.AI.Core.PromptCaching;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Sessions;
 using JD.AI.Core.Tracing;
+using JD.AI.Core.Usage;
 using JD.SemanticKernel.Extensions.Compaction;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -36,6 +37,9 @@ public sealed class AgentSession
 
     /// <summary>Optional audit service for emitting session lifecycle events.</summary>
     public AuditService? AuditService { get; set; }
+
+    /// <summary>Optional usage meter for centralized metering.</summary>
+    public IUsageMeter? UsageMeter { get; set; }
 
     // ── System prompt cache ──────────────────────────────────
     private string? _cachedSystemPromptText;
@@ -160,6 +164,22 @@ public sealed class AgentSession
         await Store.SaveTurnAsync(turn).ConfigureAwait(false);
         SyncModelHistoryToSession();
         await Store.UpdateSessionAsync(SessionInfo).ConfigureAwait(false);
+
+        // Fire-and-forget centralized metering
+        if (UsageMeter is not null)
+        {
+            _ = UsageMeter.RecordTurnAsync(new TurnUsageRecord
+            {
+                SessionId = SessionInfo.Id,
+                ProviderId = CurrentModel?.ProviderName ?? "unknown",
+                ModelId = CurrentModel?.Id ?? "unknown",
+                PromptTokens = tokensIn,
+                CompletionTokens = tokensOut,
+                ToolCalls = 0,
+                DurationMs = durationMs,
+                ProjectPath = SessionInfo.ProjectPath,
+            });
+        }
     }
 
     /// <summary>Sync in-memory model switch history and fork points to SessionInfo for persistence.</summary>
