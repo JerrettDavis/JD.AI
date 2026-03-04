@@ -1,7 +1,7 @@
 using System.Diagnostics;
+using JD.AI.Core.Agents;
 using JD.AI.Core.Governance;
 using JD.AI.Core.Governance.Audit;
-using JD.AI.Rendering;
 using JD.AI.Tools;
 using Microsoft.SemanticKernel;
 
@@ -9,7 +9,7 @@ namespace JD.AI.Agent;
 
 /// <summary>
 /// SK auto-function-invocation filter that enforces safety tiers,
-/// policy-based governance, and renders tool calls to the TUI.
+/// policy-based governance, and renders tool calls to the TUI via <see cref="IAgentOutput"/>.
 /// </summary>
 public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
 {
@@ -84,6 +84,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
     {
         var functionName = context.Function.Name;
         var tier = ToolTiers.GetValueOrDefault(functionName, SafetyTier.AlwaysConfirm);
+        var output = AgentOutput.Current;
 
         // Build argument summary for display
         var args = string.Join(", ", (context.Arguments ?? [])
@@ -106,7 +107,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
 
             if (policyResult.Decision == PolicyDecision.Deny)
             {
-                ChatRenderer.RenderWarning($"Policy blocked: {functionName} — {policyResult.Reason}");
+                output.RenderWarning($"Policy blocked: {functionName} — {policyResult.Reason}");
                 context.Result = new FunctionResult(context.Function, $"Blocked by policy: {policyResult.Reason}");
 
                 await EmitAuditEventAsync(functionName, context.Arguments, "denied", policyResult).ConfigureAwait(false);
@@ -125,8 +126,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
 
         if (needsConfirm)
         {
-            ChatRenderer.RenderWarning($"Tool: {functionName}({args})");
-            if (!ChatRenderer.Confirm("Allow this tool to run?"))
+            if (!output.ConfirmToolCall(functionName, args))
             {
                 context.Result = new FunctionResult(context.Function, "User denied tool execution.");
                 await EmitAuditEventAsync(functionName, context.Arguments, "user_denied", policyResult).ConfigureAwait(false);
@@ -140,14 +140,14 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         }
         else
         {
-            ChatRenderer.RenderInfo($"  ▸ {functionName}({args})");
+            output.RenderInfo($"  ▸ {functionName}({args})");
         }
 
         await next(context).ConfigureAwait(false);
 
         // Render tool result
         var result = context.Result.GetValue<string>() ?? context.Result.ToString() ?? "";
-        ChatRenderer.RenderToolCall(functionName, args, result);
+        output.RenderToolCall(functionName, args, result);
 
         // ── Audit ────────────────────────────────────────────
         await EmitAuditEventAsync(functionName, context.Arguments, "ok", policyResult).ConfigureAwait(false);

@@ -1,6 +1,7 @@
 using JD.AI;
 using JD.AI.Agent;
 using JD.AI.Commands;
+using JD.AI.Core.Agents;
 using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Agents.Orchestration;
 using JD.AI.Core.Config;
@@ -617,6 +618,8 @@ session.History.AddSystemMessage(systemPrompt);
 
 // 9. Wire up SpectreAgentOutput so streaming renders in the TUI
 var tuiSettings = TuiSettings.Load();
+session.PromptCachingEnabled = tuiSettings.PromptCacheEnabled;
+session.PromptCacheTtl = tuiSettings.PromptCacheTtl;
 ChatRenderer.ApplyTheme(tuiSettings.Theme);
 ChatRenderer.SetOutputStyle(tuiSettings.OutputStyle);
 using var spectreOutput = new SpectreAgentOutput(
@@ -806,7 +809,7 @@ Console.CancelKeyPress += (_, e) =>
     {
         try
         {
-            ChatRenderer.RenderWarning("Cancelling...");
+            AgentOutput.Current.RenderWarning("Cancelling...");
             monitor.CancelTurn();
         }
 #pragma warning disable CA1031 // catch broad — best effort during signal handler
@@ -829,7 +832,7 @@ Console.CancelKeyPress += (_, e) =>
 
     lastCtrlCTime = now;
     Console.WriteLine();
-    ChatRenderer.RenderWarning("Press Ctrl+C again to exit...");
+    AgentOutput.Current.RenderWarning("Press Ctrl+C again to exit...");
 };
 
 while (!appCts.IsCancellationRequested)

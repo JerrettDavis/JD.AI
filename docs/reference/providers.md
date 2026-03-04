@@ -18,7 +18,7 @@ JD.AI supports 14 AI providers. This reference covers capabilities, authenticati
 | 5 | Local (LLamaSharp) | LLamaSharp (in-process) | File | No |
 | 6 | OpenAI | `Microsoft.SemanticKernel.Connectors.OpenAI` | API Key | Yes |
 | 7 | Azure OpenAI | `Microsoft.SemanticKernel.Connectors.AzureOpenAI` | API Key | Yes |
-| 8 | Anthropic | OpenAI-compatible connector | API Key | Yes |
+| 8 | Anthropic | `Anthropic.SDK` (native Messages API) | API Key | Yes |
 | 9 | Google Gemini | `Microsoft.SemanticKernel.Connectors.Google` | API Key | Yes |
 | 10 | Mistral | `Microsoft.SemanticKernel.Connectors.MistralAI` | API Key | Yes |
 | 11 | AWS Bedrock | `Microsoft.SemanticKernel.Connectors.Amazon` | AWS IAM | Yes |
@@ -42,6 +42,33 @@ JD.AI supports 14 AI providers. This reference covers capabilities, authenticati
 | AWS Bedrock | ✅ | ✅ | ✅ | ❌ | Pay-per-use |
 | HuggingFace | ✅ | ❌ | ❌ | ❌ | Free/Pay |
 | OpenAI-Compatible | ✅ | Varies | Varies | ✅ | Varies |
+
+## Claude prompt caching (API key + OAuth)
+
+Anthropic API-key sessions and Claude Code OAuth sessions both use Anthropic's native Messages API path and support automatic prompt caching controls.
+
+Default behavior:
+
+- Prompt caching is enabled by default (`prompt_cache=on`).
+- Cache TTL defaults to `5m` (`prompt_cache_ttl=5m`).
+- Optional extended TTL: `1h`.
+
+Policy details:
+
+- Auto-enable threshold for Sonnet/Opus models: `>=1024` estimated prompt tokens.
+- Auto-enable threshold for Haiku models: `>=2048` estimated prompt tokens.
+- Caching directives are applied only when thresholds are met and the runtime toggle is enabled.
+
+Configuration commands:
+
+```text
+/config get prompt_cache
+/config get prompt_cache_ttl
+/config set prompt_cache on
+/config set prompt_cache_ttl 1h
+```
+
+See [Prompt Caching Reference](prompt-caching.md) for full behavior and execution coverage.
 
 ## Provider detection order
 

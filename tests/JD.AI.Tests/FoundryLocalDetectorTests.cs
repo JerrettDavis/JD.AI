@@ -13,28 +13,16 @@ public sealed class FoundryLocalDetectorTests
     }
 
     [Fact]
-    public async Task DetectAsync_ReturnsUnavailable_WhenEndpointNotReachable()
+    public async Task DetectAsync_ReturnsResult_WithoutError()
     {
-        // Use an endpoint that is guaranteed to be unreachable in tests
-        var detector = new FoundryLocalDetector("http://127.0.0.1:19999");
+        // The SDK-based detector should not throw regardless of service state.
+        // When the service isn't running, it returns IsAvailable=false.
+        var detector = new FoundryLocalDetector();
         var result = await detector.DetectAsync();
 
-        Assert.False(result.IsAvailable);
-        Assert.Equal("Not running", result.StatusMessage);
-        Assert.Empty(result.Models);
-    }
-
-    [Fact]
-    public void Constructor_TrimsTrailingSlash()
-    {
-        var detector = new FoundryLocalDetector("http://127.0.0.1:64646/");
-        Assert.Equal("http://127.0.0.1:64646", detector.Endpoint);
-    }
-
-    [Fact]
-    public void Constructor_PreservesEndpointWithoutSlash()
-    {
-        var detector = new FoundryLocalDetector("http://127.0.0.1:64646");
-        Assert.Equal("http://127.0.0.1:64646", detector.Endpoint);
+        // We can't guarantee the service is running in CI,
+        // but the call should always succeed without throwing
+        Assert.NotNull(result);
+        Assert.Equal("Foundry Local", result.Name);
     }
 }

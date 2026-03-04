@@ -154,6 +154,17 @@ See [Governance & Policies](governance.md) for the full governance configuration
 | `/compact` | Force context compaction |
 | `/clear` | Clear conversation history |
 | `/spinner [style]` | Change the loading animation |
+| `/config list` | Show persisted runtime settings |
+| `/config get prompt_cache` | Show prompt caching enablement |
+| `/config set prompt_cache on|off` | Enable or disable automatic prompt caching |
+| `/config set prompt_cache_ttl 5m|1h` | Set prompt cache TTL for supported providers |
+
+Prompt caching defaults:
+
+- `prompt_cache=on`
+- `prompt_cache_ttl=5m`
+
+See [Prompt Caching Reference](../reference/prompt-caching.md) for thresholds and provider behavior.
 
 ## See also
 

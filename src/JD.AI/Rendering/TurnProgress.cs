@@ -19,6 +19,7 @@ internal sealed class TurnProgress : IDisposable
     private readonly Timer _timer;
     private int _frame;
     private volatile bool _stopped;
+    private volatile bool _paused;
 
     /// <summary>Elapsed milliseconds when the spinner was stopped (first content arrived).</summary>
     public long TimeToFirstTokenMs { get; private set; } = -1;
@@ -28,7 +29,8 @@ internal sealed class TurnProgress : IDisposable
         _style = style;
         _modelName = modelName;
 
-        if (style == SpinnerStyle.None)
+        // Suppress spinner entirely in JSON mode to prevent ANSI interleaving
+        if (style == SpinnerStyle.None || ChatRenderer.CurrentOutputStyle == OutputStyle.Json)
         {
             _timer = new Timer(_ => { }, null, Timeout.Infinite, Timeout.Infinite);
             return;
@@ -40,7 +42,7 @@ internal sealed class TurnProgress : IDisposable
 
     private void Tick(object? state)
     {
-        if (_stopped) return;
+        if (_stopped || _paused) return;
 
         var elapsed = _sw.Elapsed;
         var line = _style switch
@@ -80,6 +82,36 @@ internal sealed class TurnProgress : IDisposable
         {
             // Console torn down
         }
+    }
+
+    /// <summary>
+    /// Temporarily pause the spinner so other output can be written cleanly.
+    /// The spinner line is cleared but the timer is preserved for resumption.
+    /// </summary>
+    public void Pause()
+    {
+        if (_stopped || _paused) return;
+        _paused = true;
+        _timer.Change(Timeout.Infinite, Timeout.Infinite);
+
+        try
+        {
+            Console.Write("\x1b[2K\r");
+        }
+        catch (ObjectDisposedException)
+        {
+            // Console torn down
+        }
+    }
+
+    /// <summary>Resume the spinner after a <see cref="Pause"/>.</summary>
+    public void Resume()
+    {
+        if (_stopped || !_paused) return;
+        _paused = false;
+
+        var interval = _style == SpinnerStyle.Minimal ? 400 : 80;
+        _timer.Change(0, interval);
     }
 
     public void Dispose()
