@@ -36,7 +36,11 @@ public sealed record TuiSettings
         try
         {
             var json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize<TuiSettings>(json, JsonOptions) ?? new TuiSettings();
+            var settings = JsonSerializer.Deserialize<TuiSettings>(json, JsonOptions) ?? new TuiSettings();
+            return settings with
+            {
+                SystemPromptBudgetPercent = Math.Clamp(settings.SystemPromptBudgetPercent, 0, 100),
+            };
         }
 #pragma warning disable CA1031 // Best-effort deserialization
         catch (Exception)

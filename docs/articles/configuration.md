@@ -220,7 +220,7 @@ Each model carries its own context window size. Claude models use 200k; GPT-4o a
 | `HF_HOME` | HuggingFace cache directory (for local model scanning) | `~/.cache/huggingface/` |
 | `HF_TOKEN` | HuggingFace API token for authenticated access | — |
 | `JDAI_ORG_CONFIG` | Path to organization config repo for org-level instructions | — |
-| `JDAI_WORKFLOW_STORE_REPO` | Git repo URL for shared workflow store | — |
+| `JDAI_WORKFLOW_STORE_REPO` | Reserved — workflow store is configured programmatically via `IWorkflowStore` injection | — |
 | `JDAI_DATA_DIR` | Override root data directory (all JD.AI state) | `~/.jdai/` |
 | `OTEL_SERVICE_NAME` | Override `Gateway:Telemetry:ServiceName` in traces/metrics | `"jdai"` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Activate OTLP exporter and set its endpoint (e.g. `http://localhost:4317`) | — |

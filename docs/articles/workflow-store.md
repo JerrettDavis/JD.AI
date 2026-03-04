@@ -10,10 +10,10 @@ The store is designed to fit existing Git workflows. When backed by a Git reposi
 
 ## Quick start
 
-**Step 1 — Configure the store.** Set the Git repository URL in your environment:
+**Step 1 — Configure the store.** Register an `IWorkflowStore` implementation in your host application. For the Git-backed store, provide the repository URL when constructing `GitWorkflowStore`:
 
-```bash
-export JDAI_WORKFLOW_STORE_REPO=https://github.com/my-org/jdai-workflows.git
+```csharp
+var workflowStore = new GitWorkflowStore("https://github.com/my-org/jdai-workflows.git");
 ```
 
 **Step 2 — Browse the shared catalog** to see what workflows are available:
@@ -180,12 +180,13 @@ Commit messages use the format: `publish: {name} v{version}`.
 
 If the pull fails (offline or empty repository), JD.AI falls back to the existing local clone and continues operating. The store is non-blocking for offline use.
 
-**Configure the Git store** with the `JDAI_WORKFLOW_STORE_REPO` environment variable:
+**Configure the Git store** by injecting a `GitWorkflowStore` into the application. Both HTTPS and SSH URLs are supported:
 
-```bash
-export JDAI_WORKFLOW_STORE_REPO=https://github.com/my-org/jdai-workflows.git
-# or SSH:
-export JDAI_WORKFLOW_STORE_REPO=git@github.com:my-org/jdai-workflows.git
+```csharp
+// HTTPS
+var store = new GitWorkflowStore("https://github.com/my-org/jdai-workflows.git");
+// SSH
+var store = new GitWorkflowStore("git@github.com:my-org/jdai-workflows.git");
 ```
 
 > [!TIP]
@@ -227,7 +228,7 @@ Shared Workflow Catalog (3):
 > [!NOTE]
 > The catalog always shows the latest version of each workflow. Use `/workflow versions <name>` to see all published versions.
 
-### `/workflow publish <name> [--visibility team|org|public]`
+### `/workflow publish <name>`
 
 Publish a workflow from your local catalog to the shared store.
 
@@ -358,7 +359,7 @@ To pin a specific version, use the `@version` syntax:
 
 | Variable | Description | Default |
 |---|---|---|
-| `JDAI_WORKFLOW_STORE_REPO` | Git repository URL for the shared workflow store. When set, JD.AI uses `GitWorkflowStore`. When unset, the store commands return an error. | — |
+| `JDAI_WORKFLOW_STORE_REPO` | Reserved for future use. Currently, the workflow store is configured programmatically via `IWorkflowStore` injection. | — |
 
 ### Local cache location
 

@@ -109,7 +109,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
                 ChatRenderer.RenderWarning($"Policy blocked: {functionName} — {policyResult.Reason}");
                 context.Result = new FunctionResult(context.Function, $"Blocked by policy: {policyResult.Reason}");
 
-                await EmitAuditEventAsync(functionName, args, "denied", policyResult).ConfigureAwait(false);
+                await EmitAuditEventAsync(functionName, context.Arguments, "denied", policyResult).ConfigureAwait(false);
                 return;
             }
         }
@@ -129,7 +129,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             if (!ChatRenderer.Confirm("Allow this tool to run?"))
             {
                 context.Result = new FunctionResult(context.Function, "User denied tool execution.");
-                await EmitAuditEventAsync(functionName, args, "user_denied", policyResult).ConfigureAwait(false);
+                await EmitAuditEventAsync(functionName, context.Arguments, "user_denied", policyResult).ConfigureAwait(false);
                 return;
             }
 
@@ -150,7 +150,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         ChatRenderer.RenderToolCall(functionName, args, result);
 
         // ── Audit ────────────────────────────────────────────
-        await EmitAuditEventAsync(functionName, args, "ok", policyResult).ConfigureAwait(false);
+        await EmitAuditEventAsync(functionName, context.Arguments, "ok", policyResult).ConfigureAwait(false);
     }
 
     // Argument keys whose values should not be logged in audit events
@@ -158,7 +158,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         new(StringComparer.OrdinalIgnoreCase) { "content", "code", "input", "body", "password", "secret", "token" };
 
     private async Task EmitAuditEventAsync(
-        string toolName, string args, string status, PolicyEvaluationResult? policyResult)
+        string toolName, KernelArguments? arguments, string status, PolicyEvaluationResult? policyResult)
     {
         if (_auditService is null) return;
 
@@ -175,27 +175,31 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             Resource = toolName,
             SessionId = _session.SessionInfo?.Id,
             TraceId = Activity.Current?.TraceId.ToString(),
-            Detail = $"status={status}; args={RedactArgs(args)}",
+            Detail = $"status={status}; args={BuildRedactedArgs(arguments)}",
             PolicyResult = policyResult?.Decision,
             Severity = severity,
         }).ConfigureAwait(false);
     }
 
-    private static string RedactArgs(string args)
+    /// <summary>
+    /// Builds a redacted argument string from structured KernelArguments.
+    /// Redacts at the key/value level to avoid delimiter-based parsing issues.
+    /// </summary>
+    private static string BuildRedactedArgs(KernelArguments? arguments)
     {
-        // Redact values for sensitive argument keys (e.g. content=..., body=...)
-        foreach (var key in RedactedArgKeys)
+        if (arguments is null || arguments.Count == 0)
+            return "";
+
+        return string.Join(", ", arguments.Select(kv =>
         {
-            var prefix = $"{key}=";
-            var idx = args.IndexOf(prefix, StringComparison.OrdinalIgnoreCase);
-            if (idx < 0) continue;
+            if (RedactedArgKeys.Contains(kv.Key))
+                return $"{kv.Key}=[REDACTED]";
 
-            var valueStart = idx + prefix.Length;
-            var nextComma = args.IndexOf(", ", valueStart, StringComparison.Ordinal);
-            var valueEnd = nextComma >= 0 ? nextComma : args.Length;
-            args = string.Concat(args.AsSpan(0, valueStart), "[REDACTED]", args.AsSpan(valueEnd));
-        }
+            var val = kv.Value?.ToString() ?? "null";
+            if (val.Length > 80)
+                val = string.Concat(val.AsSpan(0, 77), "...");
 
-        return args;
+            return $"{kv.Key}={val}";
+        }));
     }
 }

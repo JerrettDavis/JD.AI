@@ -88,7 +88,7 @@ public sealed class GitWorkflowStore : IWorkflowStore
                 var files = Directory.GetFiles(dir, "*.json");
                 if (files.Length > 0)
                 {
-                    var latest = files.OrderByDescending(f => f).First();
+                    var latest = GetLatestVersionFile(files);
                     return await ReadAsync(latest, ct).ConfigureAwait(false);
                 }
             }
@@ -121,7 +121,7 @@ public sealed class GitWorkflowStore : IWorkflowStore
             if (files.Length == 0) continue;
 
             // Return latest version only for catalog
-            var latest = files.OrderByDescending(f => f).First();
+            var latest = GetLatestVersionFile(files);
             var workflow = await ReadAsync(latest, ct).ConfigureAwait(false);
             if (workflow is null) continue;
 
@@ -185,7 +185,7 @@ public sealed class GitWorkflowStore : IWorkflowStore
         var files = Directory.GetFiles(dir, "*.json");
         var results = new List<SharedWorkflow>(files.Length);
 
-        foreach (var file in files.OrderBy(f => f))
+        foreach (var file in files.OrderBy(ParseVersionFromPath))
         {
             var workflow = await ReadAsync(file, ct).ConfigureAwait(false);
             if (workflow is not null)
@@ -263,6 +263,15 @@ public sealed class GitWorkflowStore : IWorkflowStore
 
     private static string Sanitize(string input) =>
         string.Concat(input.Select(c => char.IsLetterOrDigit(c) || c == '-' || c == '.' ? c : '_'));
+
+    private static string GetLatestVersionFile(string[] files) =>
+        files.OrderByDescending(ParseVersionFromPath).First();
+
+    private static Version ParseVersionFromPath(string path)
+    {
+        var name = Path.GetFileNameWithoutExtension(path);
+        return Version.TryParse(name, out var v) ? v : new Version(0, 0, 0);
+    }
 
     private static async Task<SharedWorkflow?> ReadAsync(string path, CancellationToken ct)
     {

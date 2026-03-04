@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using JD.AI.Core.Governance.Audit;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Sessions;
@@ -210,6 +211,7 @@ public sealed class AgentSession
                 Action = "session.create",
                 SessionId = SessionInfo.Id,
                 Resource = projectPath,
+                TraceId = Activity.Current?.TraceId.ToString(),
                 Severity = AuditSeverity.Info,
             }).ConfigureAwait(false);
         }
@@ -234,6 +236,7 @@ public sealed class AgentSession
                 Action = "session.close",
                 SessionId = SessionInfo.Id,
                 Resource = SessionInfo.ProjectPath,
+                TraceId = Activity.Current?.TraceId.ToString(),
                 Detail = $"turns={SessionInfo.MessageCount}; tokens={SessionInfo.TotalTokens}",
                 Severity = AuditSeverity.Info,
             }).ConfigureAwait(false);
