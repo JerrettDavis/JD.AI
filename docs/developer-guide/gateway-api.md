@@ -146,6 +146,28 @@ Content-Type: application/json
 
 See [Channel Adapters](channels.md) for setup guides.
 
+### Plugins
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/plugins` | List installed plugins and runtime state |
+| `GET` | `/api/plugins/{id}` | Get plugin details by id |
+| `POST` | `/api/plugins/install` | Install plugin from path, package file, or URL |
+| `POST` | `/api/plugins/{id}/enable` | Enable plugin |
+| `POST` | `/api/plugins/{id}/disable` | Disable plugin |
+| `POST` | `/api/plugins/{id}/update` | Update one plugin from recorded source |
+| `POST` | `/api/plugins/update` | Update all installed plugins |
+| `DELETE` | `/api/plugins/{id}` | Uninstall plugin |
+
+Install payload:
+
+```json
+{
+  "source": "https://example.com/plugins/My.Plugin.1.2.0.nupkg",
+  "enable": true
+}
+```
+
 ### Health
 
 | Method | Path | Description |

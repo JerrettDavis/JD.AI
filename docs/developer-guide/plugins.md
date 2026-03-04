@@ -82,6 +82,57 @@ Discovery → Instantiation → InitializeAsync → [Active] → ShutdownAsync �
 5. **Shutdown** — `ShutdownAsync` called when gateway stops
 6. **Disposal** — `DisposeAsync` for final cleanup
 
+### Installed lifecycle management
+
+JD.AI persists Plugin SDK installs in a registry and exposes explicit lifecycle operations:
+
+```
+install → enable → disable → update → uninstall
+```
+
+`jdai` CLI:
+
+```bash
+jdai plugin list
+jdai plugin install ./artifacts/My.Plugin.1.0.0.nupkg
+jdai plugin enable my-plugin
+jdai plugin disable my-plugin
+jdai plugin update my-plugin
+jdai plugin update            # update all installed plugins
+jdai plugin uninstall my-plugin
+```
+
+Interactive slash commands:
+
+```text
+/plugins
+/plugins install <path-or-url>
+/plugins enable <id>
+/plugins disable <id>
+/plugins update [id]
+/plugins uninstall <id>
+/plugins info <id>
+```
+
+Gateway REST API:
+
+- `GET /api/plugins`
+- `GET /api/plugins/{id}`
+- `POST /api/plugins/install`
+- `POST /api/plugins/{id}/enable`
+- `POST /api/plugins/{id}/disable`
+- `POST /api/plugins/{id}/update`
+- `POST /api/plugins/update`
+- `DELETE /api/plugins/{id}`
+
+Install sources currently supported:
+
+- Local unpacked plugin directory
+- Local `.zip` / `.nupkg` package file
+- Direct `http(s)` package URL
+
+Each installed plugin is isolated in its own collectible `AssemblyLoadContext`, and load failures are recorded without crashing the host process.
+
 ### IPluginContext
 
 ```csharp

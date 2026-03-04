@@ -173,8 +173,26 @@ See [Checkpointing](checkpointing.md) for details on strategies and configuratio
 |---------|-------------|
 | `/update` | Check for new versions on NuGet |
 | `/instructions` | Show loaded project instructions |
-| `/plugins` | List loaded plugins |
 | `/sandbox` | Show current execution mode |
+
+## Plugin management
+
+| Command | Description |
+|---------|-------------|
+| `/plugins` or `/plugins list` | List installed plugins and runtime status |
+| `/plugins install <path-or-url>` | Install and enable a plugin package |
+| `/plugins enable <id>` | Enable an installed plugin |
+| `/plugins disable <id>` | Disable a plugin without uninstalling |
+| `/plugins update [id]` | Update one plugin (or all plugins when omitted) |
+| `/plugins uninstall <id>` | Remove an installed plugin |
+| `/plugins info <id>` | Show source, version, load state, and errors |
+
+```text
+/plugins
+/plugins install ./artifacts/My.Plugin.1.0.0.nupkg
+/plugins update
+/plugins update my-plugin
+```
 
 ## Customization
 
