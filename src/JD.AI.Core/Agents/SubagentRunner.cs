@@ -41,10 +41,16 @@ public sealed class SubagentRunner
         var chat = kernel.GetRequiredService<IChatCompletionService>();
         var supportsTools = _parentSession.CurrentModel?.Capabilities
             .HasFlag(ModelCapabilities.ToolCalling) ?? false;
+        var maxTokens = _parentSession.CurrentModel?.MaxOutputTokens;
+        if (maxTokens is null or <= 0)
+        {
+            maxTokens = 4096;
+        }
+
         var settings = new OpenAIPromptExecutionSettings
         {
             ModelId = _parentSession.CurrentModel?.Id,
-            MaxTokens = 4096,
+            MaxTokens = maxTokens,
             FunctionChoiceBehavior = supportsTools
                 ? FunctionChoiceBehavior.Auto()
                 : null,
