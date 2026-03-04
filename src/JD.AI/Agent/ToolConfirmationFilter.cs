@@ -51,6 +51,19 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["session_status"] = SafetyTier.AutoApprove,
             ["agents_list"] = SafetyTier.AutoApprove,
 
+            // GitHub tools — read-only ops auto-approve
+            ["github_list_issues"] = SafetyTier.AutoApprove,
+            ["github_get_issue"] = SafetyTier.AutoApprove,
+            ["github_list_prs"] = SafetyTier.AutoApprove,
+            ["github_get_pr"] = SafetyTier.AutoApprove,
+            ["github_pr_checks"] = SafetyTier.AutoApprove,
+            ["github_repo_info"] = SafetyTier.AutoApprove,
+            ["github_search_issues"] = SafetyTier.AutoApprove,
+            ["github_list_runs"] = SafetyTier.AutoApprove,
+            ["github_run_details"] = SafetyTier.AutoApprove,
+            ["github_list_releases"] = SafetyTier.AutoApprove,
+            ["github_auth_status"] = SafetyTier.AutoApprove,
+
             // Write ops — confirm once per session
             ["write_file"] = SafetyTier.ConfirmOnce,
             ["edit_file"] = SafetyTier.ConfirmOnce,
@@ -72,6 +85,13 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["apply_patch"] = SafetyTier.ConfirmOnce,
             ["batch_edit_files"] = SafetyTier.ConfirmOnce,
             ["reset_usage"] = SafetyTier.ConfirmOnce,
+
+            // GitHub tools — write ops confirm once
+            ["github_create_issue"] = SafetyTier.ConfirmOnce,
+            ["github_close_issue"] = SafetyTier.ConfirmOnce,
+            ["github_create_pr"] = SafetyTier.ConfirmOnce,
+            ["github_merge_pr"] = SafetyTier.ConfirmOnce,
+            ["github_pr_review"] = SafetyTier.ConfirmOnce,
 
             // Dangerous — always confirm
             ["run_command"] = SafetyTier.AlwaysConfirm,

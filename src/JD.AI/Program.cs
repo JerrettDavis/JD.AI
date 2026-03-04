@@ -540,6 +540,7 @@ kernel.Plugins.AddFromType<FileTools>("file");
 kernel.Plugins.AddFromType<SearchTools>("search");
 kernel.Plugins.AddFromType<ShellTools>("shell");
 kernel.Plugins.AddFromType<GitTools>("git");
+kernel.Plugins.AddFromType<GitHubTools>("github");
 kernel.Plugins.AddFromType<WebTools>("web");
 kernel.Plugins.AddFromType<ThinkTools>("think");
 kernel.Plugins.AddFromType<EnvironmentTools>("environment");
