@@ -80,7 +80,7 @@ public sealed class BuildExecutionSettingsTests
         var settings = Build(CreateLoop(model));
 
         var openAiSettings = Assert.IsType<OpenAIPromptExecutionSettings>(settings);
-        Assert.Equal(expectedMaxOutputTokens, openAiSettings.MaxTokens);
+        Assert.Equal(ExpectedMaxOutputTokens, openAiSettings.MaxTokens);
     }
 
     // ── FunctionChoiceBehavior ──────────────────────────────
