@@ -41,7 +41,29 @@ Detecting providers...
 
 ### `/provider`
 
-Show the currently active provider and model.
+Manage and inspect providers. Without arguments, shows the currently active provider and model.
+
+**Subcommands:**
+
+| Subcommand | Description |
+|---|---|
+| `/provider list` | Show all providers with status, model count, and auth method |
+| `/provider add <name>` | Interactive wizard to configure an API-key provider |
+| `/provider remove <name>` | Remove stored credentials for a provider |
+| `/provider test [name]` | Test provider connectivity (all or specific) |
+
+**Available provider names for `/provider add`:**
+
+`openai`, `azure-openai`, `anthropic`, `google-gemini`, `mistral`, `bedrock`, `huggingface`, `openai-compat`
+
+**Example:**
+
+```text
+/provider add openai       # Prompts for API key, stores securely
+/provider add openai-compat # Prompts for alias, base URL, and API key
+/provider test              # Tests all configured providers
+/provider remove mistral    # Removes Mistral credentials
+```
 
 ## Context Management
 
@@ -280,7 +302,7 @@ Lists all running agents, their models, turn counts, uptime, and routing table m
 | `/models` | List models |
 | `/model <id>` | Switch model |
 | `/providers` | List providers |
-| `/provider` | Show current provider |
+| `/provider` | Show current provider / manage (add, remove, test, list) |
 | `/clear` | Clear conversation |
 | `/compact` | Compress context |
 | `/cost` | Token usage |

@@ -3,10 +3,12 @@ using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Config;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
+using JD.AI.Core.Providers.Credentials;
 using JD.AI.Core.Sessions;
 using JD.AI.Core.Tools;
 using JD.AI.Rendering;
 using JD.AI.Workflows;
+using Spectre.Console;
 
 namespace JD.AI.Commands;
 
@@ -17,6 +19,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 {
     private readonly AgentSession _session;
     private readonly IProviderRegistry _registry;
+    private readonly ProviderConfigurationManager? _providerConfig;
     private readonly InstructionsResult? _instructions;
     private readonly ICheckpointStrategy? _checkpointStrategy;
     private readonly PluginLoader? _pluginLoader;
@@ -33,7 +36,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         PluginLoader? pluginLoader = null,
         IWorkflowCatalog? workflowCatalog = null,
         Func<SpinnerStyle>? getSpinnerStyle = null,
-        Action<SpinnerStyle>? onSpinnerStyleChanged = null)
+        Action<SpinnerStyle>? onSpinnerStyleChanged = null,
+        ProviderConfigurationManager? providerConfig = null)
     {
         _session = session;
         _registry = registry;
@@ -44,6 +48,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         _workflowEmitter = new WorkflowEmitter();
         _getSpinnerStyle = getSpinnerStyle;
         _onSpinnerStyleChanged = onSpinnerStyleChanged;
+        _providerConfig = providerConfig;
     }
 
     public bool IsSlashCommand(string input) =>
@@ -61,7 +66,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/MODELS" or "/JDAI-MODELS" => await ListModelsAsync(ct).ConfigureAwait(false),
             "/MODEL" or "/JDAI-MODEL" => await SwitchModelAsync(arg, ct).ConfigureAwait(false),
             "/PROVIDERS" or "/JDAI-PROVIDERS" => await ListProvidersAsync(ct).ConfigureAwait(false),
-            "/PROVIDER" or "/JDAI-PROVIDER" => GetCurrentProvider(),
+            "/PROVIDER" or "/JDAI-PROVIDER" => await HandleProviderCommandAsync(arg, ct).ConfigureAwait(false),
             "/CLEAR" or "/JDAI-CLEAR" => ClearHistory(),
             "/COMPACT" or "/JDAI-COMPACT" => await CompactAsync(ct).ConfigureAwait(false),
             "/COST" or "/JDAI-COST" => GetCost(),
@@ -98,7 +103,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /models         — Browse and switch models interactively
           /model [id]     — Switch model (interactive picker or by name)
           /providers      — List detected providers
-          /provider       — Show current provider
+          /provider       — Show current provider (subcommands: add, remove, test, list)
           /clear          — Clear chat history
           /compact        — Force context compaction
           /cost           — Show token usage
@@ -198,6 +203,187 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         _session.CurrentModel is { } m
             ? $"Current: {m.DisplayName} ({m.ProviderName})"
             : "No model selected.";
+
+    private async Task<string> HandleProviderCommandAsync(string? arg, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(arg))
+            return GetCurrentProvider();
+
+        var subParts = arg.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var subCmd = subParts[0].ToUpperInvariant();
+        var subArg = subParts.Length > 1 ? subParts[1].Trim() : null;
+
+        return subCmd switch
+        {
+            "LIST" => await ProviderListAsync(ct).ConfigureAwait(false),
+            "ADD" => await ProviderAddAsync(subArg, ct).ConfigureAwait(false),
+            "REMOVE" => await ProviderRemoveAsync(subArg, ct).ConfigureAwait(false),
+            "TEST" => await ProviderTestAsync(subArg, ct).ConfigureAwait(false),
+            _ => "Usage: /provider [list|add <name>|remove <name>|test [name]]",
+        };
+    }
+
+    private async Task<string> ProviderListAsync(CancellationToken ct)
+    {
+        var providers = await _registry.DetectProvidersAsync(ct).ConfigureAwait(false);
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Providers:");
+        sb.AppendLine($"  {"Name",-20} {"Status",-12} {"Models",-8} {"Auth"}");
+        sb.AppendLine($"  {"----",-20} {"------",-12} {"------",-8} {"----"}");
+
+        foreach (var p in providers)
+        {
+            var status = p.IsAvailable ? "✓ Active" : "✗ Inactive";
+            var modelCount = p.Models.Count.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var auth = p.Name switch
+            {
+                "Claude Code" or "GitHub Copilot" or "OpenAI Codex" => "OAuth",
+                "Ollama" => "None",
+                "Local Models" => "File",
+                _ => "API Key",
+            };
+            sb.AppendLine($"  {p.Name,-20} {status,-12} {modelCount,-8} {auth}");
+        }
+
+        return sb.ToString();
+    }
+
+    private async Task<string> ProviderAddAsync(string? providerName, CancellationToken ct)
+    {
+        if (_providerConfig == null)
+            return "Provider configuration not available.";
+
+        if (string.IsNullOrWhiteSpace(providerName))
+        {
+            return """
+                Usage: /provider add <name>
+                Available providers: openai, azure-openai, anthropic, google-gemini,
+                  mistral, bedrock, huggingface, openai-compat
+                Example: /provider add openai
+                """;
+        }
+
+        var name = providerName.Trim().ToLowerInvariant();
+
+        switch (name)
+        {
+            case "openai":
+                AnsiConsole.MarkupLine("[bold]Configure OpenAI[/]");
+                var openaiKey = AnsiConsole.Ask<string>("API Key (sk-...):");
+                await _providerConfig.SetCredentialAsync("openai", "apikey", openaiKey, ct)
+                    .ConfigureAwait(false);
+                return "OpenAI configured. Run /providers to verify.";
+
+            case "azure-openai":
+                AnsiConsole.MarkupLine("[bold]Configure Azure OpenAI[/]");
+                var azureKey = AnsiConsole.Ask<string>("API Key:");
+                var azureEndpoint = AnsiConsole.Ask<string>("Endpoint (https://xxx.openai.azure.com):");
+                var azureDeployments = AnsiConsole.Ask("Deployments (comma-separated, or blank for defaults):",
+                    defaultValue: "");
+                await _providerConfig.SetCredentialAsync("azure-openai", "apikey", azureKey, ct)
+                    .ConfigureAwait(false);
+                await _providerConfig.SetCredentialAsync("azure-openai", "endpoint", azureEndpoint, ct)
+                    .ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(azureDeployments))
+                {
+                    await _providerConfig.SetCredentialAsync(
+                        "azure-openai", "deployments", azureDeployments, ct)
+                        .ConfigureAwait(false);
+                }
+
+                return "Azure OpenAI configured. Run /providers to verify.";
+
+            case "anthropic":
+                AnsiConsole.MarkupLine("[bold]Configure Anthropic[/]");
+                var anthropicKey = AnsiConsole.Ask<string>("API Key (sk-ant-...):");
+                await _providerConfig.SetCredentialAsync("anthropic", "apikey", anthropicKey, ct)
+                    .ConfigureAwait(false);
+                return "Anthropic configured. Run /providers to verify.";
+
+            case "google-gemini":
+                AnsiConsole.MarkupLine("[bold]Configure Google Gemini[/]");
+                var googleKey = AnsiConsole.Ask<string>("API Key:");
+                await _providerConfig.SetCredentialAsync("google-gemini", "apikey", googleKey, ct)
+                    .ConfigureAwait(false);
+                return "Google Gemini configured. Run /providers to verify.";
+
+            case "mistral":
+                AnsiConsole.MarkupLine("[bold]Configure Mistral[/]");
+                var mistralKey = AnsiConsole.Ask<string>("API Key:");
+                await _providerConfig.SetCredentialAsync("mistral", "apikey", mistralKey, ct)
+                    .ConfigureAwait(false);
+                return "Mistral configured. Run /providers to verify.";
+
+            case "bedrock":
+                AnsiConsole.MarkupLine("[bold]Configure AWS Bedrock[/]");
+                var awsAccessKey = AnsiConsole.Ask<string>("AWS Access Key ID:");
+                var awsSecretKey = AnsiConsole.Ask<string>("AWS Secret Access Key:");
+                var awsRegion = AnsiConsole.Ask("AWS Region:", defaultValue: "us-east-1");
+                await _providerConfig.SetCredentialAsync("bedrock", "accesskey", awsAccessKey, ct)
+                    .ConfigureAwait(false);
+                await _providerConfig.SetCredentialAsync("bedrock", "secretkey", awsSecretKey, ct)
+                    .ConfigureAwait(false);
+                await _providerConfig.SetCredentialAsync("bedrock", "region", awsRegion, ct)
+                    .ConfigureAwait(false);
+                return "AWS Bedrock configured. Run /providers to verify.";
+
+            case "huggingface":
+                AnsiConsole.MarkupLine("[bold]Configure HuggingFace[/]");
+                var hfKey = AnsiConsole.Ask<string>("API Key (hf_...):");
+                await _providerConfig.SetCredentialAsync("huggingface", "apikey", hfKey, ct)
+                    .ConfigureAwait(false);
+                return "HuggingFace configured. Run /providers to verify.";
+
+            case "openai-compat":
+                AnsiConsole.MarkupLine("[bold]Configure OpenAI-Compatible Endpoint[/]");
+                var alias = AnsiConsole.Ask<string>("Alias (e.g. groq, together, deepseek):");
+                var baseUrl = AnsiConsole.Ask<string>("Base URL (e.g. https://api.groq.com/openai/v1):");
+                var compatKey = AnsiConsole.Ask<string>("API Key:");
+                await _providerConfig.SetCredentialAsync($"openai-compat:{alias}", "apikey", compatKey, ct)
+                    .ConfigureAwait(false);
+                await _providerConfig.SetCredentialAsync($"openai-compat:{alias}", "baseurl", baseUrl, ct)
+                    .ConfigureAwait(false);
+                return $"OpenAI-Compatible endpoint '{alias}' configured. Run /providers to verify.";
+
+            default:
+                return $"Unknown provider: {name}. Run /provider add for the list.";
+        }
+    }
+
+    private async Task<string> ProviderRemoveAsync(string? providerName, CancellationToken ct)
+    {
+        if (_providerConfig == null)
+            return "Provider configuration not available.";
+
+        if (string.IsNullOrWhiteSpace(providerName))
+            return "Usage: /provider remove <name>";
+
+        await _providerConfig.RemoveProviderAsync(providerName.Trim().ToLowerInvariant(), ct)
+            .ConfigureAwait(false);
+        return $"Credentials for '{providerName.Trim()}' removed.";
+    }
+
+    private async Task<string> ProviderTestAsync(string? providerName, CancellationToken ct)
+    {
+        var providers = await _registry.DetectProvidersAsync(ct).ConfigureAwait(false);
+
+        IEnumerable<ProviderInfo> toTest = providers;
+        if (!string.IsNullOrWhiteSpace(providerName))
+        {
+            toTest = providers.Where(p =>
+                p.Name.Contains(providerName.Trim(), StringComparison.OrdinalIgnoreCase));
+        }
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Provider test results:");
+        foreach (var p in toTest)
+        {
+            var icon = p.IsAvailable ? "✓" : "✗";
+            sb.AppendLine($"  {icon} {p.Name}: {p.StatusMessage}");
+        }
+
+        return sb.ToString();
+    }
 
     private string ClearHistory()
     {
