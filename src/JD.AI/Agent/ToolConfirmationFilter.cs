@@ -86,6 +86,44 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         var tier = ToolTiers.GetValueOrDefault(functionName, SafetyTier.AlwaysConfirm);
         var output = AgentOutput.Current;
 
+        // Check if we need confirmation based on permission mode
+        bool blocked = false;
+        var needsConfirm = false;
+
+        switch (_session.PermissionMode)
+        {
+            case PermissionMode.Plan:
+                // Read-only: block anything above AutoApprove
+                if (tier != SafetyTier.AutoApprove)
+                {
+                    blocked = true;
+                }
+                break;
+            case PermissionMode.AcceptEdits:
+                // Auto-approve file writes (ConfirmOnce), still confirm shell (AlwaysConfirm)
+                needsConfirm = tier == SafetyTier.AlwaysConfirm;
+                break;
+            case PermissionMode.BypassAll:
+                // Skip everything
+                break;
+            default: // Normal
+                needsConfirm = !_session.SkipPermissions && !_session.AutoRunEnabled && tier switch
+                {
+                    SafetyTier.AutoApprove => false,
+                    SafetyTier.ConfirmOnce => !_confirmedOnce.Contains(functionName),
+                    SafetyTier.AlwaysConfirm => true,
+                    _ => true,
+                };
+                break;
+        }
+
+        if (blocked)
+        {
+            output.RenderWarning($"  ✗ {functionName} blocked (plan mode — read-only)");
+            context.Result = new FunctionResult(context.Function, "Tool blocked: plan mode restricts to read-only operations.");
+            return;
+        }
+
         // Build argument summary for display
         var args = string.Join(", ", (context.Arguments ?? [])
             .Select(kv =>
@@ -115,14 +153,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             }
         }
 
-        // ── Safety tier confirmation ─────────────────────────
-        var needsConfirm = !_session.SkipPermissions && !_session.AutoRunEnabled && tier switch
-        {
-            SafetyTier.AutoApprove => false,
-            SafetyTier.ConfirmOnce => !_confirmedOnce.Contains(functionName),
-            SafetyTier.AlwaysConfirm => true,
-            _ => true,
-        };
+        // ── Safety tier confirmation (already computed above via PermissionMode) ──
 
         if (needsConfirm)
         {

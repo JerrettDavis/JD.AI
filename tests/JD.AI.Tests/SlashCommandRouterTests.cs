@@ -280,18 +280,19 @@ public sealed class SlashCommandRouterTests
         var result = await _router.ExecuteAsync("/permissions");
 
         Assert.NotNull(result);
-        Assert.Contains("ON", result);
+        Assert.Contains("Normal", result);
     }
 
     [Fact]
     public async Task Permissions_ShowsOffState()
     {
         _session.SkipPermissions = true;
+        _session.PermissionMode = JD.AI.Core.Agents.PermissionMode.BypassAll;
 
         var result = await _router.ExecuteAsync("/permissions");
 
         Assert.NotNull(result);
-        Assert.Contains("OFF", result);
+        Assert.Contains("BypassAll", result);
     }
 
     [Fact]
