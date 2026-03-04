@@ -54,6 +54,10 @@ public sealed class BudgetPolicy
 {
     public decimal? MaxDailyUsd { get; set; }
     public decimal? MaxMonthlyUsd { get; set; }
+
+    /// <summary>Per-session budget limit set via <c>--max-budget-usd</c>.</summary>
+    public decimal? MaxSessionUsd { get; set; }
+
     public int AlertThresholdPercent { get; set; } = 80;
 }
 

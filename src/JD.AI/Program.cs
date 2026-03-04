@@ -131,6 +131,22 @@ var cliSessionId = args.SkipWhile(a => !string.Equals(a, "--session-id", StringC
 var forkSession = args.Contains("--fork-session");
 var noSessionPersistence = args.Contains("--no-session-persistence");
 
+// Budget limit
+var maxBudgetStr = args.SkipWhile(a => !string.Equals(a, "--max-budget-usd", StringComparison.OrdinalIgnoreCase))
+    .Skip(1).FirstOrDefault();
+decimal? maxBudgetUsd = decimal.TryParse(maxBudgetStr, System.Globalization.CultureInfo.InvariantCulture, out var mb) ? mb : null;
+
+// Git worktree isolation
+var useWorktree = args.Contains("-w") || args.Contains("--worktree");
+
+// JSON schema validation for output
+var jsonSchemaArg = args.SkipWhile(a => !string.Equals(a, "--json-schema", StringComparison.OrdinalIgnoreCase))
+    .Skip(1).FirstOrDefault();
+
+// Input format (text or stream-json)
+var inputFormat = args.SkipWhile(a => !string.Equals(a, "--input-format", StringComparison.OrdinalIgnoreCase))
+    .Skip(1).FirstOrDefault() ?? "text";
+
 // Debug logging
 var debugMode = args.Contains("--debug");
 var debugCategories = debugMode
@@ -364,6 +380,13 @@ if (noSessionPersistence)
     session.NoSessionPersistence = true;
 }
 
+// Apply budget limit
+if (maxBudgetUsd.HasValue)
+{
+    session.MaxBudgetUsd = maxBudgetUsd;
+    if (!printMode) ChatRenderer.RenderInfo($"Budget limit: ${maxBudgetUsd:F2}");
+}
+
 // Debug logging
 if (debugMode)
 {
@@ -379,6 +402,29 @@ if (debugMode)
 
 // Initialize session persistence
 var projectPath = Directory.GetCurrentDirectory();
+
+// --worktree / -w: create git worktree for isolated session
+JD.AI.Core.Tools.WorktreeManager? worktreeManager = null;
+if (useWorktree)
+{
+    try
+    {
+        worktreeManager = new JD.AI.Core.Tools.WorktreeManager(projectPath);
+        var wtPath = await worktreeManager.CreateAsync().ConfigureAwait(false);
+        projectPath = wtPath;
+        Directory.SetCurrentDirectory(wtPath);
+        if (!printMode)
+        {
+            ChatRenderer.RenderInfo($"Worktree created: {wtPath}");
+            ChatRenderer.RenderInfo($"  Branch: {worktreeManager.BranchName}");
+        }
+    }
+    catch (Exception ex)
+    {
+        ChatRenderer.RenderWarning($"Failed to create worktree: {ex.Message}");
+        worktreeManager = null;
+    }
+}
 if (noSessionPersistence)
 {
     // --no-session-persistence: skip all session I/O
@@ -634,6 +680,24 @@ var auditService = new AuditService(auditSinks);
 session.AuditService = auditService;
 
 using var budgetTracker = new BudgetTracker();
+
+// Construct budget policy from CLI + governance
+BudgetPolicy? budgetPolicy = null;
+if (maxBudgetUsd.HasValue)
+{
+    budgetPolicy = new BudgetPolicy { MaxSessionUsd = maxBudgetUsd };
+}
+// Merge with governance budget policy if present
+var governanceBudget = policies
+    .SelectMany(p => p.Spec.Budget is { } b ? [b] : Array.Empty<BudgetPolicy>())
+    .FirstOrDefault();
+if (governanceBudget is not null)
+{
+    budgetPolicy ??= new BudgetPolicy();
+    budgetPolicy.MaxDailyUsd ??= governanceBudget.MaxDailyUsd;
+    budgetPolicy.MaxMonthlyUsd ??= governanceBudget.MaxMonthlyUsd;
+    budgetPolicy.MaxSessionUsd ??= governanceBudget.MaxSessionUsd;
+}
 
 // 8a. Add tool confirmation filter with governance
 kernel.AutoFunctionInvocationFilters.Add(
@@ -937,6 +1001,38 @@ if (printMode)
         Console.Write(lastResponse);
     }
 
+    // JSON schema validation
+    if (jsonSchemaArg is not null)
+    {
+        try
+        {
+            var schema = JD.AI.Core.Agents.OutputSchemaValidator.LoadSchema(jsonSchemaArg);
+            var errors = JD.AI.Core.Agents.OutputSchemaValidator.Validate(lastResponse, schema);
+            if (errors.Count > 0)
+            {
+                // Retry once with schema feedback
+                var retryPrompt = JD.AI.Core.Agents.OutputSchemaValidator.GenerateRetryPrompt(errors, schema);
+                lastResponse = await printAgentLoop.RunTurnAsync(retryPrompt).ConfigureAwait(false);
+                errors = JD.AI.Core.Agents.OutputSchemaValidator.Validate(lastResponse, schema);
+                if (errors.Count > 0)
+                {
+                    Console.Error.WriteLine("Schema validation failed:");
+                    foreach (var err in errors)
+                        Console.Error.WriteLine($"  - {err}");
+                    return JD.AI.Core.Agents.OutputSchemaValidator.SchemaValidationExitCode;
+                }
+
+                // Output the corrected response
+                Console.Write(lastResponse);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Schema error: {ex.Message}");
+            return JD.AI.Core.Agents.OutputSchemaValidator.SchemaValidationExitCode;
+        }
+    }
+
     return 0;
 }
 
@@ -1072,6 +1168,30 @@ while (!appCts.IsCancellationRequested)
 
     while (currentMessage != null && !appCts.IsCancellationRequested)
     {
+        // Budget enforcement: check before each turn
+        if (budgetPolicy is not null)
+        {
+            // Check session-level budget
+            if (budgetPolicy.MaxSessionUsd.HasValue &&
+                session.SessionSpendUsd >= budgetPolicy.MaxSessionUsd.Value)
+            {
+                ChatRenderer.RenderWarning(
+                    $"Budget limit (${budgetPolicy.MaxSessionUsd:F2}) reached — spent ${session.SessionSpendUsd:F2}.");
+                if (printMode) { Environment.ExitCode = 2; }
+                break;
+            }
+
+            // Check daily/monthly budgets
+            if (!await budgetTracker.IsWithinBudgetAsync(budgetPolicy, appCts.Token).ConfigureAwait(false))
+            {
+                var status = await budgetTracker.GetStatusAsync(appCts.Token).ConfigureAwait(false);
+                ChatRenderer.RenderWarning(
+                    $"Budget exceeded — daily: ${status.TodayUsd:F2}, monthly: ${status.MonthUsd:F2}.");
+                if (printMode) { Environment.ExitCode = 2; }
+                break;
+            }
+        }
+
         using var turnMonitor = new TurnInputMonitor(appCts.Token);
         Volatile.Write(ref activeTurnMonitor, turnMonitor);
 
@@ -1089,6 +1209,29 @@ while (!appCts.IsCancellationRequested)
         finally
         {
             Volatile.Write(ref activeTurnMonitor, null);
+        }
+
+        // Estimate cost for the turn and track session spend
+        if (budgetPolicy is not null && session.CurrentModel is not null)
+        {
+            // Rough estimate: ~$0.003/1k input, ~$0.015/1k output for mid-tier models
+            // Local models (Ollama, Foundry, LlamaSharp) are free
+            var provider = session.CurrentModel.ProviderName;
+            var isLocal = string.Equals(provider, "Ollama", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(provider, "Foundry Local", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(provider, "Local", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(provider, "LlamaSharp", StringComparison.OrdinalIgnoreCase);
+
+            if (!isLocal)
+            {
+                var lastTurn = session.SessionInfo?.Turns.LastOrDefault();
+                var tokensOut = lastTurn?.TokensOut ?? 0;
+                var estimatedCost = tokensOut * 0.015m / 1000m; // conservative estimate
+                session.SessionSpendUsd += estimatedCost;
+
+                await budgetTracker.RecordSpendAsync(estimatedCost, provider, appCts.Token)
+                    .ConfigureAwait(false);
+            }
         }
 
         // Check for queued steering message
@@ -1123,6 +1266,13 @@ while (!appCts.IsCancellationRequested)
 }
 
 appCts.Dispose();
+
+// Clean up worktree if used
+if (worktreeManager is not null)
+{
+    ChatRenderer.RenderInfo("Cleaning up worktree...");
+    await worktreeManager.DisposeAsync().ConfigureAwait(false);
+}
 
 if (gatewayHost is not null)
 {
