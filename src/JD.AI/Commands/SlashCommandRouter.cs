@@ -58,6 +58,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private readonly ModelSearchAggregator? _modelSearchAggregator;
     private readonly ModelMetadataProvider? _metadataProvider;
     private readonly IUsageMeter? _usageMeter;
+    private readonly Func<string>? _getSkillsStatus;
+    private readonly Func<string>? _reloadSkills;
 
     public SlashCommandRouter(
         AgentSession session,
@@ -82,7 +84,9 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         Func<OutputStyle>? getOutputStyle = null,
         Action<OutputStyle>? onOutputStyleChanged = null,
         IUsageMeter? usageMeter = null,
-        IPolicyEvaluator? policyEvaluator = null)
+        IPolicyEvaluator? policyEvaluator = null,
+        Func<string>? getSkillsStatus = null,
+        Func<string>? reloadSkills = null)
     {
         _session = session;
         _registry = registry;
@@ -108,6 +112,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         _modelSearchAggregator = modelSearchAggregator;
         _metadataProvider = metadataProvider;
         _usageMeter = usageMeter;
+        _getSkillsStatus = getSkillsStatus;
+        _reloadSkills = reloadSkills;
     }
 
     public bool IsSlashCommand(string input) =>
@@ -159,6 +165,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/VIM" or "/JDAI-VIM" => ToggleVimMode(arg),
             "/STATS" or "/JDAI-STATS" => await ShowStatsAsync(arg, ct).ConfigureAwait(false),
             "/CONFIG" or "/JDAI-CONFIG" => HandleConfig(arg),
+            "/SKILLS" or "/JDAI-SKILLS" => HandleSkills(arg),
             "/AGENTS" or "/JDAI-AGENTS" => await HandleAgentsAsync(arg, ct).ConfigureAwait(false),
             "/HOOKS" or "/JDAI-HOOKS" => await HandleHooksAsync(arg, ct).ConfigureAwait(false),
             "/MEMORY" or "/JDAI-MEMORY" => await HandleMemoryAsync(arg, ct).ConfigureAwait(false),
@@ -214,6 +221,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /vim [on|off]   — Toggle vim editing mode
           /stats [--history|--daily] — Session and historical usage stats
           /config [list|get|set] — Manage persisted command settings
+          /skills [status|reload] — Show managed skill eligibility and refresh
           /agents         — Manage local agent profiles
           /hooks          — Manage local hook profiles
           /memory         — View/edit project memory (JDAI.md)
@@ -2959,6 +2967,21 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "set" => SetConfigValue(rest, settings),
             _ => "Usage: /config [list|get <key>|set <key> <value>]",
         };
+    }
+
+    private string HandleSkills(string? arg)
+    {
+        if (_getSkillsStatus is null)
+            return "Skills lifecycle manager not initialized.";
+
+        var token = (arg ?? "status").Trim();
+        if (string.IsNullOrWhiteSpace(token) || string.Equals(token, "status", StringComparison.OrdinalIgnoreCase))
+            return _getSkillsStatus();
+
+        if (string.Equals(token, "reload", StringComparison.OrdinalIgnoreCase))
+            return _reloadSkills?.Invoke() ?? "Skills reload is not available.";
+
+        return "Usage: /skills [status|reload]";
     }
 
     private string FormatConfig(TuiSettings settings)
