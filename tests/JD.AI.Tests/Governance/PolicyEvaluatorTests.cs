@@ -282,4 +282,106 @@ public sealed class PolicyEvaluatorTests
 
         result.Decision.Should().Be(PolicyDecision.Deny);
     }
+
+    // ── Workflow Publish RBAC ────────────────────────
+
+    [Fact]
+    public void EvaluateWorkflowPublish_NoWorkflowPolicy_Allows()
+    {
+        var evaluator = new PolicyEvaluator(new PolicySpec());
+
+        var result = evaluator.EvaluateWorkflowPublish(EmptyContext());
+
+        result.Decision.Should().Be(PolicyDecision.Allow);
+    }
+
+    [Fact]
+    public void EvaluateWorkflowPublish_UserInAllowedList_Allows()
+    {
+        var spec = new PolicySpec
+        {
+            Workflows = new WorkflowPolicy { PublishAllowed = ["alice", "bob"] },
+        };
+        var evaluator = new PolicyEvaluator(spec);
+
+        var result = evaluator.EvaluateWorkflowPublish(new PolicyContext(UserId: "alice"));
+
+        result.Decision.Should().Be(PolicyDecision.Allow);
+    }
+
+    [Fact]
+    public void EvaluateWorkflowPublish_UserNotInAllowedList_Denies()
+    {
+        var spec = new PolicySpec
+        {
+            Workflows = new WorkflowPolicy { PublishAllowed = ["alice"] },
+        };
+        var evaluator = new PolicyEvaluator(spec);
+
+        var result = evaluator.EvaluateWorkflowPublish(new PolicyContext(UserId: "charlie"));
+
+        result.Decision.Should().Be(PolicyDecision.Deny);
+        result.Reason.Should().Contain("not in the workflow publish allowed list");
+    }
+
+    [Fact]
+    public void EvaluateWorkflowPublish_UserInDeniedList_Denies()
+    {
+        var spec = new PolicySpec
+        {
+            Workflows = new WorkflowPolicy { PublishDenied = ["mallory"] },
+        };
+        var evaluator = new PolicyEvaluator(spec);
+
+        var result = evaluator.EvaluateWorkflowPublish(new PolicyContext(UserId: "mallory"));
+
+        result.Decision.Should().Be(PolicyDecision.Deny);
+        result.Reason.Should().Contain("denied from publishing");
+    }
+
+    [Fact]
+    public void EvaluateWorkflowPublish_DenyTakesPrecedenceOverAllow()
+    {
+        var spec = new PolicySpec
+        {
+            Workflows = new WorkflowPolicy
+            {
+                PublishAllowed = ["alice", "mallory"],
+                PublishDenied = ["mallory"],
+            },
+        };
+        var evaluator = new PolicyEvaluator(spec);
+
+        var result = evaluator.EvaluateWorkflowPublish(new PolicyContext(UserId: "mallory"));
+
+        result.Decision.Should().Be(PolicyDecision.Deny);
+    }
+
+    [Fact]
+    public void EvaluateWorkflowPublish_EmptyAllowedList_AllowsAll()
+    {
+        var spec = new PolicySpec
+        {
+            Workflows = new WorkflowPolicy { PublishAllowed = [] },
+        };
+        var evaluator = new PolicyEvaluator(spec);
+
+        var result = evaluator.EvaluateWorkflowPublish(new PolicyContext(UserId: "anyone"));
+
+        result.Decision.Should().Be(PolicyDecision.Allow);
+    }
+
+    [Fact]
+    public void EvaluateWorkflowPublish_IsCaseInsensitive()
+    {
+        var spec = new PolicySpec
+        {
+            Workflows = new WorkflowPolicy { PublishAllowed = ["Alice"] },
+        };
+        var evaluator = new PolicyEvaluator(spec);
+
+        var result = evaluator.EvaluateWorkflowPublish(new PolicyContext(UserId: "alice"));
+
+        result.Decision.Should().Be(PolicyDecision.Allow);
+    }
 }

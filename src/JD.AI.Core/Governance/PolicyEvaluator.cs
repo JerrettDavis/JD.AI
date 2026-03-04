@@ -85,6 +85,35 @@ public sealed class PolicyEvaluator : IPolicyEvaluator
         return Allow();
     }
 
+    /// <inheritdoc/>
+    public PolicyEvaluationResult EvaluateWorkflowPublish(PolicyContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        var workflows = _policy.Workflows;
+        if (workflows is null)
+            return Allow();
+
+        var userId = context.UserId ?? Environment.UserName;
+
+        // Deny takes precedence
+        if (workflows.PublishDenied.Any(d =>
+            string.Equals(d, userId, StringComparison.OrdinalIgnoreCase)))
+        {
+            return Deny($"User '{userId}' is denied from publishing workflows.");
+        }
+
+        // If allow list is configured, user must be on it
+        if (workflows.PublishAllowed.Count > 0 &&
+            !workflows.PublishAllowed.Any(a =>
+                string.Equals(a, userId, StringComparison.OrdinalIgnoreCase)))
+        {
+            return Deny($"User '{userId}' is not in the workflow publish allowed list.");
+        }
+
+        return Allow();
+    }
+
     private static PolicyEvaluationResult Allow() =>
         new(PolicyDecision.Allow);
 
