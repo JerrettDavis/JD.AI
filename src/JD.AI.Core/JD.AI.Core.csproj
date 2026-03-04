@@ -31,6 +31,7 @@
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.Amazon" />
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.HuggingFace" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" />
+    <PackageReference Include="YamlDotNet" />
     <PackageReference Include="HtmlAgilityPack" />
     <PackageReference Include="LLamaSharp" />
     <PackageReference Include="LLamaSharp.Backend.Cpu" />

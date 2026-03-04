@@ -37,7 +37,7 @@ public sealed class McpCliHandlerTests : IDisposable
     }
 
     [Fact]
-    public async Task List_EmptyConfig_PrintsEmptyStateAndReturnsZero()
+    public async Task List_EmptyConfig_ReturnsZero()
     {
         var stdout = await CaptureStdoutAsync(() => McpCliHandler.RunAsync(["list", "--json"]));
 
@@ -46,6 +46,8 @@ public sealed class McpCliHandlerTests : IDisposable
         using var doc = JsonDocument.Parse(stdout.Output);
         Assert.Equal(JsonValueKind.Array, doc.RootElement.ValueKind);
 
+        // Other discovery providers may contribute servers from user-level config.
+        // Verify only that no JD.AI-managed server exists before we add any.
         var jdAiCount = 0;
         foreach (var entry in doc.RootElement.EnumerateArray())
         {
@@ -179,9 +181,12 @@ public sealed class McpCliHandlerTests : IDisposable
 
         Assert.Equal(0, result.ExitCode);
 
-        // Must be valid JSON array
+        // Must be valid JSON array containing at least the 2 servers we added.
+        // Other discovery providers may contribute additional servers from user config.
         using var doc = JsonDocument.Parse(result.Output);
         Assert.Equal(JsonValueKind.Array, doc.RootElement.ValueKind);
+        Assert.True(doc.RootElement.GetArrayLength() >= 2,
+            $"Expected at least 2 servers, got {doc.RootElement.GetArrayLength()}");
 
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var entry in doc.RootElement.EnumerateArray())
@@ -199,7 +204,6 @@ public sealed class McpCliHandlerTests : IDisposable
 
             names.Add(name);
         }
-
         Assert.Contains("notion", names);
         Assert.Contains("azure", names);
     }

@@ -48,7 +48,7 @@ public sealed partial class FoundryLocalDetector : IProviderDetector
                 {
                     var name = m.Id ?? "unknown";
                     var caps = ModelCapabilityHeuristics.InferFromName(name);
-                    return new ProviderModelInfo(name, name, ProviderName, caps);
+                    return new ProviderModelInfo(name, name, ProviderName, Capabilities: caps);
                 })
                 .ToList();
 

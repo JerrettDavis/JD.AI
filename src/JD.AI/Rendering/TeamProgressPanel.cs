@@ -80,7 +80,7 @@ public sealed class TeamProgressPanel : IDisposable
             $"[dim]Total: {result.TotalTokens} tokens, {result.Duration.TotalSeconds:F1}s[/]");
     }
 
-    private static string GetStatusIcon(SubagentStatus status) => status switch
+    internal static string GetStatusIcon(SubagentStatus status) => status switch
     {
         SubagentStatus.Pending => "○",
         SubagentStatus.Started => "◐",
@@ -92,7 +92,7 @@ public sealed class TeamProgressPanel : IDisposable
         _ => "?",
     };
 
-    private static string GetStatusColor(SubagentStatus status) => status switch
+    internal static string GetStatusColor(SubagentStatus status) => status switch
     {
         SubagentStatus.Completed => "green",
         SubagentStatus.Failed => "red",

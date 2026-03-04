@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using JD.AI.Core.Governance.Audit;
 using JD.AI.Core.PromptCaching;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Sessions;
@@ -28,6 +30,13 @@ public sealed class AgentSession
         CurrentModel = initialModel;
     }
 
+    /// <summary>Optional audit service for emitting session lifecycle events.</summary>
+    public AuditService? AuditService { get; set; }
+
+    // ── System prompt cache ──────────────────────────────────
+    private string? _cachedSystemPromptText;
+    private int _cachedSystemPromptTokens;
+
     public ChatHistory History { get; } = new();
     public ProviderModelInfo? CurrentModel { get; private set; }
     public IReadOnlyList<ModelSwitchRecord> ModelSwitchHistory => _modelSwitchHistory;
@@ -42,6 +51,21 @@ public sealed class AgentSession
     /// Set via --dangerously-skip-permissions or /permissions off.
     /// </summary>
     public bool SkipPermissions { get; set; }
+
+    /// <summary>
+    /// Controls the permission model for tool invocations within the session.
+    /// </summary>
+    public PermissionMode PermissionMode { get; set; } = PermissionMode.Normal;
+
+    /// <summary>
+    /// Fallback model chain — used when the primary model returns 429/503/timeout.
+    /// </summary>
+    public IReadOnlyList<string> FallbackModels { get; set; } = [];
+
+    /// <summary>
+    /// When true, session persistence is disabled entirely.
+    /// </summary>
+    public bool NoSessionPersistence { get; set; }
 
     /// <summary>
     /// When true, the agent operates in plan-only mode (read/explore, no file writes).
@@ -205,6 +229,18 @@ public sealed class AgentSession
             ProviderName = CurrentModel?.ProviderName,
         };
         await Store.CreateSessionAsync(SessionInfo).ConfigureAwait(false);
+
+        if (AuditService is not null)
+        {
+            await AuditService.EmitAsync(new AuditEvent
+            {
+                Action = "session.create",
+                SessionId = SessionInfo.Id,
+                Resource = projectPath,
+                TraceId = Activity.Current?.TraceId.ToString(),
+                Severity = AuditSeverity.Info,
+            }).ConfigureAwait(false);
+        }
     }
 
     /// <summary>Export the current session to JSON.</summary>
@@ -218,9 +254,82 @@ public sealed class AgentSession
     public async Task CloseSessionAsync()
     {
         if (SessionInfo == null || Store == null) return;
+
+        if (AuditService is not null)
+        {
+            await AuditService.EmitAsync(new AuditEvent
+            {
+                Action = "session.close",
+                SessionId = SessionInfo.Id,
+                Resource = SessionInfo.ProjectPath,
+                TraceId = Activity.Current?.TraceId.ToString(),
+                Detail = $"turns={SessionInfo.MessageCount}; tokens={SessionInfo.TotalTokens}",
+                Severity = AuditSeverity.Info,
+            }).ConfigureAwait(false);
+        }
+
         SessionInfo.IsActive = false;
         await Store.CloseSessionAsync(SessionInfo.Id).ConfigureAwait(false);
         await ExportSessionAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>Cached token count for the current system prompt. Recomputed only when prompt text changes.</summary>
+    public int SystemPromptTokens
+    {
+        get
+        {
+            var current = History.FirstOrDefault(m => m.Role == AuthorRole.System)?.Content;
+            if (current == null) return 0;
+            if (string.Equals(current, _cachedSystemPromptText, StringComparison.Ordinal))
+                return _cachedSystemPromptTokens;
+            _cachedSystemPromptText = current;
+            _cachedSystemPromptTokens = TokenEstimator.EstimateTokens(current);
+            return _cachedSystemPromptTokens;
+        }
+    }
+
+    /// <summary>
+    /// Compacts the system prompt using the LLM to summarize it while preserving key instructions.
+    /// Returns the new token count. Skips if already within budget.
+    /// </summary>
+    public async Task<int> CompactSystemPromptAsync(int targetTokens, CancellationToken ct = default)
+    {
+        var currentTokens = SystemPromptTokens;
+        if (currentTokens <= targetTokens) return currentTokens;
+
+        var systemMsg = History.FirstOrDefault(m => m.Role == AuthorRole.System);
+        if (systemMsg == null) return 0;
+
+        var prompt = $"""
+            Compress the following system prompt to under {targetTokens} tokens while preserving:
+            1. All tool names and their descriptions
+            2. All code style rules and conventions
+            3. All build/test commands
+            4. Project-specific architecture notes
+            5. Safety and permission rules
+
+            Remove verbose explanations, examples, and redundant text. Keep bullet points.
+            Output ONLY the compressed system prompt, nothing else.
+
+            --- SYSTEM PROMPT ---
+            {systemMsg.Content}
+            """;
+
+        var chat = _kernel.GetRequiredService<IChatCompletionService>();
+        var compactHistory = new ChatHistory();
+        compactHistory.AddUserMessage(prompt);
+        var result = await chat.GetChatMessageContentAsync(compactHistory, cancellationToken: ct).ConfigureAwait(false);
+
+        var compacted = result.Content ?? systemMsg.Content ?? "";
+
+        // Replace system message and update cache
+        var idx = History.IndexOf(systemMsg);
+        History.RemoveAt(idx);
+        History.Insert(idx, new ChatMessageContent(AuthorRole.System, compacted));
+        _cachedSystemPromptText = compacted;
+        _cachedSystemPromptTokens = TokenEstimator.EstimateTokens(compacted);
+
+        return _cachedSystemPromptTokens;
     }
 
     /// <summary>
@@ -250,6 +359,14 @@ public sealed class AgentSession
         {
             History.AddAssistantMessage(briefing);
         }
+    }
+
+    /// <summary>
+    /// Updates only the metadata fields on the current model (no kernel rebuild or fork point).
+    /// </summary>
+    public void UpdateModelMetadata(ProviderModelInfo enrichedModel)
+    {
+        CurrentModel = enrichedModel;
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace JD.AI.Rendering;
 
@@ -7,6 +8,7 @@ namespace JD.AI.Rendering;
 /// command syntax highlighting, clipboard paste detection, and input history.
 /// Replaces Console.ReadLine() for a Claude Code-like editing experience.
 /// </summary>
+[ExcludeFromCodeCoverage]
 public sealed class InteractiveInput
 {
     private readonly CompletionProvider _completions;

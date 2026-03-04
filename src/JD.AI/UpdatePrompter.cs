@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Spectre.Console;
 
 namespace JD.AI;
@@ -11,6 +12,7 @@ public static class UpdatePrompter
     /// Shows an update notification and optionally runs the update.
     /// Returns true if the user updated and should restart.
     /// </summary>
+    [ExcludeFromCodeCoverage]
     public static async Task<bool> PromptAsync(UpdateInfo info, CancellationToken ct = default)
     {
         AnsiConsole.WriteLine();

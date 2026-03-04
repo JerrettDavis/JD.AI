@@ -66,9 +66,9 @@ public sealed class CopilotDetector : IProviderDetector
                 // Fall back to well-known models
                 models.AddRange(new[]
                 {
-                    new ProviderModelInfo(CopilotModels.Default, "Claude Sonnet 4.6", ProviderName),
+                    new ProviderModelInfo(CopilotModels.Default, "Claude Sonnet 4.6", ProviderName, 200_000),
                     new ProviderModelInfo(CopilotModels.Gpt4o, "GPT-4o", ProviderName),
-                    new ProviderModelInfo(CopilotModels.ClaudeOpus46, "Claude Opus 4.6", ProviderName),
+                    new ProviderModelInfo(CopilotModels.ClaudeOpus46, "Claude Opus 4.6", ProviderName, 200_000),
                 });
             }
 
