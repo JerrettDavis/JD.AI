@@ -57,6 +57,15 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<AgentPoolService>(
 
 // --- Plugin loader ---
 builder.Services.AddSingleton<PluginLoader>();
+builder.Services.AddSingleton<IPluginRuntime>(sp => sp.GetRequiredService<PluginLoader>());
+builder.Services.AddSingleton<PluginRegistryStore>();
+builder.Services.AddSingleton<IPluginInstaller>(sp =>
+    new PluginInstaller(
+        new HttpClient(),
+        sp.GetRequiredService<ILogger<PluginInstaller>>()));
+builder.Services.AddSingleton<IPluginContextFactory, ServiceProviderPluginContextFactory>();
+builder.Services.AddSingleton<IPluginLifecycleManager, PluginLifecycleManager>();
+builder.Services.AddHostedService<PluginLifecycleHostedService>();
 builder.Services.AddSingleton<AgentRouter>();
 
 // --- Command system ---

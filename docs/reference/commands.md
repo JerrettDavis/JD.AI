@@ -331,7 +331,24 @@ Displays merged instruction sources loaded into the prompt.
 
 ### `/plugins`
 
-Shows loaded plugins and metadata.
+Manages installed Plugin SDK packages and runtime lifecycle.
+
+Subcommands:
+
+- `/plugins list` — list installed plugins with enabled/loaded status
+- `/plugins install <path-or-url>` — install and enable plugin package
+- `/plugins enable <id>` — enable plugin
+- `/plugins disable <id>` — disable plugin
+- `/plugins update [id]` — update one plugin or all installed plugins
+- `/plugins uninstall <id>` — uninstall plugin package
+- `/plugins info <id>` — show plugin details and last error
+
+```text
+/plugins
+/plugins install https://example.com/My.Plugin.1.2.0.nupkg
+/plugins update my-plugin
+/plugins uninstall my-plugin
+```
 
 ## Profile and memory commands
 

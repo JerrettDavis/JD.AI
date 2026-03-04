@@ -9,6 +9,7 @@ using JD.AI.Core.Governance;
 using JD.AI.Core.Governance.Audit;
 using JD.AI.Core.LocalModels;
 using JD.AI.Core.Mcp;
+using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Providers.Credentials;
 using JD.AI.Core.Providers.Metadata;
@@ -25,6 +26,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.SemanticKernel;
 using Spectre.Console;
 
@@ -59,6 +61,11 @@ if (firstNonOptionIndex >= 0 && string.Equals(args[firstNonOptionIndex], "mcp", 
 {
     var mcpArgs = args.Skip(firstNonOptionIndex + 1).ToArray();
     return await McpCliHandler.RunAsync(mcpArgs).ConfigureAwait(false);
+}
+if (firstNonOptionIndex >= 0 && string.Equals(args[firstNonOptionIndex], "plugin", StringComparison.OrdinalIgnoreCase))
+{
+    var pluginArgs = args.Skip(firstNonOptionIndex + 1).ToArray();
+    return await PluginCliHandler.RunAsync(pluginArgs).ConfigureAwait(false);
 }
 // Print mode: non-interactive, query → stdout → exit
 var printMode = args.Contains("-p") || args.Contains("--print");
@@ -578,6 +585,23 @@ foreach (var dir in pluginDirs.Where(Directory.Exists))
 #pragma warning restore CA1031
 }
 
+// 7b. Load installed SDK plugins from the JD.AI plugin registry
+var pluginLoader = new JD.AI.Core.Plugins.PluginLoader(
+    NullLogger<JD.AI.Core.Plugins.PluginLoader>.Instance);
+var pluginRegistry = new PluginRegistryStore();
+var pluginInstaller = new PluginInstaller(
+    new HttpClient(),
+    NullLogger<PluginInstaller>.Instance);
+var pluginContextFactory = new DelegatePluginContextFactory(
+    () => new TerminalPluginContext(kernel));
+var pluginManager = new PluginLifecycleManager(
+    pluginInstaller,
+    pluginRegistry,
+    pluginLoader,
+    pluginContextFactory,
+    NullLogger<PluginLifecycleManager>.Instance);
+await pluginManager.LoadEnabledAsync().ConfigureAwait(false);
+
 // 8. Load governance policies, audit, and budget
 var policies = PolicyLoader.Load(projectPath);
 IPolicyEvaluator? policyEvaluator = null;
@@ -748,6 +772,8 @@ var modelSearchAggregator = new ModelSearchAggregator(new IRemoteModelSearch[]
 });
 var commandRouter = new SlashCommandRouter(
     session, registry, instructions, checkpointStrategy,
+    pluginLoader: pluginLoader,
+    pluginManager: pluginManager,
     workflowCatalog: workflowCatalog,
     workflowStore: workflowStore,
     getSpinnerStyle: () => spectreOutput.Style,
