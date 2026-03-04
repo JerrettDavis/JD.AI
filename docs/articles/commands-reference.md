@@ -132,6 +132,26 @@ Manage git checkpoints for safe rollback:
 
 Show current sandbox/execution mode information.
 
+### `/doctor`
+
+Run all gateway health checks and display a human-readable diagnostic report.
+
+```text
+=== JD.AI Doctor ===
+Version:  1.0.0
+Runtime:  .NET 10.0.0
+Health:   ✔ Healthy
+
+Checks:
+  ✔ Gateway       — Gateway operational
+  ✔ Providers     — 2/3 providers reachable
+  ⚠ Disk Space    — Low disk space: 0.4 GB free (minimum: 100 MB)
+  ✔ Memory        — 142 MB managed heap
+  ✔ Session Store — SQLite OK (14 sessions)
+```
+
+See [Observability](observability.md) for details on health check configuration.
+
 ## Local Model Management
 
 ### `/local list`
@@ -296,6 +316,7 @@ Lists all running agents, their models, turn counts, uptime, and routing table m
 | `/plugins` | List loaded plugins |
 | `/checkpoint` | Manage checkpoints |
 | `/sandbox` | Sandbox info |
+| `/doctor` | Run health diagnostics |
 | `/local list` | List local models |
 | `/local add <path>` | Register model |
 | `/local scan` | Scan for models |
