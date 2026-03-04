@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using JD.AI.Core.Events;
+using JD.AI.Core.PromptCaching;
 using JD.AI.Core.Providers;
 using JD.AI.Gateway.Config;
 using JD.AI.Telemetry;
@@ -90,6 +91,13 @@ public sealed class AgentPoolService : IHostedService
         agent.History.AddUserMessage(message);
         var chat = agent.Kernel.GetRequiredService<IChatCompletionService>();
         var settings = BuildExecutionSettings(agent.Parameters);
+        PromptCachePolicy.Apply(
+            settings,
+            agent.Provider,
+            agent.Model,
+            agent.History,
+            enabled: true,
+            ttl: PromptCacheTtl.FiveMinutes);
 
         using var turnActivity = ActivitySources.Agent.StartActivity("jdai.agent.turn");
         turnActivity?.SetTag("jdai.session.agent_id", agentId);

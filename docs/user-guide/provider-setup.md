@@ -53,6 +53,10 @@ These providers authenticate through their own CLI tools. Install the CLI, log i
 
 **Models available:** Claude Sonnet, Opus, and Haiku.
 
+> [!NOTE]
+> JD.AI automatically enables Claude prompt caching for larger prompts by default, including Claude Code OAuth sessions.
+> Control it with `/config set prompt_cache on|off` and `/config set prompt_cache_ttl 5m|1h`.
+
 > [!TIP]
 > Best for complex reasoning, long-form code generation, and nuanced analysis.
 
@@ -210,6 +214,8 @@ jdai --provider anthropic
 
 > [!NOTE]
 > This is separate from the Claude Code provider, which uses OAuth via the CLI.
+>
+> JD.AI automatically enables Claude prompt caching for larger prompts by default (both API-key and OAuth/session paths). Control it with `/config set prompt_cache on|off` and `/config set prompt_cache_ttl 5m|1h`.
 
 ### Google Gemini
 

@@ -203,11 +203,37 @@ Extensions are registered as Semantic Kernel functions and filters at startup. S
 | `/compact` | Force context compaction |
 | `/clear` | Clear conversation history |
 | `/spinner [style]` | Change spinner animation style |
+| `/config list` | Show persisted runtime settings |
+| `/config get <key>` | Read a persisted runtime setting |
+| `/config set <key> <value>` | Write a persisted runtime setting |
+
+### `/config` keys
+
+| Key | Meaning | Example |
+|---|---|---|
+| `theme` | Terminal theme token | `/config set theme nord` |
+| `vim_mode` | Vim editing mode | `/config set vim_mode on` |
+| `output_style` | Output renderer mode | `/config set output_style compact` |
+| `spinner_style` | Spinner/progress style | `/config set spinner_style rich` |
+| `prompt_cache` | Auto prompt caching for supported providers | `/config set prompt_cache on` |
+| `prompt_cache_ttl` | Prompt cache TTL (`5m` or `1h`) | `/config set prompt_cache_ttl 1h` |
+| `autorun` | Auto-run tool confirmation behavior | `/config set autorun off` |
+| `permissions` | Global permission checks | `/config set permissions on` |
+| `plan_mode` | Plan mode state | `/config set plan_mode off` |
+
+### Prompt caching defaults
+
+- `prompt_cache=on`
+- `prompt_cache_ttl=5m`
+- Optional extended TTL: `/config set prompt_cache_ttl 1h`
+
+See [Prompt Caching Reference](prompt-caching.md) for provider support, thresholds, and behavior.
 
 ## See also
 
 - [CLI Reference](cli.md) — CLI flags that override configuration
 - [Environment Variables](environment-variables.md) — env var reference
 - [Providers Reference](providers.md) — provider configuration
+- [Prompt Caching Reference](prompt-caching.md) — cache policy and runtime controls
 - [User Guide: Configuration](../user-guide/configuration.md)
 - [Configuration (guide)](../user-guide/configuration.md) — tutorial-style guide

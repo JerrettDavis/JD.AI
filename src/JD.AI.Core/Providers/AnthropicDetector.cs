@@ -1,11 +1,15 @@
+using Anthropic.SDK;
 using JD.AI.Core.Providers.Credentials;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
 
 namespace JD.AI.Core.Providers;
 
 /// <summary>
 /// Detects Anthropic API availability via API key.
-/// Uses OpenAI-compatible connector with Anthropic's API endpoint.
+/// Uses Anthropic's native messages API through the Anthropic SDK.
 /// </summary>
 public sealed class AnthropicDetector : ApiKeyProviderDetectorBase
 {
@@ -27,15 +31,20 @@ public sealed class AnthropicDetector : ApiKeyProviderDetectorBase
 
     protected override void ConfigureKernel(IKernelBuilder builder, ProviderModelInfo model, string apiKey)
     {
-#pragma warning disable SKEXP0010
-        builder.AddOpenAIChatCompletion(
-            modelId: model.Id,
-            apiKey: apiKey,
-            httpClient: new HttpClient
+        builder.Services.AddSingleton(new AnthropicClient(
+            new APIAuthentication(apiKey),
+            new HttpClient
             {
-                BaseAddress = new Uri("https://api.anthropic.com/v1/"),
                 Timeout = TimeSpan.FromMinutes(10),
-            });
-#pragma warning restore SKEXP0010
+            }));
+
+        builder.Services.AddSingleton<IChatClient>(sp =>
+        {
+            var client = sp.GetRequiredService<AnthropicClient>();
+            return new AnthropicPromptCachingChatClient(client.Messages);
+        });
+
+        builder.Services.AddSingleton<IChatCompletionService>(sp =>
+            sp.GetRequiredService<IChatClient>().AsChatCompletionService(sp));
     }
 }

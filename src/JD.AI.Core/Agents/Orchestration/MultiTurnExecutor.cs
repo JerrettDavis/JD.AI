@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using JD.AI.Core.PromptCaching;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -62,6 +63,12 @@ public sealed class MultiTurnExecutor : ISubagentExecutor
             ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
             MaxTokens = 4096,
         };
+        PromptCachePolicy.Apply(
+            settings,
+            parentSession.CurrentModel,
+            history,
+            parentSession.PromptCachingEnabled,
+            parentSession.PromptCacheTtl);
 
         var allOutput = new StringBuilder();
 

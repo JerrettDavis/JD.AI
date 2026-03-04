@@ -1,7 +1,12 @@
+using Anthropic.SDK;
 using JD.SemanticKernel.Connectors.ClaudeCode;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
+
 namespace JD.AI.Core.Providers;
 
 /// <summary>
@@ -78,10 +83,51 @@ public sealed class ClaudeCodeDetector : IProviderDetector
     {
         var options = BuildSessionOptions();
         var builder = Kernel.CreateBuilder();
-        builder.UseClaudeCodeChatCompletion(
-            modelId: model.Id,
-            configure: opts => opts.CredentialsPath = options.CredentialsPath);
+        ConfigureKernelBuilder(builder, options);
         return builder.Build();
+    }
+
+    internal static void ConfigureKernelBuilder(
+        IKernelBuilder builder,
+        ClaudeCodeSessionOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(options);
+
+        builder.Services.AddSingleton(Options.Create(options));
+
+        builder.Services.AddSingleton(sp =>
+            new ClaudeCodeSessionProvider(
+                sp.GetRequiredService<IOptions<ClaudeCodeSessionOptions>>(),
+                NullLogger<ClaudeCodeSessionProvider>.Instance));
+
+        builder.Services.AddSingleton<IChatClient>(sp =>
+        {
+            var sessionProvider = sp.GetRequiredService<ClaudeCodeSessionProvider>();
+            var token = sessionProvider
+                .GetTokenAsync(CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                throw new ClaudeCodeSessionException("No Claude token available.");
+            }
+
+            var httpClient = new HttpClient(new ClaudeCodeSessionHttpHandler(sessionProvider))
+            {
+                Timeout = TimeSpan.FromMinutes(10),
+            };
+
+            var anthropicClient = new AnthropicClient(
+                new APIAuthentication(token),
+                httpClient);
+
+            return new AnthropicPromptCachingChatClient(anthropicClient.Messages);
+        });
+
+        builder.Services.AddSingleton<IChatCompletionService>(sp =>
+            sp.GetRequiredService<IChatClient>()
+              .AsChatCompletionService(sp));
     }
 
     /// <summary>
