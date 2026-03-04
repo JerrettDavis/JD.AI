@@ -1,0 +1,28 @@
+- name: Welcome
+  href: index.md
+- name: Installation
+  href: installation.md
+- name: Quickstart
+  href: quickstart.md
+- name: Provider Setup
+  href: provider-setup.md
+- name: Local Models
+  href: local-models.md
+- name: Commands
+  href: commands.md
+- name: Tools
+  href: tools.md
+- name: Sessions & History
+  href: sessions.md
+- name: Checkpointing
+  href: checkpointing.md
+- name: Configuration
+  href: configuration.md
+- name: Common Workflows
+  href: common-workflows.md
+- name: Best Practices
+  href: best-practices.md
+- name: Clipboard & Input
+  href: clipboard-and-input.md
+- name: Troubleshooting
+  href: troubleshooting.md

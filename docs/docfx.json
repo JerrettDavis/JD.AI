@@ -22,7 +22,18 @@
         "files": [ "api/**.yml", "api/index.md" ]
       },
       {
-        "files": [ "articles/**/*.md", "articles/**/toc.yml", "toc.yml", "*.md" ]
+        "files": [
+          "user-guide/**/*.md",
+          "user-guide/**/toc.yml",
+          "developer-guide/**/*.md",
+          "developer-guide/**/toc.yml",
+          "operations/**/*.md",
+          "operations/**/toc.yml",
+          "reference/**/*.md",
+          "reference/**/toc.yml",
+          "toc.yml",
+          "*.md"
+        ]
       }
     ],
     "resource": [
@@ -38,7 +49,7 @@
       "_appLogoPath": "images/logo.svg",
       "_appFaviconPath": "images/favicon.svg",
       "_appFooter": "<span>JD.AI &copy; 2025 &mdash; MIT License &middot; <a href='https://github.com/JerrettDavis/JD.AI'>GitHub</a> &middot; <a href='https://www.nuget.org/packages/JD.AI'>NuGet</a></span>",
-      "_description": "An AI-powered terminal assistant built on Microsoft Semantic Kernel. Multi-provider support for Claude Code, GitHub Copilot, and Ollama.",
+      "_description": "AI-powered terminal assistant and multi-channel platform built on Microsoft Semantic Kernel. 14 providers, 17 tool categories, 33+ slash commands.",
       "_copyright": "Copyright &copy; 2025 Jerrett Davis. Licensed under the MIT License.",
       "_enableSearch": true,
       "_disableContribution": false,
