@@ -94,6 +94,8 @@ public sealed class AuditPolicy
 /// </summary>
 public sealed class WorkflowPolicy
 {
+#pragma warning disable CA2227 // Settable collection properties required for YAML deserialization
+
     /// <summary>
     /// Roles or usernames permitted to publish workflows.
     /// Empty means anyone can publish (no restriction).
@@ -105,4 +107,6 @@ public sealed class WorkflowPolicy
     /// Deny takes precedence over allow.
     /// </summary>
     public IList<string> PublishDenied { get; set; } = [];
+
+#pragma warning restore CA2227
 }
