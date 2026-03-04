@@ -54,6 +54,7 @@ public static class SlashCommandCatalog
         new("/agents", "Manage local agent profiles"),
         new("/hooks", "Manage local hook profiles"),
         new("/memory", "View/edit JDAI.md project memory"),
+        new("/output", "Set output rendering style (alias: /output-style)"),
         new("/output-style", "Set output rendering style"),
         new("/default", "Manage default provider/model settings"),
         new("/default provider", "Set global default provider"),
