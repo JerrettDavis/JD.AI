@@ -28,7 +28,7 @@ public sealed class BrowserToolsTests
     [Fact]
     public void OpenUrl_InvalidUrl_ReturnsError()
     {
-        var result = BrowserTools.OpenUrl("not-a-url");
+        var result = BrowserTools.OpenInBrowser("not-a-url");
 
         result.Should().Contain("Error");
         result.Should().Contain("Invalid URL");
@@ -37,7 +37,7 @@ public sealed class BrowserToolsTests
     [Fact]
     public void OpenUrl_FtpUrl_ReturnsError()
     {
-        var result = BrowserTools.OpenUrl("ftp://example.com");
+        var result = BrowserTools.OpenInBrowser("ftp://example.com");
 
         result.Should().Contain("Error");
         result.Should().Contain("http/https");
@@ -46,7 +46,7 @@ public sealed class BrowserToolsTests
     [Fact]
     public void OpenUrl_JavaScriptUrl_ReturnsError()
     {
-        var result = BrowserTools.OpenUrl("javascript:alert(1)");
+        var result = BrowserTools.OpenInBrowser("javascript:alert(1)");
 
         result.Should().Contain("Error");
     }

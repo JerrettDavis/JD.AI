@@ -61,7 +61,7 @@ public sealed class BrowserTools
 
     [KernelFunction("browser_open")]
     [Description("Open a URL in the user's default browser. Returns immediately after launching.")]
-    public static string OpenUrl(
+    public static string OpenInBrowser(
         [Description("The URL to open (e.g. https://github.com)")] string url)
     {
         try
