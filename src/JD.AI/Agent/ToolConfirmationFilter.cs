@@ -2,6 +2,7 @@ using System.Diagnostics;
 using JD.AI.Core.Agents;
 using JD.AI.Core.Governance;
 using JD.AI.Core.Governance.Audit;
+using JD.AI.Core.Safety;
 using JD.AI.Core.Tracing;
 using JD.AI.Tools;
 using Microsoft.SemanticKernel;
@@ -19,6 +20,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
     private readonly AgentSession _session;
     private readonly IPolicyEvaluator? _policyEvaluator;
     private readonly AuditService? _auditService;
+    private readonly CircuitBreaker? _circuitBreaker;
     private readonly HashSet<string> _confirmedOnce = new(StringComparer.Ordinal);
 
     // Safety tier mappings
@@ -74,11 +76,13 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
     public ToolConfirmationFilter(
         AgentSession session,
         IPolicyEvaluator? policyEvaluator = null,
-        AuditService? auditService = null)
+        AuditService? auditService = null,
+        CircuitBreaker? circuitBreaker = null)
     {
         _session = session;
         _policyEvaluator = policyEvaluator;
         _auditService = auditService;
+        _circuitBreaker = circuitBreaker;
     }
 
     public async Task OnAutoFunctionInvocationAsync(
@@ -156,6 +160,36 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             }
         }
 
+        // ── Circuit breaker / loop detection ────────────────
+        if (_circuitBreaker is not null)
+        {
+            var argsHash = args.GetHashCode(StringComparison.Ordinal).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var cbResult = _circuitBreaker.Evaluate(functionName, argsHash, agentId: _session.SessionInfo?.Id);
+
+            if (cbResult.Action == CircuitAction.Block)
+            {
+                output.RenderWarning($"  ⚡ Circuit breaker: {cbResult.Message}");
+                output.RenderInfo("  💡 Hint: Try a different approach or use /circuit-reset to manually reset.");
+                context.Result = new FunctionResult(context.Function,
+                    $"Blocked by circuit breaker: {cbResult.Message}");
+
+                Telemetry.Meters.CircuitBreakerTrips.Add(1,
+                    new KeyValuePair<string, object?>("jdai.tool.name", functionName));
+
+                await EmitAuditEventAsync(functionName, context.Arguments, "circuit_breaker_block", policyResult).ConfigureAwait(false);
+                return;
+            }
+
+            if (cbResult.Action == CircuitAction.Warn)
+            {
+                output.RenderWarning($"  ⚠ Loop warning: {cbResult.Message}");
+
+                Telemetry.Meters.LoopDetections.Add(1,
+                    new KeyValuePair<string, object?>("jdai.tool.name", functionName),
+                    new KeyValuePair<string, object?>("jdai.safety.decision", "warning"));
+            }
+        }
+
         // ── Safety tier confirmation (already computed above via PermissionMode) ──
 
         if (needsConfirm)
@@ -182,6 +216,10 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         activity?.SetTag("jdai.tool.name", functionName);
         activity?.SetTag("jdai.tool.safety_tier", tier.ToString());
         activity?.SetTag("jdai.tool.permission_mode", _session.PermissionMode.ToString());
+        if (_circuitBreaker is not null)
+        {
+            activity?.SetTag("jdai.safety.circuit_state", _circuitBreaker.State.ToString());
+        }
 
         var timeline = TraceContext.CurrentContext.Timeline;
         var timelineEntry = timeline.BeginOperation(
