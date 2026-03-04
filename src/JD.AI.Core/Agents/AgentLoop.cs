@@ -309,10 +309,16 @@ public sealed class AgentLoop
         var supportsTools = _session.CurrentModel?.Capabilities
             .HasFlag(ModelCapabilities.ToolCalling) ?? false;
 
+        var maxTokens = _session.CurrentModel?.MaxOutputTokens;
+        if (maxTokens is null or <= 0)
+        {
+            maxTokens = 4096;
+        }
+
         return new OpenAIPromptExecutionSettings
         {
             ModelId = _session.CurrentModel?.Id,
-            MaxTokens = 4096,
+            MaxTokens = maxTokens,
             FunctionChoiceBehavior = supportsTools
                 ? FunctionChoiceBehavior.Auto()
                 : null,

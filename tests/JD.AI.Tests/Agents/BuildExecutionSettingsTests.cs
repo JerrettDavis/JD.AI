@@ -70,6 +70,19 @@ public sealed class BuildExecutionSettingsTests
             "MaxTokens must be set to a positive value; some endpoints return 500 without it.");
     }
 
+    [Fact]
+    public void Settings_MaxTokens_ReflectsModelMaxOutputTokens()
+    {
+        const int expectedMaxOutputTokens = 8192;
+        var model = new ProviderModelInfo(
+            "gpt-4.1", "GPT-4.1", "OpenAI",
+            MaxOutputTokens: expectedMaxOutputTokens);
+        var settings = Build(CreateLoop(model));
+
+        var openAiSettings = Assert.IsType<OpenAIPromptExecutionSettings>(settings);
+        Assert.Equal(expectedMaxOutputTokens, openAiSettings.MaxTokens);
+    }
+
     // ── FunctionChoiceBehavior ──────────────────────────────
 
     [Fact]
@@ -82,7 +95,7 @@ public sealed class BuildExecutionSettingsTests
             Capabilities: ModelCapabilities.Chat | ModelCapabilities.ToolCalling);
         var settings = Build(CreateLoop(model));
 
-        Assert.NotNull(settings.FunctionChoiceBehavior);
+        Assert.IsType<AutoFunctionChoiceBehavior>(settings.FunctionChoiceBehavior);
     }
 
     [Fact]
