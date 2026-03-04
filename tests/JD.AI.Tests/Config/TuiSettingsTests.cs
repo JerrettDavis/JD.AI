@@ -1,4 +1,5 @@
 using JD.AI.Core.Config;
+using JD.AI.Core.PromptCaching;
 using Xunit;
 
 namespace JD.AI.Tests.Config;
@@ -28,17 +29,26 @@ public sealed class TuiSettingsTests : IDisposable
         var settings = TuiSettings.Load();
 
         Assert.Equal(SpinnerStyle.Normal, settings.SpinnerStyle);
+        Assert.True(settings.PromptCacheEnabled);
+        Assert.Equal(PromptCacheTtl.FiveMinutes, settings.PromptCacheTtl);
     }
 
     [Fact]
     public void SaveAndLoad_RoundTrips()
     {
-        var settings = new TuiSettings { SpinnerStyle = SpinnerStyle.Nerdy };
+        var settings = new TuiSettings
+        {
+            SpinnerStyle = SpinnerStyle.Nerdy,
+            PromptCacheEnabled = false,
+            PromptCacheTtl = PromptCacheTtl.OneHour,
+        };
         settings.Save();
 
         var loaded = TuiSettings.Load();
 
         Assert.Equal(SpinnerStyle.Nerdy, loaded.SpinnerStyle);
+        Assert.False(loaded.PromptCacheEnabled);
+        Assert.Equal(PromptCacheTtl.OneHour, loaded.PromptCacheTtl);
     }
 
     [Fact]

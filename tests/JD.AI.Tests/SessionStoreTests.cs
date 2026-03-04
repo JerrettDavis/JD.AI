@@ -27,6 +27,42 @@ public sealed class SessionStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task InitializeAsync_ConcurrentCalls_AreIdempotent()
+    {
+        var dbPath = Path.Combine(Path.GetTempPath(), $"jdai_init_race_{Guid.NewGuid():N}.db");
+        var stores = Enumerable.Range(0, 8)
+            .Select(_ => new SessionStore(dbPath))
+            .ToList();
+
+        try
+        {
+            var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var tasks = stores.Select(async store =>
+            {
+                await start.Task;
+                await store.InitializeAsync();
+            });
+
+            start.SetResult();
+            await Task.WhenAll(tasks);
+
+            Assert.True(File.Exists(dbPath));
+        }
+        finally
+        {
+            foreach (var store in stores)
+            {
+                store.Dispose();
+            }
+
+            if (File.Exists(dbPath))
+            {
+                File.Delete(dbPath);
+            }
+        }
+    }
+
+    [Fact]
     public async Task CreateSession_RoundTrips()
     {
         await _store.InitializeAsync();

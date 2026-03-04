@@ -12,3 +12,5 @@
   href: environment-variables.md
 - name: Configuration Reference
   href: configuration.md
+- name: Prompt Caching
+  href: prompt-caching.md
