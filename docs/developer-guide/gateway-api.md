@@ -168,6 +168,117 @@ Install payload:
 }
 ```
 
+### Audit
+
+Query the in-memory queryable audit event buffer. Audit events are stored in a thread-safe circular buffer with a capacity of approximately 10,000 events. The buffer is cleared on application restart.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/audit/events` | List audit events with optional filters and pagination |
+| `GET` | `/api/audit/events/{id}` | Get a single audit event by its event ID |
+| `GET` | `/api/audit/stats` | Get summary statistics grouped by severity and action |
+
+#### List events
+
+```
+GET /api/audit/events
+```
+
+Query parameters:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `action` | string | Filter by event action (e.g., `tool.invoke`, `session.create`) |
+| `severity` | string | Minimum severity level (`debug`, `info`, `warning`, `error`, `critical`) |
+| `sessionId` | string | Filter by session ID |
+| `userId` | string | Filter by user ID |
+| `resource` | string | Filter by resource substring (tool name, provider, etc.) |
+| `from` | ISO 8601 | Start timestamp (inclusive) |
+| `until` | ISO 8601 | End timestamp (inclusive) |
+| `limit` | int | Maximum results to return (default: 50) |
+| `offset` | int | Pagination offset (default: 0) |
+
+```bash
+# List the 25 most recent warning-level events
+curl http://localhost:18789/api/audit/events?severity=warning&limit=25
+
+# Filter by session
+curl http://localhost:18789/api/audit/events?sessionId=sess_abc123
+
+# Filter by tool invocations only
+curl http://localhost:18789/api/audit/events?action=tool.invoke&limit=50
+```
+
+Response:
+
+```json
+{
+  "totalCount": 142,
+  "count": 25,
+  "events": [
+    {
+      "eventId": "4a9f1b3c8e2d47a6b5c0d9e1f2a3b4c5",
+      "timestamp": "2026-03-03T14:22:07.341+00:00",
+      "userId": null,
+      "sessionId": "sess_abc123",
+      "traceId": null,
+      "action": "tool.invoke",
+      "resource": "read_file",
+      "detail": "status=ok; args=path=src/Auth/TokenService.cs",
+      "severity": "Debug",
+      "policyResult": "Allow"
+    }
+  ]
+}
+```
+
+#### Get event
+
+```
+GET /api/audit/events/{id}
+```
+
+Returns the full event record for the given `eventId`. Returns `404` if the event is not in the buffer.
+
+```bash
+curl http://localhost:18789/api/audit/events/4a9f1b3c8e2d47a6b5c0d9e1f2a3b4c5
+```
+
+#### Event statistics
+
+```
+GET /api/audit/stats
+```
+
+Returns summary counts grouped by severity and the top 10 actions by frequency.
+
+```bash
+curl http://localhost:18789/api/audit/stats
+```
+
+Response:
+
+```json
+{
+  "totalEvents": 142,
+  "bySeverity": {
+    "Debug": 98,
+    "Info": 12,
+    "Warning": 30,
+    "Error": 2
+  },
+  "topActions": {
+    "tool.invoke": 105,
+    "session.create": 14,
+    "session.close": 14,
+    "policy.deny": 9
+  }
+}
+```
+
+> [!NOTE]
+> The audit buffer holds approximately 10,000 events in memory. On overflow, the oldest events are evicted. Events are not persisted across gateway restarts. For long-term retention, configure an external audit sink — see [Audit Logging](../user-guide/audit-logging.md).
+
 ### Health
 
 | Method | Path | Description |
@@ -293,3 +404,5 @@ Gateway-wide event streaming.
 - [Plugin SDK](plugins.md) — extend the gateway with plugins
 - [OpenClaw Integration](openclaw-integration.md) — cross-gateway orchestration
 - [Architecture Overview](index.md) — gateway in the system architecture
+- [Audit Logging](../user-guide/audit-logging.md) — audit event schema, sinks, and external retention
+- [Security & Credentials](../operations/security.md) — audit model and security checklist
