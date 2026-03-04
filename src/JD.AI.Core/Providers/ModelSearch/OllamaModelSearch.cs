@@ -41,7 +41,8 @@ public sealed class OllamaModelSearch : IRemoteModelSearch
                     ProviderName,
                     FormatBytes(m.Size),
                     "Installed",
-                    null))
+                    null,
+                    ModelCapabilityHeuristics.InferFromName(m.Name ?? "unknown")))
                 .ToList();
 
             return models;

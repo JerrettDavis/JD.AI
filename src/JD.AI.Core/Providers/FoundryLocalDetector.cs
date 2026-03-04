@@ -33,10 +33,12 @@ public sealed class FoundryLocalDetector : IProviderDetector
                 .ConfigureAwait(false);
 
             var models = (resp?.Data ?? [])
-                .Select(m => new ProviderModelInfo(
-                    m.Id ?? "unknown",
-                    m.Id ?? "unknown",
-                    ProviderName))
+                .Select(m =>
+                {
+                    var name = m.Id ?? "unknown";
+                    var caps = ModelCapabilityHeuristics.InferFromName(name);
+                    return new ProviderModelInfo(name, name, ProviderName, caps);
+                })
                 .ToList();
 
             return new ProviderInfo(
