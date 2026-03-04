@@ -102,7 +102,7 @@ public sealed class PluginLoader
         }
 
         _logger.LogInformation("Loaded plugin: {Name} v{Version} from {Path}",
-            loaded.Name, loaded.Version, assemblyPath);
+            SanitizeForLog(loaded.Name), loaded.Version, SanitizeForLog(assemblyPath));
 
         return loaded;
     }
@@ -129,7 +129,7 @@ public sealed class PluginLoader
 #pragma warning disable CA1031 // plugin faults are isolated by design
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Plugin shutdown failed for {Name}", target.Name);
+            _logger.LogWarning(ex, "Plugin shutdown failed for {Name}", SanitizeForLog(target.Name));
         }
 #pragma warning restore CA1031
         finally
@@ -137,7 +137,7 @@ public sealed class PluginLoader
             target.LoadContext.Unload();
         }
 
-        _logger.LogInformation("Unloaded plugin: {Name}", nameOrId);
+        _logger.LogInformation("Unloaded plugin: {Name}", SanitizeForLog(nameOrId));
     }
 
     /// <summary>Get all loaded plugins.</summary>
@@ -145,6 +145,13 @@ public sealed class PluginLoader
     {
         lock (_lock)
             return [.. _plugins];
+    }
+
+    private static string SanitizeForLog(string value)
+    {
+        return value
+            .Replace("\r", "\\r", StringComparison.Ordinal)
+            .Replace("\n", "\\n", StringComparison.Ordinal);
     }
 }
 
