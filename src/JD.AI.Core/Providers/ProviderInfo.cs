@@ -15,4 +15,5 @@ public sealed record ProviderInfo(
 public sealed record ProviderModelInfo(
     string Id,
     string DisplayName,
-    string ProviderName);
+    string ProviderName,
+    int ContextWindowTokens = 128_000);

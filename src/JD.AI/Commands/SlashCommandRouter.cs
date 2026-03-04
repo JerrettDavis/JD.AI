@@ -91,6 +91,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/LOCAL" or "/JDAI-LOCAL" => await HandleLocalModelAsync(arg, ct).ConfigureAwait(false),
             "/MCP" or "/JDAI-MCP" => await HandleMcpAsync(arg, ct).ConfigureAwait(false),
             "/CONTEXT" or "/JDAI-CONTEXT" => GetContextUsage(),
+            "/COMPACT-SYSTEM-PROMPT" or "/JDAI-COMPACT-SYSTEM-PROMPT" => await CompactSystemPromptAsync(arg, ct).ConfigureAwait(false),
             "/COPY" or "/JDAI-COPY" => await CopyLastResponseInstanceAsync().ConfigureAwait(false),
             "/DIFF" or "/JDAI-DIFF" => await ShowDiffAsync(ct).ConfigureAwait(false),
             "/INIT" or "/JDAI-INIT" => await InitProjectFileAsync(ct).ConfigureAwait(false),
@@ -129,6 +130,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /local <cmd>    — Manage local models (list|add|scan|remove|search|download)
           /mcp [cmd]      — Manage MCP servers (list|add|remove|enable|disable)
           /context        — Show context window usage
+          /compact-system-prompt [off|auto|always] — Compact system prompt or set mode
           /copy           — Copy last response to clipboard
           /diff           — Show uncommitted changes
           /init           — Initialize JDAI.md project file
@@ -1064,12 +1066,47 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private string GetContextUsage()
     {
         var used = JD.SemanticKernel.Extensions.Compaction.TokenEstimator.EstimateTokens(_session.History);
-        var max = 128000;
+        var max = _session.CurrentModel?.ContextWindowTokens ?? 128_000;
         var pct = (double)used / max * 100;
         var filledCount = (int)(pct / 2);
         if (filledCount > 50) filledCount = 50;
         var bar = new string('█', filledCount) + new string('░', 50 - filledCount);
         return $"Context: [{bar}] {used:N0}/{max:N0} tokens ({pct:F1}%)";
+    }
+
+    private async Task<string> CompactSystemPromptAsync(string? arg, CancellationToken ct)
+    {
+        // No arg: compact now (one-shot)
+        if (string.IsNullOrWhiteSpace(arg))
+        {
+            var contextWindow = _session.CurrentModel?.ContextWindowTokens ?? 128_000;
+            var settings = TuiSettings.Load();
+            var budgetTokens = (int)(contextWindow * (settings.SystemPromptBudgetPercent / 100.0));
+            var before = _session.SystemPromptTokens;
+
+            if (before == 0)
+                return "No system prompt to compact.";
+
+            var after = await _session.CompactSystemPromptAsync(budgetTokens, ct).ConfigureAwait(false);
+            return before == after
+                ? $"System prompt already within budget ({before:N0} tokens ≤ {budgetTokens:N0} budget)."
+                : $"System prompt compacted: {before:N0} → {after:N0} tokens (budget: {budgetTokens:N0}).";
+        }
+
+        // off/auto/always: persist setting
+        if (!Enum.TryParse<SystemPromptCompaction>(arg.Trim(), ignoreCase: true, out var mode))
+        {
+            return $"Unknown mode: '{arg}'. Available: off, auto, always";
+        }
+
+        var current = TuiSettings.Load();
+        var updated = current with { SystemPromptCompaction = mode };
+        try { updated.Save(); }
+#pragma warning disable CA1031
+        catch { /* best-effort persist */ }
+#pragma warning restore CA1031
+
+        return $"System prompt compaction set to: {mode.ToString().ToLowerInvariant()}";
     }
 
     private async Task<string> CopyLastResponseInstanceAsync()

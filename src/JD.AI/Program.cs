@@ -566,6 +566,30 @@ if (pendingUpdate is not null && !printMode)
     AnsiConsole.WriteLine();
 }
 
+// 11c. System prompt budget check
+if (!printMode)
+{
+    var systemPromptTokens = session.SystemPromptTokens;
+    var contextWindow = selectedModel.ContextWindowTokens;
+    var budgetPercent = tuiSettings.SystemPromptBudgetPercent;
+    var budgetTokens = (int)(contextWindow * (budgetPercent / 100.0));
+    var compactionMode = tuiSettings.SystemPromptCompaction;
+
+    var shouldCompact = compactionMode == SystemPromptCompaction.Always
+        || (compactionMode == SystemPromptCompaction.Auto && systemPromptTokens > budgetTokens);
+
+    if (shouldCompact)
+    {
+        ChatRenderer.RenderInfo("Compacting system prompt...");
+        var newSize = await session.CompactSystemPromptAsync(budgetTokens).ConfigureAwait(false);
+        ChatRenderer.RenderInfo($"System prompt compacted: {systemPromptTokens:N0} → {newSize:N0} tokens.");
+    }
+    else if (systemPromptTokens > budgetTokens)
+    {
+        ChatRenderer.RenderSystemPromptWarning(systemPromptTokens, budgetTokens, budgetPercent, contextWindow);
+    }
+}
+
 // Print mode: non-interactive execution
 if (printMode)
 {

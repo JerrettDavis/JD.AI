@@ -114,6 +114,17 @@ public static class ChatRenderer
         AnsiConsole.MarkupLine($"[yellow]⚠ {Markup.Escape(text)}[/]");
     }
 
+    /// <summary>Render a system prompt size warning below the welcome banner.</summary>
+    public static void RenderSystemPromptWarning(int actualTokens, int budgetTokens, int budgetPercent, int contextWindow)
+    {
+        var actualK = actualTokens / 1000.0;
+        var budgetK = budgetTokens / 1000.0;
+        AnsiConsole.MarkupLine(
+            $"[yellow]⚠ Large system prompt may degrade performance " +
+            $"({actualK:F1}k tokens exceeds {budgetPercent}%/{budgetK:F0}k budget of {contextWindow / 1000}k context window).[/]");
+        AnsiConsole.WriteLine();
+    }
+
     /// <summary>Render an error message.</summary>
     public static void RenderError(string text)
     {

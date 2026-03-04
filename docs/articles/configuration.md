@@ -131,6 +131,30 @@ See [Skills and Plugins](skills-and-plugins.md) for details.
 /clear          # Clear conversation history
 ```
 
+### System prompt budget
+
+Large system prompts (from JDAI.md, org instructions, skills, plugins, and appended prompts) can consume a significant portion of the context window, leaving less room for conversation. JD.AI can detect when the system prompt exceeds a configurable budget and optionally compact it automatically.
+
+**Commands:**
+
+```text
+/compact-system-prompt           # Compact the system prompt now
+/compact-system-prompt off       # Never auto-compact (default)
+/compact-system-prompt auto      # Compact when system prompt exceeds budget
+/compact-system-prompt always    # Always compact system prompt at startup
+```
+
+**TUI settings** (persisted to `~/.jdai/tui-settings.json`):
+
+| Setting | Description | Default |
+|---|---|---|
+| `systemPromptBudgetPercent` | Maximum percentage of context window the system prompt should use (0–100) | `20` |
+| `systemPromptCompaction` | Compaction mode: `off`, `auto`, or `always` | `off` |
+
+**Budget calculation:** The budget is `contextWindow × (systemPromptBudgetPercent / 100)`. For example, with a 200k context window and 20% budget, the system prompt budget is 40k tokens. When the system prompt exceeds this budget, JD.AI either shows a warning (when compaction is `off`) or automatically compacts the prompt (when `auto` or `always`).
+
+Each model carries its own context window size. Claude models use 200k; GPT-4o and Ollama models default to 128k. The `/context` command reflects the actual context window of the current model.
+
 ## Environment variables
 
 | Variable | Description | Default |

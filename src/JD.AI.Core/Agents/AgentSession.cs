@@ -29,6 +29,10 @@ public sealed class AgentSession
     /// <summary>Optional audit service for emitting session lifecycle events.</summary>
     public AuditService? AuditService { get; set; }
 
+    // ── System prompt cache ──────────────────────────────────
+    private string? _cachedSystemPromptText;
+    private int _cachedSystemPromptTokens;
+
     public ChatHistory History { get; } = new();
     public ProviderModelInfo? CurrentModel { get; private set; }
     public bool AutoRunEnabled { get; set; }
@@ -217,6 +221,65 @@ public sealed class AgentSession
         SessionInfo.IsActive = false;
         await Store.CloseSessionAsync(SessionInfo.Id).ConfigureAwait(false);
         await ExportSessionAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>Cached token count for the current system prompt. Recomputed only when prompt text changes.</summary>
+    public int SystemPromptTokens
+    {
+        get
+        {
+            var current = History.FirstOrDefault(m => m.Role == AuthorRole.System)?.Content;
+            if (current == null) return 0;
+            if (string.Equals(current, _cachedSystemPromptText, StringComparison.Ordinal))
+                return _cachedSystemPromptTokens;
+            _cachedSystemPromptText = current;
+            _cachedSystemPromptTokens = TokenEstimator.EstimateTokens(current);
+            return _cachedSystemPromptTokens;
+        }
+    }
+
+    /// <summary>
+    /// Compacts the system prompt using the LLM to summarize it while preserving key instructions.
+    /// Returns the new token count. Skips if already within budget.
+    /// </summary>
+    public async Task<int> CompactSystemPromptAsync(int targetTokens, CancellationToken ct = default)
+    {
+        var currentTokens = SystemPromptTokens;
+        if (currentTokens <= targetTokens) return currentTokens;
+
+        var systemMsg = History.FirstOrDefault(m => m.Role == AuthorRole.System);
+        if (systemMsg == null) return 0;
+
+        var prompt = $"""
+            Compress the following system prompt to under {targetTokens} tokens while preserving:
+            1. All tool names and their descriptions
+            2. All code style rules and conventions
+            3. All build/test commands
+            4. Project-specific architecture notes
+            5. Safety and permission rules
+
+            Remove verbose explanations, examples, and redundant text. Keep bullet points.
+            Output ONLY the compressed system prompt, nothing else.
+
+            --- SYSTEM PROMPT ---
+            {systemMsg.Content}
+            """;
+
+        var chat = _kernel.GetRequiredService<IChatCompletionService>();
+        var compactHistory = new ChatHistory();
+        compactHistory.AddUserMessage(prompt);
+        var result = await chat.GetChatMessageContentAsync(compactHistory, cancellationToken: ct).ConfigureAwait(false);
+
+        var compacted = result.Content ?? systemMsg.Content ?? "";
+
+        // Replace system message and update cache
+        var idx = History.IndexOf(systemMsg);
+        History.RemoveAt(idx);
+        History.Insert(idx, new ChatMessageContent(AuthorRole.System, compacted));
+        _cachedSystemPromptText = compacted;
+        _cachedSystemPromptTokens = TokenEstimator.EstimateTokens(compacted);
+
+        return _cachedSystemPromptTokens;
     }
 
     /// <summary>
