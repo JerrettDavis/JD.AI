@@ -155,6 +155,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/DEFAULT" or "/JDAI-DEFAULT" => await HandleDefaultAsync(arg, ct).ConfigureAwait(false),
             "/MODEL-INFO" or "/JDAI-MODEL-INFO" => await HandleModelInfoAsync(arg, ct).ConfigureAwait(false),
             "/TRACE" or "/JDAI-TRACE" => ShowTrace(arg),
+            "/SHORTCUTS" or "/JDAI-SHORTCUTS" => GetShortcuts(),
             "/QUIT" or "/EXIT" or "/JDAI-QUIT" or "/JDAI-EXIT" => null, // Signal exit
             _ => $"Unknown command: {parts[0]}. Type /help for available commands.",
         };
@@ -209,7 +210,40 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /default        — Manage default provider/model (global & per-project)
           /model-info [refresh] — Show model metadata (context, cost, capabilities)
           /trace [N]      — Show execution timeline for the last turn (or turn N)
+          /shortcuts      — List keyboard shortcuts
           /quit           — Exit jdai
+        """;
+
+    private static string GetShortcuts() => """
+        Keyboard Shortcuts:
+          Ctrl+C          — Cancel current operation / exit
+          Ctrl+L          — Clear screen
+          Ctrl+U          — Clear input line
+          Ctrl+W          — Delete word backward
+          Ctrl+R          — Reverse history search
+          Ctrl+V          — Paste from clipboard
+          Shift+Tab       — Toggle plan mode
+          Alt+T           — Toggle extended thinking
+          Alt+P           — Cycle through recent models
+          Tab             — Accept completion
+          Up/Down         — Navigate history / completion dropdown
+          Home/End        — Move to start/end of input
+          ESC             — Dismiss completions / vim normal mode
+          ESC ESC         — Cancel (at empty prompt)
+
+        Vim Mode (when enabled with /vim):
+          i/a/A/I         — Enter insert mode
+          ESC             — Return to normal mode
+          h/l/w/b/e       — Movement
+          0/$             — Start/end of line
+          x/dd/dw/D       — Delete operations
+          cc/cw/C         — Change operations
+          yy/yw/p/P       — Yank and paste
+          u               — Undo
+
+        Input Prefixes:
+          !<command>      — Execute shell command directly
+          @<file>         — Attach file contents to prompt
         """;
 
     private async Task<string> ListModelsAsync(CancellationToken ct)
