@@ -553,6 +553,7 @@ usageTools.SetModel(selectedModel);
 kernel.Plugins.AddFromObject(usageTools, "usage");
 kernel.Plugins.AddFromObject(
     new QuestionTools(req => QuestionnaireSession.Run(req)), "questions");
+kernel.Plugins.AddFromObject(new SessionOrchestrationTools(session), "sessions");
 
 // 7. Load Claude Code skills, plugins, and hooks if available
 var skillDirs = new[]
