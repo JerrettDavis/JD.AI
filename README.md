@@ -149,7 +149,7 @@ Six channel adapters connect the agent pool to external platforms:
 | WebChat | SignalR browser client |
 | OpenClaw | Cross-gateway HTTP forwarding |
 
-See [docs/articles/gateway-api.md](docs/articles/gateway-api.md) and [docs/articles/channels.md](docs/articles/channels.md).
+See the [Gateway API docs](docs/developer-guide/gateway-api.md) and [Channel Adapters guide](docs/developer-guide/channels.md).
 
 ## Project Structure
 
@@ -195,8 +195,10 @@ tests/
 Full documentation is built with [docfx](https://dotnet.github.io/docfx/) and published from the `docs/` directory.
 
 - [API Reference](docs/api/) — Auto-generated from XML doc comments
-- [Articles](docs/articles/) — Architecture, channels, gateway, plugins, workflows
-- [Getting Started](docs/index.md)
+- [User Guide](docs/user-guide/) — Installation, commands, workflows, best practices
+- [Developer Guide](docs/developer-guide/) — Architecture, custom tools, plugins, gateway API
+- [Operations](docs/operations/) — Deployment, observability, security, governance
+- [Reference](docs/reference/) — CLI flags, commands, tools, providers, environment variables
 
 ## Contributing
 
