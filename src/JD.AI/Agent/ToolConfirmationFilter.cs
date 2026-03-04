@@ -179,6 +179,14 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             ["capability_gaps"] = SafetyTier.AutoApprove,
             ["capability_scaffold"] = SafetyTier.AutoApprove,
 
+            // Tailscale — read-only discovery + export
+            ["tailscale_status"] = SafetyTier.AutoApprove,
+            ["tailscale_machines"] = SafetyTier.AutoApprove,
+            ["tailscale_runner_probe"] = SafetyTier.AutoApprove,
+            ["tailscale_export"] = SafetyTier.AutoApprove,
+            // Tailscale — write credentials (confirm once)
+            ["tailscale_configure"] = SafetyTier.ConfirmOnce,
+
             // Dangerous — always confirm
             ["run_command"] = SafetyTier.AlwaysConfirm,
             ["web_search"] = SafetyTier.AlwaysConfirm,
