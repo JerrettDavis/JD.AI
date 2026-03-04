@@ -553,6 +553,7 @@ kernel.Plugins.AddFromType<DiffTools>("diff");
 kernel.Plugins.AddFromType<BatchEditTools>("batchEdit");
 kernel.Plugins.AddFromType<MultimodalTools>("multimodal");
 kernel.Plugins.AddFromType<ParityDocsTools>("parityDocs");
+kernel.Plugins.AddFromType<McpTransportTools>("mcp");
 kernel.Plugins.AddFromType<MigrationTools>("migration");
 kernel.Plugins.AddFromType<SkillParityTools>("skillParity");
 kernel.Plugins.AddFromObject(new MemoryTools(), "memory");
