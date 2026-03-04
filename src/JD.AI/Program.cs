@@ -7,6 +7,7 @@ using JD.AI.Core.Config;
 using JD.AI.Core.LocalModels;
 using JD.AI.Core.Mcp;
 using JD.AI.Core.Providers;
+using JD.AI.Core.Providers.Credentials;
 using JD.AI.Rendering;
 using JD.AI.Tools;
 using JD.AI.Workflows;
@@ -138,14 +139,28 @@ if (!printMode)
 }
 
 // 1. Build provider registry with all detectors
+var credentialStore = new EncryptedFileStore();
+var providerConfig = new ProviderConfigurationManager(credentialStore);
+
 var detectors = new IProviderDetector[]
 {
+    // OAuth / credential-harvesting providers
     new ClaudeCodeDetector(),
     new CopilotDetector(),
     new OpenAICodexDetector(),
+    // Local providers
     new OllamaDetector(),
     new FoundryLocalDetector(),
     new LocalModelDetector(),
+    // API key providers
+    new OpenAIDetector(providerConfig),
+    new AzureOpenAIDetector(providerConfig),
+    new AnthropicDetector(providerConfig),
+    new GoogleGeminiDetector(providerConfig),
+    new MistralDetector(providerConfig),
+    new AmazonBedrockDetector(providerConfig),
+    new HuggingFaceDetector(providerConfig),
+    new OpenAICompatibleDetector(providerConfig),
 };
 var registry = new ProviderRegistry(detectors);
 
@@ -483,7 +498,8 @@ var commandRouter = new SlashCommandRouter(
     session, registry, instructions, checkpointStrategy,
     workflowCatalog: workflowCatalog,
     getSpinnerStyle: () => spectreOutput.Style,
-    onSpinnerStyleChanged: style => spectreOutput.Style = style);
+    onSpinnerStyleChanged: style => spectreOutput.Style = style,
+    providerConfig: providerConfig);
 
 // 10. Build interactive input with command completions
 var completionProvider = new CompletionProvider();
@@ -491,7 +507,11 @@ completionProvider.Register("/help", "Show available commands");
 completionProvider.Register("/models", "List available models");
 completionProvider.Register("/model", "Switch to a model");
 completionProvider.Register("/providers", "List detected providers");
-completionProvider.Register("/provider", "Show current provider");
+completionProvider.Register("/provider", "Manage provider (add|remove|test|list)");
+completionProvider.Register("/provider add", "Configure an API-key provider");
+completionProvider.Register("/provider remove", "Remove provider credentials");
+completionProvider.Register("/provider test", "Test provider connectivity");
+completionProvider.Register("/provider list", "List all providers with status");
 completionProvider.Register("/clear", "Clear chat history");
 completionProvider.Register("/compact", "Force context compaction");
 completionProvider.Register("/cost", "Show token usage");

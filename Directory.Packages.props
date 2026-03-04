@@ -16,8 +16,14 @@
     <PackageVersion Include="JD.SemanticKernel.Connectors.GitHubCopilot" Version="0.1.14" />
     <PackageVersion Include="JD.SemanticKernel.Connectors.OpenAICodex" Version="0.1.2" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.3" />
+    <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
     <PackageVersion Include="Microsoft.SemanticKernel" Version="1.72.0" />
+    <PackageVersion Include="Microsoft.SemanticKernel.Connectors.AzureOpenAI" Version="1.72.0" />
     <PackageVersion Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.72.0" />
+    <PackageVersion Include="Microsoft.SemanticKernel.Connectors.Google" Version="1.72.0-alpha" />
+    <PackageVersion Include="Microsoft.SemanticKernel.Connectors.MistralAI" Version="1.72.0-alpha" />
+    <PackageVersion Include="Microsoft.SemanticKernel.Connectors.Amazon" Version="1.72.0-alpha" />
+    <PackageVersion Include="Microsoft.SemanticKernel.Connectors.HuggingFace" Version="1.72.0-preview" />
     <PackageVersion Include="Spectre.Console" Version="0.54.0" />
     <PackageVersion Include="WorkflowFramework" Version="0.15.0" />
     <PackageVersion Include="HtmlAgilityPack" Version="1.12.4" />
