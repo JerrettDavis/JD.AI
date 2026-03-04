@@ -4,6 +4,7 @@ using JD.AI.Core.Channels;
 using JD.AI.Core.Commands;
 using JD.AI.Core.Config;
 using JD.AI.Core.Events;
+using JD.AI.Core.Governance.Audit;
 using JD.AI.Core.LocalModels;
 using JD.AI.Core.Memory;
 using JD.AI.Core.Plugins;
@@ -105,8 +106,16 @@ builder.Services.AddSingleton<ICommandRegistry>(sp =>
     registry.Register(new DoctorCommand(
         sp.GetRequiredService<HealthCheckService>()));
     registry.Register(new DocsCommand());
+    registry.Register(new AuditCommand(
+        sp.GetRequiredService<IQueryableAuditSink>()));
     return registry;
 });
+// --- Audit query sink (in-memory, queryable) ---
+var auditSink = new InMemoryAuditSink();
+builder.Services.AddSingleton(auditSink);
+builder.Services.AddSingleton<IQueryableAuditSink>(auditSink);
+builder.Services.AddSingleton<IAuditSink>(auditSink);
+
 builder.Services.AddSingleton<IVectorStore>(_ =>
     new SqliteVectorStore(DataDirectories.VectorsDb));
 
@@ -270,6 +279,7 @@ app.MapPluginEndpoints();
 app.MapMemoryEndpoints();
 app.MapRoutingEndpoints();
 app.MapGatewayConfigEndpoints();
+app.MapAuditEndpoints();
 
 // --- SignalR hubs ---
 app.MapHub<AgentHub>("/hubs/agent");
