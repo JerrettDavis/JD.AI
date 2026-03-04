@@ -23,8 +23,12 @@ public sealed class DiskSpaceHealthCheckTests
     [Fact]
     public async Task CheckHealthAsync_WithExcessiveMinimum_ReturnsDegraded()
     {
-        // Require more disk than any machine could have (10 TB)
-        var check = new DiskSpaceHealthCheck(Path.GetTempPath(), minimumFreeMegabytes: 10 * 1024 * 1024);
+        // Derive a threshold guaranteed to exceed available free space on this drive,
+        // using the same DriveInfo lookup as the production DiskSpaceHealthCheck.
+        var tempDir = Path.GetTempPath();
+        var drive = new DriveInfo(Path.GetPathRoot(tempDir) ?? tempDir);
+        var currentFreeMb = (int)(drive.AvailableFreeSpace / (1024 * 1024));
+        var check = new DiskSpaceHealthCheck(tempDir, minimumFreeMegabytes: currentFreeMb + 1);
 
         var result = await check.CheckHealthAsync(BuildContext());
 

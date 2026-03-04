@@ -121,7 +121,7 @@ public sealed class AgentPoolService : IHostedService
         catch (OperationCanceledException)
         {
             sw.Stop();
-            turnActivity?.SetStatus(ActivityStatusCode.Error);
+            // Cancellations are not actionable failures; leave span status as Unset.
             throw;
         }
         catch

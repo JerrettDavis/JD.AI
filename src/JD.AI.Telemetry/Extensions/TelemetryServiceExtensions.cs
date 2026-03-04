@@ -89,16 +89,16 @@ public static class TelemetryServiceExtensions
             case "otlp":
                 tracing.AddOtlpExporter(o =>
                 {
-                    if (!string.IsNullOrEmpty(endpoint))
-                        o.Endpoint = new Uri(endpoint);
+                    if (TryParseEndpoint(endpoint, out var uri))
+                        o.Endpoint = uri;
                 });
                 break;
 
             case "zipkin":
                 tracing.AddZipkinExporter(o =>
                 {
-                    if (!string.IsNullOrEmpty(endpoint))
-                        o.Endpoint = new Uri(endpoint);
+                    if (TryParseEndpoint(endpoint, out var uri))
+                        o.Endpoint = uri;
                 });
                 break;
 
@@ -118,8 +118,8 @@ public static class TelemetryServiceExtensions
             case "otlp":
                 metrics.AddOtlpExporter(o =>
                 {
-                    if (!string.IsNullOrEmpty(endpoint))
-                        o.Endpoint = new Uri(endpoint);
+                    if (TryParseEndpoint(endpoint, out var uri))
+                        o.Endpoint = uri;
                 });
                 break;
 
@@ -132,6 +132,24 @@ public static class TelemetryServiceExtensions
                 metrics.AddConsoleExporter();
                 break;
         }
+    }
+
+    /// <summary>
+    /// Returns <c>true</c> and the parsed <paramref name="uri"/> when
+    /// <paramref name="endpoint"/> is a non-empty, well-formed absolute URI.
+    /// Returns <c>false</c> (without throwing) when the value is absent or invalid.
+    /// </summary>
+    private static bool TryParseEndpoint(string? endpoint, out Uri uri)
+    {
+        if (!string.IsNullOrEmpty(endpoint) &&
+            Uri.TryCreate(endpoint, UriKind.Absolute, out var parsed))
+        {
+            uri = parsed;
+            return true;
+        }
+
+        uri = null!;
+        return false;
     }
 
     /// <summary>

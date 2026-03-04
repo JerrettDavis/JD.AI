@@ -11,11 +11,17 @@ namespace JD.AI.Telemetry.HealthChecks;
 /// </summary>
 public sealed class SessionStoreHealthCheck : IHealthCheck
 {
+    private readonly string _dbPath;
     private readonly string _connectionString;
 
     public SessionStoreHealthCheck(string dbPath)
     {
-        _connectionString = $"Data Source={dbPath}";
+        _dbPath = dbPath;
+        _connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = dbPath,
+            Mode = SqliteOpenMode.ReadOnly,
+        }.ToString();
     }
 
     public async Task<HealthCheckResult> CheckHealthAsync(
@@ -48,7 +54,7 @@ public sealed class SessionStoreHealthCheck : IHealthCheck
             var data = new Dictionary<string, object>
             {
                 ["sessionCount"] = sessionCount,
-                ["dbPath"] = _connectionString.Replace("Data Source=", "", StringComparison.Ordinal),
+                ["dbPath"] = _dbPath,
             };
 
             return HealthCheckResult.Healthy($"SQLite OK ({sessionCount} sessions)", data);
