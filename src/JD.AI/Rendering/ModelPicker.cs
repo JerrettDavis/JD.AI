@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using JD.AI.Core.Providers;
 using Spectre.Console;
 
@@ -6,6 +7,7 @@ namespace JD.AI.Rendering;
 /// <summary>
 /// Interactive model selection using Spectre.Console selection prompt.
 /// </summary>
+[ExcludeFromCodeCoverage]
 internal static class ModelPicker
 {
     /// <summary>
