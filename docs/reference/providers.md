@@ -43,9 +43,9 @@ JD.AI supports 14 AI providers. This reference covers capabilities, authenticati
 | HuggingFace | ✅ | ❌ | ❌ | ❌ | Free/Pay |
 | OpenAI-Compatible | ✅ | Varies | Varies | ✅ | Varies |
 
-## Anthropic prompt caching
+## Claude prompt caching (API key + OAuth)
 
-Anthropic API-key sessions use Anthropic's native Messages API path and support automatic prompt caching controls.
+Anthropic API-key sessions and Claude Code OAuth sessions both use Anthropic's native Messages API path and support automatic prompt caching controls.
 
 Default behavior:
 
