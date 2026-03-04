@@ -1,6 +1,6 @@
 ---
 title: Prompt Caching Reference
-description: "Automatic prompt caching behavior, Anthropic support, thresholds, TTL settings, and runtime controls."
+description: "Automatic prompt caching behavior, Claude support (API key + OAuth), thresholds, TTL settings, and runtime controls."
 ---
 
 # Prompt Caching Reference
@@ -12,6 +12,7 @@ JD.AI includes automatic prompt caching so stable, repeated prompt context can b
 Current native support:
 
 - Anthropic API-key provider (`/provider add anthropic`)
+- Claude Code OAuth/session provider (`claude auth login`)
 
 For unsupported providers, JD.AI leaves request behavior unchanged.
 
@@ -44,9 +45,9 @@ JD.AI estimates prompt token count from chat history and only enables caching wh
 
 This avoids adding caching directives on short prompts where overhead can outweigh benefit.
 
-## Anthropic behavior
+## Claude-native behavior
 
-When prompt caching is enabled for Anthropic:
+When prompt caching is enabled for Anthropic API-key or Claude Code OAuth sessions:
 
 - Requests are sent via Anthropic's native Messages API (`Anthropic.SDK`).
 - Prompt caching mode is set to automatic caching for tools/system.
