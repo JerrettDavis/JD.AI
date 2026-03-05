@@ -26,15 +26,12 @@ internal sealed record ProviderSetup(
 /// </summary>
 internal static class ProviderOrchestrator
 {
-    public static async Task<ProviderSetup?> DetectAndSelectAsync(CliOptions opts, AtomicConfigStore configStore)
+    internal static (ProviderRegistry Registry, ProviderConfigurationManager ProviderConfig, ModelMetadataProvider MetadataProvider)
+        CreateRegistry()
     {
-        if (!opts.PrintMode)
-        {
-            AnsiConsole.MarkupLine("[dim]Detecting providers...[/]");
-        }
-
         var credentialStore = new EncryptedFileStore();
         var providerConfig = new ProviderConfigurationManager(credentialStore);
+        var metadataProvider = new ModelMetadataProvider();
 
         var detectors = new IProviderDetector[]
         {
@@ -53,10 +50,64 @@ internal static class ProviderOrchestrator
             new HuggingFaceDetector(providerConfig),
             new OpenAICompatibleDetector(providerConfig),
         };
-        var metadataProvider = new ModelMetadataProvider();
-        var registry = new ProviderRegistry(detectors, metadataProvider);
 
-        var providers = await registry.DetectProvidersAsync().ConfigureAwait(false);
+        var registry = new ProviderRegistry(detectors, metadataProvider);
+        return (registry, providerConfig, metadataProvider);
+    }
+
+    public static async Task<ProviderSetup?> DetectAndSelectAsync(CliOptions opts, AtomicConfigStore configStore)
+    {
+        var projectPath = Directory.GetCurrentDirectory();
+        var defaultProvider = await configStore.GetDefaultProviderAsync(projectPath).ConfigureAwait(false);
+        var defaultModel = await configStore.GetDefaultModelAsync(projectPath).ConfigureAwait(false);
+
+        if (!opts.PrintMode)
+        {
+            AnsiConsole.MarkupLine("[dim]Detecting providers...[/]");
+        }
+
+        var (registry, providerConfig, metadataProvider) = CreateRegistry();
+
+        // Fast path: prefer the persisted provider/model and refresh auth only for that provider.
+        if (opts.CliModel is null
+            && opts.CliProvider is null
+            && !string.IsNullOrWhiteSpace(defaultProvider))
+        {
+            var preferred = await registry
+                .DetectProviderAsync(defaultProvider, forceRefresh: true)
+                .ConfigureAwait(false);
+
+            if (preferred is { IsAvailable: true } && preferred.Models.Count > 0)
+            {
+                var selected = SelectModel(
+                    opts,
+                    preferred.Models,
+                    defaultProvider,
+                    defaultModel);
+
+                if (selected is not null)
+                {
+                    if (!opts.PrintMode)
+                    {
+                        AnsiConsole.MarkupLine(
+                            $"  [green]✓[/] [bold]{Markup.Escape(preferred.Name)}[/]: " +
+                            $"{Markup.Escape(preferred.StatusMessage ?? "Using saved default")}");
+                    }
+
+                    await PersistSelectionAsync(configStore, projectPath, selected).ConfigureAwait(false);
+                    var kernelFast = registry.BuildKernel(selected);
+                    return new ProviderSetup(
+                        registry,
+                        providerConfig,
+                        metadataProvider,
+                        preferred.Models,
+                        selected,
+                        kernelFast);
+                }
+            }
+        }
+
+        var providers = await registry.DetectProvidersAsync(forceRefresh: true).ConfigureAwait(false);
         if (!opts.PrintMode)
         {
             foreach (var p in providers)
@@ -66,19 +117,20 @@ internal static class ProviderOrchestrator
             }
         }
 
-        var allModels = await registry.GetModelsAsync().ConfigureAwait(false);
+        var allModels = await registry.GetModelsAsync(forceRefresh: true).ConfigureAwait(false);
         if (allModels.Count == 0)
         {
             Console.Error.WriteLine("No AI providers available.");
             return null;
         }
 
-        var selectedModel = SelectModel(opts, allModels, configStore);
+        var selectedModel = SelectModel(opts, allModels, defaultProvider, defaultModel);
         if (selectedModel is null)
         {
             return null;
         }
 
+        await PersistSelectionAsync(configStore, projectPath, selectedModel).ConfigureAwait(false);
         var kernel = registry.BuildKernel(selectedModel);
 
         return new ProviderSetup(registry, providerConfig, metadataProvider, allModels, selectedModel, kernel);
@@ -87,7 +139,8 @@ internal static class ProviderOrchestrator
     private static ProviderModelInfo? SelectModel(
         CliOptions opts,
         IReadOnlyList<ProviderModelInfo> allModels,
-        AtomicConfigStore configStore)
+        string? defaultProvider,
+        string? defaultModel)
     {
         if (opts.CliModel != null)
         {
@@ -126,11 +179,6 @@ internal static class ProviderOrchestrator
                 : PromptForModel(candidates);
         }
 
-        // Check per-project then global defaults
-        var cfgProjectPath = Directory.GetCurrentDirectory();
-        var defaultModel = configStore.GetDefaultModelAsync(cfgProjectPath).GetAwaiter().GetResult();
-        var defaultProvider = configStore.GetDefaultProviderAsync(cfgProjectPath).GetAwaiter().GetResult();
-
         List<ProviderModelInfo>? defaultCandidates = null;
 
         if (defaultModel is not null)
@@ -162,6 +210,28 @@ internal static class ProviderOrchestrator
         }
 
         return PromptForModel(allModels);
+    }
+
+    private static async Task PersistSelectionAsync(
+        AtomicConfigStore configStore,
+        string projectPath,
+        ProviderModelInfo selectedModel)
+    {
+        try
+        {
+            await configStore
+                .SetDefaultProviderAsync(selectedModel.ProviderName, projectPath)
+                .ConfigureAwait(false);
+            await configStore
+                .SetDefaultModelAsync(selectedModel.Id, projectPath)
+                .ConfigureAwait(false);
+        }
+#pragma warning disable CA1031 // selection persistence should never block startup
+        catch
+#pragma warning restore CA1031
+        {
+            // Best-effort persistence
+        }
     }
 
     private static ProviderModelInfo PromptForModel(IReadOnlyList<ProviderModelInfo> models)

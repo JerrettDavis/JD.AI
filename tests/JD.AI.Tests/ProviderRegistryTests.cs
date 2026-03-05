@@ -108,4 +108,47 @@ public sealed class ProviderRegistryTests
         Assert.Single(models);
         await _detector1.Received(1).DetectAsync(Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task DetectProviderAsync_RefreshesOnlyRequestedProvider()
+    {
+        _detector1.DetectAsync(Arg.Any<CancellationToken>())
+            .Returns(new ProviderInfo("Provider1", true, "OK", [
+                new ProviderModelInfo("m1", "M1", "Provider1"),
+            ]));
+        _detector2.DetectAsync(Arg.Any<CancellationToken>())
+            .Returns(new ProviderInfo("Provider2", true, "OK", [
+                new ProviderModelInfo("m2", "M2", "Provider2"),
+            ]));
+
+        var registry = new ProviderRegistry([_detector1, _detector2]);
+
+        var provider = await registry.DetectProviderAsync("provider2");
+
+        Assert.NotNull(provider);
+        Assert.Equal("Provider2", provider!.Name);
+        await _detector1.DidNotReceive().DetectAsync(Arg.Any<CancellationToken>());
+        await _detector2.Received(1).DetectAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetModelsAsync_ForceRefresh_RefreshesAllDetectors()
+    {
+        _detector1.DetectAsync(Arg.Any<CancellationToken>())
+            .Returns(new ProviderInfo("Provider1", true, "OK", [
+                new ProviderModelInfo("m1", "M1", "Provider1"),
+            ]));
+        _detector2.DetectAsync(Arg.Any<CancellationToken>())
+            .Returns(new ProviderInfo("Provider2", true, "OK", [
+                new ProviderModelInfo("m2", "M2", "Provider2"),
+            ]));
+
+        var registry = new ProviderRegistry([_detector1, _detector2]);
+
+        await registry.GetModelsAsync();
+        await registry.GetModelsAsync(forceRefresh: true);
+
+        await _detector1.Received(2).DetectAsync(Arg.Any<CancellationToken>());
+        await _detector2.Received(2).DetectAsync(Arg.Any<CancellationToken>());
+    }
 }
