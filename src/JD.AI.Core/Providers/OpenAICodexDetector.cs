@@ -89,7 +89,12 @@ public sealed class OpenAICodexDetector : IProviderDetector
         var builder = Kernel.CreateBuilder();
         builder.UseCodexChatCompletion(
             modelId: model.Id,
-            configure: opts => opts.CredentialsPath = options.CredentialsPath);
+            configure: opts =>
+            {
+                opts.CredentialsPath = options.CredentialsPath;
+                opts.ApiKey = options.ApiKey;
+                opts.AccessToken = options.AccessToken;
+            });
         return builder.Build();
     }
 
@@ -101,18 +106,72 @@ public sealed class OpenAICodexDetector : IProviderDetector
     {
         var options = new CodexSessionOptions();
 
-        // Check if the default path would resolve to a service account home
+        // Check if the default path resolves to a service account home.
+        // If so, scan real user profiles for Codex credentials.
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        if (!string.IsNullOrEmpty(home) && !UserProfileScanner.IsServiceAccount(home))
-            return options;
+        if (string.IsNullOrEmpty(home) || UserProfileScanner.IsServiceAccount(home))
+        {
+            var credPath = UserProfileScanner.FindInUserProfiles(
+                Path.Combine(".codex", "auth.json"));
+            if (credPath is not null)
+                options.CredentialsPath = credPath;
+        }
 
-        // Scan real user profiles for Codex credentials
-        var credPath = UserProfileScanner.FindInUserProfiles(
-            Path.Combine(".codex", "auth.json"));
-        if (credPath is not null)
-            options.CredentialsPath = credPath;
+        ApplyCredentialOverridesFromAuthFile(options);
 
         return options;
+    }
+
+    /// <summary>
+    /// Reads Codex auth.json (if present) and promotes file credentials into explicit
+    /// connector options so they win over environment-variable fallback precedence.
+    /// This keeps interactive Codex subscription auth from being shadowed by stale
+    /// OPENAI_API_KEY values in the process environment.
+    /// </summary>
+    internal static void ApplyCredentialOverridesFromAuthFile(CodexSessionOptions options)
+    {
+        var authPath = ResolveAuthPath(options);
+        if (authPath is null || !File.Exists(authPath))
+            return;
+
+        CodexCredentialsFile? creds;
+        try
+        {
+            using var stream = File.OpenRead(authPath);
+            creds = JsonSerializer.Deserialize<CodexCredentialsFile>(stream);
+        }
+        catch (JsonException)
+        {
+            return;
+        }
+        catch (IOException)
+        {
+            return;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return;
+        }
+
+        if (creds is null)
+            return;
+
+        if (!string.IsNullOrWhiteSpace(creds.OpenAIApiKey))
+        {
+            options.ApiKey = creds.OpenAIApiKey;
+            options.AccessToken = null;
+            return;
+        }
+
+        var token = !string.IsNullOrWhiteSpace(creds.EffectiveIdToken)
+            ? creds.EffectiveIdToken
+            : creds.EffectiveAccessToken;
+
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            options.AccessToken = token;
+            options.ApiKey = null;
+        }
     }
 
     internal static IReadOnlyList<ProviderModelInfo> ReadModelsFromCache(string cachePath)
@@ -205,6 +264,18 @@ public sealed class OpenAICodexDetector : IProviderDetector
 
         return UserProfileScanner.FindInUserProfiles(
             Path.Combine(".codex", "models_cache.json"));
+    }
+
+    private static string? ResolveAuthPath(CodexSessionOptions options)
+    {
+        if (!string.IsNullOrWhiteSpace(options.CredentialsPath))
+            return options.CredentialsPath;
+
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (string.IsNullOrWhiteSpace(home))
+            return null;
+
+        return Path.Combine(home, ".codex", "auth.json");
     }
 
     private static void AddUniqueModels(
