@@ -152,3 +152,83 @@ public sealed class ValidateStep : IStep<AgentWorkflowData>
         return Task.CompletedTask;
     }
 }
+
+/// <summary>
+/// A scoped LLM decision step. Invokes the chat model with a tailored prompt
+/// and only the specified subset of tools (plugins/functions) available.
+/// Use for agentic workflow steps that need LLM reasoning with a controlled tool loadout.
+/// </summary>
+public sealed class AgentDecisionStep : IStep<AgentWorkflowData>
+{
+    private readonly string _promptTemplate;
+    private readonly HashSet<string> _allowedPlugins;
+
+    public string Name { get; }
+
+    /// <param name="name">Human-readable step name.</param>
+    /// <param name="promptTemplate">
+    /// Prompt template. Use <c>{prompt}</c> for the original request
+    /// and <c>{previous}</c> for the prior step's output.
+    /// </param>
+    /// <param name="allowedPlugins">
+    /// Plugin names to expose to the LLM. If empty, no tools are available.
+    /// </param>
+    public AgentDecisionStep(string name, string promptTemplate,
+        IEnumerable<string>? allowedPlugins = null)
+    {
+        Name = name;
+        _promptTemplate = promptTemplate;
+        _allowedPlugins = new HashSet<string>(
+            allowedPlugins ?? [], StringComparer.OrdinalIgnoreCase);
+    }
+
+    public async Task ExecuteAsync(IWorkflowContext<AgentWorkflowData> context)
+    {
+        var kernel = context.Data.Kernel
+            ?? throw new InvalidOperationException("Kernel not set on workflow data.");
+
+        // Build a scoped kernel clone with only allowed plugins
+        var scopedKernel = kernel.Clone();
+        if (_allowedPlugins.Count > 0)
+        {
+            var toRemove = scopedKernel.Plugins
+                .Where(p => !_allowedPlugins.Contains(p.Name))
+                .Select(p => p.Name)
+                .ToList();
+
+            foreach (var name in toRemove)
+                scopedKernel.Plugins.Remove(scopedKernel.Plugins[name]);
+        }
+
+        var chat = scopedKernel.GetRequiredService<IChatCompletionService>();
+        var history = new ChatHistory();
+
+        var prompt = _promptTemplate
+            .Replace("{prompt}", context.Data.Prompt, StringComparison.Ordinal)
+            .Replace("{previous}", GetPreviousOutput(context), StringComparison.Ordinal);
+
+        history.AddUserMessage(prompt);
+
+        var settings = new PromptExecutionSettings
+        {
+            FunctionChoiceBehavior = _allowedPlugins.Count > 0
+                ? FunctionChoiceBehavior.Auto()
+                : null,
+        };
+
+        var result = await chat.GetChatMessageContentAsync(
+            history, settings, scopedKernel, context.CancellationToken).ConfigureAwait(false);
+
+        var output = result.Content ?? string.Empty;
+        context.Data.StepOutputs[Name] = output;
+        context.Data.FinalResult = output;
+    }
+
+    private static string GetPreviousOutput(IWorkflowContext<AgentWorkflowData> context)
+    {
+        if (context.Data.StepOutputs.Count == 0)
+            return string.Empty;
+
+        return context.Data.StepOutputs.Values.Last();
+    }
+}

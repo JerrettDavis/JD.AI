@@ -34,6 +34,7 @@ public sealed class AgentLoop
         var turnEntry = traceCtx.Timeline.BeginOperation("agent.turn");
         DebugLogger.Log(DebugCategory.Agents, "turn={0} traceId={1}", traceCtx.TurnIndex, traceCtx.TraceId);
 
+        _session.ResetTurnState();
         await _session.RecordUserTurnAsync(userMessage).ConfigureAwait(false);
         _session.History.AddUserMessage(userMessage);
         var historySnapshot = _session.History.Count;
@@ -148,6 +149,35 @@ public sealed class AgentLoop
                 return errorMsg;
             }
         }
+        catch (WorkflowRequestedException wfEx)
+        {
+            sw.Stop();
+
+            // Remove intermediate messages SK added during the interrupted tool-calling loop
+            while (_session.History.Count > historySnapshot)
+                _session.History.RemoveAt(_session.History.Count - 1);
+
+            DebugLogger.Log(DebugCategory.Agents,
+                "Workflow requested by tool: {0}, entering planning mode", wfEx.TriggeringTool);
+
+            turnEntry.Attributes["workflow_requested"] = wfEx.TriggeringTool;
+
+            // Generate a workflow plan from the user's message
+            var planResponse = await RunWorkflowPlanningAsync(userMessage, ct).ConfigureAwait(false);
+
+            _session.History.AddAssistantMessage(planResponse);
+
+            var planTokens = JD.SemanticKernel.Extensions.Compaction.TokenEstimator
+                .EstimateTokens(planResponse);
+
+            await _session.RecordAssistantTurnAsync(
+                planResponse, durationMs: sw.ElapsedMilliseconds,
+                tokensOut: planTokens).ConfigureAwait(false);
+
+            turnEntry.Complete();
+            _session.LastTimeline = traceCtx.Timeline;
+            return planResponse;
+        }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             // Attempt fallback model if available and error is retriable
@@ -188,6 +218,7 @@ public sealed class AgentLoop
         var turnEntry = traceCtx.Timeline.BeginOperation("agent.turn");
         DebugLogger.Log(DebugCategory.Agents, "turn={0} traceId={1} streaming=true", traceCtx.TurnIndex, traceCtx.TraceId);
 
+        _session.ResetTurnState();
         await _session.RecordUserTurnAsync(userMessage).ConfigureAwait(false);
         _session.History.AddUserMessage(userMessage);
         var historySnapshot = _session.History.Count;
@@ -487,6 +518,36 @@ public sealed class AgentLoop
                 return errorMsg;
             }
         }
+        catch (WorkflowRequestedException wfEx)
+        {
+            output.EndStreaming();
+            sw.Stop();
+
+            // Remove intermediate messages SK added during the interrupted tool-calling loop
+            while (_session.History.Count > historySnapshot)
+                _session.History.RemoveAt(_session.History.Count - 1);
+
+            DebugLogger.Log(DebugCategory.Agents,
+                "Workflow requested by tool: {0}, entering planning mode (streaming)", wfEx.TriggeringTool);
+
+            turnEntry.Attributes["workflow_requested"] = wfEx.TriggeringTool;
+
+            var planResponse = await RunWorkflowPlanningAsync(userMessage, ct).ConfigureAwait(false);
+
+            _session.History.AddAssistantMessage(planResponse);
+
+            var planTokens = JD.SemanticKernel.Extensions.Compaction.TokenEstimator
+                .EstimateTokens(planResponse);
+
+            await _session.RecordAssistantTurnAsync(
+                planResponse, durationMs: sw.ElapsedMilliseconds,
+                tokensOut: planTokens).ConfigureAwait(false);
+
+            output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, planTokens, 0));
+            turnEntry.Complete();
+            _session.LastTimeline = traceCtx.Timeline;
+            return planResponse;
+        }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             output.EndStreaming();
@@ -660,6 +721,44 @@ public sealed class AgentLoop
                msg.Contains("rate limit", StringComparison.OrdinalIgnoreCase) ||
                msg.Contains("overloaded", StringComparison.OrdinalIgnoreCase) ||
                msg.Contains("model: Field required", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Enters workflow planning mode — generates a workflow plan from the user's
+    /// request, presents a dry-run for approval, and (if approved) queues it for
+    /// execution. Returns a user-facing summary.
+    /// </summary>
+    private async Task<string> RunWorkflowPlanningAsync(
+        string userMessage, CancellationToken ct)
+    {
+        var output = AgentOutput.Current;
+        output.RenderInfo("📋 Generating workflow plan...");
+
+        // Use the LLM to generate a structured plan description
+        var chat = _session.Kernel.GetRequiredService<IChatCompletionService>();
+
+        var planHistory = new ChatHistory();
+        planHistory.AddSystemMessage(
+            "You are a workflow planner. The user's request requires multiple tool invocations. " +
+            "Create a concise, numbered step-by-step plan describing the workflow needed. " +
+            "Each step should name the tool/action and its purpose. " +
+            "Format as a numbered list. Be specific but brief.");
+        planHistory.AddUserMessage(userMessage);
+
+        // No tools — pure text planning
+        var planSettings = new OpenAIPromptExecutionSettings { MaxTokens = 1024 };
+        var planResult = await chat.GetChatMessageContentAsync(
+            planHistory, planSettings, _session.Kernel, ct).ConfigureAwait(false);
+
+        var planText = planResult.Content ?? "(unable to generate plan)";
+
+        var summary = $"📋 **Workflow Plan**\n\n{planText}\n\n" +
+                      "_Use `/workflow` to refine or execute this plan._";
+
+        output.RenderInfo(summary);
+        _session.ActiveWorkflowName = "pending-plan";
+
+        return summary;
     }
 
     /// <summary>
