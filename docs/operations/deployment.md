@@ -83,6 +83,14 @@ docker run -d \
 
 Mount the `~/.jdai` directory as a volume to persist sessions, credentials, and local models across container restarts.
 
+Container build definitions are versioned in this repository:
+
+- `deploy/docker/Dockerfile.gateway`
+- `deploy/docker/Dockerfile.daemon`
+- `deploy/docker/Dockerfile.tui`
+
+For Kubernetes + Helm deployment, see [Kubernetes Deployment](kubernetes.md).
+
 ## Reverse Proxy Configuration
 
 ### Nginx

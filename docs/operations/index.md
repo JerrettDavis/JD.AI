@@ -13,6 +13,10 @@ This section covers deploying, monitoring, securing, and governing JD.AI in prod
 
 Install and run JD.AI Gateway as a system service. Covers Windows Service installation, Linux systemd configuration, Docker container deployment, reverse proxy setup, auto-update management, and daemon CLI commands.
 
+### [Kubernetes Deployment](kubernetes.md)
+
+Deploy JD.AI to Kubernetes with Helm. Covers GHCR images, values-driven configuration, startup/readiness/liveness probes, autoscaling (HPA), PodDisruptionBudget, ingress, and service mesh annotations.
+
 ### [Observability](observability.md)
 
 Monitor JD.AI with OpenTelemetry distributed tracing and metrics. Covers ActivitySource and Meter instrumentation, health check endpoints, Kubernetes probe configuration, Prometheus and Grafana integration, the `/doctor` diagnostic command, and log configuration.
