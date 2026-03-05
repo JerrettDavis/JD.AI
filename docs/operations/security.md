@@ -16,10 +16,37 @@ JD.AI stores API keys and secrets in an encrypted credential store at `~/.jdai/c
 | Platform | Encryption | Details |
 |----------|-----------|---------|
 | Windows | DPAPI | Per-user encryption tied to the Windows account |
-| Linux | AES-256-GCM | Key derived from machine-specific entropy |
-| macOS | AES-256-GCM | Key derived from machine-specific entropy |
+| Linux | AES-256-GCM | Random local keyring with key IDs and rotation support |
+| macOS | AES-256-GCM | Random local keyring with key IDs and rotation support |
 
 Credentials are never stored in plain text. The `/provider add` wizard automatically encrypts keys before writing them to the store.
+
+### External secret backends
+
+JD.AI supports optional HashiCorp Vault-backed credential storage:
+
+```bash
+export JDAI_VAULT_ADDR="https://vault.example.com"
+export JDAI_VAULT_TOKEN="s.xxxxx"
+export JDAI_VAULT_MOUNT="secret"                 # optional, default: secret
+export JDAI_VAULT_PREFIX="jdai/credentials"      # optional
+```
+
+When Vault is configured, reads/writes are performed against Vault first with encrypted file-store fallback for availability.
+
+For Kubernetes and containerized deployments, mounted secret files can also be used as a read-only fallback:
+
+```bash
+export JDAI_CREDENTIALS_MOUNT_PATH="/var/run/secrets/jdai"
+```
+
+### Access auditing
+
+Credential access operations (get/set/remove/list/rotate) are recorded in:
+
+- `~/.jdai/credentials/access.audit.log`
+
+Entries contain operation type, key hash (not plaintext key), backend (`vault`/`local`/`mounted`), success flag, and timestamp.
 
 ### Credential resolution chain
 
@@ -71,6 +98,8 @@ jdai /provider remove openai
 # Add the new key
 jdai /provider add openai
 ```
+
+On Linux/macOS, the credential store also supports local encryption-key rotation with backward-compatible decryption of previously encrypted entries.
 
 ### Logging protections
 
