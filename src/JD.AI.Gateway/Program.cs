@@ -268,6 +268,7 @@ app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.Health
     },
 });
 app.MapGet("/health/live", () => Results.Ok(new { Status = "Live" }));
+app.MapGet("/health/startup", () => Results.Ok(new { Status = "Started" }));
 app.MapGet("/ready", () => Results.Ok(new { Status = "Ready" }));
 
 // --- REST API endpoints ---
