@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -10,6 +11,7 @@ namespace JD.AI.Core.Tools;
 /// Tools for tracking and managing OpenClaw bundled-skill parity in JD.AI.
 /// Provides a canonical parity matrix, pack grouping, and gap analysis.
 /// </summary>
+[ToolPlugin("skillParity")]
 public sealed class SkillParityTools
 {
     private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
@@ -17,6 +19,7 @@ public sealed class SkillParityTools
     // ── Parity Matrix ───────────────────────────────────────
 
     [KernelFunction("skills_parity_matrix")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Generate the complete OpenClaw→JD.AI skills parity matrix showing status for every bundled skill.")]
     public static string GenerateParityMatrix(
         [Description("Optional filter: 'native', 'planned', 'superseded', 'not-applicable', or 'all' (default)")] string? filter = null)
@@ -50,6 +53,7 @@ public sealed class SkillParityTools
     // ── Pack Overview ───────────────────────────────────────
 
     [KernelFunction("skills_pack_overview")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Show skills grouped by pack (Productivity, Dev/Coding, Media, Device/OS, Platform, Communication) with coverage percentages.")]
     public static string GetPackOverview()
     {
@@ -89,6 +93,7 @@ public sealed class SkillParityTools
     // ── Gap Analysis ────────────────────────────────────────
 
     [KernelFunction("skills_gap_analysis")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Identify skill gaps — planned skills not yet implemented, ranked by priority tier.")]
     public static string GetGapAnalysis()
     {
@@ -131,6 +136,7 @@ public sealed class SkillParityTools
     // ── Skill Detail ────────────────────────────────────────
 
     [KernelFunction("skills_detail")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Get detailed information about a specific skill's parity status, including migration notes and security requirements.")]
     public static string GetSkillDetail(
         [Description("OpenClaw skill name to look up")] string name)
@@ -171,6 +177,7 @@ public sealed class SkillParityTools
     // ── Export ───────────────────────────────────────────────
 
     [KernelFunction("skills_parity_export")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Export the full skills parity data as JSON for CI dashboards and automation.")]
     public static string ExportParity()
     {

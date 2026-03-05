@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -10,6 +11,7 @@ namespace JD.AI.Core.Tools;
 /// Gateway lifecycle and configuration tools — status, config, restart controls.
 /// Operates against the local gateway process or a configured remote endpoint.
 /// </summary>
+[ToolPlugin("gateway", RequiresInjection = true)]
 public sealed class GatewayOpsTools
 {
     private readonly string? _gatewayEndpoint;
@@ -23,6 +25,7 @@ public sealed class GatewayOpsTools
     }
 
     [KernelFunction("gateway_status")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Check the gateway's health and connection status.")]
     public async Task<string> GetStatusAsync()
     {
@@ -87,6 +90,7 @@ public sealed class GatewayOpsTools
     }
 
     [KernelFunction("gateway_config")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Retrieve the current gateway configuration (secrets redacted).")]
     public async Task<string> GetConfigAsync()
     {
@@ -115,6 +119,7 @@ public sealed class GatewayOpsTools
     }
 
     [KernelFunction("gateway_channels")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("List channels registered in the gateway with their connection status.")]
     public async Task<string> ListGatewayChannelsAsync()
     {
@@ -143,6 +148,7 @@ public sealed class GatewayOpsTools
     }
 
     [KernelFunction("gateway_agents")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("List agents managed by the gateway.")]
     public async Task<string> ListGatewayAgentsAsync()
     {
@@ -171,6 +177,7 @@ public sealed class GatewayOpsTools
     }
 
     [KernelFunction("gateway_sessions")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("List active sessions in the gateway.")]
     public async Task<string> ListGatewaySessionsAsync()
     {

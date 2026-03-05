@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.Text;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -9,6 +10,7 @@ namespace JD.AI.Core.Tools;
 /// Self-introspection and capability discovery tools.
 /// Enables the agent to understand its own tools, analyze usage, and suggest improvements.
 /// </summary>
+[ToolPlugin("capabilities", RequiresInjection = true)]
 public sealed class CapabilityTools
 {
     private readonly Kernel _kernel;
@@ -32,6 +34,7 @@ public sealed class CapabilityTools
     // ── Discovery ───────────────────────────────────────────
 
     [KernelFunction("capability_list")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("List all registered tools grouped by plugin with descriptions. Use this to understand what tools are available.")]
     public string ListCapabilities(
         [Description("Optional plugin name to filter (e.g. 'file', 'git'). Omit for all.")] string? plugin = null)
@@ -67,6 +70,7 @@ public sealed class CapabilityTools
     }
 
     [KernelFunction("capability_detail")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Get detailed information about a specific tool including parameters, descriptions, and return type.")]
     public string GetToolDetail(
         [Description("Tool name (e.g. 'read_file', 'git_commit')")] string toolName)
@@ -125,6 +129,7 @@ public sealed class CapabilityTools
     // ── Usage Analysis ──────────────────────────────────────
 
     [KernelFunction("capability_usage")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Analyze tool usage patterns in the current session. Shows which tools are used most and which are unused.")]
     public string AnalyzeUsage()
     {
@@ -186,6 +191,7 @@ public sealed class CapabilityTools
     // ── Gap Analysis ────────────────────────────────────────
 
     [KernelFunction("capability_gaps")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Identify missing capability categories compared to common AI agent patterns. Suggests areas for improvement.")]
     public string AnalyzeGaps()
     {
@@ -253,6 +259,7 @@ public sealed class CapabilityTools
     // ── Scaffold ────────────────────────────────────────────
 
     [KernelFunction("capability_scaffold")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Generate a code template for a new JD.AI tool. Produces a .cs file with KernelFunction stubs.")]
     public static string ScaffoldTool(
         [Description("Tool class name (e.g. 'WeatherTools')")] string className,

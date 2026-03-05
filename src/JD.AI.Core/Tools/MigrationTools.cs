@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -10,6 +11,7 @@ namespace JD.AI.Core.Tools;
 /// Migration tools for importing Claude Code skills, plugins, and hooks
 /// into JD.AI-native capabilities.
 /// </summary>
+[ToolPlugin("migration")]
 public sealed class MigrationTools
 {
     private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
@@ -17,6 +19,7 @@ public sealed class MigrationTools
     // ── Scan ────────────────────────────────────────────────
 
     [KernelFunction("migration_scan")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Scan a Claude Code installation directory for skills, plugins, and hooks that can be migrated to JD.AI. Defaults to ~/.claude.")]
     public static string ScanClaudeInstallation(
         [Description("Path to Claude Code config directory (default: ~/.claude)")] string? claudePath = null)
@@ -88,6 +91,7 @@ public sealed class MigrationTools
     // ── Analyze ─────────────────────────────────────────────
 
     [KernelFunction("migration_analyze")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Analyze a specific Claude skill or plugin and generate migration recommendations for JD.AI.")]
     public static string AnalyzeSkill(
         [Description("Name of the skill/plugin to analyze")] string name,
@@ -215,6 +219,7 @@ public sealed class MigrationTools
     // ── Convert ─────────────────────────────────────────────
 
     [KernelFunction("migration_convert")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Convert a Claude CLAUDE.md file to JD.AI JDAI.md format.")]
     public static string ConvertInstructions(
         [Description("Path to CLAUDE.md file, or content directly")] string input)
@@ -248,6 +253,7 @@ public sealed class MigrationTools
     // ── Parity Matrix ───────────────────────────────────────
 
     [KernelFunction("migration_parity")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Generate a parity matrix showing Claude skill equivalents in JD.AI. Shows what's native, planned, or not applicable.")]
     public static string GenerateParityMatrix()
     {
@@ -289,6 +295,7 @@ public sealed class MigrationTools
     // ── Export ───────────────────────────────────────────────
 
     [KernelFunction("migration_export")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Export migration scan results as JSON for CI/automation integration.")]
     public static string ExportScanResults(
         [Description("Path to Claude config directory (default: ~/.claude)")] string? claudePath = null)

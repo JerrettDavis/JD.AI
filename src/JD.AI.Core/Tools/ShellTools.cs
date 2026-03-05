@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -8,9 +9,11 @@ namespace JD.AI.Core.Tools;
 /// <summary>
 /// Shell execution tool for the AI agent.
 /// </summary>
+[ToolPlugin("shell")]
 public sealed class ShellTools
 {
     [KernelFunction("run_command")]
+    [ToolSafetyTier(SafetyTier.AlwaysConfirm)]
     [Description("Execute a shell command and return its output. Use for builds, tests, git operations, etc.")]
     public static async Task<string> RunCommandAsync(
         [Description("The command to execute")] string command,

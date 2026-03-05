@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json;
+using JD.AI.Core.Attributes;
 using JD.AI.Core.Tracing;
 using Microsoft.SemanticKernel;
 
@@ -8,6 +9,7 @@ namespace JD.AI.Core.Tools;
 /// <summary>
 /// Native exec/process tool surface for background session lifecycle management.
 /// </summary>
+[ToolPlugin("runtime", RequiresInjection = true)]
 public sealed class ExecProcessTools
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
@@ -20,6 +22,7 @@ public sealed class ExecProcessTools
     }
 
     [KernelFunction("exec")]
+    [ToolSafetyTier(SafetyTier.AlwaysConfirm)]
     [Description("Execute a command with optional background mode, PTY emulation flag, timeout, and yield window. Returns a process session id for polling/logging.")]
     public async Task<string> ExecAsync(
         [Description("Command to execute")] string command,
@@ -68,6 +71,7 @@ public sealed class ExecProcessTools
     }
 
     [KernelFunction("process")]
+    [ToolSafetyTier(SafetyTier.AlwaysConfirm)]
     [Description("Manage process sessions. Actions: list, poll, log, write, kill, clear, remove.")]
     public async Task<string> ProcessAsync(
         [Description("Action: list, poll, log, write, kill, clear, remove")] string action,

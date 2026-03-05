@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Text;
 using System.Text.Json;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -9,6 +10,7 @@ namespace JD.AI.Core.Tools;
 /// <summary>
 /// Task/todo management tools for the agent to track work items within a session.
 /// </summary>
+[ToolPlugin("tasks", RequiresInjection = true)]
 public sealed class TaskTools
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -21,6 +23,7 @@ public sealed class TaskTools
     private int _nextId;
 
     [KernelFunction("create_task")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Create a new task/todo item to track work. Returns the task ID.")]
     public string CreateTask(
         [Description("Short title for the task")] string title,
@@ -42,6 +45,7 @@ public sealed class TaskTools
     }
 
     [KernelFunction("list_tasks")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("List all tasks, optionally filtered by status.")]
     public string ListTasks(
         [Description("Filter by status: pending, in_progress, done, blocked (optional)")] string? status = null)
@@ -76,6 +80,7 @@ public sealed class TaskTools
     }
 
     [KernelFunction("update_task")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Update a task's status or details.")]
     public string UpdateTask(
         [Description("Task ID (e.g. 'task-1')")] string id,
@@ -108,6 +113,7 @@ public sealed class TaskTools
     }
 
     [KernelFunction("complete_task")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Mark a task as done.")]
     public string CompleteTask(
         [Description("Task ID (e.g. 'task-1')")] string id)
@@ -116,6 +122,7 @@ public sealed class TaskTools
     }
 
     [KernelFunction("export_tasks")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Export all tasks as JSON for persistence or sharing.")]
     public string ExportTasks()
     {
