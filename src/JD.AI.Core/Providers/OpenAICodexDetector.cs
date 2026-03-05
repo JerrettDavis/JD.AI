@@ -2,6 +2,7 @@ using JD.SemanticKernel.Connectors.OpenAICodex;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.SemanticKernel;
+using System.Text.Json;
 
 namespace JD.AI.Core.Providers;
 
@@ -12,7 +13,9 @@ namespace JD.AI.Core.Providers;
 /// </summary>
 public sealed class OpenAICodexDetector : IProviderDetector
 {
-    public string ProviderName => "OpenAI Codex";
+    private const string CodexProviderName = "OpenAI Codex";
+
+    public string ProviderName => CodexProviderName;
 
     public async Task<ProviderInfo> DetectAsync(CancellationToken ct = default)
     {
@@ -36,26 +39,34 @@ public sealed class OpenAICodexDetector : IProviderDetector
 
             // Use model discovery to enumerate available models
             var models = new List<ProviderModelInfo>();
-            try
+            AddUniqueModels(models, DiscoverModelsFromCache(options));
+
+            if (models.Count == 0)
             {
-                var discovery = new CodexModelDiscovery();
-                var discovered = await discovery.DiscoverModelsAsync(ct).ConfigureAwait(false);
-                models.AddRange(discovered.Select(m =>
-                    new ProviderModelInfo(m.Id, m.Name ?? m.Id, ProviderName)));
-            }
+                try
+                {
+                    var discovery = new CodexModelDiscovery();
+                    var discovered = await discovery.DiscoverModelsAsync(ct).ConfigureAwait(false);
+                    AddUniqueModels(models, discovered.Select(m =>
+                        new ProviderModelInfo(m.Id, m.Name ?? m.Id, ProviderName)));
+                }
 #pragma warning disable CA1031 // catch broad — discovery is optional
-            catch
+                catch
 #pragma warning restore CA1031
+                {
+                    // Keep going to fallback list.
+                }
+            }
+
+            if (models.Count == 0)
             {
-                // Fall back to well-known models
-                models.AddRange(
+                AddUniqueModels(models,
                 [
-                    new ProviderModelInfo(CodexModels.O3, "o3", ProviderName),
-                    new ProviderModelInfo(CodexModels.O4Mini, "o4-mini", ProviderName),
-                    new ProviderModelInfo(CodexModels.CodexMini, "codex-mini", ProviderName),
-                    new ProviderModelInfo(CodexModels.Gpt4Point1, "GPT-4.1", ProviderName),
-                    new ProviderModelInfo(CodexModels.Gpt4Point1Mini, "GPT-4.1-mini", ProviderName),
-                    new ProviderModelInfo(CodexModels.Gpt4Point1Nano, "GPT-4.1-nano", ProviderName),
+                    new ProviderModelInfo("gpt-5.3-codex", "gpt-5.3-codex", ProviderName),
+                    new ProviderModelInfo("gpt-5.2-codex", "gpt-5.2-codex", ProviderName),
+                    new ProviderModelInfo("gpt-5.1-codex-max", "gpt-5.1-codex-max", ProviderName),
+                    new ProviderModelInfo("gpt-5.2", "gpt-5.2", ProviderName),
+                    new ProviderModelInfo("gpt-5.1-codex-mini", "gpt-5.1-codex-mini", ProviderName),
                 ]);
             }
 
@@ -105,5 +116,122 @@ public sealed class OpenAICodexDetector : IProviderDetector
             options.CredentialsPath = credPath;
 
         return options;
+    }
+
+    internal static IReadOnlyList<ProviderModelInfo> ReadModelsFromCache(string cachePath)
+    {
+        if (string.IsNullOrWhiteSpace(cachePath) || !File.Exists(cachePath))
+            return [];
+
+        try
+        {
+            using var stream = File.OpenRead(cachePath);
+            using var doc = JsonDocument.Parse(stream);
+            if (!doc.RootElement.TryGetProperty("models", out var modelsElement) ||
+                modelsElement.ValueKind != JsonValueKind.Array)
+            {
+                return [];
+            }
+
+            var models = new List<(int Priority, ProviderModelInfo Model)>();
+            foreach (var entry in modelsElement.EnumerateArray())
+            {
+                var id = GetString(entry, "slug");
+                if (string.IsNullOrWhiteSpace(id))
+                    continue;
+
+                var visibility = GetString(entry, "visibility");
+                if (!string.Equals(visibility, "list", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var supportedInApi = !entry.TryGetProperty("supported_in_api", out var supportedElement)
+                    || supportedElement.ValueKind == JsonValueKind.True;
+                if (!supportedInApi)
+                    continue;
+
+                var displayName = GetString(entry, "display_name") ?? id;
+                var priority = entry.TryGetProperty("priority", out var priorityElement)
+                    && priorityElement.TryGetInt32(out var parsedPriority)
+                    ? parsedPriority
+                    : int.MaxValue;
+
+                models.Add((priority, new ProviderModelInfo(id, displayName, CodexProviderName)));
+            }
+
+            return models
+                .OrderBy(x => x.Priority)
+                .ThenBy(x => x.Model.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .Select(x => x.Model)
+                .DistinctBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+        catch (IOException)
+        {
+            return [];
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return [];
+        }
+    }
+
+    private static IReadOnlyList<ProviderModelInfo> DiscoverModelsFromCache(CodexSessionOptions options)
+    {
+        var cachePath = ResolveModelsCachePath(options);
+        return cachePath is null ? [] : ReadModelsFromCache(cachePath);
+    }
+
+    private static string? ResolveModelsCachePath(CodexSessionOptions options)
+    {
+        if (!string.IsNullOrWhiteSpace(options.CredentialsPath))
+        {
+            var credentialsDirectory = Path.GetDirectoryName(options.CredentialsPath);
+            if (!string.IsNullOrWhiteSpace(credentialsDirectory))
+            {
+                var sibling = Path.Combine(credentialsDirectory, "models_cache.json");
+                if (File.Exists(sibling))
+                    return sibling;
+            }
+        }
+
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (!string.IsNullOrWhiteSpace(home) && !UserProfileScanner.IsServiceAccount(home))
+        {
+            var localCache = Path.Combine(home, ".codex", "models_cache.json");
+            if (File.Exists(localCache))
+                return localCache;
+        }
+
+        return UserProfileScanner.FindInUserProfiles(
+            Path.Combine(".codex", "models_cache.json"));
+    }
+
+    private static void AddUniqueModels(
+        List<ProviderModelInfo> target,
+        IEnumerable<ProviderModelInfo> candidates)
+    {
+        foreach (var model in candidates)
+        {
+            if (!target.Any(existing =>
+                string.Equals(existing.Id, model.Id, StringComparison.OrdinalIgnoreCase)))
+            {
+                target.Add(model);
+            }
+        }
+    }
+
+    private static string? GetString(JsonElement entry, string propertyName)
+    {
+        if (!entry.TryGetProperty(propertyName, out var value) ||
+            value.ValueKind != JsonValueKind.String)
+        {
+            return null;
+        }
+
+        return value.GetString();
     }
 }
