@@ -15,7 +15,7 @@ public sealed class TrustedPublisherRegistry
 
     private readonly string _registryPath;
     private readonly ILogger? _logger;
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private TrustRegistryData _data;
 
     /// <param name="registryPath">Path to the trust registry JSON file.</param>
@@ -139,7 +139,9 @@ public sealed class TrustedPublisherRegistry
 /// <summary>Root container for trust registry file.</summary>
 public sealed class TrustRegistryData
 {
+#pragma warning disable CA2227, CA1002, MA0016 // JSON DTO requires mutable collection with setter for deserialization
     public List<TrustedPublisher> Publishers { get; set; } = [];
+#pragma warning restore CA2227, CA1002, MA0016
 }
 
 /// <summary>A trusted workflow publisher entry.</summary>
