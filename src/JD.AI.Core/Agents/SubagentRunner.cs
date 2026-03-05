@@ -1,6 +1,7 @@
 using System.Text;
 using JD.AI.Core.PromptCaching;
 using JD.AI.Core.Providers;
+using JD.AI.Core.Tools;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -15,10 +16,20 @@ namespace JD.AI.Core.Agents;
 public sealed class SubagentRunner
 {
     private readonly AgentSession _parentSession;
+    private readonly IToolLoadoutRegistry? _loadoutRegistry;
 
-    public SubagentRunner(AgentSession parentSession)
+    /// <summary>
+    /// Initialises a <see cref="SubagentRunner"/> using the parent session's kernel and tools.
+    /// </summary>
+    /// <param name="parentSession">The owning agent session.</param>
+    /// <param name="loadoutRegistry">
+    /// Optional loadout registry. When provided, subagent tool sets are resolved via the
+    /// registry using the loadout mapped to each <see cref="SubagentType"/>.
+    /// </param>
+    public SubagentRunner(AgentSession parentSession, IToolLoadoutRegistry? loadoutRegistry = null)
     {
         _parentSession = parentSession;
+        _loadoutRegistry = loadoutRegistry;
     }
 
     /// <summary>
@@ -120,11 +131,22 @@ public sealed class SubagentRunner
 
         var kernel = builder.Build();
 
-        // Register only the tools appropriate for this subagent type
-        var toolSets = GetToolSet(type);
+        // Resolve the allowed plugin names for this subagent type
+        IReadOnlySet<string> allowedPlugins;
+        if (_loadoutRegistry is not null)
+        {
+            var loadoutName = GetLoadoutName(type);
+            allowedPlugins = _loadoutRegistry.ResolveActivePlugins(
+                loadoutName, parentKernel.Plugins);
+        }
+        else
+        {
+            allowedPlugins = GetDefaultPluginSet(type);
+        }
+
         foreach (var plugin in parentKernel.Plugins)
         {
-            if (toolSets.Contains(plugin.Name, StringComparer.OrdinalIgnoreCase))
+            if (allowedPlugins.Contains(plugin.Name))
             {
                 kernel.Plugins.Add(plugin);
             }
@@ -133,13 +155,31 @@ public sealed class SubagentRunner
         return kernel;
     }
 
-    private static HashSet<string> GetToolSet(SubagentType type) => type switch
+    /// <summary>
+    /// Returns the name of the built-in <see cref="ToolLoadout"/> that maps to
+    /// the given <see cref="SubagentType"/>.
+    /// </summary>
+    internal static string GetLoadoutName(SubagentType type) => type switch
     {
-        SubagentType.Explore => ["FileTools", "SearchTools", "GitTools", "MemoryTools"],
-        SubagentType.Task => ["ShellTools", "FileTools", "SearchTools"],
-        SubagentType.Plan => ["FileTools", "SearchTools", "MemoryTools", "GitTools"],
-        SubagentType.Review => ["FileTools", "SearchTools", "GitTools"],
-        SubagentType.General => ["FileTools", "SearchTools", "GitTools", "ShellTools", "WebTools", "MemoryTools"],
+        SubagentType.Explore => WellKnownLoadouts.Research,
+        SubagentType.Task => WellKnownLoadouts.Minimal,
+        SubagentType.Plan => WellKnownLoadouts.Developer,
+        SubagentType.Review => WellKnownLoadouts.Developer,
+        SubagentType.General => WellKnownLoadouts.Full,
+        _ => WellKnownLoadouts.Minimal,
+    };
+
+    /// <summary>
+    /// Fallback plugin set used when no <see cref="IToolLoadoutRegistry"/> is provided.
+    /// Plugin names must match those passed to <c>AddFromType</c> / <c>AddFromObject</c>.
+    /// </summary>
+    private static HashSet<string> GetDefaultPluginSet(SubagentType type) => type switch
+    {
+        SubagentType.Explore => ["file", "search", "git", "memory"],
+        SubagentType.Task => ["shell", "file", "search"],
+        SubagentType.Plan => ["file", "search", "memory", "git"],
+        SubagentType.Review => ["file", "search", "git"],
+        SubagentType.General => ["file", "search", "git", "shell", "web", "memory"],
         _ => [],
     };
 

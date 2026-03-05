@@ -33,15 +33,20 @@ public class SlidingWindowRateLimiterTests
     [Fact]
     public async Task Allow_AfterWindowExpires_AllowsAgain()
     {
-        var limiter = new SlidingWindowRateLimiter(maxRequests: 1, window: TimeSpan.FromMilliseconds(100));
+        var limiter = new SlidingWindowRateLimiter(maxRequests: 1, window: TimeSpan.FromMilliseconds(50));
 
         (await limiter.AllowAsync("user1")).Should().BeTrue();
         (await limiter.AllowAsync("user1")).Should().BeFalse();
 
-        // Generous delay to avoid flakiness under parallel test load
-        await Task.Delay(1000);
+        // Retry loop avoids flakiness from timer resolution and CI load
+        var allowed = false;
+        for (var attempt = 0; attempt < 20 && !allowed; attempt++)
+        {
+            await Task.Delay(100);
+            allowed = await limiter.AllowAsync("user1");
+        }
 
-        (await limiter.AllowAsync("user1")).Should().BeTrue();
+        allowed.Should().BeTrue("window should have expired within 2 seconds");
     }
 
     [Fact]
