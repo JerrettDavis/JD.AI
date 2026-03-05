@@ -6,26 +6,27 @@ public static class SessionEndpoints
 {
     public static void MapSessionEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/sessions").WithTags("Sessions");
+        var group = app.MapGroup("/api/v1/sessions").WithTags("Sessions");
 
-        group.MapGet("/", async (SessionStore store, int? limit) =>
+        group.MapGet("/", async (SessionStore store, int? limit, string? cursor) =>
         {
-            var sessions = await store.ListSessionsAsync(limit: limit ?? 50);
-            return Results.Ok(sessions.Select(s => new
+            var clampedLimit = PaginationHelper.ClampLimit(limit);
+            var offset = PaginationHelper.DecodeCursor(cursor);
+            var sessions = await store.ListSessionsAsync(limit: offset + clampedLimit + 1);
+            var items = sessions.Select(s => new
             {
-                s.Id,
-                s.Name,
-                s.ProviderName,
-                s.ModelId,
-                s.CreatedAt,
-                s.UpdatedAt,
-                s.MessageCount,
-                s.TotalTokens,
-                s.IsActive
-            }));
+                s.Id, s.Name, s.ProviderName, s.ModelId,
+                s.CreatedAt, s.UpdatedAt, s.MessageCount, s.TotalTokens, s.IsActive
+            }).ToList();
+
+            // If no cursor was provided, return plain array for backward compat
+            if (string.IsNullOrEmpty(cursor))
+                return Results.Ok(items.Take(clampedLimit));
+
+            return Results.Ok(PaginationHelper.Paginate(items, limit, cursor));
         })
         .WithName("ListSessions")
-        .WithDescription("List all stored sessions.");
+        .WithDescription("List stored sessions. Pass ?cursor= for paginated response.");
 
         group.MapGet("/{id}", async (string id, SessionStore store) =>
         {
