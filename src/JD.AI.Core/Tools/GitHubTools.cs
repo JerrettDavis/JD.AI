@@ -1,7 +1,7 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Text;
 using JD.AI.Core.Attributes;
+using JD.AI.Core.Infrastructure;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -299,41 +299,17 @@ public sealed class GitHubTools
     {
         try
         {
-            var psi = new ProcessStartInfo
+            var result = await ProcessExecutor.RunAsync(
+                "gh", arguments, timeout: DefaultTimeout);
+
+            if (!result.Success)
             {
-                FileName = "gh",
-                Arguments = arguments,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(psi);
-            if (process is null)
-                return "Error: Failed to start gh CLI. Ensure GitHub CLI is installed.";
-
-            var outputTask = process.StandardOutput.ReadToEndAsync();
-            var errorTask = process.StandardError.ReadToEndAsync();
-
-            var completed = process.WaitForExit((int)DefaultTimeout.TotalMilliseconds);
-            if (!completed)
-            {
-                process.Kill(entireProcessTree: true);
-                return "Error: Command timed out after 30 seconds.";
+                return !string.IsNullOrEmpty(result.StandardError)
+                    ? $"Error (exit {result.ExitCode}): {result.StandardError}"
+                    : $"Error (exit {result.ExitCode}): {result.StandardOutput}";
             }
 
-            var output = await outputTask;
-            var error = await errorTask;
-
-            if (process.ExitCode != 0)
-            {
-                return !string.IsNullOrEmpty(error)
-                    ? $"Error (exit {process.ExitCode}): {error.Trim()}"
-                    : $"Error (exit {process.ExitCode}): {output.Trim()}";
-            }
-
-            return string.IsNullOrWhiteSpace(output) ? "(no output)" : output.Trim();
+            return string.IsNullOrWhiteSpace(result.StandardOutput) ? "(no output)" : result.StandardOutput;
         }
         catch (Exception ex)
         {

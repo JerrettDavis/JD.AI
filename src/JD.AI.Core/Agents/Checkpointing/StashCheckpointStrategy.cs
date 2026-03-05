@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Core.Agents.Checkpointing;
 
@@ -73,23 +73,9 @@ public sealed class StashCheckpointStrategy : ICheckpointStrategy
 
     private async Task<string> RunGitAsync(string arguments, CancellationToken ct)
     {
-        using var process = new Process
-        {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = "git",
-                Arguments = arguments,
-                WorkingDirectory = _workingDir,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            },
-        };
-
-        process.Start();
-        var output = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
-        await process.WaitForExitAsync(ct).ConfigureAwait(false);
-        return output;
+        var result = await ProcessExecutor.RunAsync(
+            "git", arguments, workingDirectory: _workingDir, cancellationToken: ct)
+            .ConfigureAwait(false);
+        return result.StandardOutput;
     }
 }

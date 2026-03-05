@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Core.Providers.ModelSearch;
 
@@ -19,8 +20,13 @@ public sealed class FoundryLocalModelSearch : IRemoteModelSearch
 
         try
         {
-            var cached = await RunFoundryCommandAsync("models list", ct)
+            var procResult = await ProcessExecutor.RunAsync(
+                "foundry", "models list", cancellationToken: ct)
                 .ConfigureAwait(false);
+
+            var cached = procResult.StandardOutput
+                .Split('\n')
+                .ToList();
 
             var results = new List<RemoteModelResult>();
 
@@ -75,6 +81,7 @@ public sealed class FoundryLocalModelSearch : IRemoteModelSearch
 
         try
         {
+            // PullAsync needs streaming output for progress — keep manual Process for this
             using var process = new Process();
             process.StartInfo = new ProcessStartInfo
             {
@@ -107,49 +114,15 @@ public sealed class FoundryLocalModelSearch : IRemoteModelSearch
     {
         try
         {
-            using var process = Process.Start(new ProcessStartInfo
-            {
-                FileName = "foundry",
-                Arguments = "--version",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            });
-
-            process?.WaitForExit(5000);
-            return process?.ExitCode == 0;
+            var result = ProcessExecutor.RunAsync(
+                "foundry", "--version", timeout: TimeSpan.FromSeconds(5))
+                .GetAwaiter().GetResult();
+            return result.Success;
         }
         catch
         {
             return false;
         }
-    }
-
-    private static async Task<List<string>> RunFoundryCommandAsync(
-        string arguments, CancellationToken ct)
-    {
-        using var process = new Process();
-        process.StartInfo = new ProcessStartInfo
-        {
-            FileName = "foundry",
-            Arguments = arguments,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-
-        process.Start();
-
-        var lines = new List<string>();
-        while (await process.StandardOutput.ReadLineAsync(ct).ConfigureAwait(false) is { } line)
-        {
-            lines.Add(line);
-        }
-
-        await process.WaitForExitAsync(ct).ConfigureAwait(false);
-        return lines;
     }
 
     private static async Task ReadStreamAsync(

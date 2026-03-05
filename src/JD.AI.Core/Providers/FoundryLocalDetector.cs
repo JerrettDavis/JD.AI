@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using JD.AI.Core.Infrastructure;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Providers;
@@ -230,26 +231,13 @@ public sealed partial class FoundryLocalDetector : IProviderDetector
 
         try
         {
-            using var process = new Process();
-            process.StartInfo = new ProcessStartInfo
-            {
-                FileName = "foundry",
-                Arguments = "service start",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
-
-            process.Start();
-
-            var output = process.StandardOutput.ReadToEnd();
-            var errOutput = process.StandardError.ReadToEnd();
-            process.WaitForExit(10_000);
+            var result = ProcessExecutor.RunAsync(
+                "foundry", "service start", timeout: TimeSpan.FromSeconds(10))
+                .GetAwaiter().GetResult();
 
             // Parse endpoint URL from output like "already running on http://127.0.0.1:62579/"
             // or "Service started on http://127.0.0.1:62579/"
-            var combined = output + errOutput;
+            var combined = result.StandardOutput + result.StandardError;
             var match = EndpointRegex().Match(combined);
             if (match.Success)
                 return match.Groups[1].Value.TrimEnd('/');
@@ -272,19 +260,11 @@ public sealed partial class FoundryLocalDetector : IProviderDetector
                 return null;
 
             // Use netstat to find listening port for the process
-            using var netstat = new Process();
-            netstat.StartInfo = new ProcessStartInfo
-            {
-                FileName = "netstat",
-                Arguments = "-ano",
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
+            var netstatResult = ProcessExecutor.RunAsync(
+                "netstat", "-ano", timeout: TimeSpan.FromSeconds(5))
+                .GetAwaiter().GetResult();
 
-            netstat.Start();
-            var netstatOutput = netstat.StandardOutput.ReadToEnd();
-            netstat.WaitForExit(5_000);
+            var netstatOutput = netstatResult.StandardOutput;
 
             foreach (var proc in procs)
             {
@@ -319,18 +299,10 @@ public sealed partial class FoundryLocalDetector : IProviderDetector
     {
         try
         {
-            using var process = Process.Start(new ProcessStartInfo
-            {
-                FileName = "foundry",
-                Arguments = "--version",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            });
-
-            process?.WaitForExit(5_000);
-            return process?.ExitCode == 0;
+            var result = ProcessExecutor.RunAsync(
+                "foundry", "--version", timeout: TimeSpan.FromSeconds(5))
+                .GetAwaiter().GetResult();
+            return result.Success;
         }
         catch
         {
