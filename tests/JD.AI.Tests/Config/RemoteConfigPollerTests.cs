@@ -104,7 +104,7 @@ public sealed class RemoteConfigPollerTests
     }
 
     [Fact]
-    public void Dispose_StopsPoller()
+    public async Task Dispose_StopsPoller()
     {
         var source = new InMemoryConfigSource("src", null, null);
         var poller = new RemoteConfigPoller(
@@ -115,8 +115,8 @@ public sealed class RemoteConfigPollerTests
         poller.Start();
         poller.Dispose();
 
-        // After dispose, task should complete
-        Thread.Sleep(100);
+        for (var i = 0; i < 20 && poller.IsRunning; i++)
+            await Task.Delay(50);
         poller.IsRunning.Should().BeFalse();
     }
 
