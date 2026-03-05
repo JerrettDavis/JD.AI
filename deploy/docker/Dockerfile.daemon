@@ -14,11 +14,9 @@ RUN dotnet publish src/JD.AI.Daemon/JD.AI.Daemon.csproj \
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
-RUN adduser --disabled-password --gecos "" --uid 10001 jdai
-
 COPY --from=build /app/publish .
 EXPOSE 15790
 
 ENV ASPNETCORE_URLS=http://+:15790
-USER 10001
+USER $APP_UID
 ENTRYPOINT ["dotnet", "JD.AI.Daemon.dll"]
