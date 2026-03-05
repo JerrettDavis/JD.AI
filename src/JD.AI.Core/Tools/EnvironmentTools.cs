@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -9,9 +10,11 @@ namespace JD.AI.Core.Tools;
 /// <summary>
 /// Tools for inspecting the runtime environment, OS, and system information.
 /// </summary>
+[ToolPlugin("environment")]
 public sealed class EnvironmentTools
 {
     [KernelFunction("get_environment")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description(
         "Get information about the current environment: OS, architecture, .NET runtime, " +
         "working directory, git version, available disk space, and environment variables.")]

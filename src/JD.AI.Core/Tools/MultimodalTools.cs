@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
@@ -12,6 +13,7 @@ namespace JD.AI.Core.Tools;
 /// <summary>
 /// Multimodal analysis tools — image metadata, PDF text extraction, and media inspection.
 /// </summary>
+[ToolPlugin("multimodal")]
 public sealed class MultimodalTools
 {
     private static readonly HashSet<string> AllowedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -30,6 +32,7 @@ public sealed class MultimodalTools
     // ── Image analysis ───────────────────────────────────
 
     [KernelFunction("image_analyze")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Analyze an image file and return metadata (dimensions, format, file size). " +
                  "For vision-capable models, returns base64 data for further inspection. " +
                  "Supports PNG, JPG, GIF, BMP, WebP, TIFF, SVG.")]
@@ -58,6 +61,7 @@ public sealed class MultimodalTools
     // ── PDF analysis ─────────────────────────────────────
 
     [KernelFunction("pdf_analyze")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Extract text and metadata from a PDF file. Returns page count, text content, " +
                  "and document metadata. Supports local files and HTTP(S) URLs.")]
     public static async Task<string> AnalyzePdfAsync(
@@ -86,6 +90,7 @@ public sealed class MultimodalTools
     // ── Media view (unified inspection) ──────────────────
 
     [KernelFunction("media_view")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Inspect a media file and return its type, metadata, and a brief summary. " +
                  "Auto-detects whether the file is an image, PDF, or other document type.")]
     public static async Task<string> MediaViewAsync(

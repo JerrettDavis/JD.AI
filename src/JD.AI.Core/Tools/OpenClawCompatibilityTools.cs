@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -6,6 +7,7 @@ namespace JD.AI.Core.Tools;
 /// <summary>
 /// OpenClaw-compatible tool aliases and shared envelope parameters.
 /// </summary>
+[ToolPlugin("openclaw", RequiresInjection = true)]
 public sealed class OpenClawCompatibilityTools
 {
     private readonly TaskTools _tasks;
@@ -18,6 +20,7 @@ public sealed class OpenClawCompatibilityTools
     }
 
     [KernelFunction("bash")]
+    [ToolSafetyTier(SafetyTier.AlwaysConfirm)]
     [Description("OpenClaw-compatible alias for run_command.")]
     public async Task<string> BashAsync(
         [Description("The command to execute")] string command,
@@ -37,6 +40,7 @@ public sealed class OpenClawCompatibilityTools
     }
 
     [KernelFunction("read")]
+    [ToolSafetyTier(SafetyTier.AlwaysConfirm)]
     [Description("OpenClaw-compatible alias for read_file.")]
     public string Read(
         [Description("Absolute or relative file path")] string path,
@@ -52,6 +56,7 @@ public sealed class OpenClawCompatibilityTools
     }
 
     [KernelFunction("write")]
+    [ToolSafetyTier(SafetyTier.AlwaysConfirm)]
     [Description("OpenClaw-compatible alias for write_file.")]
     public string Write(
         [Description("Absolute or relative file path")] string path,
@@ -66,6 +71,7 @@ public sealed class OpenClawCompatibilityTools
     }
 
     [KernelFunction("edit")]
+    [ToolSafetyTier(SafetyTier.AlwaysConfirm)]
     [Description("OpenClaw-compatible alias for edit_file.")]
     public string Edit(
         [Description("Absolute or relative file path")] string path,
@@ -81,6 +87,7 @@ public sealed class OpenClawCompatibilityTools
     }
 
     [KernelFunction("ls")]
+    [ToolSafetyTier(SafetyTier.AlwaysConfirm)]
     [Description("OpenClaw-compatible alias for list_directory.")]
     public string Ls(
         [Description("Directory path (optional)")] string? path = null,
@@ -95,6 +102,7 @@ public sealed class OpenClawCompatibilityTools
     }
 
     [KernelFunction("webfetch")]
+    [ToolSafetyTier(SafetyTier.AlwaysConfirm)]
     [Description("OpenClaw-compatible alias for web_fetch.")]
     public async Task<string> WebFetchAsync(
         [Description("The URL to fetch")] string url,
@@ -109,6 +117,7 @@ public sealed class OpenClawCompatibilityTools
     }
 
     [KernelFunction("websearch")]
+    [ToolSafetyTier(SafetyTier.AlwaysConfirm)]
     [Description("OpenClaw-compatible alias for web_search.")]
     public async Task<string> WebSearchAsync(
         [Description("Search query")] string query,
@@ -142,6 +151,7 @@ public sealed class OpenClawCompatibilityTools
     }
 
     [KernelFunction("todo_read")]
+    [ToolSafetyTier(SafetyTier.AlwaysConfirm)]
     [Description("OpenClaw-compatible alias for list_tasks.")]
     public string TodoRead(
         [Description("Optional status filter: pending, in_progress, done, blocked")] string? status = null,
@@ -155,6 +165,7 @@ public sealed class OpenClawCompatibilityTools
     }
 
     [KernelFunction("todo_write")]
+    [ToolSafetyTier(SafetyTier.AlwaysConfirm)]
     [Description("OpenClaw-compatible todo mutator. Supports create, update, and complete actions.")]
     public string TodoWrite(
         [Description("Action: create, update, complete")] string action,

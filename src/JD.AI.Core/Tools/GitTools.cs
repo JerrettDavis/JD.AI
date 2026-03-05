@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -8,9 +9,11 @@ namespace JD.AI.Core.Tools;
 /// <summary>
 /// Git tools for the AI agent.
 /// </summary>
+[ToolPlugin("git")]
 public sealed class GitTools
 {
     [KernelFunction("git_status")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Show the working tree status (modified, staged, untracked files).")]
     public static async Task<string> GitStatusAsync(
         [Description("Repository path (defaults to cwd)")] string? path = null)
@@ -19,6 +22,7 @@ public sealed class GitTools
     }
 
     [KernelFunction("git_diff")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Show differences. Use target to compare branches (e.g. 'main').")]
     public static async Task<string> GitDiffAsync(
         [Description("Diff target (e.g. 'main', '--staged', or empty for unstaged)")] string? target = null,
@@ -29,6 +33,7 @@ public sealed class GitTools
     }
 
     [KernelFunction("git_log")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Show recent commit history.")]
     public static async Task<string> GitLogAsync(
         [Description("Number of commits to show (default 10)")] int count = 10,
@@ -39,6 +44,7 @@ public sealed class GitTools
     }
 
     [KernelFunction("git_commit")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Stage all changes and commit with the given message.")]
     public static async Task<string> GitCommitAsync(
         [Description("Commit message")] string message,
@@ -50,6 +56,7 @@ public sealed class GitTools
     }
 
     [KernelFunction("git_push")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Push commits to the remote repository.")]
     public static async Task<string> GitPushAsync(
         [Description("Remote name (default 'origin')")] string remote = "origin",
@@ -61,6 +68,7 @@ public sealed class GitTools
     }
 
     [KernelFunction("git_pull")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Pull changes from the remote repository.")]
     public static async Task<string> GitPullAsync(
         [Description("Remote name (default 'origin')")] string remote = "origin",
@@ -72,6 +80,7 @@ public sealed class GitTools
     }
 
     [KernelFunction("git_branch")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("List, create, or delete branches.")]
     public static async Task<string> GitBranchAsync(
         [Description("Branch name to create (omit to list branches)")] string? name = null,
@@ -88,6 +97,7 @@ public sealed class GitTools
     }
 
     [KernelFunction("git_checkout")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Switch branches or restore working tree files.")]
     public static async Task<string> GitCheckoutAsync(
         [Description("Branch name, commit SHA, or file path to checkout")] string target,
@@ -99,6 +109,7 @@ public sealed class GitTools
     }
 
     [KernelFunction("git_stash")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Stash or restore uncommitted changes.")]
     public static async Task<string> GitStashAsync(
         [Description("Stash action: 'push' (default), 'pop', 'list', 'drop'")] string action = "push",

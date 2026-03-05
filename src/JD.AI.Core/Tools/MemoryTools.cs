@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using JD.AI.Core.Attributes;
 using JD.SemanticKernel.Extensions.Memory;
 using Microsoft.SemanticKernel;
 
@@ -7,6 +8,7 @@ namespace JD.AI.Core.Tools;
 /// <summary>
 /// Semantic memory tools — store, search, and forget.
 /// </summary>
+[ToolPlugin("memory", RequiresInjection = true)]
 public sealed class MemoryTools
 {
     private readonly ISemanticMemory? _memory;
@@ -17,6 +19,7 @@ public sealed class MemoryTools
     }
 
     [KernelFunction("memory_store")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Store text in semantic memory for future recall.")]
     public async Task<string> MemoryStoreAsync(
         [Description("Text to store")] string text,
@@ -38,6 +41,7 @@ public sealed class MemoryTools
     }
 
     [KernelFunction("memory_search")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Search semantic memory for relevant information.")]
     public async Task<string> MemorySearchAsync(
         [Description("Search query")] string query,
@@ -68,6 +72,7 @@ public sealed class MemoryTools
     }
 
     [KernelFunction("memory_forget")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Remove a memory entry by its ID.")]
     public async Task<string> MemoryForgetAsync(
         [Description("Memory ID to remove")] string id)

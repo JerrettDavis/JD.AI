@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -9,6 +10,7 @@ namespace JD.AI.Core.Tools;
 /// Native GitHub tools for issue, PR, and repository workflows.
 /// Uses the gh CLI for authentication and API access.
 /// </summary>
+[ToolPlugin("github")]
 public sealed class GitHubTools
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(30);
@@ -16,6 +18,7 @@ public sealed class GitHubTools
     // ── Issues ──────────────────────────────────────────────
 
     [KernelFunction("github_list_issues")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("List issues in a GitHub repository. Returns issue number, title, state, labels, and assignees.")]
     public static async Task<string> ListIssuesAsync(
         [Description("Repository in owner/repo format (e.g. 'JerrettDavis/JD.AI'). Omit to use current repo.")] string? repo = null,
@@ -34,6 +37,7 @@ public sealed class GitHubTools
     }
 
     [KernelFunction("github_get_issue")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Get details of a specific GitHub issue including body, comments, and metadata.")]
     public static async Task<string> GetIssueAsync(
         [Description("Issue number")] int number,
@@ -56,6 +60,7 @@ public sealed class GitHubTools
     }
 
     [KernelFunction("github_create_issue")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Create a new GitHub issue with title, body, and optional labels/assignees.")]
     public static async Task<string> CreateIssueAsync(
         [Description("Issue title")] string title,
@@ -73,6 +78,7 @@ public sealed class GitHubTools
     }
 
     [KernelFunction("github_close_issue")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Close a GitHub issue with an optional comment.")]
     public static async Task<string> CloseIssueAsync(
         [Description("Issue number")] int number,
@@ -89,6 +95,7 @@ public sealed class GitHubTools
     // ── Pull Requests ───────────────────────────────────────
 
     [KernelFunction("github_list_prs")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("List pull requests in a GitHub repository.")]
     public static async Task<string> ListPullRequestsAsync(
         [Description("Repository in owner/repo format. Omit to use current repo.")] string? repo = null,
@@ -105,6 +112,7 @@ public sealed class GitHubTools
     }
 
     [KernelFunction("github_get_pr")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Get details of a specific pull request including diff stats, review status, and checks.")]
     public static async Task<string> GetPullRequestAsync(
         [Description("Pull request number")] int number,
@@ -129,6 +137,7 @@ public sealed class GitHubTools
     }
 
     [KernelFunction("github_create_pr")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Create a new pull request from the current branch.")]
     public static async Task<string> CreatePullRequestAsync(
         [Description("PR title")] string title,
@@ -147,6 +156,7 @@ public sealed class GitHubTools
     }
 
     [KernelFunction("github_pr_checks")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Get CI check status for a pull request.")]
     public static async Task<string> GetPrChecksAsync(
         [Description("Pull request number")] int number,
@@ -157,6 +167,7 @@ public sealed class GitHubTools
     }
 
     [KernelFunction("github_merge_pr")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Merge a pull request. Requires all checks to pass and review approval.")]
     public static async Task<string> MergePullRequestAsync(
         [Description("Pull request number")] int number,
@@ -170,6 +181,7 @@ public sealed class GitHubTools
     }
 
     [KernelFunction("github_pr_review")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Submit a review on a pull request (approve, request changes, or comment).")]
     public static async Task<string> ReviewPullRequestAsync(
         [Description("Pull request number")] int number,
@@ -184,6 +196,7 @@ public sealed class GitHubTools
     // ── Repository ──────────────────────────────────────────
 
     [KernelFunction("github_repo_info")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Get information about a GitHub repository (description, stars, language, topics).")]
     public static async Task<string> GetRepoInfoAsync(
         [Description("Repository in owner/repo format. Omit to use current repo.")] string? repo = null)
@@ -194,6 +207,7 @@ public sealed class GitHubTools
     }
 
     [KernelFunction("github_search_issues")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Search GitHub issues and PRs across repositories using query syntax.")]
     public static async Task<string> SearchIssuesAsync(
         [Description("Search query (GitHub search syntax, e.g. 'bug label:critical is:open')")] string query,
@@ -208,6 +222,7 @@ public sealed class GitHubTools
     // ── Workflows / Actions ─────────────────────────────────
 
     [KernelFunction("github_list_runs")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("List recent GitHub Actions workflow runs for a repository.")]
     public static async Task<string> ListWorkflowRunsAsync(
         [Description("Repository in owner/repo format. Omit to use current repo.")] string? repo = null,
@@ -226,6 +241,7 @@ public sealed class GitHubTools
     }
 
     [KernelFunction("github_run_details")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Get details and job logs for a specific GitHub Actions run.")]
     public static async Task<string> GetRunDetailsAsync(
         [Description("Workflow run ID")] long runId,
@@ -257,6 +273,7 @@ public sealed class GitHubTools
     // ── Releases ────────────────────────────────────────────
 
     [KernelFunction("github_list_releases")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("List releases for a GitHub repository.")]
     public static async Task<string> ListReleasesAsync(
         [Description("Repository in owner/repo format. Omit to use current repo.")] string? repo = null,
@@ -269,6 +286,7 @@ public sealed class GitHubTools
     // ── Auth Status ─────────────────────────────────────────
 
     [KernelFunction("github_auth_status")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Check GitHub CLI authentication status and available scopes.")]
     public static async Task<string> GetAuthStatusAsync()
     {

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -11,6 +12,7 @@ namespace JD.AI.Core.Tools;
 /// Parity benchmark harness for evaluating JD.AI capability coverage
 /// against target surfaces (OpenClaw, Claude Code, Copilot CLI, Codex CLI).
 /// </summary>
+[ToolPlugin("benchmark", RequiresInjection = true)]
 public sealed class BenchmarkTools
 {
     private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
@@ -116,6 +118,7 @@ public sealed class BenchmarkTools
     // ── Benchmark Tools ─────────────────────────────────────
 
     [KernelFunction("benchmark_scorecard")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Generate a parity scorecard comparing current JD.AI capabilities against the canonical registry. Shows coverage percentage and gaps.")]
     public string GenerateScorecard()
     {
@@ -179,6 +182,7 @@ public sealed class BenchmarkTools
     }
 
     [KernelFunction("benchmark_run")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Run a quick smoke test of available tools by invoking read-only tools and measuring response times.")]
     public async Task<string> RunSmokeBenchmark()
     {
@@ -245,6 +249,7 @@ public sealed class BenchmarkTools
     }
 
     [KernelFunction("benchmark_export")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Export the full capability registry as JSON for CI integration. Includes coverage status for each canonical capability.")]
     public string ExportRegistry()
     {
@@ -275,6 +280,7 @@ public sealed class BenchmarkTools
     }
 
     [KernelFunction("benchmark_regression")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Check for capability regressions by comparing current state against a baseline JSON. Returns any capabilities that were covered but are now missing.")]
     public static string CheckRegression(
         [Description("Baseline JSON from a previous benchmark_export")] string baselineJson)
