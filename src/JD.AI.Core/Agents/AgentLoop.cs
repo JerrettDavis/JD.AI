@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json;
 using JD.AI.Core.PromptCaching;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Tools;
@@ -60,6 +61,26 @@ public sealed class AgentLoop
             sw.Stop();
 
             var response = result.Content ?? "(no response)";
+
+            // Detect and execute text-based tool calls from models that emit JSON
+            // instead of using the structured tool calling protocol.
+            var toolResult = await TryExecuteTextToolCallAsync(response, ct).ConfigureAwait(false);
+            if (toolResult is not null)
+            {
+                _session.History.AddAssistantMessage(response);
+                _session.History.AddUserMessage($"[Tool result for {toolResult.Value.FunctionName}]:\n{toolResult.Value.Result}");
+
+                turnEntry.Attributes["text_tool_call"] = toolResult.Value.FunctionName;
+
+                // Re-invoke the model with the tool result so it can produce a natural response
+                sw.Restart();
+                var followUp = await chat.GetChatMessageContentAsync(
+                    _session.History, settings, _session.Kernel, ct).ConfigureAwait(false);
+                sw.Stop();
+
+                response = followUp.Content ?? toolResult.Value.Result;
+            }
+
             _session.History.AddAssistantMessage(response);
 
             var tokenEstimate = JD.SemanticKernel.Extensions.Compaction.TokenEstimator
@@ -298,6 +319,32 @@ public sealed class AgentLoop
             var response = fullResponse.Length > 0
                 ? fullResponse.ToString()
                 : "(no response)";
+
+            // Detect and execute text-based tool calls from models that emit JSON
+            // instead of using the structured tool calling protocol.
+            var toolResult = await TryExecuteTextToolCallAsync(response, ct).ConfigureAwait(false);
+            if (toolResult is not null)
+            {
+                _session.History.AddAssistantMessage(response);
+                _session.History.AddUserMessage($"[Tool result for {toolResult.Value.FunctionName}]:\n{toolResult.Value.Result}");
+
+                DebugLogger.Log(DebugCategory.Agents,
+                    "Text-based tool call detected: {0}, re-invoking model with result",
+                    toolResult.Value.FunctionName);
+
+                // Re-invoke non-streaming so the model can produce a natural response
+                sw.Restart();
+                var followUp = await chat.GetChatMessageContentAsync(
+                    _session.History, settings, _session.Kernel, ct).ConfigureAwait(false);
+                sw.Stop();
+
+                response = followUp.Content ?? toolResult.Value.Result;
+
+                // Render the actual response
+                output.BeginStreaming();
+                output.WriteStreamingChunk(response);
+                output.EndStreaming();
+            }
 
             _session.History.AddAssistantMessage(response);
 
@@ -701,6 +748,111 @@ public sealed class AgentLoop
             _session.Kernel.Plugins.Remove(
                 _session.Kernel.Plugins.First(p =>
                     p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)));
+        }
+    }
+
+    /// <summary>
+    /// Result of manually executing a tool call that was emitted as plain text JSON.
+    /// </summary>
+    private readonly record struct TextToolCallResult(string FunctionName, string Result);
+
+    /// <summary>
+    /// Detects when a model emits a tool/function call as plain text JSON instead of
+    /// using the structured tool calling protocol. Common with smaller models (1-8B).
+    /// If detected, resolves and invokes the kernel function, returning the result.
+    /// </summary>
+    private async Task<TextToolCallResult?> TryExecuteTextToolCallAsync(
+        string response, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+            return null;
+
+        // Strip markdown code fences if present (```json ... ```)
+        var text = response.Trim();
+        if (text.StartsWith("```", StringComparison.Ordinal))
+        {
+            var firstNewline = text.IndexOf('\n');
+            if (firstNewline > 0)
+                text = text[(firstNewline + 1)..];
+            if (text.EndsWith("```", StringComparison.Ordinal))
+                text = text[..^3];
+            text = text.Trim();
+        }
+
+        // Must look like a JSON object with "name" and "arguments"
+        if (!text.StartsWith('{') || !text.EndsWith('}'))
+            return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(text);
+            var root = doc.RootElement;
+
+            if (!root.TryGetProperty("name", out var nameEl) ||
+                nameEl.ValueKind != JsonValueKind.String)
+                return null;
+
+            var fullName = nameEl.GetString();
+            if (string.IsNullOrEmpty(fullName))
+                return null;
+
+            // Parse "pluginName-functionName" or just "functionName"
+            string? pluginName = null;
+            string functionName = fullName;
+            var dashIndex = fullName.IndexOf('-');
+            if (dashIndex > 0)
+            {
+                pluginName = fullName[..dashIndex];
+                functionName = fullName[(dashIndex + 1)..];
+            }
+
+            // Resolve the kernel function
+            KernelFunction? func = null;
+            if (pluginName is not null)
+            {
+                _session.Kernel.Plugins
+                    .FirstOrDefault(p => p.Name.Equals(pluginName, StringComparison.OrdinalIgnoreCase))
+                    ?.TryGetFunction(functionName, out func);
+            }
+
+            // Fallback: search all plugins
+            func ??= _session.Kernel.Plugins
+                .SelectMany(p => p)
+                .FirstOrDefault(f => f.Name.Equals(functionName, StringComparison.OrdinalIgnoreCase));
+
+            if (func is null)
+                return null;
+
+            // Build arguments from the "arguments" property
+            var args = new KernelArguments();
+            if (root.TryGetProperty("arguments", out var argsEl) &&
+                argsEl.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var prop in argsEl.EnumerateObject())
+                {
+                    args[prop.Name] = prop.Value.ValueKind == JsonValueKind.String
+                        ? prop.Value.GetString()
+                        : prop.Value.GetRawText();
+                }
+            }
+
+            DebugLogger.Log(DebugCategory.Agents,
+                "Intercepted text-based tool call: {0} with {1} args", fullName, args.Count);
+
+            var result = await func.InvokeAsync(_session.Kernel, args, ct).ConfigureAwait(false);
+            var resultStr = result?.ToString() ?? "(no output)";
+
+            return new TextToolCallResult(fullName, resultStr);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Log(DebugCategory.Agents,
+                "Text-based tool call execution failed: {0}", ex.Message);
+            return null;
         }
     }
 }
