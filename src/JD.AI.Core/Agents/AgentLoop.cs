@@ -264,6 +264,59 @@ public sealed class AgentLoop
             output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, 0, totalBytes));
             throw; // Let caller handle cancellation
         }
+        catch (Exception ex) when (!ct.IsCancellationRequested && IsStreamingPrematureEnd(ex))
+        {
+            // Foundry Local (and similar providers) silently terminate SSE
+            // connections when the request payload is large (many tools).
+            // Fall back to a non-streaming request using the same history.
+            output.EndStreaming();
+            sw.Stop();
+            DebugLogger.Log(DebugCategory.Agents,
+                "Streaming terminated prematurely, retrying without streaming");
+
+            sw.Restart();
+            try
+            {
+                var result = await chat.GetChatMessageContentAsync(
+                    _session.History, settings, _session.Kernel, ct).ConfigureAwait(false);
+                sw.Stop();
+
+                var response = result.Content ?? "(no response)";
+                _session.History.AddAssistantMessage(response);
+
+                var tokenEstimate = JD.SemanticKernel.Extensions.Compaction.TokenEstimator
+                    .EstimateTokens(response);
+
+                output.BeginStreaming();
+                output.WriteStreamingChunk(response);
+                output.EndStreaming();
+                output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, tokenEstimate, 0));
+
+                await _session.RecordAssistantTurnAsync(
+                    response, durationMs: sw.ElapsedMilliseconds,
+                    tokensOut: tokenEstimate).ConfigureAwait(false);
+
+                turnEntry.Attributes["streaming_fallback"] = "true";
+                turnEntry.Complete();
+                _session.LastTimeline = traceCtx.Timeline;
+
+                return response;
+            }
+            catch (Exception fallbackEx) when (!ct.IsCancellationRequested)
+            {
+                sw.Stop();
+                turnEntry.Complete("error", fallbackEx.Message);
+                _session.LastTimeline = traceCtx.Timeline;
+                output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, 0, totalBytes));
+                var errorMsg = $"Error: {fallbackEx.Message}";
+                AgentOutput.Current.RenderError(errorMsg);
+
+                _session.History.AddAssistantMessage(
+                    $"[Error occurred: {fallbackEx.Message}. I'll try a different approach.]");
+
+                return errorMsg;
+            }
+        }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             output.EndStreaming();
@@ -309,6 +362,25 @@ public sealed class AgentLoop
         var supportsTools = _session.CurrentModel?.Capabilities
             .HasFlag(ModelCapabilities.ToolCalling) ?? false;
 
+        // Disable tools when the model's context window is too small to fit them.
+        // Each tool definition consumes ~200 tokens (name, description, schema).
+        // If the estimated tool tokens would exceed half the context window,
+        // the model has no room for conversation — disable tools to avoid OOM.
+        if (supportsTools)
+        {
+            var contextWindow = _session.CurrentModel?.ContextWindowTokens ?? 128_000;
+            var toolCount = _session.Kernel.Plugins.SelectMany(p => p).Count();
+            var estimatedToolTokens = toolCount * 200;
+
+            if (estimatedToolTokens > contextWindow / 2)
+            {
+                DebugLogger.Log(DebugCategory.Agents,
+                    "Disabling tools: {0} tools (~{1} tokens) exceed half of {2}-token context window",
+                    toolCount, estimatedToolTokens, contextWindow);
+                supportsTools = false;
+            }
+        }
+
         var maxTokens = _session.CurrentModel?.MaxOutputTokens;
         if (maxTokens is null or <= 0)
         {
@@ -323,6 +395,29 @@ public sealed class AgentLoop
                 ? FunctionChoiceBehavior.Auto()
                 : null,
         };
+    }
+
+    /// <summary>
+    /// Detects when a streaming connection was terminated prematurely by the server.
+    /// This occurs with Foundry Local and similar providers that silently close SSE
+    /// connections when the request payload is large (e.g. many tools).
+    /// </summary>
+    internal static bool IsStreamingPrematureEnd(Exception ex)
+    {
+        // Walk exception chain looking for HttpIOException or ResponseEnded indicators
+        for (var current = ex; current != null; current = current.InnerException)
+        {
+            var msg = current.Message;
+            if (msg.Contains("ResponseEnded", StringComparison.OrdinalIgnoreCase) ||
+                msg.Contains("response ended prematurely", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            // .NET's HttpIOException (System.Net.Http) with HttpRequestError.ResponseEnded
+            if (string.Equals(current.GetType().Name, "HttpIOException", StringComparison.Ordinal))
+                return true;
+        }
+
+        return false;
     }
 
     /// <summary>
