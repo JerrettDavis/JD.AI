@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -11,6 +12,7 @@ namespace JD.AI.Core.Tools;
 /// Tools for Tailscale integration: status detection, Tailnet machine discovery,
 /// remote orchestration, and credential configuration.
 /// </summary>
+[ToolPlugin("tailscale")]
 public sealed class TailscaleTools
 {
     private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
@@ -18,6 +20,7 @@ public sealed class TailscaleTools
     // ── Status ──────────────────────────────────────────────
 
     [KernelFunction("tailscale_status")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Check Tailscale installation, authentication status, current Tailnet, and local node identity.")]
     public static string GetStatus(
         [Description("Optional config directory for stored credentials (default: ~/.jdai)")] string? configDir = null)
@@ -74,6 +77,7 @@ public sealed class TailscaleTools
     // ── Machine Discovery ───────────────────────────────────
 
     [KernelFunction("tailscale_machines")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("List all machines on the Tailnet with name, OS, online status, and addresses. Requires Tailscale CLI or API credentials.")]
     public static string ListMachines(
         [Description("Optional filter: 'online', 'offline', or 'all' (default: all)")] string? filter = null,
@@ -152,6 +156,7 @@ public sealed class TailscaleTools
     // ── Configure Credentials ───────────────────────────────
 
     [KernelFunction("tailscale_configure")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Configure Tailscale API credentials for machine discovery and remote orchestration. Stores in ~/.jdai/tailscale.json.")]
     public static string Configure(
         [Description("Tailnet name (e.g., 'example.com' or org name)")] string tailnet,
@@ -223,6 +228,7 @@ public sealed class TailscaleTools
     // ── Runner Probe ────────────────────────────────────────
 
     [KernelFunction("tailscale_runner_probe")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Check if a jdai-runner service is available on a specific Tailnet machine. Returns runner version, status, and capabilities.")]
     public static string ProbeRunner(
         [Description("Machine hostname or Tailscale IP to probe")] string target,
@@ -297,6 +303,7 @@ public sealed class TailscaleTools
     // ── Export ───────────────────────────────────────────────
 
     [KernelFunction("tailscale_export")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Export Tailscale configuration, discovered machines, and runner status as JSON for CI and automation.")]
     public static string Export(
         [Description("Optional config directory (default: ~/.jdai)")] string? configDir = null)

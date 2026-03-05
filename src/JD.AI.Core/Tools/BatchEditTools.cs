@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -8,9 +9,11 @@ namespace JD.AI.Core.Tools;
 /// Tool for applying multiple edits to one or more files in a single atomic operation.
 /// If any edit fails validation, no files are modified.
 /// </summary>
+[ToolPlugin("batchEdit")]
 public sealed class BatchEditTools
 {
     [KernelFunction("batch_edit_files")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description(
         "Apply multiple text replacements across one or more files atomically. " +
         "All edits are validated first — if any oldText is not found, no files are modified. " +

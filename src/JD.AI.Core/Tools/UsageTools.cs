@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text;
+using JD.AI.Core.Attributes;
 using JD.AI.Core.Providers;
 using Microsoft.SemanticKernel;
 
@@ -8,6 +9,7 @@ namespace JD.AI.Core.Tools;
 /// <summary>
 /// Tools for tracking token usage and costs across the session.
 /// </summary>
+[ToolPlugin("usage", RequiresInjection = true)]
 public sealed class UsageTools
 {
     private long _promptTokens;
@@ -33,6 +35,7 @@ public sealed class UsageTools
     }
 
     [KernelFunction("get_usage")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description(
         "Get token usage and cost statistics for the current session. " +
         "Shows prompt tokens, completion tokens, total tokens, tool calls, " +
@@ -88,6 +91,7 @@ public sealed class UsageTools
     }
 
     [KernelFunction("reset_usage")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Reset session usage counters to zero.")]
     public string ResetUsage()
     {

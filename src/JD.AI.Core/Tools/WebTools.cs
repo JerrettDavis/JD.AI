@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Net.Http.Headers;
 using System.Text;
 using HtmlAgilityPack;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -9,11 +10,13 @@ namespace JD.AI.Core.Tools;
 /// <summary>
 /// Web tools — fetch URLs and convert HTML to readable text.
 /// </summary>
+[ToolPlugin("web")]
 public sealed class WebTools
 {
     private static readonly HttpClient SharedClient = new();
 
     [KernelFunction("web_fetch")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Fetch a URL and return its content as readable text (HTML converted to plain text).")]
     public static async Task<string> WebFetchAsync(
         [Description("The URL to fetch")] string url,
