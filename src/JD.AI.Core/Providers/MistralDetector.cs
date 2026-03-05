@@ -1,3 +1,6 @@
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json.Serialization;
 using JD.AI.Core.Providers.Credentials;
 using Microsoft.SemanticKernel;
 
@@ -5,7 +8,8 @@ namespace JD.AI.Core.Providers;
 
 /// <summary>
 /// Detects Mistral AI availability via API key.
-/// Uses the official Microsoft.SemanticKernel.Connectors.MistralAI package.
+/// Dynamically discovers models from the Mistral API, falling back to a
+/// curated catalog when the endpoint is unreachable.
 /// </summary>
 public sealed class MistralDetector : ApiKeyProviderDetectorBase
 {
@@ -26,6 +30,26 @@ public sealed class MistralDetector : ApiKeyProviderDetectorBase
 
     protected override IReadOnlyList<ProviderModelInfo> KnownModels => KnownModelsCatalog;
 
+    protected override async Task<IReadOnlyList<ProviderModelInfo>> DiscoverModelsAsync(
+        string apiKey, CancellationToken ct)
+    {
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+        var response = await http
+            .GetFromJsonAsync<MistralModelsResponse>("https://api.mistral.ai/v1/models", ct)
+            .ConfigureAwait(false);
+
+        if (response?.Data is not { Count: > 0 })
+            return KnownModels;
+
+        return response.Data
+            .Where(m => !string.IsNullOrEmpty(m.Id))
+            .OrderByDescending(m => m.Created)
+            .Select(m => new ProviderModelInfo(m.Id!, FormatName(m.Id!), ProviderName))
+            .ToList();
+    }
+
     protected override void ConfigureKernel(IKernelBuilder builder, ProviderModelInfo model, string apiKey)
     {
 #pragma warning disable SKEXP0070
@@ -34,4 +58,16 @@ public sealed class MistralDetector : ApiKeyProviderDetectorBase
             apiKey: apiKey);
 #pragma warning restore SKEXP0070
     }
+
+    private static string FormatName(string id) =>
+        id.Replace('-', ' ')
+          .Replace("latest", "", StringComparison.OrdinalIgnoreCase)
+          .Trim();
+
+    private sealed record MistralModelsResponse(
+        [property: JsonPropertyName("data")] List<MistralModel>? Data);
+
+    private sealed record MistralModel(
+        [property: JsonPropertyName("id")] string? Id,
+        [property: JsonPropertyName("created")] long Created);
 }
