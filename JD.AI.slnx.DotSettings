@@ -1,0 +1,31 @@
+﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+
+  <!-- Use Built-in: Full Cleanup profile -->
+  <!-- EditorConfig takes precedence for all style rules -->
+
+  <!-- Ensure cleanup respects editorconfig max_line_length = 80 -->
+  <s:Int64 x:Key="/Default/CodeStyle/CodeFormatting/CSharpFormat/MAX_LINE_LENGTH/@EntryValue">80</s:Int64>
+
+  <!-- Wrap parameters when line exceeds limit -->
+  <s:String x:Key="/Default/CodeStyle/CodeFormatting/CSharpFormat/WRAP_PARAMETERS_STYLE/@EntryValue">CHOP_IF_LONG</s:String>
+
+  <!-- Wrap arguments when line exceeds limit -->
+  <s:String x:Key="/Default/CodeStyle/CodeFormatting/CSharpFormat/WRAP_ARGUMENTS_STYLE/@EntryValue">CHOP_IF_LONG</s:String>
+
+  <!-- Wrap chained method calls -->
+  <s:String x:Key="/Default/CodeStyle/CodeFormatting/CSharpFormat/WRAP_CHAINED_METHOD_CALLS/@EntryValue">CHOP_IF_LONG</s:String>
+
+  <!-- Braces: remove when not needed -->
+  <s:String x:Key="/Default/CodeStyle/CodeFormatting/CSharpFormat/FORCE_BRACES_STYLE/@EntryValue">REMOVE_BRACES</s:String>
+
+  <!-- Apply var style -->
+  <s:String x:Key="/Default/CodeStyle/CodeFormatting/CSharpFormat/USE_VAR/@EntryValue">ALWAYS</s:String>
+
+  <!-- Arrange qualifiers -->
+  <s:Boolean x:Key="/Default/CodeStyle/CodeFormatting/CSharpFormat/ARRANGE_QUALIFIER/@EntryValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/Environment/SettingsMigration/IsMigratorApplied/=JetBrains_002EReSharper_002EPsi_002ECSharp_002ECodeStyle_002ECSharpKeepExistingMigration/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/Environment/SettingsMigration/IsMigratorApplied/=JetBrains_002EReSharper_002EPsi_002ECSharp_002ECodeStyle_002ECSharpPlaceEmbeddedOnSameLineMigration/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/Environment/SettingsMigration/IsMigratorApplied/=JetBrains_002EReSharper_002EPsi_002ECSharp_002ECodeStyle_002ECSharpUseContinuousIndentInsideBracesMigration/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/Environment/SettingsMigration/IsMigratorApplied/=JetBrains_002EReSharper_002EPsi_002ECSharp_002ECodeStyle_002ESettingsUpgrade_002EMigrateBlankLinesAroundFieldToBlankLinesAroundProperty/@EntryIndexedValue">True</s:Boolean>
+
+</wpf:ResourceDictionary>
