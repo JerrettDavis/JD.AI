@@ -29,6 +29,7 @@ public sealed class TuiSettingsTests : IDisposable
         var settings = TuiSettings.Load();
 
         Assert.Equal(SpinnerStyle.Normal, settings.SpinnerStyle);
+        Assert.Equal(OutputStyle.Rich, settings.OutputStyle);
         Assert.True(settings.PromptCacheEnabled);
         Assert.Equal(PromptCacheTtl.FiveMinutes, settings.PromptCacheTtl);
     }
@@ -98,5 +99,16 @@ public sealed class TuiSettingsTests : IDisposable
         var loaded = TuiSettings.Load();
 
         Assert.Equal(style, loaded.SpinnerStyle);
+    }
+
+    [Fact]
+    public void SaveAndLoad_OutputStyleJson_NormalizesToRich()
+    {
+        var settings = new TuiSettings { OutputStyle = OutputStyle.Json };
+        settings.Save();
+
+        var loaded = TuiSettings.Load();
+
+        Assert.Equal(OutputStyle.Rich, loaded.OutputStyle);
     }
 }

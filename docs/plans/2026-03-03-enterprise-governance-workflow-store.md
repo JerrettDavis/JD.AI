@@ -1,6 +1,6 @@
 # Enterprise Governance and Shared Workflow Store — Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Add enterprise governance (policy engine, audit logging, budget tracking, data redaction), a shared workflow store, and hierarchical org instructions to JD.AI.
 

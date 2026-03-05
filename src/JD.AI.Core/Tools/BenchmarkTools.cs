@@ -10,7 +10,7 @@ namespace JD.AI.Core.Tools;
 
 /// <summary>
 /// Parity benchmark harness for evaluating JD.AI capability coverage
-/// against target surfaces (OpenClaw, Claude Code, Copilot CLI, Codex CLI).
+/// against target agent capability surfaces.
 /// </summary>
 [ToolPlugin("benchmark", RequiresInjection = true)]
 public sealed class BenchmarkTools
@@ -119,7 +119,7 @@ public sealed class BenchmarkTools
 
     [KernelFunction("benchmark_scorecard")]
     [ToolSafetyTier(SafetyTier.AutoApprove)]
-    [Description("Generate a parity scorecard comparing current JD.AI capabilities against the canonical registry. Shows coverage percentage and gaps.")]
+    [Description("Generate a parity scorecard for current JD.AI capabilities against the canonical registry. Shows coverage percentage and gaps.")]
     public string GenerateScorecard()
     {
         var available = _kernel.Plugins

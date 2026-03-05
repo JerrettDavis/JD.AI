@@ -348,6 +348,7 @@ Toggles vim editing mode in the interactive prompt.
 ### `/output-style [rich|plain|compact|json]`
 
 Sets renderer output mode.
+`json` is session-only and is not persisted as the startup default.
 
 ### `/stats [--history|--daily]`
 

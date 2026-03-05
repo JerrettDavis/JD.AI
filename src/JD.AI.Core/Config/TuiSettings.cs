@@ -53,10 +53,7 @@ public sealed record TuiSettings
         {
             var json = File.ReadAllText(path);
             var settings = JsonSerializer.Deserialize<TuiSettings>(json, JsonOptions) ?? new TuiSettings();
-            return settings with
-            {
-                SystemPromptBudgetPercent = Math.Clamp(settings.SystemPromptBudgetPercent, 0, 100),
-            };
+            return Normalize(settings);
         }
 #pragma warning disable CA1031 // Best-effort deserialization
         catch (Exception)
@@ -74,6 +71,19 @@ public sealed record TuiSettings
         if (dir is not null)
             Directory.CreateDirectory(dir);
 
-        File.WriteAllText(path, JsonSerializer.Serialize(this, JsonOptions));
+        // JSON output mode is intentionally session-only opt-in and should not
+        // become the startup default via persisted settings.
+        File.WriteAllText(path, JsonSerializer.Serialize(Normalize(this), JsonOptions));
+    }
+
+    private static TuiSettings Normalize(TuiSettings settings)
+    {
+        return settings with
+        {
+            SystemPromptBudgetPercent = Math.Clamp(settings.SystemPromptBudgetPercent, 0, 100),
+            OutputStyle = settings.OutputStyle == OutputStyle.Json
+                ? OutputStyle.Rich
+                : settings.OutputStyle,
+        };
     }
 }
