@@ -33,7 +33,9 @@ public class SlidingWindowRateLimiterTests
     [Fact]
     public async Task Allow_AfterWindowExpires_AllowsAgain()
     {
-        var limiter = new SlidingWindowRateLimiter(maxRequests: 1, window: TimeSpan.FromMilliseconds(50));
+        // Keep the window long enough that immediate back-to-back calls cannot
+        // accidentally cross the boundary under CI load.
+        var limiter = new SlidingWindowRateLimiter(maxRequests: 1, window: TimeSpan.FromMilliseconds(250));
 
         (await limiter.AllowAsync("user1")).Should().BeTrue();
         (await limiter.AllowAsync("user1")).Should().BeFalse();
