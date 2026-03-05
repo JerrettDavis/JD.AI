@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.Text;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -33,6 +34,7 @@ public sealed class ToolDiscoveryTools
     }
 
     [KernelFunction("discover_tools")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Search for available tools that are not currently loaded. Use this when you need a capability that isn't in your current toolset. Returns discoverable tools with descriptions, filterable by category or keyword, with pagination support.")]
     public string DiscoverTools(
         [Description("Filter by category (e.g. 'git', 'web', 'security', 'orchestration'). Omit for all.")] string? category = null,
@@ -130,6 +132,7 @@ public sealed class ToolDiscoveryTools
     }
 
     [KernelFunction("activate_tool")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Dynamically load a discoverable tool plugin into your current session. After activation, all functions in that plugin become available for use. Use discover_tools first to find available plugins.")]
     public string ActivateTool(
         [Description("Plugin name to activate (e.g. 'git', 'web', 'docker')")] string pluginName)
@@ -170,6 +173,7 @@ public sealed class ToolDiscoveryTools
     }
 
     [KernelFunction("list_tool_categories")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("List all tool categories with the number of plugins in each. Helps you find the right category filter for discover_tools.")]
     public string ListCategories()
     {
@@ -199,6 +203,7 @@ public sealed class ToolDiscoveryTools
     }
 
     [KernelFunction("list_toolbelts")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("List available tool loadouts (toolbelts) and their configurations. Each loadout is a curated set of tools for a specific use case.")]
     public string ListToolbelts()
     {

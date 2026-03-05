@@ -1,5 +1,6 @@
 using JD.AI.Core.Agents;
 using JD.AI.Core.Channels;
+using JD.AI.Core.Infrastructure;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Tools;
 using JD.AI.Rendering;
@@ -29,28 +30,8 @@ internal static class ToolRegistrar
         AgentSession session,
         ProviderModelInfo selectedModel)
     {
-        // Stateless tools
-        kernel.Plugins.AddFromType<FileTools>("file");
-        kernel.Plugins.AddFromType<SearchTools>("search");
-        kernel.Plugins.AddFromType<ShellTools>("shell");
-        kernel.Plugins.AddFromType<GitTools>("git");
-        kernel.Plugins.AddFromType<GitHubTools>("github");
-        kernel.Plugins.AddFromType<WebTools>("web");
-        kernel.Plugins.AddFromType<BrowserTools>("browser");
-        kernel.Plugins.AddFromType<ThinkTools>("think");
-        kernel.Plugins.AddFromType<EnvironmentTools>("environment");
-        kernel.Plugins.AddFromType<NotebookTools>("notebook");
-        kernel.Plugins.AddFromType<ClipboardTools>("clipboard");
-        kernel.Plugins.AddFromType<DiffTools>("diff");
-        kernel.Plugins.AddFromType<BatchEditTools>("batchEdit");
-        kernel.Plugins.AddFromType<MultimodalTools>("multimodal");
-        kernel.Plugins.AddFromType<ParityDocsTools>("parityDocs");
-        kernel.Plugins.AddFromType<McpTransportTools>("mcp");
-        kernel.Plugins.AddFromType<MigrationTools>("migration");
-        kernel.Plugins.AddFromType<SkillParityTools>("skillParity");
-        kernel.Plugins.AddFromType<McpEcosystemTools>("mcpEcosystem");
-        kernel.Plugins.AddFromType<TailscaleTools>("tailscale");
-        kernel.Plugins.AddFromType<EncodingCryptoTools>("encoding");
+        // Stateless tools — auto-discovered via [ToolPlugin(RequiresInjection = false)]
+        ToolAssemblyScanner.RegisterStaticPlugins(kernel, typeof(FileTools).Assembly);
 
         // Stateful tools
         kernel.Plugins.AddFromObject(new MemoryTools(), "memory");
