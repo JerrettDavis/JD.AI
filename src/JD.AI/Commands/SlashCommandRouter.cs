@@ -180,6 +180,54 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         };
     }
 
+    private async Task<IReadOnlyList<ProviderInfo>> DetectProvidersAsync(
+        bool forceRefresh,
+        CancellationToken ct)
+    {
+        if (forceRefresh && _registry is ProviderRegistry concrete)
+            return await concrete.DetectProvidersAsync(forceRefresh: true, ct).ConfigureAwait(false);
+
+        return await _registry.DetectProvidersAsync(ct).ConfigureAwait(false);
+    }
+
+    private async Task<IReadOnlyList<ProviderModelInfo>> GetModelsAsync(
+        bool forceRefresh,
+        CancellationToken ct)
+    {
+        if (forceRefresh && _registry is ProviderRegistry concrete)
+            return await concrete.GetModelsAsync(forceRefresh: true, ct).ConfigureAwait(false);
+
+        return await _registry.GetModelsAsync(ct).ConfigureAwait(false);
+    }
+
+    private async Task SwitchModelAndPersistAsync(ProviderModelInfo model, CancellationToken ct)
+    {
+        _session.SwitchModel(model);
+        await PersistProjectDefaultsAsync(model, ct).ConfigureAwait(false);
+    }
+
+    private async Task PersistProjectDefaultsAsync(ProviderModelInfo model, CancellationToken ct)
+    {
+        if (_configStore is null)
+            return;
+
+        var projectPath = _session.SessionInfo?.ProjectPath ?? Directory.GetCurrentDirectory();
+
+        try
+        {
+            await _configStore.SetDefaultProviderAsync(model.ProviderName, projectPath, ct)
+                .ConfigureAwait(false);
+            await _configStore.SetDefaultModelAsync(model.Id, projectPath, ct)
+                .ConfigureAwait(false);
+        }
+#pragma warning disable CA1031 // preference persistence is best-effort
+        catch
+#pragma warning restore CA1031
+        {
+            // Ignore persistence failures during model switches.
+        }
+    }
+
     private static string GetHelp() => """
         Available commands (all accept /jdai- prefix, e.g. /jdai-config):
           /help           — Show this help
@@ -268,7 +316,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
     private async Task<string> ListModelsAsync(CancellationToken ct)
     {
-        var models = await _registry.GetModelsAsync(ct).ConfigureAwait(false);
+        var models = await GetModelsAsync(forceRefresh: true, ct).ConfigureAwait(false);
         if (models.Count == 0)
         {
             return "No models available. Check provider authentication.";
@@ -277,7 +325,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         var selected = ModelPicker.Pick(models, _session.CurrentModel);
         if (selected != null && !string.Equals(selected.Id, _session.CurrentModel?.Id, StringComparison.Ordinal))
         {
-            _session.SwitchModel(selected);
+            await SwitchModelAndPersistAsync(selected, ct).ConfigureAwait(false);
             return $"Switched to {selected.DisplayName} ({selected.ProviderName})";
         }
 
@@ -306,7 +354,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             }
         }
 
-        var models = await _registry.GetModelsAsync(ct).ConfigureAwait(false);
+        var models = await GetModelsAsync(forceRefresh: true, ct).ConfigureAwait(false);
 
         // No argument: show interactive picker
         if (string.IsNullOrWhiteSpace(modelId))
@@ -319,7 +367,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             var selected = ModelPicker.Pick(models, _session.CurrentModel);
             if (selected != null)
             {
-                _session.SwitchModel(selected);
+                await SwitchModelAndPersistAsync(selected, ct).ConfigureAwait(false);
                 return $"Switched to {selected.DisplayName} ({selected.ProviderName})";
             }
 
@@ -335,7 +383,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             return $"Model '{modelId}' not found. Use /models to browse interactively.";
         }
 
-        _session.SwitchModel(model);
+        await SwitchModelAndPersistAsync(model, ct).ConfigureAwait(false);
         return $"Switched to {model.DisplayName} ({model.ProviderName})";
     }
 
@@ -411,12 +459,12 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         if (string.Equals(selected.Status, "Installed", StringComparison.Ordinal))
         {
             // Already installed — switch to it
-            var models = await _registry.GetModelsAsync(ct).ConfigureAwait(false);
+            var models = await GetModelsAsync(forceRefresh: true, ct).ConfigureAwait(false);
             var match = models.FirstOrDefault(m =>
                 m.Id.Contains(selected.Id, StringComparison.OrdinalIgnoreCase));
             if (match is not null)
             {
-                _session.SwitchModel(match);
+                await SwitchModelAndPersistAsync(match, ct).ConfigureAwait(false);
                 return $"Switched to {match.DisplayName} ({match.ProviderName})";
             }
 
@@ -491,13 +539,13 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                 : $"Failed to pull '{selected.DisplayName}'. The provider may not support pulling.";
 
         // Re-detect providers and find the newly pulled model
-        var models = await _registry.GetModelsAsync(ct).ConfigureAwait(false);
+        var models = await GetModelsAsync(forceRefresh: true, ct).ConfigureAwait(false);
         var match = models.FirstOrDefault(m =>
             m.Id.Contains(selected.Id, StringComparison.OrdinalIgnoreCase));
 
         if (match is not null)
         {
-            _session.SwitchModel(match);
+            await SwitchModelAndPersistAsync(match, ct).ConfigureAwait(false);
             return $"Pulled and switched to {match.DisplayName} ({match.ProviderName})";
         }
 
@@ -524,7 +572,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
     private async Task<string> ListProvidersAsync(CancellationToken ct)
     {
-        var providers = await _registry.DetectProvidersAsync(ct).ConfigureAwait(false);
+        var providers = await DetectProvidersAsync(forceRefresh: true, ct).ConfigureAwait(false);
         var lines = providers.Select(p =>
         {
             var status = p.IsAvailable ? "✓" : "✗";
@@ -560,7 +608,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
     private async Task<string> ProviderListAsync(CancellationToken ct)
     {
-        var providers = await _registry.DetectProvidersAsync(ct).ConfigureAwait(false);
+        var providers = await DetectProvidersAsync(forceRefresh: true, ct).ConfigureAwait(false);
         var activeProviderName = _session.CurrentModel?.ProviderName;
 
         var table = new Table()
@@ -607,7 +655,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
     private async Task<string> ProviderPickerAsync(CancellationToken ct)
     {
-        var providers = await _registry.DetectProvidersAsync(ct).ConfigureAwait(false);
+        var providers = await DetectProvidersAsync(forceRefresh: true, ct).ConfigureAwait(false);
         if (providers.Count == 0)
             return "No providers detected. Use /provider add <name> to configure one.";
 
@@ -683,7 +731,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
         if (selected.Models.Count == 1)
         {
-            _session.SwitchModel(selected.Models[0]);
+            await SwitchModelAndPersistAsync(selected.Models[0], ct).ConfigureAwait(false);
             return $"Switched to {selected.Models[0].DisplayName} ({selected.Name})";
         }
 
@@ -692,7 +740,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         if (model is null)
             return "Model selection cancelled.";
 
-        _session.SwitchModel(model);
+        await SwitchModelAndPersistAsync(model, ct).ConfigureAwait(false);
         return $"Switched to {model.DisplayName} ({selected.Name})";
     }
 
@@ -813,7 +861,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
     private async Task<string> ProviderTestAsync(string? providerName, CancellationToken ct)
     {
-        var providers = await _registry.DetectProvidersAsync(ct).ConfigureAwait(false);
+        var providers = await DetectProvidersAsync(forceRefresh: true, ct).ConfigureAwait(false);
 
         IEnumerable<ProviderInfo> toTest = providers;
         if (!string.IsNullOrWhiteSpace(providerName))
@@ -1865,7 +1913,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         var subArg = parts.Length > 1 ? parts[1] : null;
 
         // Find the LocalModelDetector in our registry
-        var providers = await _registry.DetectProvidersAsync(ct).ConfigureAwait(false);
+        var providers = await DetectProvidersAsync(forceRefresh: true, ct).ConfigureAwait(false);
         var localProvider = providers.FirstOrDefault(p =>
             string.Equals(p.Name, "Local", StringComparison.OrdinalIgnoreCase));
 
@@ -2322,11 +2370,11 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         sb.AppendLine($"OS: {System.Runtime.InteropServices.RuntimeInformation.OSDescription}");
         sb.AppendLine($"CWD: {Directory.GetCurrentDirectory()}");
 
-        var providers = await _registry.DetectProvidersAsync(ct).ConfigureAwait(false);
+        var providers = await DetectProvidersAsync(forceRefresh: true, ct).ConfigureAwait(false);
         var providerList = providers.ToList();
         sb.AppendLine($"Providers: {providerList.Count(p => p.IsAvailable)} available / {providerList.Count} total");
 
-        var allModels = await _registry.GetModelsAsync(ct).ConfigureAwait(false);
+        var allModels = await GetModelsAsync(forceRefresh: true, ct).ConfigureAwait(false);
         sb.AppendLine($"Models: {allModels.Count}");
         sb.AppendLine($"Current: {_session.CurrentModel?.ProviderName ?? "?"} / {_session.CurrentModel?.Id ?? "?"}");
         sb.AppendLine($"Plugins: {_session.Kernel.Plugins.Count}");

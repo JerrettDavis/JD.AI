@@ -70,7 +70,7 @@ internal static class CliArgumentParser
         var gatewayMode = args.Contains("--gateway");
         var gatewayPort = GetFlagValue(args, "--gateway-port");
 
-        // Subcommand interception (mcp, plugin)
+        // Subcommand interception (mcp, plugin, onboard/wizard)
         var firstNonOptionIndex = Array.FindIndex(args, a => !a.StartsWith('-'));
         string? subcommand = null;
         string[] subcommandArgs = [];
@@ -78,7 +78,9 @@ internal static class CliArgumentParser
         {
             var candidate = args[firstNonOptionIndex];
             if (string.Equals(candidate, "mcp", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(candidate, "plugin", StringComparison.OrdinalIgnoreCase))
+                string.Equals(candidate, "plugin", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(candidate, "onboard", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(candidate, "wizard", StringComparison.OrdinalIgnoreCase))
             {
                 subcommand = candidate.ToLowerInvariant();
                 subcommandArgs = args.Skip(firstNonOptionIndex + 1).ToArray();
