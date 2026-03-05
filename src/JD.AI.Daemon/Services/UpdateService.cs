@@ -1,5 +1,5 @@
-using System.Diagnostics;
 using JD.AI.Core.Events;
+using JD.AI.Core.Infrastructure;
 using JD.AI.Daemon.Config;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -171,31 +171,16 @@ public sealed class UpdateService : BackgroundService
     {
         try
         {
-            using var process = new Process
-            {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = "dotnet",
-                    Arguments = $"tool update -g {_config.PackageId}",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                },
-            };
+            var result = await ProcessExecutor.RunAsync(
+                "dotnet", $"tool update -g {_config.PackageId}", cancellationToken: ct);
 
-            process.Start();
-            var stdout = await process.StandardOutput.ReadToEndAsync(ct);
-            var stderr = await process.StandardError.ReadToEndAsync(ct);
-            await process.WaitForExitAsync(ct);
-
-            if (process.ExitCode == 0)
+            if (result.Success)
             {
-                _logger.LogInformation("dotnet tool update succeeded: {Output}", stdout.Trim());
+                _logger.LogInformation("dotnet tool update succeeded: {Output}", result.StandardOutput);
                 return true;
             }
 
-            _logger.LogError("dotnet tool update failed (exit {Code}): {Err}", process.ExitCode, stderr.Trim());
+            _logger.LogError("dotnet tool update failed (exit {Code}): {Err}", result.ExitCode, result.StandardError);
             return false;
         }
         catch (Exception ex)

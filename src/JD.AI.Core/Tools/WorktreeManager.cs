@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Core.Tools;
 
@@ -91,27 +91,11 @@ public sealed class WorktreeManager : IAsyncDisposable
     private static async Task<(int ExitCode, string Output, string Error)> RunGitAsync(
         string arguments, string workingDirectory, CancellationToken ct)
     {
-        using var process = new Process
-        {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = "git",
-                Arguments = arguments,
-                WorkingDirectory = workingDirectory,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            },
-        };
+        var result = await ProcessExecutor.RunAsync(
+            "git", arguments, workingDirectory: workingDirectory, cancellationToken: ct)
+            .ConfigureAwait(false);
 
-        process.Start();
-
-        var stdout = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
-        var stderr = await process.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
-        await process.WaitForExitAsync(ct).ConfigureAwait(false);
-
-        return (process.ExitCode, stdout.Trim(), stderr.Trim());
+        return (result.ExitCode, result.StandardOutput, result.StandardError);
     }
 
     public async ValueTask DisposeAsync()

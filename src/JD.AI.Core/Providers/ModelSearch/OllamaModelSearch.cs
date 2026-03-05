@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Core.Providers.ModelSearch;
 
@@ -60,6 +61,7 @@ public sealed class OllamaModelSearch : IRemoteModelSearch
     {
         try
         {
+            // PullAsync needs streaming output for progress — keep manual Process for this
             using var process = new Process();
             process.StartInfo = new ProcessStartInfo
             {

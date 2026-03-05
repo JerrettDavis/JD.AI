@@ -1,5 +1,5 @@
-using System.Diagnostics;
 using System.Runtime.Versioning;
+using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Daemon.Services;
 
@@ -110,24 +110,12 @@ public sealed class WindowsServiceManager : IServiceManager
     private static async Task<(int ExitCode, string Output)> RunProcessAsync(
         string fileName, string arguments, CancellationToken ct)
     {
-        using var process = new Process
-        {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = fileName,
-                Arguments = arguments,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            },
-        };
+        var result = await ProcessExecutor.RunAsync(
+            fileName, arguments, cancellationToken: ct);
 
-        process.Start();
-        var stdout = await process.StandardOutput.ReadToEndAsync(ct);
-        var stderr = await process.StandardError.ReadToEndAsync(ct);
-        await process.WaitForExitAsync(ct);
-
-        return (process.ExitCode, string.IsNullOrEmpty(stderr) ? stdout : $"{stdout}\n{stderr}");
+        var output = string.IsNullOrEmpty(result.StandardError)
+            ? result.StandardOutput
+            : $"{result.StandardOutput}\n{result.StandardError}";
+        return (result.ExitCode, output);
     }
 }

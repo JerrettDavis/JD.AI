@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using JD.AI.Core.Attributes;
@@ -77,11 +76,7 @@ public sealed class BrowserTools
                 return OutputFormatter.Error($"Invalid URL '{url}'. Only http/https URLs are supported.");
             }
 
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = uri.AbsoluteUri,
-                UseShellExecute = true
-            });
+            ProcessExecutor.ShellOpen(uri.AbsoluteUri);
 
             return $"Opened {uri.AbsoluteUri} in default browser.";
         }
@@ -260,21 +255,10 @@ public sealed class BrowserTools
         try
         {
             var which = OperatingSystem.IsWindows() ? "where" : "which";
-            var psi = new ProcessStartInfo(which, "chrome")
-            {
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var proc = Process.Start(psi);
-            if (proc is not null)
-            {
-                var output = proc.StandardOutput.ReadToEnd().Trim();
-                proc.WaitForExit(5000);
-                if (proc.ExitCode == 0 && !string.IsNullOrEmpty(output))
-                    return output.Split('\n')[0].Trim();
-            }
+            var result = ProcessExecutor.RunAsync(which, "chrome", timeout: TimeSpan.FromSeconds(5))
+                .GetAwaiter().GetResult();
+            if (result.Success && !string.IsNullOrEmpty(result.StandardOutput))
+                return result.StandardOutput.Split('\n')[0].Trim();
         }
         catch
         {
@@ -289,34 +273,13 @@ public sealed class BrowserTools
     {
         try
         {
-            var psi = new ProcessStartInfo
-            {
-                FileName = fileName,
-                Arguments = arguments,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
+            var result = await ProcessExecutor.RunAsync(
+                fileName, arguments, timeout: TimeSpan.FromSeconds(timeoutSeconds));
 
-            using var process = Process.Start(psi);
-            if (process is null)
-                return OutputFormatter.Error("Failed to start process.");
+            if (captureStderr)
+                return $"{result.StandardOutput}\n{result.StandardError}";
 
-            var outputTask = process.StandardOutput.ReadToEndAsync();
-            var errorTask = process.StandardError.ReadToEndAsync();
-
-            var completed = process.WaitForExit(timeoutSeconds * 1000);
-            if (!completed)
-            {
-                process.Kill(entireProcessTree: true);
-                return OutputFormatter.Error($"Process timed out after {timeoutSeconds}s.");
-            }
-
-            var stdout = await outputTask;
-            var stderr = await errorTask;
-
-            return captureStderr ? $"{stdout}\n{stderr}" : stdout;
+            return result.StandardOutput;
         }
         catch (Exception ex)
         {
