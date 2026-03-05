@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -9,9 +10,11 @@ namespace JD.AI.Core.Tools;
 /// Tools for reading from and writing to the system clipboard.
 /// Uses platform-specific commands (pbcopy/pbpaste, xclip, clip.exe/PowerShell).
 /// </summary>
+[ToolPlugin("clipboard")]
 public sealed class ClipboardTools
 {
     [KernelFunction("read_clipboard")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Read the current text content from the system clipboard.")]
     public static async Task<string> ReadClipboardAsync()
     {
@@ -36,6 +39,7 @@ public sealed class ClipboardTools
     }
 
     [KernelFunction("write_clipboard")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Write text to the system clipboard.")]
     public static async Task<string> WriteClipboardAsync(
         [Description("Text to write to the clipboard")] string text)

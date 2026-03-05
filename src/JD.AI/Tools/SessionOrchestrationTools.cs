@@ -2,7 +2,9 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Text;
 using JD.AI.Core.Agents;
+using JD.AI.Core.Attributes;
 using JD.AI.Core.Sessions;
+using JD.AI.Core.Tools;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Tools;
@@ -12,6 +14,7 @@ namespace JD.AI.Tools;
 /// existing <see cref="AgentSession"/> and <see cref="SessionStore"/> infrastructure.
 /// Provides explicit session inventory, history, spawning, and agent listing.
 /// </summary>
+[ToolPlugin("sessions", RequiresInjection = true)]
 public sealed class SessionOrchestrationTools
 {
     private readonly AgentSession _session;
@@ -23,6 +26,7 @@ public sealed class SessionOrchestrationTools
     }
 
     [KernelFunction("sessions_list")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("List sessions for this project. Returns session IDs, names, dates, token counts, and status.")]
     public async Task<string> ListSessionsAsync(
         [Description("Maximum number of sessions to return (default 20)")] int limit = 20,
@@ -64,6 +68,7 @@ public sealed class SessionOrchestrationTools
     }
 
     [KernelFunction("sessions_history")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Get turn history for a session. Returns user/assistant messages with token counts and tool calls. Defaults to the current session.")]
     public async Task<string> GetSessionHistoryAsync(
         [Description("Session ID (default: current session)")] string? sessionId = null,
@@ -127,6 +132,7 @@ public sealed class SessionOrchestrationTools
     }
 
     [KernelFunction("sessions_spawn")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Create a new session or fork the current session. Use mode='fork' to clone history, or mode='new' for a fresh session.")]
     public async Task<string> SpawnSessionAsync(
         [Description("Spawn mode: 'new' (fresh session) or 'fork' (clone current)")] string mode = "new",
@@ -162,6 +168,7 @@ public sealed class SessionOrchestrationTools
     }
 
     [KernelFunction("session_status")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Get the current session's status: ID, project, model, turn count, tokens, spend, and timing.")]
     public string GetSessionStatus()
     {
@@ -195,6 +202,7 @@ public sealed class SessionOrchestrationTools
     }
 
     [KernelFunction("agents_list")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("List available agent types and any active team agents from the current orchestration context.")]
     public string ListAgents()
     {
@@ -225,6 +233,7 @@ public sealed class SessionOrchestrationTools
     }
 
     [KernelFunction("sessions_send")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Send a message to the current session's history for context injection. The message is recorded as a system note visible to subsequent turns.")]
     public async Task<string> SendMessageAsync(
         [Description("The message content to inject")] string message,

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -8,10 +9,12 @@ namespace JD.AI.Core.Tools;
 /// <summary>
 /// Code execution (REPL) tools for running snippets in various languages.
 /// </summary>
+[ToolPlugin("notebook")]
 public sealed class NotebookTools
 {
 
     [KernelFunction("execute_code")]
+    [ToolSafetyTier(SafetyTier.AlwaysConfirm)]
     [Description(
         "Execute a code snippet in the specified language and return the output. " +
         "Supported languages: csharp (dotnet-script), python, node (JavaScript), bash/powershell.")]

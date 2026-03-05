@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -10,6 +11,7 @@ namespace JD.AI.Core.Tools;
 /// Tools for managing MCP (Model Context Protocol) server connections,
 /// transport configuration, credential management, and diagnostics.
 /// </summary>
+[ToolPlugin("mcp")]
 public sealed class McpTransportTools
 {
     private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
@@ -17,6 +19,7 @@ public sealed class McpTransportTools
     // ── List Servers ────────────────────────────────────────
 
     [KernelFunction("mcp_list_servers")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("List all configured MCP servers with their transport type, status, and available tools.")]
     public static string ListServers(
         [Description("Optional config directory (default: ~/.jdai)")] string? configDir = null)
@@ -76,6 +79,7 @@ public sealed class McpTransportTools
     // ── Transport Matrix ────────────────────────────────────
 
     [KernelFunction("mcp_transport_matrix")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Show the MCP transport support matrix with security characteristics and status.")]
     public static string GetTransportMatrix()
     {
@@ -132,6 +136,7 @@ public sealed class McpTransportTools
     // ── Diagnose Server ─────────────────────────────────────
 
     [KernelFunction("mcp_diagnose")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Run diagnostics on a specific MCP server connection: config validation, connectivity, auth status, and available tools.")]
     public static string DiagnoseServer(
         [Description("MCP server name to diagnose")] string serverName,
@@ -184,6 +189,7 @@ public sealed class McpTransportTools
     // ── Credential Status ───────────────────────────────────
 
     [KernelFunction("mcp_credential_status")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Check the credential/authentication status for all configured MCP servers.")]
     public static string GetCredentialStatus(
         [Description("Optional config directory (default: ~/.jdai)")] string? configDir = null)
@@ -243,6 +249,7 @@ public sealed class McpTransportTools
     // ── Export Config ────────────────────────────────────────
 
     [KernelFunction("mcp_export_config")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Export MCP server configuration and diagnostics as JSON for CI and automation.")]
     public static string ExportConfig(
         [Description("Optional config directory (default: ~/.jdai)")] string? configDir = null)

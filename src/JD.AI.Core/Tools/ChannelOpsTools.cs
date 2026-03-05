@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.Text;
+using JD.AI.Core.Attributes;
 using JD.AI.Core.Channels;
 using Microsoft.SemanticKernel;
 
@@ -10,6 +11,7 @@ namespace JD.AI.Core.Tools;
 /// Operational tools for messaging channels — list, status, send, and read.
 /// Requires an <see cref="IChannelRegistry"/> for channel access.
 /// </summary>
+[ToolPlugin("channels", RequiresInjection = true)]
 public sealed class ChannelOpsTools
 {
     private readonly IChannelRegistry _registry;
@@ -20,6 +22,7 @@ public sealed class ChannelOpsTools
     }
 
     [KernelFunction("channel_list")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("List all registered messaging channels and their connection status.")]
     public string ListChannels()
     {
@@ -43,6 +46,7 @@ public sealed class ChannelOpsTools
     }
 
     [KernelFunction("channel_status")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Get detailed status of a specific messaging channel.")]
     public string GetChannelStatus(
         [Description("Channel type identifier (e.g. 'discord', 'slack', 'signal', 'web')")] string channelType)
@@ -61,6 +65,7 @@ public sealed class ChannelOpsTools
     }
 
     [KernelFunction("channel_send")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Send a message through a specific channel to a conversation or thread.")]
     public async Task<string> SendMessageAsync(
         [Description("Channel type (e.g. 'discord', 'slack', 'signal', 'web')")] string channelType,
@@ -89,6 +94,7 @@ public sealed class ChannelOpsTools
     }
 
     [KernelFunction("channel_connect")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Connect a disconnected channel adapter.")]
     public async Task<string> ConnectChannelAsync(
         [Description("Channel type to connect (e.g. 'discord', 'slack')")] string channelType)
@@ -112,6 +118,7 @@ public sealed class ChannelOpsTools
     }
 
     [KernelFunction("channel_disconnect")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Disconnect a channel adapter gracefully.")]
     public async Task<string> DisconnectChannelAsync(
         [Description("Channel type to disconnect")] string channelType)

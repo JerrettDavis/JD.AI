@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json;
+using JD.AI.Core.Attributes;
 using JD.AI.Core.Questions;
 using Microsoft.SemanticKernel;
 
@@ -8,6 +9,7 @@ namespace JD.AI.Core.Tools;
 /// <summary>
 /// Tool for presenting structured questions to the user and collecting validated answers.
 /// </summary>
+[ToolPlugin("questions", RequiresInjection = true)]
 public sealed class QuestionTools
 {
     private readonly Func<AskQuestionsRequest, AskQuestionsResult> _runQuestionnaire;
@@ -22,6 +24,7 @@ public sealed class QuestionTools
     }
 
     [KernelFunction("ask_questions")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description(
         "Present a structured set of questions to the user and collect their answers. " +
         "Use this when you need specific information from the user before proceeding — " +

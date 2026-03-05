@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.Text;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -9,6 +10,7 @@ namespace JD.AI.Core.Tools;
 /// Scheduled task management tools — create, list, update, and remove recurring or one-shot tasks.
 /// Tasks are stored in-memory for the current session; persistence is optional via SessionStore.
 /// </summary>
+[ToolPlugin("scheduler", RequiresInjection = true)]
 public sealed class SchedulerTools
 {
     private readonly Lock _lock = new();
@@ -16,6 +18,7 @@ public sealed class SchedulerTools
     private int _nextId = 1;
 
     [KernelFunction("cron_list")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("List all scheduled tasks and their status.")]
     public string ListTasks()
     {
@@ -44,6 +47,7 @@ public sealed class SchedulerTools
     }
 
     [KernelFunction("cron_add")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Add a new scheduled task. Schedule can be a cron expression (e.g. '*/5 * * * *') " +
                  "or a simple interval like '5m', '1h', '30s'.")]
     public string AddTask(
@@ -78,6 +82,7 @@ public sealed class SchedulerTools
     }
 
     [KernelFunction("cron_remove")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Remove a scheduled task by ID.")]
     public string RemoveTask(
         [Description("Task ID to remove")] int taskId)
@@ -95,6 +100,7 @@ public sealed class SchedulerTools
     }
 
     [KernelFunction("cron_update")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Update an existing scheduled task's schedule, command, or status.")]
     public string UpdateTask(
         [Description("Task ID to update")] int taskId,
@@ -128,6 +134,7 @@ public sealed class SchedulerTools
     }
 
     [KernelFunction("cron_run")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Manually trigger a scheduled task immediately.")]
     public string RunTask(
         [Description("Task ID to run now")] int taskId)
@@ -145,6 +152,7 @@ public sealed class SchedulerTools
     }
 
     [KernelFunction("cron_history")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Get execution history for a specific scheduled task.")]
     public string GetTaskHistory(
         [Description("Task ID")] int taskId)

@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -10,6 +11,7 @@ namespace JD.AI.Core.Tools;
 /// Tools for generating competitive parity documentation, compatibility matrices,
 /// migration guides, and governance runbooks from source metadata.
 /// </summary>
+[ToolPlugin("parityDocs")]
 public sealed class ParityDocsTools
 {
     private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
@@ -17,6 +19,7 @@ public sealed class ParityDocsTools
     // ── Compatibility Matrix ────────────────────────────────
 
     [KernelFunction("parity_compatibility_matrix")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Generate a versioned compatibility matrix comparing JD.AI features against Claude Code, OpenClaw, GitHub Copilot, and Codex CLI.")]
     public static string GenerateCompatibilityMatrix(
         [Description("Optional category filter: 'tools', 'skills', 'mcp', 'governance', 'runtime', or 'all' (default)")] string? category = null)
@@ -48,6 +51,7 @@ public sealed class ParityDocsTools
     // ── Migration Guide ─────────────────────────────────────
 
     [KernelFunction("parity_migration_guide")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Generate a migration guide for users switching from a specific competitor to JD.AI.")]
     public static string GenerateMigrationGuide(
         [Description("Source platform: 'claude', 'openclaw', 'copilot', or 'codex'")] string source)
@@ -150,6 +154,7 @@ public sealed class ParityDocsTools
     // ── Governance Runbook ──────────────────────────────────
 
     [KernelFunction("parity_governance_runbook")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Generate a governance runbook covering security, policy, and operational guidelines for a specific feature area.")]
     public static string GenerateGovernanceRunbook(
         [Description("Feature area: 'tools', 'skills', 'mcp', 'providers', or 'channels'")] string area)
@@ -186,6 +191,7 @@ public sealed class ParityDocsTools
     // ── Threat Model ────────────────────────────────────────
 
     [KernelFunction("parity_threat_model")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Generate a threat model summary for a JD.AI feature, including attack vectors and mitigations.")]
     public static string GenerateThreatModel(
         [Description("Feature to model: 'tool-execution', 'skill-loading', 'mcp-transport', 'provider-auth', 'session-data', or 'gateway'")] string feature)
@@ -224,6 +230,7 @@ public sealed class ParityDocsTools
     // ── Export ───────────────────────────────────────────────
 
     [KernelFunction("parity_export")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Export the full parity data (compatibility matrix, migration mappings, governance status) as JSON.")]
     public static string ExportParityData()
     {

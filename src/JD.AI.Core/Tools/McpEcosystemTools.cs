@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -8,11 +9,13 @@ namespace JD.AI.Core.Tools;
 /// MCP ecosystem import, sync, and drift detection tools.
 /// Handles bidirectional config reconciliation across Claude, OpenClaw, and JD.AI.
 /// </summary>
+[ToolPlugin("mcpEcosystem")]
 public sealed class McpEcosystemTools
 {
     private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
 
     [KernelFunction("mcp_import_scan")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [System.ComponentModel.Description(
         "Scan ecosystem configs (Claude, OpenClaw, JD.AI) for MCP server definitions and report importable servers.")]
     public static string ImportScan(
@@ -83,6 +86,7 @@ public sealed class McpEcosystemTools
     }
 
     [KernelFunction("mcp_sync")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [System.ComponentModel.Description(
         "Sync MCP server definitions from an ecosystem (Claude, OpenClaw) into JD.AI config. " +
         "Use dry_run=true to preview changes without writing.")]
@@ -214,6 +218,7 @@ public sealed class McpEcosystemTools
     }
 
     [KernelFunction("mcp_drift")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [System.ComponentModel.Description(
         "Detect drift between MCP server definitions across ecosystems. " +
         "Shows added, removed, and changed servers with remediation guidance.")]
@@ -352,6 +357,7 @@ public sealed class McpEcosystemTools
     }
 
     [KernelFunction("mcp_quarantine")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [System.ComponentModel.Description(
         "List quarantined MCP servers pending trust approval. " +
         "Imported servers with unknown executables are quarantined until explicitly approved.")]
@@ -417,6 +423,7 @@ public sealed class McpEcosystemTools
     }
 
     [KernelFunction("mcp_ecosystem_export")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [System.ComponentModel.Description(
         "Export the full MCP ecosystem state as JSON for CI/CD or auditing. " +
         "Includes all sources, servers, drift status, and quarantine state.")]

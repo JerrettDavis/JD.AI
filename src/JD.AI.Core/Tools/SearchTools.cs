@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text;
 using System.Text.RegularExpressions;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -8,9 +9,11 @@ namespace JD.AI.Core.Tools;
 /// <summary>
 /// Code search tools — grep and glob — for the AI agent.
 /// </summary>
+[ToolPlugin("search")]
 public sealed class SearchTools
 {
     [KernelFunction("grep")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Search file contents for a regex pattern. Returns matching lines with file paths and line numbers.")]
     public static string Grep(
         [Description("Regex pattern to search for")] string pattern,
@@ -96,6 +99,7 @@ public sealed class SearchTools
     }
 
     [KernelFunction("glob")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Find files matching a glob pattern. Returns file paths.")]
     public static string Glob(
         [Description("Glob pattern (e.g. **/*.cs, src/**/*.json)")] string pattern,

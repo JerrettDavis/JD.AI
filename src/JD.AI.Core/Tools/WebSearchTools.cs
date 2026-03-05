@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Net.Http.Json;
 using System.Text.Json;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -8,6 +9,7 @@ namespace JD.AI.Core.Tools;
 /// <summary>
 /// Web search tool using Bing Search API (via Copilot connector auth or direct API key).
 /// </summary>
+[ToolPlugin("WebSearchTools", RequiresInjection = true)]
 public sealed class WebSearchTools : IDisposable
 {
     private readonly HttpClient _httpClient;
@@ -20,6 +22,7 @@ public sealed class WebSearchTools : IDisposable
     }
 
     [KernelFunction("web_search")]
+    [ToolSafetyTier(SafetyTier.AlwaysConfirm)]
     [Description("Search the web for current information. Returns top results with snippets and URLs.")]
     public async Task<string> SearchAsync(
         [Description("Search query")] string query,

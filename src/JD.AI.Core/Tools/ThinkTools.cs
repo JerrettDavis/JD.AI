@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -7,9 +8,11 @@ namespace JD.AI.Core.Tools;
 /// A scratchpad/thinking tool that lets the agent reason out loud without side effects.
 /// The agent can use this to organize thoughts, plan steps, or reason through complex logic.
 /// </summary>
+[ToolPlugin("think")]
 public sealed class ThinkTools
 {
     [KernelFunction("think")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description(
         "Use this tool to think through complex problems, plan multi-step approaches, " +
         "or reason about trade-offs. This has no side effects — it simply returns your " +

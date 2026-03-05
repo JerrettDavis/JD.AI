@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using JD.AI.Core.Attributes;
 using JD.AI.Core.Governance;
 using JD.AI.Core.Governance.Audit;
 using Microsoft.SemanticKernel;
@@ -12,6 +13,7 @@ namespace JD.AI.Core.Tools;
 /// Policy-as-code tools for governance, audit, and trust evaluation.
 /// Exposes the governance infrastructure as agent-callable functions.
 /// </summary>
+[ToolPlugin("policy", RequiresInjection = true)]
 public sealed class PolicyTools
 {
     private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
@@ -28,6 +30,7 @@ public sealed class PolicyTools
     // ── Policy Evaluation ───────────────────────────────────
 
     [KernelFunction("policy_evaluate")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Evaluate whether a specific tool, provider, or model is allowed by the current policy. Returns the policy decision (Allow/Deny/RequireApproval) with reason.")]
     public string EvaluatePolicy(
         [Description("Type of evaluation: 'tool', 'provider', or 'model'")] string type,
@@ -86,6 +89,7 @@ public sealed class PolicyTools
     // ── Policy Listing ──────────────────────────────────────
 
     [KernelFunction("policy_list")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("List the currently resolved policy rules including tool/provider/model restrictions, budget limits, and data policies.")]
     public string ListPolicies()
     {
@@ -208,6 +212,7 @@ public sealed class PolicyTools
     // ── Audit ───────────────────────────────────────────────
 
     [KernelFunction("audit_query")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Query the audit log for recent events. Shows who did what and when, including policy decisions.")]
     public async Task<string> QueryAudit(
         [Description("Number of recent events to show (default 10, max 50)")] int count = 10)
@@ -247,6 +252,7 @@ public sealed class PolicyTools
     // ── RBAC ────────────────────────────────────────────────
 
     [KernelFunction("rbac_check")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Check current user's effective permissions based on policies. Shows what tools, providers, and models are accessible.")]
     public string CheckRbac(
         [Description("Optional user ID to check (defaults to current user)")] string? userId = null)
@@ -324,6 +330,7 @@ public sealed class PolicyTools
     // ── Policy Validation ───────────────────────────────────
 
     [KernelFunction("policy_validate")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Validate a policy YAML document for syntax and semantic correctness. Returns validation results.")]
     public static string ValidatePolicy(
         [Description("Policy YAML content to validate")] string yamlContent)
@@ -424,6 +431,7 @@ public sealed class PolicyTools
     // ── Policy Export ───────────────────────────────────────
 
     [KernelFunction("policy_export")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Export the current resolved policy as JSON for backup, comparison, or CI integration.")]
     public string ExportPolicy()
     {

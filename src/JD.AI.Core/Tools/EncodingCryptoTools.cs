@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -11,6 +12,7 @@ namespace JD.AI.Core.Tools;
 /// Encoding, decoding, hashing, and cryptographic utility tools
 /// for common developer operations.
 /// </summary>
+[ToolPlugin("encoding")]
 public sealed class EncodingCryptoTools
 {
     private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
@@ -18,6 +20,7 @@ public sealed class EncodingCryptoTools
     // ── Base64 ──────────────────────────────────────────────
 
     [KernelFunction("encode_base64")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Encode text to Base64. Useful for encoding credentials, binary data, or payloads.")]
     public static string EncodeBase64(
         [Description("The text to encode")] string text,
@@ -38,6 +41,7 @@ public sealed class EncodingCryptoTools
     }
 
     [KernelFunction("decode_base64")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Decode a Base64-encoded string back to plain text.")]
     public static string DecodeBase64(
         [Description("The Base64 string to decode")] string encoded)
@@ -67,6 +71,7 @@ public sealed class EncodingCryptoTools
     // ── URL Encoding ────────────────────────────────────────
 
     [KernelFunction("encode_url")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("URL-encode a string for safe use in URLs and query parameters.")]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1055:URI-like return values should not be strings", Justification = "Returns markdown-formatted text, not a URI")]
     public static string EncodeUrl(
@@ -77,6 +82,7 @@ public sealed class EncodingCryptoTools
     }
 
     [KernelFunction("decode_url")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Decode a URL-encoded string back to plain text.")]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1055:URI-like return values should not be strings", Justification = "Returns markdown-formatted text, not a URI")]
     public static string DecodeUrl(
@@ -96,6 +102,7 @@ public sealed class EncodingCryptoTools
     // ── JWT Decode ──────────────────────────────────────────
 
     [KernelFunction("decode_jwt")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Decode a JWT token to inspect its header and payload. WARNING: This does NOT verify the signature — use only for inspection/debugging.")]
     public static string DecodeJwt(
         [Description("The JWT token string")] string token)
@@ -183,6 +190,7 @@ public sealed class EncodingCryptoTools
     // ── Hashing ─────────────────────────────────────────────
 
     [KernelFunction("hash_compute")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Compute a cryptographic hash of the input text. Supports SHA256 (default), SHA512, SHA384, SHA1, and MD5.")]
     public static string ComputeHash(
         [Description("The text to hash")] string text,
@@ -236,6 +244,7 @@ public sealed class EncodingCryptoTools
     // ── GUID Generator ──────────────────────────────────────
 
     [KernelFunction("generate_guid")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Generate one or more GUIDs/UUIDs (v4). Useful for creating unique identifiers, correlation IDs, or test data.")]
     public static string GenerateGuid(
         [Description("Number of GUIDs to generate (default: 1, max: 20)")] int count = 1)

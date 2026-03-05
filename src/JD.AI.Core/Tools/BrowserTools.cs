@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -10,6 +11,7 @@ namespace JD.AI.Core.Tools;
 /// Browser automation tools for web interaction, navigation, and capture.
 /// Uses system browser for simple ops and headless Chrome/Edge for advanced ops.
 /// </summary>
+[ToolPlugin("browser")]
 public sealed class BrowserTools
 {
     private static readonly string[] BrowserPaths = OperatingSystem.IsWindows()
@@ -23,6 +25,7 @@ public sealed class BrowserTools
     // ── Status ──────────────────────────────────────────────
 
     [KernelFunction("browser_status")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Check browser availability and capabilities. Reports which browsers are installed and headless support.")]
     public static string GetBrowserStatus()
     {
@@ -60,6 +63,7 @@ public sealed class BrowserTools
     // ── Open ────────────────────────────────────────────────
 
     [KernelFunction("browser_open")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Open a URL in the user's default browser. Returns immediately after launching.")]
     public static string OpenInBrowser(
         [Description("The URL to open (e.g. https://github.com)")] string url)
@@ -89,6 +93,7 @@ public sealed class BrowserTools
     // ── Screenshot ──────────────────────────────────────────
 
     [KernelFunction("browser_screenshot")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Take a headless screenshot of a web page. Returns the path to the saved PNG file.")]
     public static async Task<string> ScreenshotAsync(
         [Description("URL to capture")] string url,
@@ -126,6 +131,7 @@ public sealed class BrowserTools
     // ── PDF ─────────────────────────────────────────────────
 
     [KernelFunction("browser_pdf")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Capture a web page as PDF using headless browser. Returns the path to the saved PDF.")]
     public static async Task<string> CapturePdfAsync(
         [Description("URL to capture")] string url,
@@ -160,6 +166,7 @@ public sealed class BrowserTools
     // ── Content extraction ──────────────────────────────────
 
     [KernelFunction("browser_content")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Extract text content from a web page using headless browser and dump-dom. Returns the HTML.")]
     public static async Task<string> GetContentAsync(
         [Description("URL to extract content from")] string url,
@@ -191,6 +198,7 @@ public sealed class BrowserTools
     // ── Console output ──────────────────────────────────────
 
     [KernelFunction("browser_console")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Run a URL in headless mode and capture JavaScript console output for debugging.")]
     public static async Task<string> GetConsoleOutputAsync(
         [Description("URL to load")] string url,
