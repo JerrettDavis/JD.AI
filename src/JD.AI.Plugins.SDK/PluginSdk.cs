@@ -82,8 +82,10 @@ public record PluginManifest
     public required string Version { get; init; }
     public string? Description { get; init; }
     public string? Author { get; init; }
+    public string? Publisher { get; init; }
     public string? License { get; init; }
     public string? EntryAssembly { get; init; }
+    public string? EntryAssemblySha256 { get; init; }
     public IReadOnlyList<string> Permissions { get; init; } = [];
     public IReadOnlyDictionary<string, string> Configuration { get; init; } =
         new Dictionary<string, string>();

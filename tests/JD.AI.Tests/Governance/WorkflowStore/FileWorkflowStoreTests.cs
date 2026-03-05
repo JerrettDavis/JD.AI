@@ -72,6 +72,13 @@ public class FileWorkflowStoreTests : IDisposable
         Directory.GetFiles(dir, "*.json").Should().HaveCount(2);
     }
 
+    [Fact]
+    public async Task Publish_InvalidSemVer_Throws()
+    {
+        var act = async () => await _store.PublishAsync(MakeWorkflow("bad", "not-semver"));
+        await act.Should().ThrowAsync<InvalidDataException>();
+    }
+
     // ── Catalog ───────────────────────────────────────────────
 
     [Fact]
@@ -95,6 +102,16 @@ public class FileWorkflowStoreTests : IDisposable
         var catalog = await _store.CatalogAsync();
         catalog.Should().HaveCount(1);
         catalog[0].Version.Should().Be("2.0.0");
+    }
+
+    [Fact]
+    public async Task Catalog_WithSemVerMinorOrdering_ReturnsActualLatest()
+    {
+        await _store.PublishAsync(MakeWorkflow("semver-catalog", "1.9.0"));
+        await _store.PublishAsync(MakeWorkflow("semver-catalog", "1.10.0"));
+
+        var catalog = await _store.CatalogAsync();
+        catalog.Should().ContainSingle(w => w.Name == "semver-catalog" && w.Version == "1.10.0");
     }
 
     [Fact]
@@ -303,6 +320,18 @@ public class FileWorkflowStoreTests : IDisposable
         result.Should().NotBeNull();
         result!.Name.Should().Be("get-test");
         result.Version.Should().Be("1.0.0");
+    }
+
+    [Fact]
+    public async Task Get_ByConstraint_ReturnsHighestMatching()
+    {
+        await _store.PublishAsync(MakeWorkflow("constraint-test", "1.2.0"));
+        await _store.PublishAsync(MakeWorkflow("constraint-test", "1.8.0"));
+        await _store.PublishAsync(MakeWorkflow("constraint-test", "2.0.0"));
+
+        var result = await _store.GetAsync("constraint-test", "^1.0.0");
+        result.Should().NotBeNull();
+        result!.Version.Should().Be("1.8.0");
     }
 
     [Fact]
