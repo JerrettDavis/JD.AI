@@ -59,7 +59,8 @@ public sealed class WorkflowIntegrityValidatorTests : IDisposable
         var validator = new WorkflowIntegrityValidator();
         var workflow = new AgentWorkflowDefinition
         {
-            Name = "empty", Version = "1.0.0",
+            Name = "empty",
+            Version = "1.0.0",
         };
 
         var result = validator.Validate(workflow);
@@ -140,7 +141,8 @@ public sealed class WorkflowIntegrityValidatorTests : IDisposable
         var validator = new WorkflowIntegrityValidator();
         var workflow = new AgentWorkflowDefinition
         {
-            Name = "bad-tool", Version = "1.0.0",
+            Name = "bad-tool",
+            Version = "1.0.0",
             Steps = [new AgentStepDefinition { Name = "step", Kind = AgentStepKind.Tool }],
         };
 
@@ -156,7 +158,8 @@ public sealed class WorkflowIntegrityValidatorTests : IDisposable
         var validator = new WorkflowIntegrityValidator();
         var workflow = new AgentWorkflowDefinition
         {
-            Name = "bad-loop", Version = "1.0.0",
+            Name = "bad-loop",
+            Version = "1.0.0",
             Steps = [new AgentStepDefinition { Name = "loop", Kind = AgentStepKind.Loop }],
         };
 

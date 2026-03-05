@@ -31,14 +31,14 @@ public class EnvironmentCredentialStoreTests
     [Fact]
     public async Task GetAsync_ExistingVar_ReturnsValue()
     {
-        const string key = "jdai:test:env:credential";
-        var envName = EnvironmentCredentialStore.KeyToEnvVar(key);
+        const string Key = "jdai:test:env:credential";
+        var envName = EnvironmentCredentialStore.KeyToEnvVar(Key);
 
         try
         {
             Environment.SetEnvironmentVariable(envName, "test-secret-value");
             var store = new EnvironmentCredentialStore();
-            var result = await store.GetAsync(key);
+            var result = await store.GetAsync(Key);
             result.Should().Be("test-secret-value");
         }
         finally
@@ -58,8 +58,8 @@ public class EnvironmentCredentialStoreTests
     [Fact]
     public async Task ListKeysAsync_FindsMatchingVars()
     {
-        const string key = "jdai:provider:testprov:apikey";
-        var envName = EnvironmentCredentialStore.KeyToEnvVar(key);
+        const string Key = "jdai:provider:testprov:apikey";
+        var envName = EnvironmentCredentialStore.KeyToEnvVar(Key);
 
         try
         {
