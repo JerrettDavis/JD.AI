@@ -21,12 +21,12 @@ public sealed class ClaudeCodeDetectorKernelTests
     }
 
     [Fact]
-    public void ConfigureKernelBuilder_WithOAuthToken_RegistersPromptCachingChatClient()
+    public void ConfigureKernelBuilder_WithApiKey_RegistersPromptCachingChatClient()
     {
         var builder = Kernel.CreateBuilder();
         var options = new ClaudeCodeSessionOptions
         {
-            OAuthToken = "sk-ant-oat-test-token",
+            ApiKey = "sk-ant-api-test-token",
         };
 
         ClaudeCodeDetector.ConfigureKernelBuilder(builder, options);
@@ -48,7 +48,7 @@ public sealed class ClaudeCodeDetectorKernelTests
     {
         var options = new ClaudeCodeSessionOptions
         {
-            OAuthToken = "sk-ant-oat-test-token",
+            ApiKey = "sk-ant-api-test-token",
         };
 
         Assert.Throws<ArgumentNullException>(() =>

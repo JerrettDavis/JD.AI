@@ -140,7 +140,11 @@ public sealed class ClaudeCodeDetector : IProviderDetector
     /// </summary>
     private static ClaudeCodeSessionOptions BuildSessionOptions()
     {
-        var options = new ClaudeCodeSessionOptions();
+        var options = new ClaudeCodeSessionOptions
+        {
+            // OAuth-based Claude Code session credentials are only valid in interactive usage.
+            EnableOAuthTokenSupport = Environment.UserInteractive,
+        };
 
         // Check if the default path would resolve to a service account home
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
