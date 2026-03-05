@@ -1,3 +1,6 @@
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json.Serialization;
 using JD.AI.Core.Providers.Credentials;
 using Microsoft.SemanticKernel;
 
@@ -5,14 +8,9 @@ namespace JD.AI.Core.Providers;
 
 /// <summary>
 /// Detects HuggingFace Inference API availability via API key.
-/// Uses the official Microsoft.SemanticKernel.Connectors.HuggingFace package.
+/// Dynamically discovers the most popular inference-ready chat models from
+/// the HuggingFace Hub, falling back to a curated catalog when offline.
 /// </summary>
-/// <remarks>
-/// Model catalog targets the HuggingFace serverless Inference API.
-/// Large models (70B+) may not be available on the free tier and can
-/// return HTTP 410 Gone — prefer smaller inference-ready models here.
-/// Use <c>/model search</c> to discover additional models dynamically.
-/// </remarks>
 public sealed class HuggingFaceDetector : ApiKeyProviderDetectorBase
 {
     private static readonly ProviderModelInfo[] KnownModelsCatalog =
@@ -31,6 +29,30 @@ public sealed class HuggingFaceDetector : ApiKeyProviderDetectorBase
 
     protected override IReadOnlyList<ProviderModelInfo> KnownModels => KnownModelsCatalog;
 
+    protected override async Task<IReadOnlyList<ProviderModelInfo>> DiscoverModelsAsync(
+        string apiKey, CancellationToken ct)
+    {
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+        const string url = "https://huggingface.co/api/models?" +
+                           "pipeline_tag=text-generation&" +
+                           "inference_provider=all&" +
+                           "sort=downloads&direction=-1&limit=10&" +
+                           "filter=conversational";
+
+        var models = await http.GetFromJsonAsync<List<HfModelEntry>>(url, ct)
+            .ConfigureAwait(false);
+
+        if (models is null or { Count: 0 })
+            return KnownModels;
+
+        return models
+            .Where(m => !string.IsNullOrEmpty(m.Id))
+            .Select(m => new ProviderModelInfo(m.Id!, FormatName(m.Id!), ProviderName))
+            .ToList();
+    }
+
     protected override void ConfigureKernel(IKernelBuilder builder, ProviderModelInfo model, string apiKey)
     {
 #pragma warning disable SKEXP0070
@@ -39,4 +61,16 @@ public sealed class HuggingFaceDetector : ApiKeyProviderDetectorBase
             apiKey: apiKey);
 #pragma warning restore SKEXP0070
     }
+
+    private static string FormatName(string id)
+    {
+        var name = id.Contains('/') ? id[(id.IndexOf('/') + 1)..] : id;
+        return name
+            .Replace("-Instruct", "", StringComparison.OrdinalIgnoreCase)
+            .Replace('-', ' ')
+            .Trim();
+    }
+
+    private sealed record HfModelEntry(
+        [property: JsonPropertyName("id")] string? Id);
 }
