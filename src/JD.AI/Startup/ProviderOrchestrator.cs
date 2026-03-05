@@ -168,9 +168,13 @@ internal static class ProviderOrchestrator
     {
         return AnsiConsole.Prompt(
             new SelectionPrompt<ProviderModelInfo>()
-                .Title("Select a model:")
+                .Title("[bold]Select a model[/] [dim](💬=Chat 🔧=Tools 👁=Vision 📐=Embed)[/]")
                 .PageSize(15)
-                .UseConverter(m => Markup.Escape($"[{m.ProviderName}] {m.DisplayName}"))
+                .UseConverter(m =>
+                {
+                    var badge = m.Capabilities.ToBadge();
+                    return $"{badge} [dim][[{Markup.Escape(m.ProviderName)}]][/] {Markup.Escape(m.DisplayName)}";
+                })
                 .AddChoices(models));
     }
 }
