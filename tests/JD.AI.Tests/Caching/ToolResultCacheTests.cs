@@ -14,7 +14,7 @@ public sealed class ToolResultCacheTests : IDisposable
             _backingCache,
             cacheableTools: ["read_file", "web_fetch"],
             defaultTtl: TimeSpan.FromMinutes(5),
-            toolTtls: new Dictionary<string, TimeSpan>
+            toolTtls: new Dictionary<string, TimeSpan>(StringComparer.OrdinalIgnoreCase)
             {
                 ["web_fetch"] = TimeSpan.FromMinutes(1),
             });
