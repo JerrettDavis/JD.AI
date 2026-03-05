@@ -413,7 +413,7 @@ public sealed class AgentLoop
                 return true;
 
             // .NET's HttpIOException (System.Net.Http) with HttpRequestError.ResponseEnded
-            if (current.GetType().Name == "HttpIOException")
+            if (string.Equals(current.GetType().Name, "HttpIOException", StringComparison.Ordinal))
                 return true;
         }
 
