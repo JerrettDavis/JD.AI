@@ -13,7 +13,7 @@ public sealed class PolicyWatcher : IDisposable
     private readonly ILogger? _logger;
     private readonly TimeSpan _debounce;
     private CancellationTokenSource? _debounceCts;
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private bool _disposed;
 
     public PolicyWatcher(

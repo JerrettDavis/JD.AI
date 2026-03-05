@@ -10,8 +10,6 @@ namespace JD.AI.Core.Providers.Credentials;
 /// </summary>
 public sealed class EnvironmentCredentialStore : ICredentialStore
 {
-    private const string Prefix = "JDAI_";
-
     public bool IsAvailable => true;
     public string StoreName => "Environment Variable Store";
 

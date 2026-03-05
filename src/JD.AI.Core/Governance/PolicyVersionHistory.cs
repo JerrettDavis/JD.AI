@@ -17,7 +17,7 @@ public sealed class PolicyVersionHistory
     };
 
     private readonly string _historyPath;
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
 
     public PolicyVersionHistory(string historyFilePath)
     {
