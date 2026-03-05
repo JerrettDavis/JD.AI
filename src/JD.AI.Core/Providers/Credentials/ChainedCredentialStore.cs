@@ -7,7 +7,7 @@ namespace JD.AI.Core.Providers.Credentials;
 /// </summary>
 public sealed class ChainedCredentialStore : ICredentialStore
 {
-    private readonly IReadOnlyList<ICredentialStore> _stores;
+    private readonly List<ICredentialStore> _stores;
 
     public ChainedCredentialStore(IEnumerable<ICredentialStore> stores)
     {
