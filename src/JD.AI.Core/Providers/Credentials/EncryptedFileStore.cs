@@ -464,6 +464,31 @@ public sealed class EncryptedFileStore : ICredentialStore
         return ms.ToArray();
     }
 
+    /// <summary>
+    /// Re-encrypts all stored credentials in place. On Windows this is a no-op
+    /// (DPAPI handles key rotation at the OS level). On Linux/macOS this reads
+    /// each credential and re-writes it, picking up any changes in the derived key material.
+    /// Returns the number of credentials rotated.
+    /// </summary>
+    public async Task<int> RotateKeysAsync(CancellationToken ct = default)
+    {
+        var allKeys = await ListKeysAsync("", ct).ConfigureAwait(false);
+        var rotated = 0;
+
+        foreach (var key in allKeys)
+        {
+            ct.ThrowIfCancellationRequested();
+            var value = await GetAsync(key, ct).ConfigureAwait(false);
+            if (value is not null)
+            {
+                await SetAsync(key, value, ct).ConfigureAwait(false);
+                rotated++;
+            }
+        }
+
+        return rotated;
+    }
+
     private KeyRingDocument ReadOrCreateKeyRingNoLock()
     {
         if (File.Exists(_keyRingPath))
