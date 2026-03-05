@@ -346,6 +346,9 @@ static void RunDaemon(string[] args)
     app.Services.GetRequiredService<SessionStore>().InitializeAsync().GetAwaiter().GetResult();
 
     // --- Middleware pipeline ---
+    // API version rewrite must precede routing so /api/* → /api/v1/* happens first
+    app.UseMiddleware<ApiVersionRewriteMiddleware>();
+    app.UseRouting();
     app.UseCors();
 
     if (gatewayConfig.Auth.Enabled)
@@ -357,8 +360,8 @@ static void RunDaemon(string[] args)
     // --- Blazor WASM Dashboard (static files at root) ---
     app.MapStaticAssets();
 
-    if (app.Environment.IsDevelopment())
-        app.MapOpenApi();
+    // --- OpenAPI (available in all environments, protected by auth middleware) ---
+    app.MapOpenApi();
 
     // --- Health ---
     app.MapHealthChecks("/health");

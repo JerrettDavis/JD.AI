@@ -237,6 +237,9 @@ var app = builder.Build();
 await app.Services.GetRequiredService<SessionStore>().InitializeAsync();
 
 // --- Middleware pipeline ---
+// API version rewrite must precede routing so /api/* → /api/v1/* happens first
+app.UseMiddleware<ApiVersionRewriteMiddleware>();
+app.UseRouting();
 app.UseCors();
 
 // --- Security middleware ---
@@ -250,10 +253,8 @@ if (gatewayConfig.RateLimit.Enabled)
     app.UseMiddleware<RateLimitMiddleware>();
 }
 
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+// --- OpenAPI (available in all environments, protected by auth middleware) ---
+app.MapOpenApi();
 
 // --- Health ---
 app.MapHealthChecks("/health");

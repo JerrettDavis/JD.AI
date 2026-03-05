@@ -6,7 +6,7 @@ public static class AgentEndpoints
 {
     public static void MapAgentEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/agents").WithTags("Agents");
+        var group = app.MapGroup("/api/v1/agents").WithTags("Agents");
 
         group.MapGet("/", (AgentPoolService pool) =>
         {
@@ -23,7 +23,7 @@ public static class AgentEndpoints
                 request.Model,
                 request.SystemPrompt,
                 ct);
-            return Results.Created($"/api/agents/{agentId}", new { Id = agentId });
+            return Results.Created($"/api/v1/agents/{agentId}", new { Id = agentId });
         })
         .WithName("SpawnAgent")
         .WithDescription("Spawn a new agent instance.");
