@@ -20,7 +20,7 @@ public sealed class StreamingFallbackTests
     [Fact]
     public void IsStreamingPrematureEnd_DetectsNestedResponseEnded()
     {
-        var inner = new Exception("The response ended prematurely. (ResponseEnded)");
+        var inner = new InvalidOperationException("The response ended prematurely. (ResponseEnded)");
         var outer = new HttpRequestException("An error occurred", inner);
         Assert.True(AgentLoop.IsStreamingPrematureEnd(outer));
     }
@@ -42,7 +42,7 @@ public sealed class StreamingFallbackTests
     [Fact]
     public void IsStreamingPrematureEnd_Detects500WithResponseEnded()
     {
-        var inner = new Exception("ResponseEnded");
+        var inner = new InvalidOperationException("ResponseEnded");
         var outer = new HttpRequestException(
             "Response status code does not indicate success: 500",
             inner);
