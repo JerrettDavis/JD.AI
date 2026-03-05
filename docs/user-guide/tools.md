@@ -163,7 +163,25 @@ Discover and orchestrate machines on your Tailscale Tailnet. Requires Tailscale 
 
 For security guidance and credential configuration, see the [Tools Reference](../reference/tools.md).
 
-## Safety tiers
+## Tool loadouts
+
+A **Tool Loadout** is a curated bundle of tools configured for a specific purpose. Instead of exposing every available tool to the agent (which increases token usage and can reduce tool-selection accuracy), a loadout defines exactly which tools are active.
+
+JD.AI ships five built-in loadouts:
+
+| Loadout | Tools included | Best for |
+|---------|----------------|----------|
+| `minimal` | Filesystem, Shell, think | Simple scripts or token-constrained models |
+| `developer` | Minimal + Git, GitHub, Search, Analysis, Memory | Code writing and review |
+| `research` | Minimal + Search, Web, Memory, Multimodal | Web research and document analysis |
+| `devops` | Minimal + Git, Network, Scheduling | Infrastructure and deployment tasks |
+| `full` | All tool categories | General-purpose work (default when no loadout is set) |
+
+Loadouts are primarily a developer and integration feature. Subagents use them automatically — for example, `explore` subagents receive the `research` loadout, and `task` subagents receive the `minimal` loadout.
+
+For developers building integrations, see [Tool Loadouts (developer guide)](../developer-guide/tool-loadouts.md).
+
+
 
 Every tool belongs to a safety tier that controls confirmation behavior:
 
@@ -191,3 +209,4 @@ Read-only tools run silently. Write operations ask once then auto-approve for th
 - [Commands](commands.md) — slash commands for managing tools and sessions
 - [Common Workflows](common-workflows.md) — see tools in action
 - [Tools Reference](../reference/tools.md) — full parameter documentation
+- [Tool Loadouts (developer guide)](../developer-guide/tool-loadouts.md) — curated tool bundles for agents
