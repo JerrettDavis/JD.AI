@@ -176,8 +176,20 @@ static void RunDaemon(string[] args)
     }
 
     builder.Services.AddSingleton<IAuthProvider>(authProvider);
-    builder.Services.AddSingleton<IRateLimiter>(
-        new SlidingWindowRateLimiter(gatewayConfig.RateLimit.MaxRequestsPerMinute));
+    if (string.Equals(gatewayConfig.RateLimit.Provider, "Redis", StringComparison.OrdinalIgnoreCase)
+        && !string.IsNullOrWhiteSpace(gatewayConfig.RateLimit.RedisConnectionString))
+    {
+        builder.Services.AddSingleton<IRateLimiter>(sp =>
+            new RedisRateLimiter(
+                StackExchange.Redis.ConnectionMultiplexer.Connect(gatewayConfig.RateLimit.RedisConnectionString),
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<RedisRateLimiter>>(),
+                gatewayConfig.RateLimit.MaxRequestsPerMinute));
+    }
+    else
+    {
+        builder.Services.AddSingleton<IRateLimiter>(
+            new SlidingWindowRateLimiter(gatewayConfig.RateLimit.MaxRequestsPerMinute));
+    }
 
     // --- Core services ---
     builder.Services.AddSingleton<IEventBus, InProcessEventBus>();

@@ -39,6 +39,12 @@ public sealed class RateLimitConfig
 {
     public bool Enabled { get; set; } = true;
     public int MaxRequestsPerMinute { get; set; } = 60;
+
+    /// <summary>Provider type: <c>"InProcess"</c> (default) or <c>"Redis"</c>.</summary>
+    public string Provider { get; set; } = "InProcess";
+
+    /// <summary>Redis connection string. Required when <see cref="Provider"/> is <c>"Redis"</c>.</summary>
+    public string? RedisConnectionString { get; set; }
 }
 
 public sealed class ChannelConfig
