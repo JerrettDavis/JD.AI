@@ -4,6 +4,8 @@
   href: extending.md
 - name: Custom Tools
   href: custom-tools.md
+- name: Tool Loadouts
+  href: tool-loadouts.md
 - name: Custom Providers
   href: custom-providers.md
 - name: Plugin SDK

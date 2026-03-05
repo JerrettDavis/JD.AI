@@ -292,5 +292,6 @@ public void Tool_IsDiscoverableByKernel()
 
 - [Architecture Overview](index.md) — tool pipeline and agent lifecycle
 - [Extending JD.AI](extending.md) — project layout and coding standards
+- [Tool Loadouts](tool-loadouts.md) — expose only relevant tools to each agent
 - [Tools Reference](../reference/tools.md) — all built-in tools
 - [Plugin SDK](plugins.md) — distributable plugins with tool registration

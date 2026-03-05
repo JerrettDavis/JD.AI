@@ -38,36 +38,45 @@ SubagentRunner.RunAsync(type, prompt)
 
 ## Subagent types and tool scoping
 
-Each type gets a specific tool subset:
+Each type gets a specific tool subset. When a `ToolLoadoutRegistry` is wired into `SubagentRunner`, tool scoping is driven by the loadout system automatically. Each subagent type maps to a built-in loadout:
 
-| Type | Tools | Model | Use case |
-|------|-------|-------|----------|
-| `explore` | `read_file`, `grep`, `glob`, `git_log`, `list_directory` | Fast/cheap | Read-only codebase analysis |
-| `task` | `run_command`, `read_file`, `list_directory` | Fast/cheap | Running builds, tests, scripts |
-| `plan` | `read_file`, `grep`, `glob`, `memory_store`, `memory_search` | Smart/capable | Implementation planning |
-| `review` | `read_file`, `grep`, `git_diff`, `git_log`, `git_status` | Smart/capable | Code review and analysis |
-| `general` | All tools | Same as parent | Full-capability fallback |
+| Type | Loadout | Default plugin categories | Use case |
+|------|---------|--------------------------|----------|
+| `explore` | `research` | Filesystem, Shell, Search, Web, Memory, Multimodal + think | Read-only codebase analysis |
+| `task` | `minimal` | Filesystem, Shell + think | Running builds, tests, scripts |
+| `plan` | `developer` | Minimal + Git, GitHub, Search, Analysis, Memory | Implementation planning |
+| `review` | `developer` | Minimal + Git, GitHub, Search, Analysis, Memory | Code review and analysis |
+| `general` | `full` | All 13 categories | Full-capability fallback |
+
+See [Tool Loadouts](tool-loadouts.md) for the full category and plugin mapping.
 
 ### Tool scoping implementation
 
-The runner builds tool sets per type:
+When constructed with an `IToolLoadoutRegistry`, `SubagentRunner` resolves the allowed plugin names for each type via the loadout system:
 
 ```csharp
-private IEnumerable<KernelPlugin> GetToolsForType(SubagentType type)
-{
-    return type switch
-    {
-        SubagentType.Explore => new[]
-        {
-            KernelPluginFactory.CreateFromObject(new FileTools(_cwd), "FileTools"),
-            KernelPluginFactory.CreateFromObject(new SearchTools(_cwd), "SearchTools"),
-            // git_log only — no write operations
-        },
-        SubagentType.General => _allTools, // Full access
-        // ...
-    };
-}
+// With loadout registry — category-driven, inherits from built-ins
+var runner = new SubagentRunner(parentSession, loadoutRegistry);
+// SubagentRunner.GetLoadoutName(SubagentType.Explore) → "research"
+// → ResolveActivePlugins("research", kernel.Plugins) → {"file", "shell", "search", "web", "memory", ...}
 ```
+
+Without a registry, a built-in fallback set of named plugins is used:
+
+```csharp
+// Fallback (no registry) — explicit plugin name lists
+private static HashSet<string> GetDefaultPluginSet(SubagentType type) => type switch
+{
+    SubagentType.Explore => ["file", "search", "git", "memory"],
+    SubagentType.Task    => ["shell", "file", "search"],
+    SubagentType.Plan    => ["file", "search", "memory", "git"],
+    SubagentType.Review  => ["file", "search", "git"],
+    SubagentType.General => ["file", "search", "git", "shell", "web", "memory"],
+    _                    => [],
+};
+```
+
+See [Tool Loadouts](tool-loadouts.md) for a full guide to creating and wiring loadouts.
 
 ## Execution modes
 
@@ -210,6 +219,7 @@ The `SubagentRunner` resolves model preference against the active provider's mod
 ## See also
 
 - [Team Orchestration](orchestration.md) — coordinating multiple subagents
+- [Tool Loadouts](tool-loadouts.md) — curate which tools each subagent type receives
 - [Architecture Overview](index.md) — agent lifecycle
 - [Custom Tools](custom-tools.md) — writing tools for subagent use
 - [Subagents user guide](subagents.md) — end-user subagent documentation
