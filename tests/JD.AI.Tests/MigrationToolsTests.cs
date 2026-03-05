@@ -184,8 +184,8 @@ public class MigrationToolsTests : IDisposable
     {
         var result = MigrationTools.GenerateParityMatrix();
 
-        Assert.Contains("## Claude → JD.AI Skill Parity Matrix", result);
-        Assert.Contains("| Claude Skill |", result);
+        Assert.Contains("## Skill Migration Matrix", result);
+        Assert.Contains("| Source Skill |", result);
         Assert.Contains("`brainstorming`", result);
         Assert.Contains("native", result);
     }

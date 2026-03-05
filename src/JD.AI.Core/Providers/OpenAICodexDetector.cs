@@ -37,26 +37,23 @@ public sealed class OpenAICodexDetector : IProviderDetector
                     Models: []);
             }
 
-            // Use model discovery to enumerate available models
+            // Use live model discovery first, then local cache as a supplement.
             var models = new List<ProviderModelInfo>();
-            AddUniqueModels(models, DiscoverModelsFromCache(options));
-
-            if (models.Count == 0)
+            try
             {
-                try
-                {
-                    var discovery = new CodexModelDiscovery();
-                    var discovered = await discovery.DiscoverModelsAsync(ct).ConfigureAwait(false);
-                    AddUniqueModels(models, discovered.Select(m =>
-                        new ProviderModelInfo(m.Id, m.Name ?? m.Id, ProviderName)));
-                }
-#pragma warning disable CA1031 // catch broad — discovery is optional
-                catch
-#pragma warning restore CA1031
-                {
-                    // Keep going to fallback list.
-                }
+                var discovery = new CodexModelDiscovery();
+                var discovered = await discovery.DiscoverModelsAsync(ct).ConfigureAwait(false);
+                AddUniqueModels(models, discovered.Select(m =>
+                    new ProviderModelInfo(m.Id, m.Name ?? m.Id, ProviderName)));
             }
+#pragma warning disable CA1031 // catch broad — discovery is optional
+            catch
+#pragma warning restore CA1031
+            {
+                // Keep going to cache/fallback discovery.
+            }
+
+            AddUniqueModels(models, DiscoverModelsFromCache(options));
 
             if (models.Count == 0)
             {

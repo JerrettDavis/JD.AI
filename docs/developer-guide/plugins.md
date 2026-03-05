@@ -329,8 +329,8 @@ Environment variables configured in `skills.json` are injected only for the curr
 
 ### Semantic Kernel mapping
 
-| Claude Code concept | Semantic Kernel equivalent |
-|---------------------|---------------------------|
+| External skill-system concept | Semantic Kernel equivalent |
+|-------------------------------|---------------------------|
 | `SKILL.md` | `KernelFunction` (prompt-based) |
 | `hooks.json` | `IFunctionInvocationFilter` / `IPromptRenderFilter` |
 | `plugin.json` | Plugin with dependency resolution |

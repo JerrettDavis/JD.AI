@@ -6,7 +6,7 @@ namespace JD.AI.Rendering;
 /// <summary>
 /// Interactive readline replacement with ghost-text completions, dropdown menu,
 /// command syntax highlighting, clipboard paste detection, and input history.
-/// Replaces Console.ReadLine() for a Claude Code-like editing experience.
+/// Replaces Console.ReadLine() with a modern terminal editing experience.
 /// </summary>
 [ExcludeFromCodeCoverage]
 public sealed class InteractiveInput

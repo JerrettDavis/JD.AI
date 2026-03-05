@@ -87,12 +87,12 @@ These override global defaults when JD.AI is launched from that project director
 
 JD.AI searches for instruction files in priority order. All discovered files are merged, with `JDAI.md` taking highest priority:
 
-| Priority | File | Compatibility |
+| Priority | File | Notes |
 |---|---|---|
 | 1 | `JDAI.md` | JD.AI native |
-| 2 | `CLAUDE.md` | Claude Code |
-| 3 | `AGENTS.md` | Codex CLI |
-| 4 | `.github/copilot-instructions.md` | GitHub Copilot |
+| 2 | `CLAUDE.md` | Recognized instruction filename |
+| 3 | `AGENTS.md` | Recognized instruction filename |
+| 4 | `.github/copilot-instructions.md` | Recognized instruction filename |
 | 5 | `.jdai/instructions.md` | Dot-directory variant |
 
 ### Example JDAI.md
@@ -168,7 +168,7 @@ File missing              → empty config (defaults)
 
 ## Skills, plugins, and hooks
 
-JD.AI uses native `.jdai` locations for skills/plugins and keeps `.claude` skills as lower-precedence compatibility inputs.
+JD.AI uses native `.jdai` locations for skills/plugins and keeps `.claude` skills as lower-precedence legacy inputs.
 
 ### Skills
 
@@ -177,8 +177,8 @@ JD.AI uses native `.jdai` locations for skills/plugins and keeps `.claude` skill
 | `<install>/skills/` | Bundled baseline skills |
 | `~/.jdai/skills/` | User-managed skills |
 | `.jdai/skills/` | Workspace skills |
-| `~/.claude/skills/` | Legacy compatibility skills (lower precedence) |
-| `.claude/skills/` | Legacy compatibility skills (lower precedence) |
+| `~/.claude/skills/` | Legacy skills (lower precedence) |
+| `.claude/skills/` | Legacy skills (lower precedence) |
 
 Skill runtime policy/config:
 
@@ -242,6 +242,8 @@ See [Skills and Plugins](../developer-guide/plugins.md) for lifecycle, precedenc
 | `autorun` | Auto-run tool confirmation behavior | `/config set autorun off` |
 | `permissions` | Global permission checks | `/config set permissions on` |
 | `plan_mode` | Plan mode state | `/config set plan_mode off` |
+
+Note: `output_style=json` is session-only and will not persist as startup default.
 
 ### Prompt caching defaults
 

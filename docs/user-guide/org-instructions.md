@@ -100,10 +100,10 @@ An org config repository is a plain directory. JD.AI scans it for the same file 
 ```text
 jdai-org-config/
 ├── JDAI.md                         # primary org instructions (loaded first)
-├── CLAUDE.md                       # loaded if JDAI.md not present
-├── AGENTS.md                       # loaded if neither above present
+├── CLAUDE.md                       # recognized instruction filename
+├── AGENTS.md                       # recognized instruction filename
 ├── .github/
-│   └── copilot-instructions.md     # Copilot-compatible fallback
+│   └── copilot-instructions.md     # recognized instruction filename
 └── .jdai/
     └── instructions.md             # dot-directory variant
 ```
@@ -168,8 +168,8 @@ Writing the path to this file persists the setting across terminal sessions with
 - Input validation on all public endpoints using FluentValidation
 
 ## Approved AI Providers
-- Claude Code (primary)
-- GitHub Copilot (secondary)
+- Claude Code
+- GitHub Copilot
 - Local models via LLamaSharp for offline work
 - Do not use unapproved providers on systems with access to production data
 ```
@@ -215,9 +215,9 @@ JD.AI scans the org config directory for instruction files using the same priori
 | Priority | File name | Notes |
 |:-:|---|---|
 | 1 | `JDAI.md` | JD.AI native format — loaded first |
-| 2 | `CLAUDE.md` | Claude Code compatibility |
-| 3 | `AGENTS.md` | Codex CLI / OpenAI Agents SDK compatibility |
-| 4 | `.github/copilot-instructions.md` | GitHub Copilot compatibility |
+| 2 | `CLAUDE.md` | Recognized instruction filename |
+| 3 | `AGENTS.md` | Recognized instruction filename |
+| 4 | `.github/copilot-instructions.md` | Recognized instruction filename |
 | 5 | `.jdai/instructions.md` | Dot-directory variant |
 
 All files that exist and are non-empty are loaded. Files whose content is entirely whitespace are skipped.
@@ -335,7 +335,7 @@ The following is a complete, production-quality org instruction file for an engi
 - Dependency audit: `dotnet list package --vulnerable` must be clean before release
 
 ## Approved AI Providers
-- Claude Code — primary, approved for all code on all systems
+- Claude Code — approved for all code on all systems
 - GitHub Copilot — approved for all code on all systems
 - Ollama (local) — approved for offline and privacy-sensitive work
 - LLamaSharp (local) — approved for air-gapped environments
