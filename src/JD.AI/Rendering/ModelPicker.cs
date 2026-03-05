@@ -31,7 +31,7 @@ internal static class ModelPicker
             .ToList();
 
         var prompt = new SelectionPrompt<ProviderModelInfo>()
-            .Title("[bold]Select a model[/] [dim](↑/↓ navigate, Enter select)[/]")
+            .Title("[bold]Select a model[/] [dim](💬=Chat 🔧=Tools 👁=Vision 📐=Embed | ↑/↓ navigate, Enter select)[/]")
             .PageSize(20)
             .MoreChoicesText("[dim]Scroll for more models...[/]")
             .HighlightStyle(new Style(Color.Aqua, decoration: Decoration.Bold))
