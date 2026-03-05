@@ -1,5 +1,5 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
+using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Core.Governance.Audit;
 
@@ -12,12 +12,7 @@ public sealed class FileAuditSink : IAuditSink, IDisposable
     private readonly string _baseDir;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        Converters = { new JsonStringEnumConverter() },
-    };
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Compact;
 
     public FileAuditSink(string baseDir)
     {

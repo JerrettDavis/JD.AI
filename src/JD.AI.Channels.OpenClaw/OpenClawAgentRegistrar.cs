@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using JD.AI.Core.Config;
+using JD.AI.Core.Infrastructure;
 using Microsoft.Extensions.Logging;
 
 namespace JD.AI.Channels.OpenClaw;
@@ -79,7 +80,7 @@ public sealed class OpenClawAgentRegistrar
     /// <summary>Prefix used to identify JD.AI-managed agents in OpenClaw config.</summary>
     public const string AgentIdPrefix = "jdai-";
 
-    private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions IndentedJson = JsonDefaults.Indented;
 
     private readonly OpenClawRpcClient _rpc;
     private readonly ILogger<OpenClawAgentRegistrar> _logger;

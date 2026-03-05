@@ -8,6 +8,7 @@ using JD.AI.Core.Agents;
 using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Config;
 using JD.AI.Core.Governance;
+using JD.AI.Core.Infrastructure;
 using JD.AI.Core.Mcp;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.PromptCaching;
@@ -2431,11 +2432,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         string Summary,
         string Recommendation);
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Options;
 
     private async Task<string> RunReviewAsync(string? arg, bool securityMode, CancellationToken ct)
     {

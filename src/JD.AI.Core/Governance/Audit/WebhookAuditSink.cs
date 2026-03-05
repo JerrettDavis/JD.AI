@@ -1,6 +1,6 @@
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
+using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Core.Governance.Audit;
 
@@ -13,12 +13,7 @@ public sealed class WebhookAuditSink : IAuditSink
     private readonly HttpClient _httpClient;
     private readonly string _url;
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        Converters = { new JsonStringEnumConverter() },
-    };
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Compact;
 
     public WebhookAuditSink(HttpClient httpClient, string url)
     {

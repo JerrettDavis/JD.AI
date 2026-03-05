@@ -96,11 +96,7 @@ public sealed class BatchEditTools
         return sb.ToString();
     }
 
-    private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true,
-    };
+    private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = JD.AI.Core.Infrastructure.JsonDefaults.Options;
 
     private sealed class EditEntry
     {

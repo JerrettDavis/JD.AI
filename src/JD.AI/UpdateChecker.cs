@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using JD.AI.Core.Config;
+using JD.AI.Core.Infrastructure;
 
 namespace JD.AI;
 
@@ -15,7 +16,7 @@ public static class UpdateChecker
     private const string PackageId = "JD.AI";
     private const string NuGetIndexUrl = "https://api.nuget.org/v3-flatcontainer/JD.AI/index.json";
     private static readonly TimeSpan CacheExpiry = TimeSpan.FromHours(24);
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Indented;
 
     private static string CacheDir => DataDirectories.UpdateCacheDir;
 
