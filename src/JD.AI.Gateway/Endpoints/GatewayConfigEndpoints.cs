@@ -15,7 +15,7 @@ public static class GatewayConfigEndpoints
 
     public static void MapGatewayConfigEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/gateway").WithTags("Gateway");
+        var group = app.MapGroup("/api/v1/gateway").WithTags("Gateway");
 
         // GET /api/gateway/config — current gateway configuration (redacted secrets)
         group.MapGet("/config", (GatewayConfig config) =>
@@ -141,7 +141,7 @@ public static class GatewayConfigEndpoints
             var id = await pool.SpawnAgentAsync(
                 def.Provider, def.Model, def.SystemPrompt, ct, def.Parameters,
                 def.FallbackProviders as IReadOnlyList<string> ?? [.. def.FallbackProviders]);
-            return Results.Created($"/api/agents/{id}", new
+            return Results.Created($"/api/v1/agents/{id}", new
             {
                 Id = id,
                 def.Provider,
