@@ -37,6 +37,7 @@ public sealed class OpenAICodexDetectorTests : IDisposable
                        { "slug": "hidden-model", "display_name": "hidden-model", "visibility": "hide", "supported_in_api": true, "priority": 1 },
                        { "slug": "gpt-5.3-codex", "display_name": "gpt-5.3-codex", "visibility": "list", "supported_in_api": true, "priority": 0 },
                        { "slug": "not-in-api", "display_name": "not-in-api", "visibility": "list", "supported_in_api": false, "priority": 2 },
+                       { "slug": "unknown-api-state", "display_name": "unknown-api-state", "visibility": "list", "supported_in_api": null, "priority": 2 },
                        { "slug": "duplicate-model", "display_name": "B-model", "visibility": "list", "supported_in_api": true, "priority": 5 },
                        { "slug": "duplicate-model", "display_name": "A-model", "visibility": "list", "supported_in_api": true, "priority": 3 }
                      ]

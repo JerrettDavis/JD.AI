@@ -145,7 +145,7 @@ public sealed class OpenAICodexDetector : IProviderDetector
                     continue;
 
                 var supportedInApi = !entry.TryGetProperty("supported_in_api", out var supportedElement)
-                    || supportedElement.ValueKind != JsonValueKind.False;
+                    || supportedElement.ValueKind == JsonValueKind.True;
                 if (!supportedInApi)
                     continue;
 
