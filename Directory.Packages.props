@@ -33,6 +33,10 @@
     <PackageVersion Include="LLamaSharp" Version="0.26.0" />
     <PackageVersion Include="LLamaSharp.Backend.Cpu" Version="0.26.0" />
   </ItemGroup>
+  <!-- Distributed infrastructure -->
+  <ItemGroup>
+    <PackageVersion Include="StackExchange.Redis" Version="2.8.41" />
+  </ItemGroup>
   <!-- Gateway -->
   <ItemGroup>
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.3" />
