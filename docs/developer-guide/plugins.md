@@ -152,7 +152,7 @@ public interface IPluginContext
 | `Kernel` | Register SK functions and plugins |
 | `Configuration` | Plugin-specific key-value settings from the manifest |
 | `OnEvent` | Subscribe to gateway events (`agent.spawned`, `agent.turn_complete`, etc.) |
-| `GetService<T>` | Resolve services from the gateway DI container |
+| `GetService<T>` | Resolve services from the gateway DI container (permission-gated) |
 | `Log` | Structured logging at Debug, Info, Warning, or Error level |
 
 ### Event handling
@@ -172,13 +172,19 @@ context.OnEvent("agent.turn_complete", async data =>
 
 ### Service resolution
 
-Access gateway services via DI:
+Access gateway services via DI. Plugins must declare matching service permissions in `plugin.json`:
 
 ```csharp
 var channelRegistry = context.GetService<IChannelRegistry>();
 var eventBus = context.GetService<IEventBus>();
 var sessionStore = context.GetService<SessionStore>();
 ```
+
+For `GetService<T>()`, declare either:
+
+- `service:*` (all DI service access)
+- `service:Namespace.TypeName` (full CLR type name)
+- `service:TypeName` (short type name)
 
 ### Plugin manifest
 
@@ -191,15 +197,33 @@ Distribute plugins with a `plugin.json`:
   "version": "1.2.0",
   "description": "GitHub PR reviews, issue management, and CI status.",
   "author": "JD.AI Contributors",
+  "publisher": "JD.AI Contributors",
   "license": "MIT",
   "entryAssembly": "JD.AI.Plugin.GitHub.dll",
-  "permissions": ["network", "read-events"],
+  "entryAssemblySha256": "C7E332D87854B9D4FEFD93A0D0414F6E594D256973A4689DCE8A273A7A6CE7A1",
+  "permissions": [
+    "event:*",
+    "service:JD.AI.Core.Events.IEventBus",
+    "service:ILoggerFactory"
+  ],
   "configuration": {
     "github_token": "",
     "default_org": ""
   }
 }
 ```
+
+### Plugin security policy
+
+- `permissions` are enforced at runtime with deny-by-default behavior.
+- `GetService<T>()` and `OnEvent(...)` requests are audited in host logs.
+- Optional trusted publisher enforcement is controlled via `JDAI_PLUGIN_TRUSTED_PUBLISHERS`:
+
+```bash
+export JDAI_PLUGIN_TRUSTED_PUBLISHERS="JD.AI Contributors,Contoso Security Team"
+```
+
+When set, plugin install/load fails unless `publisher` (or `author`) matches one of the trusted values.
 
 ### Plugin directories
 

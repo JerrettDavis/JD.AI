@@ -14,6 +14,8 @@ public sealed record InstalledPluginRecord
     public required string EntryAssemblyPath { get; init; }
     public required string ManifestPath { get; init; }
     public required string Source { get; init; }
+    public string? Publisher { get; set; }
+    public IReadOnlyList<string> Permissions { get; set; } = [];
     public bool Enabled { get; set; } = true;
     public DateTimeOffset InstalledAtUtc { get; init; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? LastEnabledAtUtc { get; set; }

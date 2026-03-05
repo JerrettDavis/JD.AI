@@ -57,5 +57,24 @@ public static class PluginManifestReader
             throw new InvalidDataException(
                 $"Manifest '{manifestPath}' has invalid id '{manifest.Id}'.");
         }
+
+        if (!string.IsNullOrWhiteSpace(manifest.EntryAssemblySha256))
+        {
+            var normalizedHash = manifest.EntryAssemblySha256
+                .Trim()
+                .Replace("-", string.Empty, StringComparison.Ordinal);
+            if (normalizedHash.Length != 64 || !normalizedHash.All(Uri.IsHexDigit))
+            {
+                throw new InvalidDataException(
+                    $"Manifest '{manifestPath}' has invalid field 'entryAssemblySha256'. " +
+                    "Expected 64 hex characters.");
+            }
+        }
+
+        if (manifest.Permissions.Any(static p => string.IsNullOrWhiteSpace(p)))
+        {
+            throw new InvalidDataException(
+                $"Manifest '{manifestPath}' contains empty values in 'permissions'.");
+        }
     }
 }

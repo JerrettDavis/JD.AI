@@ -71,6 +71,40 @@ public sealed class PluginManifestReaderTests
             PluginManifestReader.Validate(manifest, "plugin.json"));
     }
 
+    [Fact]
+    public void Validate_InvalidEntryAssemblySha256_Throws()
+    {
+        var manifest = new PluginManifest
+        {
+            Id = "sample.plugin",
+            Name = "Sample Plugin",
+            Version = "1.0.0",
+            EntryAssemblySha256 = "bad-hash",
+        };
+
+        var ex = Assert.Throws<InvalidDataException>(() =>
+            PluginManifestReader.Validate(manifest, "plugin.json"));
+
+        Assert.Contains("entryAssemblySha256", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Validate_EmptyPermissionValue_Throws()
+    {
+        var manifest = new PluginManifest
+        {
+            Id = "sample.plugin",
+            Name = "Sample Plugin",
+            Version = "1.0.0",
+            Permissions = ["service:*", " "],
+        };
+
+        var ex = Assert.Throws<InvalidDataException>(() =>
+            PluginManifestReader.Validate(manifest, "plugin.json"));
+
+        Assert.Contains("permissions", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string CreateTempDirectory()
     {
         var path = Path.Combine(Path.GetTempPath(), $"jdai-plugin-manifest-{Guid.NewGuid():N}");

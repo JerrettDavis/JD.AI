@@ -20,6 +20,8 @@ public sealed class PluginRegistryStoreTests
                 EntryAssemblyPath = Path.Combine(dir, "sample.plugin", "1.0.0", "Sample.Plugin.dll"),
                 ManifestPath = Path.Combine(dir, "sample.plugin", "1.0.0", "plugin.json"),
                 Source = "./sample",
+                Publisher = "acme",
+                Permissions = ["service:*", "event:*"],
                 Enabled = true,
             };
 
@@ -30,6 +32,8 @@ public sealed class PluginRegistryStoreTests
             Assert.NotNull(found);
             Assert.Single(list);
             Assert.Equal("Sample Plugin", found!.Name);
+            Assert.Equal("acme", found.Publisher);
+            Assert.Contains("service:*", found.Permissions);
 
             var removed = await store.RemoveAsync("sample.plugin");
             var empty = await store.ListAsync();

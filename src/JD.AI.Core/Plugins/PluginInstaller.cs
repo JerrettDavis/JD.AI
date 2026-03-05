@@ -52,6 +52,7 @@ public sealed class PluginInstaller : IPluginInstaller
         CopyDirectory(Path.GetDirectoryName(manifestPath)!, installPath);
 
         var entryAssemblyPath = ResolveEntryAssemblyPath(manifest, installPath);
+        PluginIntegrityVerifier.VerifyEntryAssemblyHash(manifest, entryAssemblyPath);
         _logger.LogInformation(
             "Installed plugin package {Id} v{Version} to {InstallPath}",
             manifest.Id, version, installPath);
