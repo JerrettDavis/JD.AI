@@ -1,3 +1,4 @@
+using JD.AI.Plugins.SDK;
 using Microsoft.Extensions.Logging;
 
 namespace JD.AI.Core.Plugins;
@@ -12,19 +13,22 @@ public sealed class PluginLifecycleManager : IPluginLifecycleManager
     private readonly IPluginRuntime _runtime;
     private readonly IPluginContextFactory _contextFactory;
     private readonly ILogger<PluginLifecycleManager> _logger;
+    private readonly PluginSecurityOptions _securityOptions;
 
     public PluginLifecycleManager(
         IPluginInstaller installer,
         PluginRegistryStore registry,
         IPluginRuntime runtime,
         IPluginContextFactory contextFactory,
-        ILogger<PluginLifecycleManager> logger)
+        ILogger<PluginLifecycleManager> logger,
+        PluginSecurityOptions? securityOptions = null)
     {
         _installer = installer;
         _registry = registry;
         _runtime = runtime;
         _contextFactory = contextFactory;
         _logger = logger;
+        _securityOptions = securityOptions ?? PluginSecurityOptions.FromEnvironment();
     }
 
     public async Task<IReadOnlyList<PluginStatusInfo>> ListAsync(CancellationToken ct = default)
@@ -59,6 +63,7 @@ public sealed class PluginLifecycleManager : IPluginLifecycleManager
         CancellationToken ct = default)
     {
         var artifact = await _installer.InstallAsync(source, ct).ConfigureAwait(false);
+        ValidateManifestSecurity(artifact.Manifest);
         var record = new InstalledPluginRecord
         {
             Id = artifact.Manifest.Id,
@@ -68,6 +73,11 @@ public sealed class PluginLifecycleManager : IPluginLifecycleManager
             EntryAssemblyPath = artifact.EntryAssemblyPath,
             ManifestPath = artifact.ManifestPath,
             Source = artifact.Source,
+            Publisher = ResolvePublisher(artifact.Manifest),
+            Permissions = artifact.Manifest.Permissions
+                .Where(static p => !string.IsNullOrWhiteSpace(p))
+                .Select(static p => p.Trim())
+                .ToArray(),
             Enabled = enable,
             InstalledAtUtc = DateTimeOffset.UtcNow,
         };
@@ -124,6 +134,7 @@ public sealed class PluginLifecycleManager : IPluginLifecycleManager
         await _runtime.UnloadAsync(existing.Id, ct).ConfigureAwait(false);
 
         var artifact = await _installer.InstallAsync(existing.Source, ct).ConfigureAwait(false);
+        ValidateManifestSecurity(artifact.Manifest);
         if (!string.Equals(artifact.Manifest.Id, existing.Id, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidDataException(
@@ -139,6 +150,11 @@ public sealed class PluginLifecycleManager : IPluginLifecycleManager
             EntryAssemblyPath = artifact.EntryAssemblyPath,
             ManifestPath = artifact.ManifestPath,
             Source = existing.Source,
+            Publisher = ResolvePublisher(artifact.Manifest),
+            Permissions = artifact.Manifest.Permissions
+                .Where(static p => !string.IsNullOrWhiteSpace(p))
+                .Select(static p => p.Trim())
+                .ToArray(),
             Enabled = existing.Enabled,
             InstalledAtUtc = existing.InstalledAtUtc,
             LastEnabledAtUtc = existing.LastEnabledAtUtc,
@@ -215,11 +231,28 @@ public sealed class PluginLifecycleManager : IPluginLifecycleManager
     {
         try
         {
+            var manifest = await PluginManifestReader.ReadAsync(record.ManifestPath, ct).ConfigureAwait(false);
+            ValidateManifestSecurity(manifest);
+            PluginIntegrityVerifier.VerifyEntryAssemblyHash(manifest, record.EntryAssemblyPath);
+
+            var permissions = manifest.Permissions
+                .Where(static p => !string.IsNullOrWhiteSpace(p))
+                .Select(static p => p.Trim())
+                .ToArray();
+
+            var secureContext = new PermissionEnforcedPluginContext(
+                _contextFactory.CreateContext(),
+                record.Id,
+                permissions,
+                _logger);
+
             await _runtime
-                .LoadAssemblyAsync(record.EntryAssemblyPath, _contextFactory.CreateContext(), record.Id, ct)
+                .LoadAssemblyAsync(record.EntryAssemblyPath, secureContext, record.Id, ct)
                 .ConfigureAwait(false);
             record.LastEnabledAtUtc = DateTimeOffset.UtcNow;
             record.LastError = null;
+            record.Permissions = permissions;
+            record.Publisher = ResolvePublisher(manifest);
             return true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -244,5 +277,40 @@ public sealed class PluginLifecycleManager : IPluginLifecycleManager
             InstalledAtUtc: record.InstalledAtUtc,
             LastEnabledAtUtc: record.LastEnabledAtUtc,
             LastError: record.LastError);
+    }
+
+    private void ValidateManifestSecurity(PluginManifest manifest)
+    {
+        if (!_securityOptions.EnforceTrustedPublishers)
+        {
+            return;
+        }
+
+        var publisher = ResolvePublisher(manifest);
+        if (string.IsNullOrWhiteSpace(publisher))
+        {
+            throw new InvalidDataException(
+                $"Plugin '{manifest.Id}' is missing publisher metadata. " +
+                "Set 'publisher' in plugin.json.");
+        }
+
+        if (!_securityOptions.TrustedPublishers.Contains(publisher))
+        {
+            throw new InvalidDataException(
+                $"Plugin '{manifest.Id}' publisher '{publisher}' is not in trusted publishers: " +
+                $"{string.Join(", ", _securityOptions.TrustedPublishers)}");
+        }
+    }
+
+    private static string? ResolvePublisher(PluginManifest manifest)
+    {
+        if (!string.IsNullOrWhiteSpace(manifest.Publisher))
+        {
+            return manifest.Publisher.Trim();
+        }
+
+        return string.IsNullOrWhiteSpace(manifest.Author)
+            ? null
+            : manifest.Author.Trim();
     }
 }

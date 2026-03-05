@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.Loader;
+using System.Text.Json;
 using JD.AI.Core.Plugins;
 using JD.AI.Plugins.SDK;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -20,7 +21,14 @@ public sealed class PluginLifecycleManagerTests
             var entryAssembly = Path.Combine(recordDir, "Sample.Plugin.dll");
             await File.WriteAllTextAsync(entryAssembly, "stub");
             var manifestPath = Path.Combine(recordDir, "plugin.json");
-            await File.WriteAllTextAsync(manifestPath, "{}");
+            await File.WriteAllTextAsync(manifestPath, JsonSerializer.Serialize(new PluginManifest
+            {
+                Id = "sample.plugin",
+                Name = "Sample Plugin",
+                Version = "1.2.3",
+                Publisher = "test-publisher",
+                EntryAssembly = "Sample.Plugin.dll",
+            }));
 
             var manager = CreateManager(
                 root,
@@ -132,7 +140,40 @@ public sealed class PluginLifecycleManagerTests
         }
     }
 
-    private static PluginLifecycleManager CreateManager(string root, IPluginInstaller installer)
+    [Fact]
+    public async Task InstallAsync_UntrustedPublisher_Throws()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var artifact = CreateInstallArtifact(root, "sample.plugin", "1.0.0", source: "catalog://sample.plugin");
+            var manager = CreateManager(
+                root,
+                new FakeInstaller(artifact),
+                new PluginSecurityOptions
+                {
+                    TrustedPublishers = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        "trusted-publisher",
+                    },
+                });
+
+            var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+                manager.InstallAsync("catalog://sample.plugin", enable: true));
+
+            Assert.Contains("publisher", ex.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("trusted-publisher", ex.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private static PluginLifecycleManager CreateManager(
+        string root,
+        IPluginInstaller installer,
+        PluginSecurityOptions? securityOptions = null)
     {
         var registry = new PluginRegistryStore(Path.Combine(root, "registry.json"));
         return new PluginLifecycleManager(
@@ -140,7 +181,8 @@ public sealed class PluginLifecycleManagerTests
             registry,
             new FakeRuntime(),
             new DelegatePluginContextFactory(() => new NoopPluginContext()),
-            NullLogger<PluginLifecycleManager>.Instance);
+            NullLogger<PluginLifecycleManager>.Instance,
+            securityOptions);
     }
 
     private static InstalledPluginRecord CreateRecord(string root, string id, bool enabled)
@@ -150,7 +192,14 @@ public sealed class PluginLifecycleManagerTests
         var entryAssemblyPath = Path.Combine(pluginDir, "Sample.Plugin.dll");
         File.WriteAllText(entryAssemblyPath, "stub");
         var manifestPath = Path.Combine(pluginDir, "plugin.json");
-        File.WriteAllText(manifestPath, "{}");
+        File.WriteAllText(manifestPath, JsonSerializer.Serialize(new PluginManifest
+        {
+            Id = id,
+            Name = id,
+            Version = "1.0.0",
+            Publisher = "test-publisher",
+            EntryAssembly = "Sample.Plugin.dll",
+        }));
 
         return new InstalledPluginRecord
         {
@@ -178,7 +227,14 @@ public sealed class PluginLifecycleManagerTests
         File.WriteAllText(entryAssembly, "stub");
 
         var manifestPath = Path.Combine(installPath, "plugin.json");
-        File.WriteAllText(manifestPath, "{}");
+        File.WriteAllText(manifestPath, JsonSerializer.Serialize(new PluginManifest
+        {
+            Id = id,
+            Name = "Sample Plugin",
+            Version = version,
+            Publisher = "test-publisher",
+            EntryAssembly = "Sample.Plugin.dll",
+        }));
 
         return new PluginInstallArtifact(
             Manifest: new PluginManifest
@@ -186,6 +242,7 @@ public sealed class PluginLifecycleManagerTests
                 Id = id,
                 Name = "Sample Plugin",
                 Version = version,
+                Publisher = "test-publisher",
                 EntryAssembly = "Sample.Plugin.dll",
             },
             InstallPath: installPath,
