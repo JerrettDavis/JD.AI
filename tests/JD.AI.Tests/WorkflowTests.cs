@@ -156,6 +156,108 @@ public class FileWorkflowCatalogTests : IDisposable
     }
 
     [Fact]
+    public async Task GetLatest_UsesSemVerOrdering()
+    {
+        await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "semver", Version = "1.9.0" });
+        await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "semver", Version = "1.10.0" });
+
+        var latest = await _catalog.GetAsync("semver");
+        latest.Should().NotBeNull();
+        latest!.Version.Should().Be("1.10.0");
+    }
+
+    [Fact]
+    public async Task Get_WithVersionConstraint_ResolvesHighestMatching()
+    {
+        await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "constrained", Version = "1.2.0" });
+        await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "constrained", Version = "1.9.0" });
+        await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "constrained", Version = "2.1.0" });
+
+        var caret = await _catalog.GetAsync("constrained", "^1.0.0");
+        var range = await _catalog.GetAsync("constrained", ">=1.0.0 <2.0.0");
+        var pin = await _catalog.GetAsync("constrained", "1.2.0");
+
+        caret!.Version.Should().Be("1.9.0");
+        range!.Version.Should().Be("1.9.0");
+        pin!.Version.Should().Be("1.2.0");
+    }
+
+    [Fact]
+    public async Task GetLatest_SkipsDeprecatedWhenPossible()
+    {
+        await _catalog.SaveAsync(new AgentWorkflowDefinition
+        {
+            Name = "deprecation",
+            Version = "1.0.0",
+            IsDeprecated = true,
+        });
+        await _catalog.SaveAsync(new AgentWorkflowDefinition
+        {
+            Name = "deprecation",
+            Version = "1.1.0",
+        });
+
+        var latest = await _catalog.GetAsync("deprecation", "latest");
+        latest!.Version.Should().Be("1.1.0");
+    }
+
+    [Fact]
+    public async Task Save_InvalidSemVer_Throws()
+    {
+        var act = async () => await _catalog.SaveAsync(new AgentWorkflowDefinition
+        {
+            Name = "invalid",
+            Version = "definitely-not-semver",
+        });
+
+        await act.Should().ThrowAsync<InvalidDataException>();
+    }
+
+    [Fact]
+    public async Task Save_BreakingChangeWithoutMajorBump_Throws()
+    {
+        await _catalog.SaveAsync(new AgentWorkflowDefinition
+        {
+            Name = "breaking",
+            Version = "1.0.0",
+            Steps = [AgentStepDefinition.RunSkill("analyze")],
+        });
+
+        var act = async () => await _catalog.SaveAsync(new AgentWorkflowDefinition
+        {
+            Name = "breaking",
+            Version = "1.1.0",
+            Steps = [AgentStepDefinition.InvokeTool("git.diff")],
+        });
+
+        await act.Should().ThrowAsync<InvalidDataException>();
+    }
+
+    [Fact]
+    public async Task Save_BreakingChangeWithMajorBump_IsAllowedAndCaptured()
+    {
+        await _catalog.SaveAsync(new AgentWorkflowDefinition
+        {
+            Name = "breaking-major",
+            Version = "1.0.0",
+            Steps = [AgentStepDefinition.RunSkill("analyze")],
+        });
+
+        await _catalog.SaveAsync(new AgentWorkflowDefinition
+        {
+            Name = "breaking-major",
+            Version = "2.0.0",
+            Steps = [AgentStepDefinition.InvokeTool("git.diff")],
+            MigrationGuidance = "Switch to git.diff first.",
+        });
+
+        var latest = await _catalog.GetAsync("breaking-major");
+        latest.Should().NotBeNull();
+        latest!.BreakingChanges.Should().NotBeEmpty();
+        latest.MigrationGuidance.Should().Be("Switch to git.diff first.");
+    }
+
+    [Fact]
     public async Task List_ReturnsAll()
     {
         await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "a", Version = "1.0" })
@@ -359,6 +461,50 @@ public class InMemoryWorkflowCatalogTests
         var latest = await _catalog.GetAsync("v");
         latest.Should().NotBeNull();
         latest!.Version.Should().Be("10.0", "10.0 > 9.0 > 2.0 with numeric ordering");
+    }
+
+    [Fact]
+    public async Task GetLatest_SkipsDeprecated()
+    {
+        await _catalog.SaveAsync(new AgentWorkflowDefinition
+        {
+            Name = "mem-latest",
+            Version = "1.0.0",
+            IsDeprecated = true,
+        });
+        await _catalog.SaveAsync(new AgentWorkflowDefinition
+        {
+            Name = "mem-latest",
+            Version = "1.1.0",
+        });
+
+        var latest = await _catalog.GetAsync("mem-latest");
+        latest.Should().NotBeNull();
+        latest!.Version.Should().Be("1.1.0");
+    }
+
+    [Fact]
+    public async Task Get_WithRangeSelector_ReturnsHighestMatch()
+    {
+        await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "mem-range", Version = "1.2.0" });
+        await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "mem-range", Version = "1.5.0" });
+        await _catalog.SaveAsync(new AgentWorkflowDefinition { Name = "mem-range", Version = "2.0.0" });
+
+        var selected = await _catalog.GetAsync("mem-range", "^1.0.0");
+        selected.Should().NotBeNull();
+        selected!.Version.Should().Be("1.5.0");
+    }
+
+    [Fact]
+    public async Task Save_InvalidSemVer_Throws()
+    {
+        var act = async () => await _catalog.SaveAsync(new AgentWorkflowDefinition
+        {
+            Name = "mem-invalid",
+            Version = "bad",
+        });
+
+        await act.Should().ThrowAsync<InvalidDataException>();
     }
 
     [Fact]

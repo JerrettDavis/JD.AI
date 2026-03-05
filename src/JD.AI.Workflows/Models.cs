@@ -9,6 +9,9 @@ public sealed class AgentWorkflowDefinition
     public string Name { get; set; } = string.Empty;
     public string Version { get; set; } = "1.0";
     public string Description { get; set; } = string.Empty;
+    public bool IsDeprecated { get; set; }
+    public string? MigrationGuidance { get; set; }
+    public IList<string> BreakingChanges { get; init; } = [];
     public IList<string> Tags { get; init; } = [];
     public IList<AgentStepDefinition> Steps { get; init; } = [];
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
