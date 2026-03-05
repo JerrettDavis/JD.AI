@@ -211,8 +211,8 @@ public sealed class ProcessSessionManager
             process.Kill(entireProcessTree: true);
         }
 
-        record.Completion.TrySetResult(true);
         Persist(record);
+        record.Completion.TrySetResult(true);
         snapshot = Snapshot(record);
         return true;
     }
