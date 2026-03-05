@@ -6,7 +6,7 @@ public static class RoutingEndpoints
 {
     public static void MapRoutingEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/routing").WithTags("Routing");
+        var group = app.MapGroup("/api/v1/routing").WithTags("Routing");
 
         // GET /api/routing/mappings — list channel→agent mappings
         group.MapGet("/mappings", (AgentRouter router) =>

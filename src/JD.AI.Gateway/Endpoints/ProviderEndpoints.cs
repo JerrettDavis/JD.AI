@@ -6,7 +6,7 @@ public static class ProviderEndpoints
 {
     public static void MapProviderEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/providers").WithTags("Providers");
+        var group = app.MapGroup("/api/v1/providers").WithTags("Providers");
 
         group.MapGet("/", async (IProviderRegistry registry, CancellationToken ct) =>
         {

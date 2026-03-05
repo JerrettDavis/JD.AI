@@ -6,7 +6,7 @@ public static class PluginEndpoints
 {
     public static void MapPluginEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/plugins").WithTags("Plugins");
+        var group = app.MapGroup("/api/v1/plugins").WithTags("Plugins");
 
         group.MapGet("/", async (IPluginLifecycleManager manager, CancellationToken ct) =>
         {
@@ -36,7 +36,7 @@ public static class PluginEndpoints
             try
             {
                 var plugin = await manager.InstallAsync(request.Source, request.Enable, ct).ConfigureAwait(false);
-                return Results.Created($"/api/plugins/{plugin.Id}", plugin);
+                return Results.Created($"/api/v1/plugins/{plugin.Id}", plugin);
             }
             catch (Exception ex)
             {

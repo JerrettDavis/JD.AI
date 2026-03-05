@@ -99,7 +99,7 @@ public sealed class GatewayOpsTools
 
         try
         {
-            var url = new Uri($"{_gatewayEndpoint}/api/gateway/config");
+            var url = new Uri($"{_gatewayEndpoint}/api/v1/gateway/config");
             using var response = await SharedClient.GetAsync(url).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
@@ -128,7 +128,7 @@ public sealed class GatewayOpsTools
 
         try
         {
-            var url = new Uri($"{_gatewayEndpoint}/api/channels");
+            var url = new Uri($"{_gatewayEndpoint}/api/v1/channels");
             using var response = await SharedClient.GetAsync(url).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
@@ -157,7 +157,7 @@ public sealed class GatewayOpsTools
 
         try
         {
-            var url = new Uri($"{_gatewayEndpoint}/api/agents");
+            var url = new Uri($"{_gatewayEndpoint}/api/v1/agents");
             using var response = await SharedClient.GetAsync(url).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
@@ -186,7 +186,7 @@ public sealed class GatewayOpsTools
 
         try
         {
-            var url = new Uri($"{_gatewayEndpoint}/api/sessions");
+            var url = new Uri($"{_gatewayEndpoint}/api/v1/sessions");
             using var response = await SharedClient.GetAsync(url).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 

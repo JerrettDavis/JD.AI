@@ -6,7 +6,7 @@ public static class MemoryEndpoints
 {
     public static void MapMemoryEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/memory").WithTags("Memory");
+        var group = app.MapGroup("/api/v1/memory").WithTags("Memory");
 
         // POST /api/memory/index — index a document
         group.MapPost("/index", async (IndexRequest req, IVectorStore store) =>

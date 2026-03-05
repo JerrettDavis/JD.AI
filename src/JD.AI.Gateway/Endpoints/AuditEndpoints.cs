@@ -6,7 +6,7 @@ public static class AuditEndpoints
 {
     public static void MapAuditEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/audit").WithTags("Audit");
+        var group = app.MapGroup("/api/v1/audit").WithTags("Audit");
 
         group.MapGet("/events", async (
             IQueryableAuditSink store,
