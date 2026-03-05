@@ -2950,6 +2950,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
         _onOutputStyleChanged(style);
         SaveSettings(TuiSettings.Load() with { OutputStyle = style });
+        if (style == OutputStyle.Json)
+            return "Output style set to json for this session only.";
         return $"Output style set to {style.ToString().ToLowerInvariant()}.";
     }
 
@@ -3063,6 +3065,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                     return $"Unknown output_style '{value}'.";
                 _onOutputStyleChanged?.Invoke(outputStyle);
                 SaveSettings(settings with { OutputStyle = outputStyle });
+                if (outputStyle == OutputStyle.Json)
+                    return "output_style=json (session-only)";
                 return $"output_style={outputStyle.ToString().ToLowerInvariant()}";
 
             case "spinner_style":

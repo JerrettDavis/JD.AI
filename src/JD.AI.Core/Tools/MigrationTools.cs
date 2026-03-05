@@ -254,14 +254,14 @@ public sealed class MigrationTools
 
     [KernelFunction("migration_parity")]
     [ToolSafetyTier(SafetyTier.AutoApprove)]
-    [Description("Generate a parity matrix showing Claude skill equivalents in JD.AI. Shows what's native, planned, or not applicable.")]
+    [Description("Generate a migration matrix showing source skill mappings in JD.AI. Shows what's native, planned, or not applicable.")]
     public static string GenerateParityMatrix()
     {
         var mappings = GetKnownMappings();
         var sb = new StringBuilder();
-        sb.AppendLine("## Claude → JD.AI Skill Parity Matrix");
+        sb.AppendLine("## Skill Migration Matrix");
         sb.AppendLine();
-        sb.AppendLine("| Claude Skill | JD.AI Status | JD.AI Equivalent | Notes |");
+        sb.AppendLine("| Source Skill | JD.AI Status | JD.AI Equivalent | Notes |");
         sb.AppendLine("|-------------|-------------|------------------|-------|");
 
         foreach (var (name, mapping) in mappings.OrderBy(m => m.Key))
@@ -314,7 +314,7 @@ public sealed class MigrationTools
             plugins = plugins.Select(p => new { p.Name, p.Description, p.Path }).ToArray(),
             mappings = GetKnownMappings().Select(m => new
             {
-                claudeSkill = m.Key,
+                sourceSkill = m.Key,
                 m.Value.Status,
                 m.Value.Equivalent,
                 m.Value.Notes

@@ -173,7 +173,7 @@ public static class ChatRenderer
             return;
         }
 
-        // Claude-style compact tool display
+        // Compact tool-call display used by rich output mode
         var header = string.IsNullOrWhiteSpace(args)
             ? toolName
             : $"{toolName}({args})";

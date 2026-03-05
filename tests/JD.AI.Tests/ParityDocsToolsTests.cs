@@ -11,9 +11,8 @@ public class ParityDocsToolsTests
     {
         var result = ParityDocsTools.GenerateCompatibilityMatrix();
 
-        Assert.Contains("## JD.AI Competitive Parity Matrix", result);
+        Assert.Contains("## JD.AI Capability Matrix", result);
         Assert.Contains("| Feature |", result);
-        Assert.Contains("Claude Code", result);
         Assert.Contains("OpenClaw", result);
     }
 
@@ -40,7 +39,7 @@ public class ParityDocsToolsTests
     {
         var result = ParityDocsTools.GenerateCompatibilityMatrix();
 
-        Assert.Contains("### Parity Scores", result);
+        Assert.Contains("### Coverage Scores", result);
         Assert.Contains("**JD.AI**:", result);
     }
 
@@ -225,7 +224,6 @@ public class ParityDocsToolsTests
         var json = ParityDocsTools.ExportParityData();
 
         Assert.Contains("\"jdai\":", json);
-        Assert.Contains("\"claude\":", json);
         Assert.Contains("\"total\":", json);
     }
 }

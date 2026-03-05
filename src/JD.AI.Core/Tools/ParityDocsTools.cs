@@ -8,7 +8,7 @@ using Microsoft.SemanticKernel;
 namespace JD.AI.Core.Tools;
 
 /// <summary>
-/// Tools for generating competitive parity documentation, compatibility matrices,
+/// Tools for generating capability documentation, compatibility matrices,
 /// migration guides, and governance runbooks from source metadata.
 /// </summary>
 [ToolPlugin("parityDocs")]
@@ -20,7 +20,7 @@ public sealed class ParityDocsTools
 
     [KernelFunction("parity_compatibility_matrix")]
     [ToolSafetyTier(SafetyTier.AutoApprove)]
-    [Description("Generate a versioned compatibility matrix comparing JD.AI features against Claude Code, OpenClaw, GitHub Copilot, and Codex CLI.")]
+    [Description("Generate a versioned compatibility matrix covering JD.AI features across supported agent ecosystems.")]
     public static string GenerateCompatibilityMatrix(
         [Description("Optional category filter: 'tools', 'skills', 'mcp', 'governance', 'runtime', or 'all' (default)")] string? category = null)
     {
@@ -31,15 +31,15 @@ public sealed class ParityDocsTools
                 string.Equals(f.Category, category, StringComparison.OrdinalIgnoreCase)).ToList();
 
         var sb = new StringBuilder();
-        sb.AppendLine("## JD.AI Competitive Parity Matrix");
+        sb.AppendLine("## JD.AI Capability Matrix");
         sb.AppendLine($"*Generated {DateTime.UtcNow:yyyy-MM-dd}*");
         sb.AppendLine();
-        sb.AppendLine("| Feature | Category | JD.AI | Claude Code | OpenClaw | Copilot CLI | Codex CLI |");
-        sb.AppendLine("|---------|----------|-------|-------------|----------|-------------|-----------|");
+        sb.AppendLine("| Feature | Category | JD.AI | OpenClaw | Copilot CLI | Codex CLI |");
+        sb.AppendLine("|---------|----------|-------|----------|-------------|-----------|");
 
         foreach (var f in features.OrderBy(f => f.Category).ThenBy(f => f.Name))
         {
-            sb.AppendLine($"| {f.Name} | {f.Category} | {Icon(f.JdAi)} | {Icon(f.Claude)} | {Icon(f.OpenClaw)} | {Icon(f.Copilot)} | {Icon(f.Codex)} |");
+            sb.AppendLine($"| {f.Name} | {f.Category} | {Icon(f.JdAi)} | {Icon(f.OpenClaw)} | {Icon(f.Copilot)} | {Icon(f.Codex)} |");
         }
 
         sb.AppendLine();
@@ -52,7 +52,7 @@ public sealed class ParityDocsTools
 
     [KernelFunction("parity_migration_guide")]
     [ToolSafetyTier(SafetyTier.AutoApprove)]
-    [Description("Generate a migration guide for users switching from a specific competitor to JD.AI.")]
+    [Description("Generate a migration guide for users switching from a specific source platform to JD.AI.")]
     public static string GenerateMigrationGuide(
         [Description("Source platform: 'claude', 'openclaw', 'copilot', or 'codex'")] string source)
     {
@@ -244,7 +244,6 @@ public sealed class ParityDocsTools
                 f.Name,
                 f.Category,
                 jdai = f.JdAi,
-                claude = f.Claude,
                 openclaw = f.OpenClaw,
                 copilot = f.Copilot,
                 codex = f.Codex
@@ -252,7 +251,6 @@ public sealed class ParityDocsTools
             scores = new
             {
                 jdai = features.Count(f => f.JdAi is "full" or "native"),
-                claude = features.Count(f => f.Claude is "full" or "native"),
                 openclaw = features.Count(f => f.OpenClaw is "full" or "native"),
                 copilot = features.Count(f => f.Copilot is "full" or "native"),
                 codex = features.Count(f => f.Codex is "full" or "native"),
@@ -276,14 +274,13 @@ public sealed class ParityDocsTools
 
     private static void AppendScoreSummary(StringBuilder sb, List<FeatureEntry> features)
     {
-        sb.AppendLine("### Parity Scores");
+        sb.AppendLine("### Coverage Scores");
 
         int Score(Func<FeatureEntry, string> selector) =>
             features.Count(f => selector(f) is "full" or "native");
 
         var total = features.Count;
         sb.AppendLine($"- **JD.AI**: {Score(f => f.JdAi)}/{total}");
-        sb.AppendLine($"- **Claude Code**: {Score(f => f.Claude)}/{total}");
         sb.AppendLine($"- **OpenClaw**: {Score(f => f.OpenClaw)}/{total}");
         sb.AppendLine($"- **Copilot CLI**: {Score(f => f.Copilot)}/{total}");
         sb.AppendLine($"- **Codex CLI**: {Score(f => f.Codex)}/{total}");
@@ -426,7 +423,7 @@ public sealed class ParityDocsTools
     {
         "claude" =>
         [
-            new("claude", "jdai", "Direct replacement"),
+            new("claude", "jdai", "Equivalent command"),
             new("claude -p \"query\"", "jdai -p \"query\"", "Print mode"),
             new("claude --continue", "jdai --continue", "Resume session"),
             new("claude --model", "jdai --model", "Model selection"),
@@ -438,7 +435,7 @@ public sealed class ParityDocsTools
         ],
         "openclaw" =>
         [
-            new("openclaw", "jdai", "Direct replacement"),
+            new("openclaw", "jdai", "Equivalent command"),
             new("openclaw chat", "jdai", "TUI is default mode"),
             new("openclaw gateway", "jdai gateway", "Gateway mode"),
             new("openclaw skills list", "skills_parity_matrix tool", "Via agent tools"),
@@ -452,7 +449,7 @@ public sealed class ParityDocsTools
         ],
         "codex" =>
         [
-            new("codex", "jdai", "Direct replacement"),
+            new("codex", "jdai", "Equivalent command"),
             new("codex --model", "jdai --model", "Model selection"),
             new("codex --approval-mode", "jdai --permission-mode", "Similar concept"),
             new("AGENTS.md", "JDAI.md", "Auto-detected (both work)"),
@@ -465,53 +462,53 @@ public sealed class ParityDocsTools
         return
         [
             // Tools
-            new("File read/write/edit", "tools", "full", "full", "full", "full", "full"),
-            new("Shell execution", "tools", "full", "full", "full", "partial", "full"),
-            new("Git operations", "tools", "full", "full", "full", "partial", "full"),
-            new("Web fetch", "tools", "full", "full", "full", "partial", "none"),
-            new("Web search", "tools", "full", "full", "partial", "partial", "none"),
-            new("Code search (grep/glob)", "tools", "full", "full", "full", "full", "full"),
-            new("Memory/embeddings", "tools", "full", "partial", "full", "none", "none"),
-            new("Notebook execution", "tools", "full", "none", "partial", "none", "none"),
-            new("Clipboard access", "tools", "full", "full", "none", "none", "none"),
-            new("Batch file editing", "tools", "full", "full", "none", "none", "partial"),
-            new("Multimodal (image/PDF)", "tools", "full", "full", "partial", "partial", "none"),
-            new("Browser automation", "tools", "full", "none", "partial", "none", "none"),
+            new("File read/write/edit", "tools", "full", "full", "full", "full"),
+            new("Shell execution", "tools", "full", "full", "partial", "full"),
+            new("Git operations", "tools", "full", "full", "partial", "full"),
+            new("Web fetch", "tools", "full", "full", "partial", "none"),
+            new("Web search", "tools", "full", "partial", "partial", "none"),
+            new("Code search (grep/glob)", "tools", "full", "full", "full", "full"),
+            new("Memory/embeddings", "tools", "full", "full", "none", "none"),
+            new("Notebook execution", "tools", "full", "partial", "none", "none"),
+            new("Clipboard access", "tools", "full", "none", "none", "none"),
+            new("Batch file editing", "tools", "full", "none", "none", "partial"),
+            new("Multimodal (image/PDF)", "tools", "full", "partial", "partial", "none"),
+            new("Browser automation", "tools", "full", "partial", "none", "none"),
 
             // Skills
-            new("Project instructions (CLAUDE.md/JDAI.md)", "skills", "full", "full", "full", "full", "full"),
-            new("Skill loading (directory)", "skills", "full", "full", "full", "none", "none"),
-            new("Plugin system", "skills", "full", "full", "full", "none", "none"),
-            new("Skill hot-reload", "skills", "full", "full", "full", "none", "none"),
-            new("Skill trust/gating", "skills", "full", "partial", "partial", "none", "none"),
+            new("Project instructions (CLAUDE.md/JDAI.md)", "skills", "full", "full", "full", "full"),
+            new("Skill loading (directory)", "skills", "full", "full", "none", "none"),
+            new("Plugin system", "skills", "full", "full", "none", "none"),
+            new("Skill hot-reload", "skills", "full", "full", "none", "none"),
+            new("Skill trust/gating", "skills", "full", "partial", "none", "none"),
 
             // MCP
-            new("MCP stdio transport", "mcp", "full", "full", "full", "none", "none"),
-            new("MCP SSE transport", "mcp", "full", "full", "full", "none", "none"),
-            new("MCP StreamableHTTP", "mcp", "planned", "full", "planned", "none", "none"),
-            new("MCP OAuth", "mcp", "planned", "full", "planned", "none", "none"),
+            new("MCP stdio transport", "mcp", "full", "full", "none", "none"),
+            new("MCP SSE transport", "mcp", "full", "full", "none", "none"),
+            new("MCP StreamableHTTP", "mcp", "planned", "planned", "none", "none"),
+            new("MCP OAuth", "mcp", "planned", "planned", "none", "none"),
 
             // Governance
-            new("Tool safety tiers", "governance", "full", "partial", "partial", "none", "partial"),
-            new("Policy-as-code", "governance", "full", "none", "partial", "none", "none"),
-            new("RBAC", "governance", "full", "none", "partial", "none", "none"),
-            new("Audit logging", "governance", "full", "none", "partial", "none", "none"),
-            new("Budget controls", "governance", "full", "partial", "none", "none", "none"),
-            new("Signed capabilities", "governance", "planned", "none", "planned", "none", "none"),
+            new("Tool safety tiers", "governance", "full", "partial", "none", "partial"),
+            new("Policy-as-code", "governance", "full", "partial", "none", "none"),
+            new("RBAC", "governance", "full", "partial", "none", "none"),
+            new("Audit logging", "governance", "full", "partial", "none", "none"),
+            new("Budget controls", "governance", "full", "none", "none", "none"),
+            new("Signed capabilities", "governance", "planned", "planned", "none", "none"),
 
             // Runtime
-            new("Multi-provider", "runtime", "full", "none", "none", "none", "none"),
-            new("Subagents", "runtime", "full", "full", "full", "full", "partial"),
-            new("Team orchestration", "runtime", "full", "partial", "partial", "none", "none"),
-            new("Session persistence", "runtime", "full", "full", "full", "partial", "none"),
-            new("Git checkpointing", "runtime", "full", "full", "partial", "none", "none"),
-            new("Gateway/multi-channel", "runtime", "full", "none", "full", "none", "none"),
-            new("Daemon mode", "runtime", "full", "none", "full", "none", "none"),
-            new("Dashboard UI", "runtime", "full", "none", "partial", "none", "none"),
+            new("Multi-provider", "runtime", "full", "none", "none", "none"),
+            new("Subagents", "runtime", "full", "full", "full", "partial"),
+            new("Team orchestration", "runtime", "full", "partial", "none", "none"),
+            new("Session persistence", "runtime", "full", "full", "partial", "none"),
+            new("Git checkpointing", "runtime", "full", "partial", "none", "none"),
+            new("Gateway/multi-channel", "runtime", "full", "full", "none", "none"),
+            new("Daemon mode", "runtime", "full", "full", "none", "none"),
+            new("Dashboard UI", "runtime", "full", "partial", "none", "none"),
         ];
     }
 
-    private sealed record FeatureEntry(string Name, string Category, string JdAi, string Claude, string OpenClaw, string Copilot, string Codex);
+    private sealed record FeatureEntry(string Name, string Category, string JdAi, string OpenClaw, string Copilot, string Codex);
     private sealed record CommandMapping(string Source, string Target, string Notes);
     private sealed record ThreatEntry(string Name, string Severity, string Vector, string Mitigation, string Status);
 }

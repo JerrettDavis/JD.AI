@@ -16,9 +16,9 @@ JD.AI works out of the box with sensible defaults. This page covers the main way
 JD.AI looks for instruction files in this priority order:
 
 1. `JDAI.md` — JD.AI native format
-2. `CLAUDE.md` — Claude Code compatibility
-3. `AGENTS.md` — Codex CLI compatibility
-4. `.github/copilot-instructions.md` — Copilot compatibility
+2. `CLAUDE.md` — recognized instruction filename
+3. `AGENTS.md` — recognized instruction filename
+4. `.github/copilot-instructions.md` — recognized instruction filename
 5. `.jdai/instructions.md` — dot-directory variant
 
 All discovered files are merged, with `JDAI.md` taking highest priority when directives overlap.
