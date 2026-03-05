@@ -14,8 +14,6 @@ RUN dotnet publish src/JD.AI/JD.AI.csproj \
 FROM mcr.microsoft.com/dotnet/runtime:10.0 AS runtime
 WORKDIR /app
 
-RUN adduser --disabled-password --gecos "" --uid 10001 jdai
-
 COPY --from=build /app/publish .
-USER 10001
+USER $APP_UID
 ENTRYPOINT ["dotnet", "JD.AI.dll"]
