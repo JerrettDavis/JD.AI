@@ -14,12 +14,36 @@ public sealed class InMemoryWorkflowCatalog : IWorkflowCatalog
     /// <inheritdoc/>
     public Task SaveAsync(AgentWorkflowDefinition definition, CancellationToken ct = default)
     {
+        var nextVersion = WorkflowVersioning.ParseVersionOrThrow(definition.Version);
+
         lock (_lock)
         {
             if (!_store.TryGetValue(definition.Name, out var versions))
             {
                 versions = [];
                 _store[definition.Name] = versions;
+            }
+
+            var previous = WorkflowVersioning.SelectVersion(versions, "latest");
+            if (previous is not null &&
+                !string.Equals(previous.Version, definition.Version, StringComparison.Ordinal))
+            {
+                var previousVersion = WorkflowVersioning.ParseVersionOrThrow(previous.Version);
+                var breaking = WorkflowVersioning.DetectBreakingChanges(previous, definition);
+                definition.BreakingChanges.Clear();
+                foreach (var change in breaking)
+                    definition.BreakingChanges.Add(change);
+
+                if (breaking.Count > 0 && nextVersion.Major <= previousVersion.Major)
+                {
+                    throw new InvalidDataException(
+                        $"Breaking changes detected between versions {previous.Version} and {definition.Version}. " +
+                        "Increment major version for breaking workflow changes.");
+                }
+            }
+            else
+            {
+                definition.BreakingChanges.Clear();
             }
 
             versions.RemoveAll(w =>
@@ -39,12 +63,7 @@ public sealed class InMemoryWorkflowCatalog : IWorkflowCatalog
             if (!_store.TryGetValue(name, out var versions))
                 return Task.FromResult<AgentWorkflowDefinition?>(null);
 
-            var result = version is not null
-                ? versions.FirstOrDefault(w =>
-                    string.Equals(w.Version, version, StringComparison.Ordinal))
-                : versions.OrderByDescending(w => ParseVersion(w.Version))
-                          .FirstOrDefault();
-
+            var result = WorkflowVersioning.SelectVersion(versions, version);
             return Task.FromResult(result);
         }
     }
@@ -56,7 +75,9 @@ public sealed class InMemoryWorkflowCatalog : IWorkflowCatalog
         {
             var all = _store.Values
                 .Select(versions =>
-                    versions.OrderByDescending(w => ParseVersion(w.Version)).First())
+                    WorkflowVersioning.SelectVersion(versions, "latest"))
+                .Where(v => v is not null)
+                .Select(v => v!)
                 .ToList()
                 .AsReadOnly();
 
@@ -83,7 +104,4 @@ public sealed class InMemoryWorkflowCatalog : IWorkflowCatalog
             return Task.FromResult(true);
         }
     }
-
-    private static Version ParseVersion(string versionString) =>
-        Version.TryParse(versionString, out var v) ? v : new Version(0, 0);
 }

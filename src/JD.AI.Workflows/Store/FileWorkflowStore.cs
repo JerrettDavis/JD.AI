@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using JD.AI.Workflows;
 
 namespace JD.AI.Workflows.Store;
 
@@ -28,6 +29,8 @@ public sealed class FileWorkflowStore : IWorkflowStore
     /// <inheritdoc/>
     public async Task PublishAsync(SharedWorkflow workflow, CancellationToken ct = default)
     {
+        _ = WorkflowVersioning.ParseVersionOrThrow(workflow.Version);
+
         var dir = GetWorkflowDirectory(workflow.Name);
         Directory.CreateDirectory(dir);
 
@@ -40,14 +43,7 @@ public sealed class FileWorkflowStore : IWorkflowStore
     public async Task<SharedWorkflow?> GetAsync(
         string nameOrId, string? version = null, CancellationToken ct = default)
     {
-        // First try by name/version
-        if (version is not null)
-        {
-            var path = GetVersionPath(nameOrId, version);
-            if (File.Exists(path))
-                return await ReadAsync(path, ct).ConfigureAwait(false);
-        }
-        else
+        if (version is null)
         {
             // Try as a name — return latest version
             var dir = GetWorkflowDirectory(nameOrId);
@@ -56,8 +52,26 @@ public sealed class FileWorkflowStore : IWorkflowStore
                 var files = Directory.GetFiles(dir, "*.json");
                 if (files.Length > 0)
                 {
-                    var latest = GetLatestVersionFile(files);
-                    return await ReadAsync(latest, ct).ConfigureAwait(false);
+                    var workflows = await ReadAllAsync(files, ct).ConfigureAwait(false);
+                    var latest = SelectSharedVersion(workflows, "latest");
+                    if (latest is not null)
+                        return latest;
+                }
+            }
+        }
+        else
+        {
+            // Try as a name + version selector
+            var dir = GetWorkflowDirectory(nameOrId);
+            if (Directory.Exists(dir))
+            {
+                var files = Directory.GetFiles(dir, "*.json");
+                if (files.Length > 0)
+                {
+                    var workflows = await ReadAllAsync(files, ct).ConfigureAwait(false);
+                    var selected = SelectSharedVersion(workflows, version);
+                    if (selected is not null)
+                        return selected;
                 }
             }
         }
@@ -68,7 +82,13 @@ public sealed class FileWorkflowStore : IWorkflowStore
             string.Equals(w.Id, nameOrId, StringComparison.OrdinalIgnoreCase));
 
         if (byId is not null && version is not null)
-            return string.Equals(byId.Version, version, StringComparison.Ordinal) ? byId : null;
+        {
+            if (!WorkflowSemVersion.TryParse(byId.Version, out var parsedById))
+                return null;
+
+            var selector = WorkflowVersioning.WorkflowVersionSelector.Parse(version);
+            return selector.Matches(parsedById) ? byId : null;
+        }
 
         return byId;
     }
@@ -186,7 +206,7 @@ public sealed class FileWorkflowStore : IWorkflowStore
         Path.Combine(GetWorkflowDirectory(name), $"{Sanitize(version)}.json");
 
     internal static string Sanitize(string input) =>
-        string.Concat(input.Select(c => char.IsLetterOrDigit(c) || c == '-' || c == '.' ? c : '_'));
+        string.Concat(input.Select(c => char.IsLetterOrDigit(c) || c is '-' or '.' or '+' ? c : '_'));
 
     /// <summary>
     /// Returns the file path with the highest semantic version from an array of version files.
@@ -195,10 +215,12 @@ public sealed class FileWorkflowStore : IWorkflowStore
     private static string GetLatestVersionFile(string[] files) =>
         files.OrderByDescending(ParseVersionFromPath).First();
 
-    private static Version ParseVersionFromPath(string path)
+    private static WorkflowSemVersion ParseVersionFromPath(string path)
     {
         var name = Path.GetFileNameWithoutExtension(path);
-        return Version.TryParse(name, out var v) ? v : new Version(0, 0, 0);
+        return WorkflowSemVersion.TryParse(name, out var v)
+            ? v
+            : new WorkflowSemVersion(0, 0, 0, [], null);
     }
 
     private static async Task<SharedWorkflow?> ReadAsync(string path, CancellationToken ct)
@@ -214,5 +236,38 @@ public sealed class FileWorkflowStore : IWorkflowStore
             return null;
         }
 #pragma warning restore CA1031
+    }
+
+    private static async Task<IReadOnlyList<SharedWorkflow>> ReadAllAsync(
+        IEnumerable<string> files,
+        CancellationToken ct)
+    {
+        var results = new List<SharedWorkflow>();
+        foreach (var file in files)
+        {
+            var workflow = await ReadAsync(file, ct).ConfigureAwait(false);
+            if (workflow is not null)
+                results.Add(workflow);
+        }
+
+        return results;
+    }
+
+    private static SharedWorkflow? SelectSharedVersion(
+        IEnumerable<SharedWorkflow> workflows,
+        string? selector)
+    {
+        var parsedSelector = WorkflowVersioning.WorkflowVersionSelector.Parse(selector);
+
+        return workflows
+            .Select(w =>
+            {
+                var ok = WorkflowSemVersion.TryParse(w.Version, out var parsed);
+                return (Workflow: w, Version: parsed, Valid: ok);
+            })
+            .Where(x => x.Valid && parsedSelector.Matches(x.Version))
+            .OrderByDescending(x => x.Version)
+            .Select(x => x.Workflow)
+            .FirstOrDefault();
     }
 }
