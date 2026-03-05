@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -360,19 +359,10 @@ public sealed class TailscaleTools
     {
         try
         {
-            using var process = new Process();
-            process.StartInfo = new ProcessStartInfo
-            {
-                FileName = "tailscale",
-                Arguments = "version",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
-            process.Start();
-            process.WaitForExit(5000);
-            return process.ExitCode == 0;
+            var result = ProcessExecutor.RunAsync(
+                "tailscale", "version", timeout: TimeSpan.FromSeconds(5))
+                .GetAwaiter().GetResult();
+            return result.Success;
         }
         catch
         {
@@ -384,24 +374,14 @@ public sealed class TailscaleTools
     {
         try
         {
-            using var process = new Process();
-            process.StartInfo = new ProcessStartInfo
-            {
-                FileName = "tailscale",
-                Arguments = "status --json",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
-            process.Start();
-            var output = process.StandardOutput.ReadToEnd();
-            process.WaitForExit(5000);
+            var result = ProcessExecutor.RunAsync(
+                "tailscale", "status --json", timeout: TimeSpan.FromSeconds(5))
+                .GetAwaiter().GetResult();
 
-            if (process.ExitCode != 0)
+            if (!result.Success)
                 return null;
 
-            var doc = JsonDocument.Parse(output);
+            var doc = JsonDocument.Parse(result.StandardOutput);
             var root = doc.RootElement;
 
             var hostname = root.TryGetProperty("Self", out var self) &&
@@ -463,24 +443,14 @@ public sealed class TailscaleTools
         var machines = new List<TailnetMachine>();
         try
         {
-            using var process = new Process();
-            process.StartInfo = new ProcessStartInfo
-            {
-                FileName = "tailscale",
-                Arguments = "status --json",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
-            process.Start();
-            var output = process.StandardOutput.ReadToEnd();
-            process.WaitForExit(5000);
+            var result = ProcessExecutor.RunAsync(
+                "tailscale", "status --json", timeout: TimeSpan.FromSeconds(5))
+                .GetAwaiter().GetResult();
 
-            if (process.ExitCode != 0)
+            if (!result.Success)
                 return machines;
 
-            var doc = JsonDocument.Parse(output);
+            var doc = JsonDocument.Parse(result.StandardOutput);
 
             if (!doc.RootElement.TryGetProperty("Peer", out var peers))
                 return machines;

@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Core.Tools.Sandbox;
 
@@ -16,39 +16,22 @@ public sealed class NoneSandbox : ISandbox
         CancellationToken ct = default)
     {
         var isWindows = OperatingSystem.IsWindows();
-        using var process = new Process
-        {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = isWindows ? "cmd.exe" : "/bin/sh",
-                Arguments = isWindows ? $"/c {command}" : $"-c \"{command.Replace("\"", "\\\"")}\"",
-                WorkingDirectory = workingDirectory,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            },
-        };
-
-        process.Start();
-
-        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeoutCts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
+        var fileName = isWindows ? "cmd.exe" : "/bin/sh";
+        var arguments = isWindows ? $"/c {command}" : $"-c \"{command.Replace("\"", "\\\"")}\"";
 
         try
         {
-            var output = await process.StandardOutput.ReadToEndAsync(timeoutCts.Token).ConfigureAwait(false);
-            var error = await process.StandardError.ReadToEndAsync(timeoutCts.Token).ConfigureAwait(false);
-            await process.WaitForExitAsync(timeoutCts.Token).ConfigureAwait(false);
+            var result = await ProcessExecutor.RunAsync(
+                fileName, arguments,
+                workingDirectory: workingDirectory,
+                timeout: TimeSpan.FromSeconds(timeoutSeconds),
+                cancellationToken: ct).ConfigureAwait(false);
 
-            return new SandboxResult(process.ExitCode, output, error, TimedOut: false);
+            return new SandboxResult(result.ExitCode, result.StandardOutput, result.StandardError, TimedOut: false);
         }
-        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !ct.IsCancellationRequested)
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            try { process.Kill(entireProcessTree: true); }
-#pragma warning disable CA1031
-            catch { /* best effort */ }
-#pragma warning restore CA1031
+            // ProcessExecutor handles timeout internally and returns exit -1
             return new SandboxResult(-1, "", "Command timed out.", TimedOut: true);
         }
     }

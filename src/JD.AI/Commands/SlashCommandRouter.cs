@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -2865,27 +2864,12 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     {
         try
         {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "git",
-                Arguments = $"--no-pager {args}",
-                WorkingDirectory = Directory.GetCurrentDirectory(),
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
+            var result = await ProcessExecutor.RunAsync(
+                "git", $"--no-pager {args}",
+                workingDirectory: Directory.GetCurrentDirectory(),
+                cancellationToken: ct).ConfigureAwait(false);
 
-            using var process = new Process { StartInfo = psi };
-            process.Start();
-
-            var stdoutTask = process.StandardOutput.ReadToEndAsync(ct);
-            var stderrTask = process.StandardError.ReadToEndAsync(ct);
-            await process.WaitForExitAsync(ct).ConfigureAwait(false);
-
-            var stdout = await stdoutTask.ConfigureAwait(false);
-            var stderr = await stderrTask.ConfigureAwait(false);
-            return (process.ExitCode, stdout, stderr);
+            return (result.ExitCode, result.StandardOutput, result.StandardError);
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
         {
