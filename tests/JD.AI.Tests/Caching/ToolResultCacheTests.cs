@@ -33,13 +33,13 @@ public sealed class ToolResultCacheTests : IDisposable
     [Fact]
     public async Task SetAndGet_CacheableToolResult_RoundTrips()
     {
-        const string args = "{\"path\":\"/tmp/test\"}";
-        const string resultContent = "file contents here";
+        const string Args = "{\"path\":\"/tmp/test\"}";
+        const string ResultContent = "file contents here";
 
-        await _toolCache.SetResultAsync("read_file", args, resultContent);
-        var cached = await _toolCache.GetCachedResultAsync("read_file", args);
+        await _toolCache.SetResultAsync("read_file", Args, ResultContent);
+        var cached = await _toolCache.GetCachedResultAsync("read_file", Args);
 
-        cached.Should().Be(resultContent);
+        cached.Should().Be(ResultContent);
     }
 
     [Fact]
