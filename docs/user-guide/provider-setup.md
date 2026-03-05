@@ -339,6 +339,16 @@ Use slash commands to manage providers at any time during a session:
 /model gpt-4.1           # Switch to a specific model
 ```
 
+For faster startup, save a project default provider/model with the onboarding wizard:
+
+```bash
+jdai onboard
+# alias:
+jdai wizard
+```
+
+This stores your selected provider/model as project defaults so startup can refresh only that provider.
+
 When you switch models mid-session, JD.AI prompts you to choose a transition mode:
 
 | Mode | Description |
