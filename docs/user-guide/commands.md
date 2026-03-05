@@ -112,6 +112,22 @@ See [Sessions & History](sessions.md) for more details.
 > [!TIP]
 > Run `/compact` proactively before the context window fills up — not after. Use `/cost` to monitor token usage.
 
+## Audit and security
+
+| Command | Description |
+|---------|-------------|
+| `/audit` | Show recent audit events from the in-memory buffer |
+| `/audit --severity <level>` | Filter events by minimum severity (`debug`, `info`, `warning`, `error`, `critical`) |
+| `/audit --limit <n>` | Limit the number of events shown (default: 20) |
+
+```text
+/audit
+/audit --severity warning
+/audit --limit 50
+```
+
+See [Audit Logging](audit-logging.md) for the full audit model, event schema, and external sink configuration.
+
 ## Safety controls
 
 | Command | Description |
@@ -173,8 +189,38 @@ See [Checkpointing](checkpointing.md) for details on strategies and configuratio
 |---------|-------------|
 | `/update` | Check for new versions on NuGet |
 | `/instructions` | Show loaded project instructions |
-| `/plugins` | List loaded plugins |
 | `/sandbox` | Show current execution mode |
+
+## Plugin management
+
+| Command | Description |
+|---------|-------------|
+| `/plugins` or `/plugins list` | List installed plugins and runtime status |
+| `/plugins install <path-or-url>` | Install and enable a plugin package |
+| `/plugins enable <id>` | Enable an installed plugin |
+| `/plugins disable <id>` | Disable a plugin without uninstalling |
+| `/plugins update [id]` | Update one plugin (or all plugins when omitted) |
+| `/plugins uninstall <id>` | Remove an installed plugin |
+| `/plugins info <id>` | Show source, version, load state, and errors |
+
+```text
+/plugins
+/plugins install ./artifacts/My.Plugin.1.0.0.nupkg
+/plugins update
+/plugins update my-plugin
+```
+
+## Skills lifecycle
+
+| Command | Description |
+|---------|-------------|
+| `/skills` or `/skills status` | Show active/excluded/shadowed/invalid skill status with reason codes |
+| `/skills reload` | Refresh managed skill state from source directories and config |
+
+```text
+/skills
+/skills reload
+```
 
 ## Customization
 
@@ -205,6 +251,7 @@ See [Checkpointing](checkpointing.md) for details on strategies and configuratio
 | `/clear` | Clear conversation |
 | `/compact` | Compress context |
 | `/cost` | Token usage |
+| `/audit` | Inspect audit events |
 | `/autorun` | Toggle auto-approve |
 | `/sessions` | List sessions |
 | `/resume` | Resume session |
@@ -212,6 +259,7 @@ See [Checkpointing](checkpointing.md) for details on strategies and configuratio
 | `/checkpoint` | Manage checkpoints |
 | `/local` | Manage local models |
 | `/workflow` | Manage workflows |
+| `/skills` | Show/reload managed skills |
 | `/doctor` | Health diagnostics |
 | `/quit` | Exit |
 

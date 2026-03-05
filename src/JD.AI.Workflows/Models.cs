@@ -34,6 +34,9 @@ public sealed class AgentStepDefinition
     public static AgentStepDefinition InvokeTool(string name) =>
         new() { Name = name, Kind = AgentStepKind.Tool, Target = name };
 
+    public static AgentStepDefinition InvokeTool(string name, string target) =>
+        new() { Name = name, Kind = AgentStepKind.Tool, Target = target };
+
     public static AgentStepDefinition Nested(string workflowName) =>
         new() { Name = workflowName, Kind = AgentStepKind.Nested, Target = workflowName };
 
@@ -46,10 +49,28 @@ public sealed class AgentStepDefinition
             SubSteps = [.. subSteps],
         };
 
+    public static AgentStepDefinition LoopUntil(string name, string condition, IList<AgentStepDefinition> subSteps) =>
+        new()
+        {
+            Name = name,
+            Kind = AgentStepKind.Loop,
+            Condition = condition,
+            SubSteps = [.. subSteps],
+        };
+
     public static AgentStepDefinition If(string condition, params AgentStepDefinition[] subSteps) =>
         new()
         {
             Name = $"If {condition}",
+            Kind = AgentStepKind.Conditional,
+            Condition = condition,
+            SubSteps = [.. subSteps],
+        };
+
+    public static AgentStepDefinition If(string name, string condition, IList<AgentStepDefinition> subSteps) =>
+        new()
+        {
+            Name = name,
             Kind = AgentStepKind.Conditional,
             Condition = condition,
             SubSteps = [.. subSteps],

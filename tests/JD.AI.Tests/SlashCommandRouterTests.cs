@@ -1,6 +1,7 @@
 using JD.AI.Commands;
 using JD.AI.Core.Agents;
 using JD.AI.Core.Config;
+using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
 using Microsoft.SemanticKernel;
 using NSubstitute;
@@ -280,18 +281,19 @@ public sealed class SlashCommandRouterTests
         var result = await _router.ExecuteAsync("/permissions");
 
         Assert.NotNull(result);
-        Assert.Contains("ON", result);
+        Assert.Contains("Normal", result);
     }
 
     [Fact]
     public async Task Permissions_ShowsOffState()
     {
         _session.SkipPermissions = true;
+        _session.PermissionMode = JD.AI.Core.Agents.PermissionMode.BypassAll;
 
         var result = await _router.ExecuteAsync("/permissions");
 
         Assert.NotNull(result);
-        Assert.Contains("OFF", result);
+        Assert.Contains("BypassAll", result);
     }
 
     [Fact]
@@ -550,6 +552,48 @@ public sealed class SlashCommandRouterTests
     }
 
     [Fact]
+    public async Task Skills_WithoutLifecycleManager_ReturnsNotInitialized()
+    {
+        var result = await _router.ExecuteAsync("/skills");
+
+        Assert.NotNull(result);
+        Assert.Contains("not initialized", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Skills_Status_UsesProvidedStatusDelegate()
+    {
+        var router = new SlashCommandRouter(
+            _session,
+            _registry,
+            getSkillsStatus: () => "Skills: 2 active / 5 discovered");
+
+        var result = await router.ExecuteAsync("/skills status");
+
+        Assert.Equal("Skills: 2 active / 5 discovered", result);
+    }
+
+    [Fact]
+    public async Task Skills_Reload_UsesProvidedReloadDelegate()
+    {
+        var called = false;
+        var router = new SlashCommandRouter(
+            _session,
+            _registry,
+            getSkillsStatus: () => "status",
+            reloadSkills: () =>
+            {
+                called = true;
+                return "reloaded";
+            });
+
+        var result = await router.ExecuteAsync("/skills reload");
+
+        Assert.True(called);
+        Assert.Equal("reloaded", result);
+    }
+
+    [Fact]
     public async Task Stats_WithoutSession_UsesFallback()
     {
         var result = await _router.ExecuteAsync("/stats");
@@ -623,5 +667,103 @@ public sealed class SlashCommandRouterTests
             DataDirectories.Reset();
             Directory.Delete(tempDirectory, recursive: true);
         }
+    }
+
+    [Fact]
+    public async Task Plugins_List_WithLifecycleManager_ReturnsInstalledPlugins()
+    {
+        var pluginManager = Substitute.For<IPluginLifecycleManager>();
+        pluginManager.ListAsync(Arg.Any<CancellationToken>()).Returns([
+            new PluginStatusInfo(
+                Id: "sample.plugin",
+                Name: "Sample Plugin",
+                Version: "1.0.0",
+                Enabled: true,
+                Loaded: true,
+                InstallPath: "/plugins/sample",
+                EntryAssemblyPath: "/plugins/sample/Sample.Plugin.dll",
+                Source: "local",
+                InstalledAtUtc: DateTimeOffset.UtcNow,
+                LastEnabledAtUtc: DateTimeOffset.UtcNow,
+                LastError: null),
+        ]);
+
+        var router = new SlashCommandRouter(_session, _registry, pluginManager: pluginManager);
+
+        var result = await router.ExecuteAsync("/plugins");
+
+        Assert.NotNull(result);
+        Assert.Contains("sample.plugin", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("loaded", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Plugins_Install_WithoutSource_ReturnsUsage()
+    {
+        var pluginManager = Substitute.For<IPluginLifecycleManager>();
+        var router = new SlashCommandRouter(_session, _registry, pluginManager: pluginManager);
+
+        var result = await router.ExecuteAsync("/plugins install");
+
+        Assert.NotNull(result);
+        Assert.Contains("Usage", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Plugins_Update_WithoutId_UpdatesAll()
+    {
+        var pluginManager = Substitute.For<IPluginLifecycleManager>();
+        pluginManager.UpdateAllAsync(Arg.Any<CancellationToken>()).Returns([
+            new PluginStatusInfo(
+                Id: "sample.plugin",
+                Name: "Sample Plugin",
+                Version: "1.0.1",
+                Enabled: true,
+                Loaded: true,
+                InstallPath: "/plugins/sample/1.0.1",
+                EntryAssemblyPath: "/plugins/sample/1.0.1/Sample.Plugin.dll",
+                Source: "catalog://sample.plugin",
+                InstalledAtUtc: DateTimeOffset.UtcNow,
+                LastEnabledAtUtc: DateTimeOffset.UtcNow,
+                LastError: null),
+        ]);
+        var router = new SlashCommandRouter(_session, _registry, pluginManager: pluginManager);
+
+        var result = await router.ExecuteAsync("/plugins update");
+
+        Assert.NotNull(result);
+        Assert.Contains("Updated 1 plugin(s)", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Shortcuts_ReturnsKeyboardShortcuts()
+    {
+        var result = await _router.ExecuteAsync("/shortcuts");
+
+        Assert.NotNull(result);
+        Assert.Contains("Ctrl+L", result);
+        Assert.Contains("Ctrl+R", result);
+        Assert.Contains("Ctrl+U", result);
+        Assert.Contains("Ctrl+W", result);
+        Assert.Contains("Shift+Tab", result);
+        Assert.Contains("Alt+T", result);
+        Assert.Contains("Alt+P", result);
+    }
+
+    [Fact]
+    public async Task Help_ContainsShortcutsEntry()
+    {
+        var result = await _router.ExecuteAsync("/help");
+
+        Assert.NotNull(result);
+        Assert.Contains("/shortcuts", result);
+    }
+
+    [Fact]
+    public void SlashCommandCatalog_ContainsShortcutsEntry()
+    {
+        Assert.Contains(
+            SlashCommandCatalog.CompletionEntries,
+            e => string.Equals(e.Command, "/shortcuts", StringComparison.Ordinal));
     }
 }

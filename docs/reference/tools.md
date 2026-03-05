@@ -1,12 +1,12 @@
 ---
-description: "All built-in tools — file, search, shell, git, web, memory, subagent, think, environment, task, code execution, clipboard, question, diff/patch, batch-edit, and usage tools — with parameters and examples."
+description: "All built-in tools — file, search, shell, git, web, memory, subagent, think, environment, task, code execution, clipboard, question, diff/patch, batch-edit, usage, encoding/crypto, and Tailscale tools — with parameters and examples."
 ---
 
 # Tools reference
 
 JD.AI provides a set of built-in tools that the AI agent invokes automatically during conversations. Each tool call is confirmed before execution unless overridden by [`/autorun`](../user-guide/common-workflows.md), [`/permissions`](../user-guide/common-workflows.md), or the `--dangerously-skip-permissions` CLI flag.
 
-Tools are grouped into seventeen categories: **File**, **Search**, **Shell**, **Git**, **Web**, **Web Search**, **Memory**, **Subagent**, **Think**, **Environment**, **Tasks**, **Code Execution**, **Clipboard**, **Questions**, **Diff/Patch**, **Batch Edit**, and **Usage Tracking**.
+Tools are grouped into twenty categories: **File**, **Search**, **Shell**, **Exec/Process Sessions**, **Git**, **Web**, **Web Search**, **Memory**, **Subagent**, **Think**, **Environment**, **Tasks**, **Code Execution**, **Clipboard**, **Questions**, **Diff/Patch**, **Batch Edit**, **Usage Tracking**, **Encoding & Crypto**, and **Tailscale Integration**.
 
 ![Tool execution showing file reading and grep](../images/demo-tools.png)
 
@@ -67,6 +67,31 @@ Tools are grouped into seventeen categories: **File**, **Search**, **Shell**, **
 ```text
 > run the tests
 ⚡ Tool: run_command(command: "dotnet test", timeoutSeconds: 120)
+```
+
+## Exec/process session tools
+
+| Function | Description |
+|----------|-------------|
+| `exec` | Execute a command in foreground or background with process-session tracking. |
+| `process` | Manage process sessions via `list`, `poll`, `log`, `write`, `kill`, `clear`, `remove`. |
+
+### Parameters
+
+- **`exec`** — `command` (string), `cwd` (string?, default cwd), `yieldMs` (int, default `250`), `background` (bool, default `false`), `timeoutMs` (int, default `60000`, `0` disables timeout), `pty` (bool, default `false`), `host` (string, currently only `"local"`).
+- **`process`** — `action` (string), `id` (string?, required for single-session actions), `input` (string?, for `write`), `yieldMs` (int, poll wait), `maxChars` (int, default `4000`), `force` (bool, for `clear`/`remove`).
+
+### Example
+
+```text
+> start tests in background
+⚡ Tool: exec(command: "dotnet test", background: true, yieldMs: 500)
+
+> poll that process
+⚡ Tool: process(action: "poll", id: "proc-000001", yieldMs: 1000)
+
+> fetch latest logs
+⚡ Tool: process(action: "log", id: "proc-000001", maxChars: 8000)
 ```
 
 ## Git tools
@@ -351,14 +376,148 @@ Track token usage and estimated costs for the current session. The agent loop ca
 - **`get_usage`** — No parameters. Returns session token counts (prompt, completion, total), tool call count, turn count, and estimated costs for several model pricing tiers.
 - **`reset_usage`** — No parameters. Resets all session usage counters to zero.
 
+## Utilities / Encoding & Crypto tools
+
+Encoding, decoding, hashing, and cryptographic utility tools for common developer operations.
+
+| Function | Description |
+|----------|-------------|
+| `encode_base64` | Encode text to Base64. |
+| `decode_base64` | Decode a Base64-encoded string back to plain text. |
+| `encode_url` | URL-encode a string for safe use in URLs and query parameters. |
+| `decode_url` | Decode a URL-encoded string back to plain text. |
+| `decode_jwt` | Decode a JWT token to inspect its header and payload. |
+| `hash_compute` | Compute a cryptographic hash of the input text. |
+| `generate_guid` | Generate one or more GUIDs/UUIDs (v4). |
+
+### Parameters
+
+- **`encode_base64`** — `text` (string), `urlSafe` (bool, default `false`). When `urlSafe` is `true`, outputs URL-safe Base64 without padding.
+- **`decode_base64`** — `encoded` (string). Handles both standard and URL-safe Base64 automatically.
+- **`encode_url`** — `text` (string). Returns percent-encoded string safe for query parameters.
+- **`decode_url`** — `encoded` (string). Reverses percent-encoding.
+- **`decode_jwt`** — `token` (string). Decodes and pretty-prints the header, payload, and common claims (sub, iss, aud, exp, iat, nbf).
+- **`hash_compute`** — `text` (string), `algorithm` (string, default `sha256`). Supported: `sha256`, `sha512`, `sha384`, `sha1`, `md5`.
+- **`generate_guid`** — `count` (int, default `1`, max `20`). Generates version 4 UUIDs.
+
+### Examples
+
+```text
+> encode this string to base64
+⚡ Tool: encode_base64(text: "Hello, World!")
+
+> decode this JWT without verifying the signature
+⚡ Tool: decode_jwt(token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...")
+
+> hash the password with SHA-256
+⚡ Tool: hash_compute(text: "my-secret", algorithm: "sha256")
+
+> generate a unique ID
+⚡ Tool: generate_guid(count: 1)
+```
+
+> [!WARNING]
+> `decode_jwt` **does not verify the token signature**. Use it for inspection and debugging only, not for authentication decisions.
+
+> [!WARNING]
+> `MD5` and `SHA1` are cryptographically weak. Avoid using them for security-sensitive workflows — prefer `SHA256` or `SHA512`.
+
+## Tailscale Integration tools
+
+Tools for Tailscale integration: status detection, Tailnet machine discovery, remote orchestration, and credential configuration.
+
+| Function | Description |
+|----------|-------------|
+| `tailscale_status` | Check Tailscale installation, authentication status, current Tailnet, and local node identity. |
+| `tailscale_machines` | List all machines on the Tailnet with name, OS, online status, and addresses. |
+| `tailscale_configure` | Configure Tailscale API credentials for machine discovery and remote orchestration. |
+| `tailscale_runner_probe` | Check if a `jdai-runner` service is available on a specific Tailnet machine. |
+| `tailscale_export` | Export Tailscale configuration, discovered machines, and runner status as JSON. |
+
+### Prerequisites
+
+Tailscale tools require one of the following:
+
+- **Tailscale CLI** installed and authenticated (`tailscale up`) — used for local discovery via `tailscale status --json`.
+- **API credentials** configured via `tailscale_configure` — used for remote API-based discovery when the CLI is not available.
+
+### Parameters
+
+- **`tailscale_status`** — `configDir` (string?, default `~/.jdai`). Returns CLI availability, API credential status, local node hostname, Tailscale IP, and backend state.
+- **`tailscale_machines`** — `filter` (string?, `"online"`, `"offline"`, or `"all"`, default `"all"`), `tag` (string?, e.g. `"tag:server"`), `configDir` (string?, default `~/.jdai`).
+- **`tailscale_configure`** — `tailnet` (string, e.g. `"example.com"`), `authMethod` (string, `"oauth"` or `"api-key"`), `credential` (string), `clientSecret` (string?, required for OAuth), `configDir` (string?, default `~/.jdai`). Stores credentials to `~/.jdai/tailscale.json`.
+- **`tailscale_runner_probe`** — `target` (string, hostname or Tailscale IP), `port` (int, default `18789`), `configDir` (string?, default `~/.jdai`).
+- **`tailscale_export`** — `configDir` (string?, default `~/.jdai`). Returns a JSON document with CLI status, API config, machine list, and summary counts.
+
+### Examples
+
+```text
+> check tailscale status
+⚡ Tool: tailscale_status()
+
+> list all machines on my tailnet
+⚡ Tool: tailscale_machines(filter: "online")
+
+> list only machines tagged as servers
+⚡ Tool: tailscale_machines(tag: "tag:server")
+
+> probe runner availability on build-agent-01
+⚡ Tool: tailscale_runner_probe(target: "build-agent-01")
+
+> export machine inventory for CI
+⚡ Tool: tailscale_export()
+```
+
+### Common workflow
+
+A typical Tailscale orchestration workflow:
+
+1. **Discover machines** — `tailscale_machines()` to see what's on the Tailnet.
+2. **Probe runner availability** — `tailscale_runner_probe(target: "hostname")` for each candidate host.
+3. **Export for automation** — `tailscale_export()` to produce JSON suitable for CI pipelines.
+
+### Security guidance
+
+- Store Tailscale API keys and OAuth secrets using environment variables (`TAILSCALE_API_KEY`, `TAILSCALE_OAUTH_CLIENT_ID`, `TAILSCALE_OAUTH_CLIENT_SECRET`) rather than in `~/.jdai/tailscale.json` when possible.
+- Use OAuth with least-privilege scopes rather than full API keys.
+- Rotate credentials periodically and remove unused API keys from the Tailscale admin console.
+
+## OpenClaw compatibility aliases
+
+JD.AI also exposes OpenClaw-style aliases so external tool contracts can map cleanly to native tools:
+
+| Alias | Canonical JD.AI tool |
+|-------|----------------------|
+| `bash` | `run_command` |
+| `read` | `read_file` |
+| `write` | `write_file` |
+| `edit` | `edit_file` |
+| `ls` | `list_directory` |
+| `webfetch` | `web_fetch` |
+| `websearch` | `web_search` |
+| `todo_read` | `list_tasks` |
+| `todo_write` | `update_task` / task mutations |
+| `exec` | `run_command` semantics + managed process sessions |
+| `process` | native process session control |
+
+### Shared compatibility envelope parameters
+
+The aliases support additional optional parameters:
+
+- `summary` — return a compact response.
+- `maxResultChars` — hard-cap output length.
+- `noContext` — exclude actual tool output from model/session context.
+- `noStream` — compatibility flag (currently no effect on tool output handling).
+- `timeoutMs` — timeout override for alias tools that support execution timeouts.
+
 ## Tool safety tiers
 
 Every tool belongs to a safety tier that controls how confirmation is handled:
 
 | Tier | Behavior | Tools |
 |------|----------|-------|
-| **Auto-approve** | Runs without confirmation | `read_file`, `grep`, `glob`, `list_directory`, `git_status`, `git_diff`, `git_log`, `git_branch`, `memory_search`, `web_fetch`, `ask_questions`, `think`, `get_environment`, `list_tasks`, `export_tasks`, `read_clipboard`, `get_usage`, `create_patch` |
-| **Confirm once** | Asks once per session | `write_file`, `edit_file`, `git_commit`, `git_push`, `git_pull`, `git_checkout`, `git_stash`, `memory_store`, `memory_forget`, `create_task`, `update_task`, `complete_task`, `write_clipboard`, `spawn_agent`, `spawn_team`, `apply_patch`, `batch_edit_files`, `reset_usage` |
+| **Auto-approve** | Runs without confirmation | `read_file`, `grep`, `glob`, `list_directory`, `git_status`, `git_diff`, `git_log`, `git_branch`, `memory_search`, `web_fetch`, `ask_questions`, `think`, `get_environment`, `list_tasks`, `export_tasks`, `read_clipboard`, `get_usage`, `create_patch`, `encode_base64`, `decode_base64`, `encode_url`, `decode_url`, `decode_jwt`, `hash_compute`, `generate_guid`, `tailscale_status`, `tailscale_machines`, `tailscale_export` |
+| **Confirm once** | Asks once per session | `write_file`, `edit_file`, `git_commit`, `git_push`, `git_pull`, `git_checkout`, `git_stash`, `memory_store`, `memory_forget`, `create_task`, `update_task`, `complete_task`, `write_clipboard`, `spawn_agent`, `spawn_team`, `apply_patch`, `batch_edit_files`, `reset_usage`, `tailscale_configure`, `tailscale_runner_probe` |
 | **Always confirm** | Asks every invocation | `run_command`, `web_search`, `execute_code` |
 
 ## Controlling tool permissions

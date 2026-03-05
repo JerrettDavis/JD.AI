@@ -34,7 +34,7 @@ public sealed class TeamOrchestrator
         {
             return new TeamResult
             {
-                Output = $"Unknown strategy '{strategyName}'. Valid: sequential, fan-out, supervisor, debate.",
+                Output = $"Unknown strategy '{strategyName}'. Valid: sequential, fan-out, supervisor, debate, voting, relay, map-reduce.",
                 Strategy = strategyName,
                 Success = false,
             };
@@ -124,10 +124,15 @@ public sealed class TeamOrchestrator
     private static IOrchestrationStrategy? ResolveStrategy(string name) =>
         name.ToUpperInvariant() switch
         {
-            "SEQUENTIAL" or "PIPELINE" => new SequentialStrategy(),
+            "SEQUENTIAL" => new SequentialStrategy(),
             "FAN-OUT" or "FANOUT" or "PARALLEL" => new FanOutStrategy(),
             "SUPERVISOR" or "COORDINATOR" => new SupervisorStrategy(),
             "DEBATE" or "ADVERSARIAL" => new DebateStrategy(),
+            "VOTING" or "VOTE" or "CONSENSUS" => new VotingStrategy(),
+            "RELAY" or "REFINE" or "ITERATIVE" => new RelayStrategy(),
+            "MAP-REDUCE" or "MAPREDUCE" => new MapReduceStrategy(),
+            "PIPELINE" or "PIPE" => new PipelineStrategy(),
+            "BLACKBOARD" or "BOARD" or "COLLABORATIVE" => new BlackboardStrategy(),
             _ => null,
         };
 }

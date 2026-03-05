@@ -4,8 +4,10 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using JD.AI.Agent;
+using JD.AI.Core.Agents;
 using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Config;
+using JD.AI.Core.Governance;
 using JD.AI.Core.Mcp;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.PromptCaching;
@@ -15,6 +17,7 @@ using JD.AI.Core.Providers.Metadata;
 using JD.AI.Core.Providers.ModelSearch;
 using JD.AI.Core.Sessions;
 using JD.AI.Core.Tools;
+using JD.AI.Core.Usage;
 using JD.AI.Rendering;
 using JD.AI.Workflows;
 using JD.AI.Workflows.Store;
@@ -37,9 +40,11 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private readonly InstructionsResult? _instructions;
     private readonly ICheckpointStrategy? _checkpointStrategy;
     private readonly PluginLoader? _pluginLoader;
+    private readonly IPluginLifecycleManager? _pluginManager;
     private readonly IWorkflowCatalog? _workflowCatalog;
     private readonly IWorkflowStore? _workflowStore;
     private readonly WorkflowEmitter _workflowEmitter;
+    private readonly IPolicyEvaluator? _policyEvaluator;
     private readonly Action<SpinnerStyle>? _onSpinnerStyleChanged;
     private readonly Func<SpinnerStyle>? _getSpinnerStyle;
     private readonly McpManager _mcpManager;
@@ -52,6 +57,9 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private readonly AtomicConfigStore? _configStore;
     private readonly ModelSearchAggregator? _modelSearchAggregator;
     private readonly ModelMetadataProvider? _metadataProvider;
+    private readonly IUsageMeter? _usageMeter;
+    private readonly Func<string>? _getSkillsStatus;
+    private readonly Func<string>? _reloadSkills;
 
     public SlashCommandRouter(
         AgentSession session,
@@ -59,6 +67,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         InstructionsResult? instructions = null,
         ICheckpointStrategy? checkpointStrategy = null,
         PluginLoader? pluginLoader = null,
+        IPluginLifecycleManager? pluginManager = null,
         IWorkflowCatalog? workflowCatalog = null,
         Func<SpinnerStyle>? getSpinnerStyle = null,
         Action<SpinnerStyle>? onSpinnerStyleChanged = null,
@@ -73,16 +82,22 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         Func<bool>? getVimMode = null,
         Action<bool>? onVimModeChanged = null,
         Func<OutputStyle>? getOutputStyle = null,
-        Action<OutputStyle>? onOutputStyleChanged = null)
+        Action<OutputStyle>? onOutputStyleChanged = null,
+        IUsageMeter? usageMeter = null,
+        IPolicyEvaluator? policyEvaluator = null,
+        Func<string>? getSkillsStatus = null,
+        Func<string>? reloadSkills = null)
     {
         _session = session;
         _registry = registry;
         _instructions = instructions;
         _checkpointStrategy = checkpointStrategy;
         _pluginLoader = pluginLoader;
+        _pluginManager = pluginManager;
         _workflowCatalog = workflowCatalog;
         _workflowStore = workflowStore;
         _workflowEmitter = new WorkflowEmitter();
+        _policyEvaluator = policyEvaluator;
         _getSpinnerStyle = getSpinnerStyle;
         _onSpinnerStyleChanged = onSpinnerStyleChanged;
         _providerConfig = providerConfig;
@@ -96,6 +111,9 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         _configStore = configStore;
         _modelSearchAggregator = modelSearchAggregator;
         _metadataProvider = metadataProvider;
+        _usageMeter = usageMeter;
+        _getSkillsStatus = getSkillsStatus;
+        _reloadSkills = reloadSkills;
     }
 
     public bool IsSlashCommand(string input) =>
@@ -116,7 +134,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/PROVIDER" or "/JDAI-PROVIDER" => await HandleProviderCommandAsync(arg, ct).ConfigureAwait(false),
             "/CLEAR" or "/JDAI-CLEAR" => ClearHistory(),
             "/COMPACT" or "/JDAI-COMPACT" => await CompactAsync(ct).ConfigureAwait(false),
-            "/COST" or "/JDAI-COST" => GetCost(),
+            "/COST" or "/JDAI-COST" => await GetCostAsync(arg, ct).ConfigureAwait(false),
             "/AUTORUN" or "/JDAI-AUTORUN" => ToggleAutoRun(arg),
             "/PERMISSIONS" or "/JDAI-PERMISSIONS" => TogglePermissions(arg),
             "/SESSIONS" or "/JDAI-SESSIONS" => await ListSessionsAsync(ct).ConfigureAwait(false),
@@ -126,7 +144,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/EXPORT" or "/JDAI-EXPORT" => await ExportSessionAsync(ct).ConfigureAwait(false),
             "/UPDATE" or "/JDAI-UPDATE" => await CheckUpdateAsync(ct).ConfigureAwait(false),
             "/INSTRUCTIONS" or "/JDAI-INSTRUCTIONS" => ShowInstructions(),
-            "/PLUGINS" or "/JDAI-PLUGINS" => ShowPlugins(),
+            "/PLUGINS" or "/JDAI-PLUGINS" => await HandlePluginsAsync(arg, ct).ConfigureAwait(false),
             "/CHECKPOINT" or "/JDAI-CHECKPOINT" => await HandleCheckpointAsync(arg, ct).ConfigureAwait(false),
             "/SANDBOX" or "/JDAI-SANDBOX" => ShowSandboxInfo(),
             "/WORKFLOW" or "/JDAI-WORKFLOW" => await HandleWorkflowAsync(arg, ct).ConfigureAwait(false),
@@ -147,12 +165,15 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "/VIM" or "/JDAI-VIM" => ToggleVimMode(arg),
             "/STATS" or "/JDAI-STATS" => await ShowStatsAsync(arg, ct).ConfigureAwait(false),
             "/CONFIG" or "/JDAI-CONFIG" => HandleConfig(arg),
+            "/SKILLS" or "/JDAI-SKILLS" => HandleSkills(arg),
             "/AGENTS" or "/JDAI-AGENTS" => await HandleAgentsAsync(arg, ct).ConfigureAwait(false),
             "/HOOKS" or "/JDAI-HOOKS" => await HandleHooksAsync(arg, ct).ConfigureAwait(false),
             "/MEMORY" or "/JDAI-MEMORY" => await HandleMemoryAsync(arg, ct).ConfigureAwait(false),
             "/OUTPUT" or "/OUTPUT-STYLE" or "/JDAI-OUTPUT-STYLE" => HandleOutputStyle(arg),
             "/DEFAULT" or "/JDAI-DEFAULT" => await HandleDefaultAsync(arg, ct).ConfigureAwait(false),
             "/MODEL-INFO" or "/JDAI-MODEL-INFO" => await HandleModelInfoAsync(arg, ct).ConfigureAwait(false),
+            "/TRACE" or "/JDAI-TRACE" => ShowTrace(arg),
+            "/SHORTCUTS" or "/JDAI-SHORTCUTS" => GetShortcuts(),
             "/QUIT" or "/EXIT" or "/JDAI-QUIT" or "/JDAI-EXIT" => null, // Signal exit
             _ => $"Unknown command: {parts[0]}. Type /help for available commands.",
         };
@@ -179,7 +200,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /export         — Export current session to JSON
           /update         — Check for and apply updates
           /instructions   — Show loaded project instructions
-          /plugins        — List loaded plugins
+          /plugins        — Manage plugins (list/install/enable/disable/update/uninstall/info)
           /checkpoint     — List, restore, or clear checkpoints
           /sandbox        — Show sandbox mode info
           /workflow       — Manage workflows (list|show|export|replay|refine|catalog|publish|install|search|versions)
@@ -200,13 +221,48 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           /vim [on|off]   — Toggle vim editing mode
           /stats [--history|--daily] — Session and historical usage stats
           /config [list|get|set] — Manage persisted command settings
+          /skills [status|reload] — Show managed skill eligibility and refresh
           /agents         — Manage local agent profiles
           /hooks          — Manage local hook profiles
           /memory         — View/edit project memory (JDAI.md)
           /output-style [style] — Set output format (rich|plain|compact|json)
           /default        — Manage default provider/model (global & per-project)
           /model-info [refresh] — Show model metadata (context, cost, capabilities)
+          /trace [N]      — Show execution timeline for the last turn (or turn N)
+          /shortcuts      — List keyboard shortcuts
           /quit           — Exit jdai
+        """;
+
+    private static string GetShortcuts() => """
+        Keyboard Shortcuts:
+          Ctrl+C          — Cancel current operation / exit
+          Ctrl+L          — Clear screen
+          Ctrl+U          — Clear input line
+          Ctrl+W          — Delete word backward
+          Ctrl+R          — Reverse history search
+          Ctrl+V          — Paste from clipboard
+          Shift+Tab       — Toggle plan mode
+          Alt+T           — Toggle extended thinking
+          Alt+P           — Cycle through recent models
+          Tab             — Accept completion
+          Up/Down         — Navigate history / completion dropdown
+          Home/End        — Move to start/end of input
+          ESC             — Dismiss completions / vim normal mode
+          ESC ESC         — Cancel (at empty prompt)
+
+        Vim Mode (when enabled with /vim):
+          i/a/A/I         — Enter insert mode
+          ESC             — Return to normal mode
+          h/l/w/b/e       — Movement
+          0/$             — Start/end of line
+          x/dd/dw/D       — Delete operations
+          cc/cw/C         — Change operations
+          yy/yw/p/P       — Yank and paste
+          u               — Undo
+
+        Input Prefixes:
+          !<command>      — Execute shell command directly
+          @<file>         — Attach file contents to prompt
         """;
 
     private async Task<string> ListModelsAsync(CancellationToken ct)
@@ -788,10 +844,170 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         return "Context compacted.";
     }
 
-    private string GetCost()
+    private async Task<string> GetCostAsync(string? arg, CancellationToken ct)
     {
-        var tokens = _session.TotalTokens;
-        return $"Token usage: {tokens:N0} total";
+        if (_usageMeter is null)
+        {
+            var tokens = _session.TotalTokens;
+            return $"Token usage: {tokens:N0} total (metering not configured)";
+        }
+
+        try
+        {
+            var sb = new StringBuilder();
+            var upper = arg?.ToUpperInvariant().Trim();
+
+            // Determine scope
+            UsageSummary usage;
+            string scopeLabel;
+            if (upper is "--DAY" or "--DAILY")
+            {
+                var today = new DateTimeOffset(DateTimeOffset.UtcNow.Date, TimeSpan.Zero);
+                usage = await _usageMeter.GetPeriodUsageAsync(today, DateTimeOffset.UtcNow, ct);
+                scopeLabel = "Today";
+            }
+            else if (upper is "--WEEK" or "--WEEKLY")
+            {
+                var startOfWeek = new DateTimeOffset(DateTimeOffset.UtcNow.AddDays(-(int)DateTimeOffset.UtcNow.DayOfWeek).Date, TimeSpan.Zero);
+                usage = await _usageMeter.GetPeriodUsageAsync(startOfWeek, DateTimeOffset.UtcNow, ct);
+                scopeLabel = "This week";
+            }
+            else if (upper is "--MONTH" or "--MONTHLY")
+            {
+                var now = DateTimeOffset.UtcNow;
+                var startOfMonth = new DateTimeOffset(now.Year, now.Month, 1, 0, 0, 0, TimeSpan.Zero);
+                usage = await _usageMeter.GetPeriodUsageAsync(startOfMonth, DateTimeOffset.UtcNow, ct);
+                scopeLabel = "This month";
+            }
+            else if (upper is "--ALL" or "--TOTAL")
+            {
+                usage = await _usageMeter.GetTotalUsageAsync(ct);
+                scopeLabel = "All time";
+            }
+            else if (upper is "--EXPORT CSV")
+            {
+                var data = await _usageMeter.ExportAsync(UsageExportFormat.Csv, ct: ct);
+                return $"CSV export:\n{data}";
+            }
+            else if (upper is "--EXPORT JSON")
+            {
+                var data = await _usageMeter.ExportAsync(UsageExportFormat.Json, ct: ct);
+                return $"JSON export:\n{data}";
+            }
+            else
+            {
+                // Default: session usage
+                var sessionId = _session.SessionInfo?.Id;
+                if (sessionId is not null)
+                {
+                    usage = await _usageMeter.GetSessionUsageAsync(sessionId, ct);
+                    scopeLabel = "This session";
+                }
+                else
+                {
+                    var tokens = _session.TotalTokens;
+                    return $"Token usage: {tokens:N0} total";
+                }
+            }
+
+            sb.AppendLine($"📊 Usage — {scopeLabel}");
+            sb.AppendLine($"  Turns: {usage.TotalTurns:N0}  |  Tool calls: {usage.TotalToolCalls:N0}");
+            sb.AppendLine($"  Prompt tokens:     {usage.TotalPromptTokens,12:N0}");
+            sb.AppendLine($"  Completion tokens: {usage.TotalCompletionTokens,12:N0}");
+            sb.AppendLine($"  Total tokens:      {usage.TotalTokens,12:N0}");
+            sb.AppendLine($"  Estimated cost:    ${usage.EstimatedCostUsd:F4}");
+
+            if (usage.ByProvider.Count > 1)
+            {
+                sb.AppendLine();
+                sb.AppendLine("  By provider:");
+                foreach (var (pid, breakdown) in usage.ByProvider.OrderByDescending(p => p.Value.TotalTokens))
+                {
+                    var costStr = breakdown.EstimatedCostUsd > 0
+                        ? $"  ~${breakdown.EstimatedCostUsd:F4}"
+                        : "  (free)";
+                    sb.AppendLine($"    [{pid}] {breakdown.TotalTokens:N0} tokens, {breakdown.Turns} turns{costStr}");
+                }
+            }
+
+            // Budget status
+            var budget = await _usageMeter.CheckBudgetAsync(ct: ct);
+            if (budget.LimitUsd.HasValue)
+            {
+                sb.AppendLine();
+                var pct = budget.LimitUsd.Value > 0 ? budget.SpentUsd / budget.LimitUsd.Value * 100 : 0;
+                var status = budget.IsExceeded ? "⛔ EXCEEDED" : budget.IsWarning ? "⚠️  WARNING" : "✅ OK";
+                sb.AppendLine($"  Budget ({budget.Period}): ${budget.SpentUsd:F2} / ${budget.LimitUsd:F2} ({pct:F0}%) {status}");
+            }
+
+            return sb.ToString().TrimEnd();
+        }
+        catch (Exception ex)
+        {
+            return $"Token usage: {_session.TotalTokens:N0} total (metering error: {ex.Message})";
+        }
+    }
+
+    private string ShowTrace(string? arg)
+    {
+        var timeline = _session.LastTimeline;
+        if (timeline is null || timeline.Entries.Count == 0)
+            return "No trace available. Send a message first, then use /trace.";
+
+        // If arg is a number, look up turn by index from session history
+        if (arg is not null && int.TryParse(arg, System.Globalization.CultureInfo.InvariantCulture, out _))
+            return "Turn-specific traces are recorded per-turn. Currently showing the last turn.";
+
+        var entries = timeline.Entries;
+        var total = timeline.TotalDuration;
+        var sb = new System.Text.StringBuilder();
+
+        sb.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
+            $"  Turn trace ({total.TotalSeconds:F1}s total, {entries.Count} operations)");
+        sb.AppendLine("  ────────────────────────────────────────");
+
+        foreach (var entry in entries)
+        {
+            var prefix = entry.ParentSpanId is null ? "┌" : "├";
+            var status = entry.Status switch
+            {
+                "ok" => "✔",
+                "error" => "✗",
+                "cancelled" => "⊘",
+                "denied" => "⛔",
+                _ => "?",
+            };
+
+            var dur = entry.Duration.TotalMilliseconds > 0
+                ? $"{entry.Duration.TotalMilliseconds,7:F0}ms"
+                : "       ";
+
+            sb.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
+                $"  {entry.StartTime:HH:mm:ss.fff}  {prefix} {entry.Operation,-40} {dur}  {status}");
+
+            if (entry.ErrorMessage is not null)
+                sb.AppendLine($"                    └ {entry.ErrorMessage}");
+        }
+
+        // Summary line
+        var tokensOut = entries
+            .Where(e => e.Attributes.ContainsKey("tokens_out"))
+            .Select(e => long.Parse(e.Attributes["tokens_out"], System.Globalization.CultureInfo.InvariantCulture))
+            .Sum();
+        if (tokensOut > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
+                $"  Tokens out: {tokensOut:N0}");
+        }
+
+        if (_session.CurrentModel is not null)
+        {
+            sb.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
+                $"  Provider: {_session.CurrentModel.ProviderName} | Model: {_session.CurrentModel.Id}");
+        }
+
+        return sb.ToString();
     }
 
     private string ToggleAutoRun(string? arg)
@@ -817,6 +1033,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             string.Equals(arg, "false", StringComparison.OrdinalIgnoreCase))
         {
             _session.SkipPermissions = true;
+            _session.PermissionMode = PermissionMode.BypassAll;
             return "⚠ Permission checks DISABLED — all tools will run without confirmation.";
         }
 
@@ -824,10 +1041,34 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             string.Equals(arg, "true", StringComparison.OrdinalIgnoreCase))
         {
             _session.SkipPermissions = false;
+            _session.PermissionMode = PermissionMode.Normal;
             return "Permission checks enabled — safety tiers apply.";
         }
 
-        return $"Permission checks are {(_session.SkipPermissions ? "OFF (all skipped)" : "ON")}. Usage: /permissions [on|off]";
+        // Named permission modes
+        if (string.Equals(arg, "plan", StringComparison.OrdinalIgnoreCase))
+        {
+            _session.PermissionMode = PermissionMode.Plan;
+            _session.SkipPermissions = false;
+            return "🔒 Plan mode — read-only tools only. Write and shell operations blocked.";
+        }
+
+        if (string.Equals(arg, "acceptEdits", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(arg, "accept-edits", StringComparison.OrdinalIgnoreCase))
+        {
+            _session.PermissionMode = PermissionMode.AcceptEdits;
+            _session.SkipPermissions = false;
+            return "📝 Accept-edits mode — file writes auto-approved, shell still requires confirmation.";
+        }
+
+        if (string.Equals(arg, "normal", StringComparison.OrdinalIgnoreCase))
+        {
+            _session.PermissionMode = PermissionMode.Normal;
+            _session.SkipPermissions = false;
+            return "Permission checks enabled — safety tiers apply.";
+        }
+
+        return $"Permission mode: {_session.PermissionMode}. Usage: /permissions [on|off|plan|acceptEdits|normal]";
     }
 
     // ── Session commands ──────────────────────────────────
@@ -935,18 +1176,140 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     private string ShowInstructions() =>
         _instructions?.ToSummary() ?? "No project instructions loaded.";
 
-    private string ShowPlugins()
+    private async Task<string> HandlePluginsAsync(string? arg, CancellationToken ct)
     {
-        if (_pluginLoader is null)
-            return "Plugin loader not available.";
+        var tokens = (arg ?? string.Empty).Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var action = tokens.Length == 0 ? "list" : tokens[0].ToLowerInvariant();
+        var rest = tokens.Length > 1 ? tokens[1] : null;
 
-        var plugins = _pluginLoader.GetAll();
+        if (_pluginManager is null)
+        {
+            // Fallback for hosts that only provide in-memory runtime loading.
+            if (action is "list" && _pluginLoader is not null)
+            {
+                var runtimePlugins = _pluginLoader.GetAll();
+                if (runtimePlugins.Count == 0)
+                    return "No plugins loaded.";
+
+                var runtimeLines = runtimePlugins.Select(p =>
+                    $"  ✓ {p.Id} ({p.Name}) v{p.Version} (loaded {p.LoadedAt:g})");
+                return $"Loaded plugins ({runtimePlugins.Count}):\n{string.Join('\n', runtimeLines)}";
+            }
+
+            return "Plugin lifecycle manager not available in this host.";
+        }
+
+        return action switch
+        {
+            "list" => await ListPluginsAsync(ct).ConfigureAwait(false),
+            "install" => await InstallPluginAsync(rest, ct).ConfigureAwait(false),
+            "enable" => await SetPluginEnabledAsync(rest, enabled: true, ct).ConfigureAwait(false),
+            "disable" => await SetPluginEnabledAsync(rest, enabled: false, ct).ConfigureAwait(false),
+            "update" => await UpdatePluginAsync(rest, ct).ConfigureAwait(false),
+            "uninstall" or "remove" => await UninstallPluginAsync(rest, ct).ConfigureAwait(false),
+            "info" => await PluginInfoAsync(rest, ct).ConfigureAwait(false),
+            _ => "Usage: /plugins [list|install <source>|enable <id>|disable <id>|update [id]|uninstall <id>|info <id>]",
+        };
+    }
+
+    private async Task<string> ListPluginsAsync(CancellationToken ct)
+    {
+        var plugins = await _pluginManager!.ListAsync(ct).ConfigureAwait(false);
         if (plugins.Count == 0)
-            return "No plugins loaded.";
+            return "No plugins installed.";
 
         var lines = plugins.Select(p =>
-            $"  ✓ {p.Name} v{p.Version} (loaded {p.LoadedAt:g})");
-        return $"Loaded plugins ({plugins.Count}):\n{string.Join('\n', lines)}";
+            $"  {(p.Enabled ? "✓" : "○")} {p.Id} v{p.Version} ({(p.Loaded ? "loaded" : "not loaded")})");
+        return $"Plugins ({plugins.Count}):\n{string.Join('\n', lines)}";
+    }
+
+    private async Task<string> InstallPluginAsync(string? source, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(source))
+            return "Usage: /plugins install <path-or-url>";
+
+        try
+        {
+            var plugin = await _pluginManager!.InstallAsync(source, enable: true, ct).ConfigureAwait(false);
+            return $"Installed plugin '{plugin.Id}' v{plugin.Version} ({(plugin.Loaded ? "loaded" : "installed")}).";
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return $"Install failed: {ex.Message}";
+        }
+    }
+
+    private async Task<string> SetPluginEnabledAsync(string? id, bool enabled, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            return $"Usage: /plugins {(enabled ? "enable" : "disable")} <id>";
+
+        try
+        {
+            var plugin = enabled
+                ? await _pluginManager!.EnableAsync(id, ct).ConfigureAwait(false)
+                : await _pluginManager!.DisableAsync(id, ct).ConfigureAwait(false);
+            return $"Plugin '{plugin.Id}' {(enabled ? "enabled" : "disabled")}.";
+        }
+        catch (InvalidOperationException)
+        {
+            return $"Plugin '{id}' is not installed.";
+        }
+    }
+
+    private async Task<string> UninstallPluginAsync(string? id, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            return "Usage: /plugins uninstall <id>";
+
+        var removed = await _pluginManager!.UninstallAsync(id, ct).ConfigureAwait(false);
+        return removed
+            ? $"Plugin '{id}' uninstalled."
+            : $"Plugin '{id}' is not installed.";
+    }
+
+    private async Task<string> UpdatePluginAsync(string? id, CancellationToken ct)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                var updated = await _pluginManager!.UpdateAllAsync(ct).ConfigureAwait(false);
+                return $"Updated {updated.Count} plugin(s).";
+            }
+
+            var plugin = await _pluginManager!.UpdateAsync(id, ct).ConfigureAwait(false);
+            return $"Updated plugin '{plugin.Id}' to v{plugin.Version}.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            return ex.Message;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return $"Update failed: {ex.Message}";
+        }
+    }
+
+    private async Task<string> PluginInfoAsync(string? id, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            return "Usage: /plugins info <id>";
+
+        var plugin = await _pluginManager!.GetAsync(id, ct).ConfigureAwait(false);
+        if (plugin is null)
+            return $"Plugin '{id}' is not installed.";
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"Plugin: {plugin.Name} ({plugin.Id})");
+        sb.AppendLine($"Version: {plugin.Version}");
+        sb.AppendLine($"Enabled: {(plugin.Enabled ? "yes" : "no")}");
+        sb.AppendLine($"Loaded: {(plugin.Loaded ? "yes" : "no")}");
+        sb.AppendLine($"Source: {plugin.Source}");
+        sb.AppendLine($"Install path: {plugin.InstallPath}");
+        if (!string.IsNullOrWhiteSpace(plugin.LastError))
+            sb.AppendLine($"Last error: {plugin.LastError}");
+        return sb.ToString().TrimEnd();
     }
 
     private async Task<string> HandleCheckpointAsync(string? arg, CancellationToken ct)
@@ -1017,12 +1380,19 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "LIST" or "" => await ListWorkflowsAsync(ct).ConfigureAwait(false),
             "SHOW" when param is not null => await ShowWorkflowAsync(param, ct).ConfigureAwait(false),
             "SHOW" => "Usage: /workflow show <name>",
+            "CREATE" when param is not null => await CreateWorkflowAsync(param, ct).ConfigureAwait(false),
+            "CREATE" => "Usage: /workflow create <description>  — Generate a workflow from a natural language description",
+            "COMPOSE" when param is not null => await ComposeWorkflowsAsync(param, ct).ConfigureAwait(false),
+            "COMPOSE" => "Usage: /workflow compose <name> <workflow1> <workflow2> [...]  — Combine workflows",
+            "DRY-RUN" or "DRYRUN" when param is not null => await DryRunWorkflowAsync(param, ct).ConfigureAwait(false),
+            "DRY-RUN" or "DRYRUN" => "Usage: /workflow dry-run <name>  — Preview workflow execution without running",
             "EXPORT" when param is not null => await ExportWorkflowAsync(param, ct).ConfigureAwait(false),
             "EXPORT" => "Usage: /workflow export <name> [json|csharp|mermaid]",
             "REPLAY" when param is not null => await ReplayWorkflowAsync(param, ct).ConfigureAwait(false),
             "REPLAY" => "Usage: /workflow replay <name> [version]",
-            "REFINE" when param is not null => RefineWorkflowInfo(param),
-            "REFINE" => "Usage: /workflow refine <name>",
+            "REFINE" when param is not null => await RefineWorkflowAsync(param, ct).ConfigureAwait(false),
+            "REFINE" => "Usage: /workflow refine <name> <feedback>  — e.g. /workflow refine my-workflow Add a validation step after step 2",
+            "FROM-HISTORY" or "FROMHISTORY" => await ExtractWorkflowFromHistoryAsync(param, ct).ConfigureAwait(false),
             "CATALOG" => await CatalogSharedWorkflowsAsync(param, ct).ConfigureAwait(false),
             "PUBLISH" when param is not null => await PublishWorkflowAsync(param, ct).ConfigureAwait(false),
             "PUBLISH" => "Usage: /workflow publish <name>",
@@ -1032,7 +1402,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "SEARCH" => "Usage: /workflow search <query>",
             "VERSIONS" when param is not null => await ShowWorkflowVersionsAsync(param, ct).ConfigureAwait(false),
             "VERSIONS" => "Usage: /workflow versions <name>",
-            _ => "Usage: /workflow [list|show <name>|export <name> [format]|replay <name> [version]|refine <name>|catalog|publish <name>|install <name[@version]>|search <query>|versions <name>]",
+            _ => "Usage: /workflow [list|show|create|compose|dry-run|export|replay|refine|from-history|catalog|publish|install|search|versions]",
         };
     }
 
@@ -1098,9 +1468,95 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                "(Dry-run mode — pass the prompt to the agent to execute live.)";
     }
 
-    private static string RefineWorkflowInfo(string name) =>
-        $"To refine '{name}', export it (e.g. /workflow export {name} csharp), " +
-        "edit the steps, then save a new version via the agent.";
+    private async Task<string> RefineWorkflowAsync(string param, CancellationToken ct)
+    {
+        // Parse: /workflow refine <name> <feedback>
+        var parts = param.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var name = parts[0];
+        var feedback = parts.Length > 1 ? parts[1] : null;
+
+        if (string.IsNullOrWhiteSpace(feedback))
+            return $"Usage: /workflow refine {name} <describe what to change>\n" +
+                   "Example: /workflow refine my-workflow Add a validation step after cloning";
+
+        var workflow = await _workflowCatalog!.GetAsync(name, ct: ct).ConfigureAwait(false);
+        if (workflow is null)
+            return $"Workflow '{name}' not found. Use '/workflow list' to see available workflows.";
+
+        if (_session?.Kernel is null)
+            return "No active model/kernel. Select a model first with /model.";
+
+        var generator = new WorkflowGenerator();
+        var result = await generator.RefineAsync(workflow, feedback, _session.Kernel, ct)
+            .ConfigureAwait(false);
+
+        if (!result.Success)
+        {
+            return $"⚠️ Refinement failed: {result.Changelog}\n" +
+                   (result.RawResponse is not null ? $"Raw response:\n{result.RawResponse[..Math.Min(500, result.RawResponse.Length)]}" : "");
+        }
+
+        // Save refined version
+        await _workflowCatalog.SaveAsync(result.Workflow, ct).ConfigureAwait(false);
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"✅ Refined '{result.Workflow.Name}' → v{result.Workflow.Version}");
+        sb.AppendLine($"   Changes: {result.Changelog}");
+        sb.AppendLine();
+        sb.AppendLine("Updated steps:");
+        sb.Append(FlattenSteps(result.Workflow.Steps, 1));
+        sb.AppendLine();
+        sb.AppendLine($"Use '/workflow show {result.Workflow.Name}' to view JSON, '/workflow dry-run {result.Workflow.Name}' to preview.");
+        return sb.ToString().TrimEnd();
+    }
+
+    private async Task<string> ExtractWorkflowFromHistoryAsync(string? param, CancellationToken ct)
+    {
+        // Parse: /workflow from-history [N] [--name <name>]
+        var turnCount = 10;
+        string? name = null;
+
+        if (param is not null)
+        {
+            var parts = param.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var i in Enumerable.Range(0, parts.Length))
+            {
+                if (int.TryParse(parts[i], out var n))
+                    turnCount = n;
+                else if (parts[i].Equals("--name", StringComparison.OrdinalIgnoreCase) && i + 1 < parts.Length)
+                    name = parts[i + 1];
+            }
+        }
+
+        if (_session?.History is null || _session.History.Count == 0)
+            return "No conversation history to extract from.";
+
+        var messages = _session.History.ToList().AsReadOnly();
+        var generator = new WorkflowGenerator();
+        var workflow = generator.ExtractFromHistory(messages, turnCount, name);
+
+        if (workflow.Steps.Count == 0)
+            return $"No tool calls found in the last {turnCount} turns. Try a larger number.";
+
+        await _workflowCatalog!.SaveAsync(workflow, ct).ConfigureAwait(false);
+
+        var emitter = _workflowEmitter;
+        var mermaid = emitter.Emit(workflow, WorkflowExportFormat.Mermaid);
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"✅ Extracted workflow '{workflow.Name}' ({workflow.Steps.Count} steps) from last {turnCount} turns");
+        if (workflow.Tags.Count > 0)
+            sb.AppendLine($"   Tags: {string.Join(", ", workflow.Tags)}");
+        sb.AppendLine();
+        sb.AppendLine("Steps:");
+        sb.Append(FlattenSteps(workflow.Steps, 1));
+        sb.AppendLine();
+        sb.AppendLine("Diagram:");
+        sb.AppendLine(mermaid.Content);
+        sb.AppendLine();
+        sb.AppendLine($"Use '/workflow refine {workflow.Name} <feedback>' to adjust, '/workflow dry-run {workflow.Name}' to preview.");
+        return sb.ToString().TrimEnd();
+    }
 
     // ── Shared workflow store commands ────────────────────────
 
@@ -1146,6 +1602,15 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
         if (_workflowCatalog is null)
             return "Workflow catalog not configured.";
+
+        // Enforce workflow publish RBAC policy
+        if (_policyEvaluator is not null)
+        {
+            var ctx = new PolicyContext(UserId: Environment.UserName);
+            var rbacResult = _policyEvaluator.EvaluateWorkflowPublish(ctx);
+            if (rbacResult.Decision == PolicyDecision.Deny)
+                return $"⛔ Publish denied: {rbacResult.Reason}";
+        }
 
         var definition = await _workflowCatalog.GetAsync(name, ct: ct).ConfigureAwait(false);
         if (definition is null)
@@ -1249,6 +1714,111 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         }
 
         return sb.ToString();
+    }
+
+    private async Task<string> CreateWorkflowAsync(string description, CancellationToken ct)
+    {
+        // Parse optional --name flag: /workflow create --name my-wf Build, test, deploy
+        string? name = null;
+        var desc = description;
+        if (desc.StartsWith("--name ", StringComparison.OrdinalIgnoreCase))
+        {
+            var parts = desc.Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length >= 3)
+            {
+                name = parts[1];
+                desc = parts[2];
+            }
+        }
+
+        var generator = new WorkflowGenerator();
+        var workflow = generator.Generate(desc, name);
+
+        await _workflowCatalog!.SaveAsync(workflow, ct).ConfigureAwait(false);
+
+        var emitter = _workflowEmitter;
+        var mermaid = emitter.Emit(workflow, WorkflowExportFormat.Mermaid);
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"✅ Created workflow '{workflow.Name}' v{workflow.Version} ({workflow.Steps.Count} steps)");
+        if (workflow.Tags.Count > 0)
+            sb.AppendLine($"   Tags: {string.Join(", ", workflow.Tags)}");
+        sb.AppendLine();
+        sb.AppendLine("Steps:");
+        sb.Append(FlattenSteps(workflow.Steps, 1));
+        sb.AppendLine();
+        sb.AppendLine("Diagram:");
+        sb.AppendLine(mermaid.Content);
+        sb.AppendLine();
+        sb.AppendLine($"Use '/workflow show {workflow.Name}' to view JSON, '/workflow dry-run {workflow.Name}' to preview execution.");
+        return sb.ToString().TrimEnd();
+    }
+
+    private async Task<string> DryRunWorkflowAsync(string name, CancellationToken ct)
+    {
+        var workflow = await _workflowCatalog!.GetAsync(name, ct: ct).ConfigureAwait(false);
+        if (workflow is null)
+            return $"Workflow '{name}' not found. Use '/workflow list' to see available workflows.";
+
+        // Collect available tool names from the kernel
+        HashSet<string>? availableTools = null;
+        if (_session?.Kernel is not null)
+        {
+            availableTools = [];
+            foreach (var plugin in _session.Kernel.Plugins)
+            {
+                foreach (var fn in plugin)
+                    availableTools.Add($"{plugin.Name}-{fn.Name}");
+            }
+        }
+
+        var generator = new WorkflowGenerator();
+        var result = generator.DryRun(workflow, availableTools);
+        return WorkflowGenerator.FormatDryRun(result);
+    }
+
+    private async Task<string> ComposeWorkflowsAsync(string param, CancellationToken ct)
+    {
+        var parts = param.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length < 3)
+            return "Usage: /workflow compose <name> <workflow1> <workflow2> [...]";
+
+        var compositeName = parts[0];
+        var workflowNames = parts[1..];
+        var workflows = new List<AgentWorkflowDefinition>();
+        var missing = new List<string>();
+
+        foreach (var wfName in workflowNames)
+        {
+            var wf = await _workflowCatalog!.GetAsync(wfName, ct: ct).ConfigureAwait(false);
+            if (wf is null)
+                missing.Add(wfName);
+            else
+                workflows.Add(wf);
+        }
+
+        if (missing.Count > 0)
+            return $"Workflows not found: {string.Join(", ", missing)}. Use '/workflow list' to see available.";
+
+        var generator = new WorkflowGenerator();
+        var composite = generator.Compose(compositeName, workflows);
+        await _workflowCatalog!.SaveAsync(composite, ct).ConfigureAwait(false);
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"✅ Composed '{compositeName}' from {workflows.Count} workflows:");
+        foreach (var wf in workflows)
+            sb.AppendLine($"  → {wf.Name} ({wf.Steps.Count} steps)");
+        sb.AppendLine($"\nTotal steps: {composite.Steps.Sum(s => CountStepsRecursive(s))}");
+        sb.AppendLine($"Use '/workflow dry-run {compositeName}' to preview execution.");
+        return sb.ToString().TrimEnd();
+    }
+
+    private static int CountStepsRecursive(AgentStepDefinition step)
+    {
+        var count = 1;
+        foreach (var sub in step.SubSteps)
+            count += CountStepsRecursive(sub);
+        return count;
     }
 
     // ── Spinner/progress style ──────────────────────────────
@@ -2189,6 +2759,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
         var settings = new OpenAIPromptExecutionSettings
         {
+            ModelId = _session.CurrentModel?.Id,
             MaxTokens = 2200,
             Temperature = 0.1,
         };
@@ -2396,6 +2967,21 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "set" => SetConfigValue(rest, settings),
             _ => "Usage: /config [list|get <key>|set <key> <value>]",
         };
+    }
+
+    private string HandleSkills(string? arg)
+    {
+        if (_getSkillsStatus is null)
+            return "Skills lifecycle manager not initialized.";
+
+        var token = (arg ?? "status").Trim();
+        if (string.IsNullOrWhiteSpace(token) || string.Equals(token, "status", StringComparison.OrdinalIgnoreCase))
+            return _getSkillsStatus();
+
+        if (string.Equals(token, "reload", StringComparison.OrdinalIgnoreCase))
+            return _reloadSkills?.Invoke() ?? "Skills reload is not available.";
+
+        return "Usage: /skills [status|reload]";
     }
 
     private string FormatConfig(TuiSettings settings)

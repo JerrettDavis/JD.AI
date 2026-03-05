@@ -1,11 +1,11 @@
 ---
 title: Tools
-description: Overview of JD.AI's 17 built-in tool categories — what each does, when it triggers, and safety tiers.
+description: Overview of JD.AI's 19 built-in tool categories — what each does, when it triggers, and safety tiers.
 ---
 
 # Tools
 
-JD.AI provides 17 categories of built-in tools that the AI agent invokes automatically during conversations. You don't call tools directly — describe what you want in natural language and JD.AI selects the right tool. Each tool call is confirmed before execution unless you've enabled auto-run.
+JD.AI provides 19 categories of built-in tools that the AI agent invokes automatically during conversations. You don't call tools directly — describe what you want in natural language and JD.AI selects the right tool. Each tool call is confirmed before execution unless you've enabled auto-run.
 
 For full parameter documentation, see the [Tools Reference](../reference/tools.md).
 
@@ -30,6 +30,8 @@ For full parameter documentation, see the [Tools Reference](../reference/tools.m
 | **Diff / Patch** | `create_patch`, `apply_patch` | Create and apply unified diffs atomically |
 | **Batch Edit** | `batch_edit_files` | Multi-file text replacements in one atomic operation |
 | **Usage** | `get_usage`, `reset_usage` | Token counts and cost estimates |
+| **Encoding & Crypto** | `encode_base64`, `decode_base64`, `encode_url`, `decode_url`, `decode_jwt`, `hash_compute`, `generate_guid` | Encoding, decoding, hashing, and cryptographic utilities |
+| **Tailscale** | `tailscale_status`, `tailscale_machines`, `tailscale_configure`, `tailscale_runner_probe`, `tailscale_export` | Tailscale Tailnet discovery and remote orchestration |
 
 ## File tools
 
@@ -124,7 +126,62 @@ Run code snippets directly — supports C#, Python, Node.js, Bash, and PowerShel
 
 Read from and write to the system clipboard. Cross-platform: uses PowerShell/clip on Windows, pbcopy/pbpaste on macOS, and xclip/xsel on Linux.
 
-## Safety tiers
+## Encoding & Crypto tools
+
+Encode, decode, hash, and inspect common developer data formats without leaving JD.AI.
+
+```text
+> encode this string to base64
+⚡ Tool: encode_base64(text: "Hello, World!")
+
+> decode this JWT
+⚡ Tool: decode_jwt(token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...")
+
+> generate a new GUID
+⚡ Tool: generate_guid(count: 1)
+```
+
+> [!WARNING]
+> `decode_jwt` inspects token contents only — it does **not** verify the signature. Do not rely on it for authentication decisions.
+>
+> `MD5` and `SHA1` are cryptographically weak. Prefer `SHA256` or `SHA512` for any security-sensitive hashing.
+
+## Tailscale Integration tools
+
+Discover and orchestrate machines on your Tailscale Tailnet. Requires Tailscale CLI (`tailscale`) installed and authenticated, or API credentials configured via `tailscale_configure`.
+
+```text
+> list all machines on my tailnet
+⚡ Tool: tailscale_machines(filter: "online")
+
+> check if the build server has a runner available
+⚡ Tool: tailscale_runner_probe(target: "build-agent-01")
+
+> export the machine list for automation
+⚡ Tool: tailscale_export()
+```
+
+For security guidance and credential configuration, see the [Tools Reference](../reference/tools.md).
+
+## Tool loadouts
+
+A **Tool Loadout** is a curated bundle of tools configured for a specific purpose. Instead of exposing every available tool to the agent (which increases token usage and can reduce tool-selection accuracy), a loadout defines exactly which tools are active.
+
+JD.AI ships five built-in loadouts:
+
+| Loadout | Tools included | Best for |
+|---------|----------------|----------|
+| `minimal` | Filesystem, Shell, think | Simple scripts or token-constrained models |
+| `developer` | Minimal + Git, GitHub, Search, Analysis, Memory | Code writing and review |
+| `research` | Minimal + Search, Web, Memory, Multimodal | Web research and document analysis |
+| `devops` | Minimal + Git, Network, Scheduling | Infrastructure and deployment tasks |
+| `full` | All tool categories | General-purpose work (default when no loadout is set) |
+
+Loadouts are primarily a developer and integration feature. Subagents use them automatically — for example, `explore` subagents receive the `research` loadout, and `task` subagents receive the `minimal` loadout.
+
+For developers building integrations, see [Tool Loadouts (developer guide)](../developer-guide/tool-loadouts.md).
+
+
 
 Every tool belongs to a safety tier that controls confirmation behavior:
 
@@ -152,3 +209,4 @@ Read-only tools run silently. Write operations ask once then auto-approve for th
 - [Commands](commands.md) — slash commands for managing tools and sessions
 - [Common Workflows](common-workflows.md) — see tools in action
 - [Tools Reference](../reference/tools.md) — full parameter documentation
+- [Tool Loadouts (developer guide)](../developer-guide/tool-loadouts.md) — curated tool bundles for agents

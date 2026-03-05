@@ -3,6 +3,9 @@ using JD.AI.Core.Governance.Audit;
 using JD.AI.Core.PromptCaching;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Sessions;
+using JD.AI.Core.Tools;
+using JD.AI.Core.Tracing;
+using JD.AI.Core.Usage;
 using JD.SemanticKernel.Extensions.Compaction;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -20,6 +23,9 @@ public sealed class AgentSession
     private Kernel _kernel;
     private int _turnIndex;
 
+    /// <summary>Current turn index (0-based).</summary>
+    public int TurnIndex => _turnIndex;
+
     public AgentSession(
         IProviderRegistry registry,
         Kernel initialKernel,
@@ -32,6 +38,9 @@ public sealed class AgentSession
 
     /// <summary>Optional audit service for emitting session lifecycle events.</summary>
     public AuditService? AuditService { get; set; }
+
+    /// <summary>Optional usage meter for centralized metering.</summary>
+    public IUsageMeter? UsageMeter { get; set; }
 
     // ── System prompt cache ──────────────────────────────────
     private string? _cachedSystemPromptText;
@@ -53,10 +62,54 @@ public sealed class AgentSession
     public bool SkipPermissions { get; set; }
 
     /// <summary>
+    /// Controls the permission model for tool invocations within the session.
+    /// </summary>
+    public PermissionMode PermissionMode { get; set; } = PermissionMode.Normal;
+
+    /// <summary>
+    /// Fallback model chain — used when the primary model returns 429/503/timeout.
+    /// </summary>
+    public IReadOnlyList<string> FallbackModels { get; set; } = [];
+
+    /// <summary>
+    /// When true, session persistence is disabled entirely.
+    /// </summary>
+    public bool NoSessionPersistence { get; set; }
+
+    /// <summary>
+    /// Per-session budget limit in USD (set via <c>--max-budget-usd</c>).
+    /// When exceeded the agent stops processing turns.
+    /// </summary>
+    public decimal? MaxBudgetUsd { get; set; }
+
+    /// <summary>
+    /// Accumulated estimated spend for this session in USD.
+    /// Updated after each turn by the budget tracker.
+    /// </summary>
+    public decimal SessionSpendUsd { get; set; }
+
+    /// <summary>
     /// When true, the agent operates in plan-only mode (read/explore, no file writes).
     /// Toggled via the /plan slash command.
     /// </summary>
     public bool PlanMode { get; set; }
+
+    /// <summary>
+    /// The name of the active <see cref="JD.AI.Core.Tools.ToolLoadout"/> for this session.
+    /// When set, agents and tooling systems may use this to filter which plugins are
+    /// exposed. Set to <see langword="null"/> to expose all registered plugins (default).
+    /// </summary>
+    public string? ActiveLoadoutName { get; set; }
+
+    /// <summary>
+    /// The tool loadout registry for this session, used by loadout-aware scoping.
+    /// </summary>
+    public IToolLoadoutRegistry? LoadoutRegistry { get; set; }
+
+    /// <summary>
+    /// Snapshot of all registered plugins before loadout scoping is applied.
+    /// </summary>
+    public IReadOnlyList<KernelPlugin>? AllPlugins { get; set; }
 
     /// <summary>
     /// When true, supported providers can automatically enable prompt caching.
@@ -84,6 +137,9 @@ public sealed class AgentSession
 
     /// <summary>Current turn being tracked (set by AgentLoop before each turn).</summary>
     public TurnRecord? CurrentTurn { get; set; }
+
+    /// <summary>Execution timeline from the most recent turn, used by <c>/trace</c>.</summary>
+    public ExecutionTimeline? LastTimeline { get; set; }
 
     /// <summary>Record a user message turn and persist.</summary>
     public async Task RecordUserTurnAsync(string content)
@@ -138,6 +194,22 @@ public sealed class AgentSession
         await Store.SaveTurnAsync(turn).ConfigureAwait(false);
         SyncModelHistoryToSession();
         await Store.UpdateSessionAsync(SessionInfo).ConfigureAwait(false);
+
+        // Fire-and-forget centralized metering
+        if (UsageMeter is not null)
+        {
+            _ = UsageMeter.RecordTurnAsync(new TurnUsageRecord
+            {
+                SessionId = SessionInfo.Id,
+                ProviderId = CurrentModel?.ProviderName ?? "unknown",
+                ModelId = CurrentModel?.Id ?? "unknown",
+                PromptTokens = tokensIn,
+                CompletionTokens = tokensOut,
+                ToolCalls = 0,
+                DurationMs = durationMs,
+                ProjectPath = SessionInfo.ProjectPath,
+            });
+        }
     }
 
     /// <summary>Sync in-memory model switch history and fork points to SessionInfo for persistence.</summary>
@@ -394,6 +466,29 @@ public sealed class AgentSession
             switchMode));
 
         ModelChanged?.Invoke(this, model);
+    }
+
+    /// <summary>
+    /// Attempts to resolve a model by name/id and switch to it.
+    /// Returns true if the switch succeeded, false if the model was not found.
+    /// </summary>
+    public async Task<bool> TrySwitchModelAsync(string modelNameOrId, CancellationToken ct = default)
+    {
+        var allModels = await _registry.GetModelsAsync(ct).ConfigureAwait(false);
+
+        // Try exact ID match first, then display name, then contains
+        var match = allModels.FirstOrDefault(m =>
+                        string.Equals(m.Id, modelNameOrId, StringComparison.OrdinalIgnoreCase))
+                    ?? allModels.FirstOrDefault(m =>
+                        string.Equals(m.DisplayName, modelNameOrId, StringComparison.OrdinalIgnoreCase))
+                    ?? allModels.FirstOrDefault(m =>
+                        m.Id.Contains(modelNameOrId, StringComparison.OrdinalIgnoreCase));
+
+        if (match is null)
+            return false;
+
+        SwitchModel(match, "fallback");
+        return true;
     }
 
     /// <summary>

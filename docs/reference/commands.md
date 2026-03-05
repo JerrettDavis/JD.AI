@@ -19,6 +19,7 @@ JD.AI currently supports 35+ interactive commands:
 - Local models and MCP server management
 - UX customization and persisted config
 - Agent/hook profiles and project memory
+- Skills lifecycle inspection and reload
 - Workflows and checkpoints
 
 ## Discovery and model/provider commands
@@ -184,6 +185,46 @@ Copies the last assistant response to clipboard.
 
 Shows uncommitted git diff (`git diff`, then staged diff fallback).
 
+## Audit commands
+
+### `/audit`
+
+Shows recent audit events from the in-memory audit buffer. Supports filtering by severity. Use this command to inspect what actions the agent has taken, what tools were invoked, and whether any policy denials occurred.
+
+```text
+/audit
+/audit --severity warning
+/audit --limit 50
+```
+
+| Parameter | Description |
+|---|---|
+| `--severity` | Minimum severity level to display (`debug`, `info`, `warning`, `error`, `critical`) |
+| `--limit` | Number of events to show (default: 20, max: 100) |
+
+Output format:
+
+```text
+Audit Log (142 total events, showing 20)
+
+.. 14:22:07 tool.invoke [read_file] — Debug
+.. 14:22:08 tool.invoke [grep] — Debug
+~~ 14:22:09 tool.invoke [run_command] — Warning
+-- 14:22:10 session.create — Info
+```
+
+Severity icons in the output:
+
+| Icon | Severity |
+|------|----------|
+| `..` | Debug |
+| `--` | Info |
+| `~~` | Warning |
+| `**` | Error |
+| `!!` | Critical |
+
+For interactive filtering and programmatic access, see the [Gateway API Reference](../developer-guide/gateway-api.md) and [Audit Logging](../user-guide/audit-logging.md).
+
 ## Review and security commands
 
 ### `/review [--branch <name> --target <name>]`
@@ -331,7 +372,37 @@ Displays merged instruction sources loaded into the prompt.
 
 ### `/plugins`
 
-Shows loaded plugins and metadata.
+Manages installed Plugin SDK packages and runtime lifecycle.
+
+Subcommands:
+
+- `/plugins list` — list installed plugins with enabled/loaded status
+- `/plugins install <path-or-url>` — install and enable plugin package
+- `/plugins enable <id>` — enable plugin
+- `/plugins disable <id>` — disable plugin
+- `/plugins update [id]` — update one plugin or all installed plugins
+- `/plugins uninstall <id>` — uninstall plugin package
+- `/plugins info <id>` — show plugin details and last error
+
+```text
+/plugins
+/plugins install https://example.com/My.Plugin.1.2.0.nupkg
+/plugins update my-plugin
+/plugins uninstall my-plugin
+```
+
+### `/skills [status|reload]`
+
+Shows managed skill lifecycle state and supports on-demand refresh.
+
+- `/skills` or `/skills status` prints deterministic skill eligibility status (`active`, `excluded`, `shadowed`, `invalid`) with reason codes.
+- `/skills reload` forces a refresh from source directories and `skills.json` config.
+
+```text
+/skills
+/skills status
+/skills reload
+```
 
 ## Profile and memory commands
 
@@ -420,10 +491,11 @@ Lists active gateway agents and route mappings.
 | `/sessions`, `/resume`, `/name`, `/fork` | Session lifecycle |
 | `/clear`, `/compact`, `/context`, `/cost`, `/history`, `/export` | Context/session operations |
 | `/autorun`, `/permissions`, `/sandbox`, `/plan` | Safety and execution mode |
+| `/audit` | Inspect audit events with optional severity filter |
 | `/review`, `/security-review` | Code and security review |
 | `/local ...` | Local model operations |
 | `/mcp ...` | MCP server management |
 | `/checkpoint ...`, `/workflow ...` | Checkpointing and workflows |
 | `/theme`, `/vim`, `/spinner`, `/output-style`, `/stats`, `/config` | UX and runtime settings |
-| `/agents`, `/hooks`, `/memory`, `/init`, `/instructions`, `/plugins`, `/doctor`, `/docs` | Project and profile operations |
+| `/agents`, `/hooks`, `/memory`, `/init`, `/instructions`, `/plugins`, `/skills`, `/doctor`, `/docs` | Project and profile operations |
 | `/quit`, `/exit` | Exit session |

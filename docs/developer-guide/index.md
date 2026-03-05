@@ -179,7 +179,7 @@ Each switch creates a fork point in session history, enabling rollback.
 
 ## Subagents and orchestration
 
-**Subagents** are isolated AI instances with scoped tools. The `SubagentRunner` builds a per-agent `Kernel` with only the tools appropriate for the agent type (explore, task, plan, review, general).
+**Subagents** are isolated AI instances with scoped tools. The `SubagentRunner` builds a per-agent `Kernel` with only the tools appropriate for the agent type (explore, task, plan, review, general). When a `IToolLoadoutRegistry` is provided, tool scoping is driven by loadouts — each subagent type maps to a named loadout.
 
 **Orchestration** coordinates multiple subagents via `IOrchestrationStrategy`:
 
@@ -192,7 +192,7 @@ Each switch creates a fork point in session history, enabling rollback.
 
 All agents in a team share a `TeamContext` (scratchpad, event stream, results).
 
-See [Subagents](subagents.md) and [Team Orchestration](orchestration.md).
+See [Subagents](subagents.md), [Tool Loadouts](tool-loadouts.md), and [Team Orchestration](orchestration.md).
 
 ## Configuration and data directories
 
@@ -234,5 +234,6 @@ See [Subagents](subagents.md) and [Team Orchestration](orchestration.md).
 
 - [Extending JD.AI](extending.md) — fork, build, and add features
 - [Custom Tools](custom-tools.md) — write Semantic Kernel tool plugins
+- [Tool Loadouts](tool-loadouts.md) — curate tool subsets for agents and workflows
 - [Custom Providers](custom-providers.md) — integrate new AI providers
 - [Plugin SDK](plugins.md) — build distributable gateway plugins

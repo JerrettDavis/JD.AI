@@ -1,6 +1,9 @@
 using System.Diagnostics;
 using System.Text;
 using JD.AI.Core.PromptCaching;
+using JD.AI.Core.Providers;
+using JD.AI.Core.Tools;
+using JD.AI.Core.Tracing;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
@@ -26,17 +29,17 @@ public sealed class AgentLoop
     public async Task<string> RunTurnAsync(
         string userMessage, CancellationToken ct = default)
     {
+        var traceCtx = TraceContext.StartTurn(_session.SessionInfo?.Id, _session.TurnIndex);
+        var turnEntry = traceCtx.Timeline.BeginOperation("agent.turn");
+        DebugLogger.Log(DebugCategory.Agents, "turn={0} traceId={1}", traceCtx.TurnIndex, traceCtx.TraceId);
+
         await _session.RecordUserTurnAsync(userMessage).ConfigureAwait(false);
         _session.History.AddUserMessage(userMessage);
         var historySnapshot = _session.History.Count;
 
         var chat = _session.Kernel.GetRequiredService<IChatCompletionService>();
 
-        var settings = new OpenAIPromptExecutionSettings
-        {
-            ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
-            MaxTokens = 4096,
-        };
+        var settings = BuildExecutionSettings();
         PromptCachePolicy.Apply(
             settings,
             _session.CurrentModel,
@@ -66,6 +69,10 @@ public sealed class AgentLoop
                 response, durationMs: sw.ElapsedMilliseconds,
                 tokensOut: tokenEstimate).ConfigureAwait(false);
 
+            turnEntry.Attributes["tokens_out"] = tokenEstimate.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            turnEntry.Complete();
+            _session.LastTimeline = traceCtx.Timeline;
+
             return response;
         }
         catch (Exception ex) when (!ct.IsCancellationRequested && IsToolCallingError(ex))
@@ -75,6 +82,9 @@ public sealed class AgentLoop
             // Remove intermediate messages SK added during failed auto-function-calling
             while (_session.History.Count > historySnapshot)
                 _session.History.RemoveAt(_session.History.Count - 1);
+
+            DebugLogger.Log(DebugCategory.Agents,
+                "Tool calling format error, retrying without tools: {0}", ex.Message);
 
             sw.Restart();
             try
@@ -99,11 +109,17 @@ public sealed class AgentLoop
                     response, durationMs: sw.ElapsedMilliseconds,
                     tokensOut: tokenEstimate).ConfigureAwait(false);
 
+                turnEntry.Attributes["tool_calling_fallback"] = "true";
+                turnEntry.Complete();
+                _session.LastTimeline = traceCtx.Timeline;
+
                 return response;
             }
             catch (Exception retryEx) when (!ct.IsCancellationRequested)
             {
                 sw.Stop();
+                turnEntry.Complete("error", retryEx.Message);
+                _session.LastTimeline = traceCtx.Timeline;
                 var errorMsg = $"Error: {retryEx.Message}";
                 AgentOutput.Current.RenderError(errorMsg);
                 _session.History.AddAssistantMessage(
@@ -113,6 +129,22 @@ public sealed class AgentLoop
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
+            // Attempt fallback model if available and error is retriable
+            if (IsRetriableError(ex) && _session.FallbackModels.Count > 0)
+            {
+                var fallbackResult = await TryFallbackAsync(userMessage, streaming: false, ct).ConfigureAwait(false);
+                if (fallbackResult is not null)
+                {
+                    turnEntry.Attributes["fallback"] = "true";
+                    turnEntry.Complete();
+                    _session.LastTimeline = traceCtx.Timeline;
+                    return fallbackResult;
+                }
+            }
+
+            turnEntry.Complete("error", ex.Message);
+            _session.LastTimeline = traceCtx.Timeline;
+
             var errorMsg = $"Error: {ex.Message}";
             AgentOutput.Current.RenderError(errorMsg);
 
@@ -131,17 +163,17 @@ public sealed class AgentLoop
     public async Task<string> RunTurnStreamingAsync(
         string userMessage, CancellationToken ct = default)
     {
+        var traceCtx = TraceContext.StartTurn(_session.SessionInfo?.Id, _session.TurnIndex);
+        var turnEntry = traceCtx.Timeline.BeginOperation("agent.turn");
+        DebugLogger.Log(DebugCategory.Agents, "turn={0} traceId={1} streaming=true", traceCtx.TurnIndex, traceCtx.TraceId);
+
         await _session.RecordUserTurnAsync(userMessage).ConfigureAwait(false);
         _session.History.AddUserMessage(userMessage);
         var historySnapshot = _session.History.Count;
 
         var chat = _session.Kernel.GetRequiredService<IChatCompletionService>();
 
-        var settings = new OpenAIPromptExecutionSettings
-        {
-            ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
-            MaxTokens = 4096,
-        };
+        var settings = BuildExecutionSettings();
         PromptCachePolicy.Apply(
             settings,
             _session.CurrentModel,
@@ -281,14 +313,73 @@ public sealed class AgentLoop
                 durationMs: sw.ElapsedMilliseconds,
                 tokensOut: tokenEstimate).ConfigureAwait(false);
 
+            turnEntry.Attributes["tokens_out"] = tokenEstimate.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            turnEntry.Complete();
+            _session.LastTimeline = traceCtx.Timeline;
+
             return response;
         }
         catch (OperationCanceledException)
         {
             output.EndStreaming();
             sw.Stop();
+            turnEntry.Complete("cancelled");
+            _session.LastTimeline = traceCtx.Timeline;
             output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, 0, totalBytes));
             throw; // Let caller handle cancellation
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested && IsStreamingPrematureEnd(ex))
+        {
+            // Foundry Local (and similar providers) silently terminate SSE
+            // connections when the request payload is large (many tools).
+            // Fall back to a non-streaming request using the same history.
+            output.EndStreaming();
+            sw.Stop();
+            DebugLogger.Log(DebugCategory.Agents,
+                "Streaming terminated prematurely, retrying without streaming");
+
+            sw.Restart();
+            try
+            {
+                var result = await chat.GetChatMessageContentAsync(
+                    _session.History, settings, _session.Kernel, ct).ConfigureAwait(false);
+                sw.Stop();
+
+                var response = result.Content ?? "(no response)";
+                _session.History.AddAssistantMessage(response);
+
+                var tokenEstimate = JD.SemanticKernel.Extensions.Compaction.TokenEstimator
+                    .EstimateTokens(response);
+
+                output.BeginStreaming();
+                output.WriteStreamingChunk(response);
+                output.EndStreaming();
+                output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, tokenEstimate, 0));
+
+                await _session.RecordAssistantTurnAsync(
+                    response, durationMs: sw.ElapsedMilliseconds,
+                    tokensOut: tokenEstimate).ConfigureAwait(false);
+
+                turnEntry.Attributes["streaming_fallback"] = "true";
+                turnEntry.Complete();
+                _session.LastTimeline = traceCtx.Timeline;
+
+                return response;
+            }
+            catch (Exception fallbackEx) when (!ct.IsCancellationRequested)
+            {
+                sw.Stop();
+                turnEntry.Complete("error", fallbackEx.Message);
+                _session.LastTimeline = traceCtx.Timeline;
+                output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, 0, totalBytes));
+                var errorMsg = $"Error: {fallbackEx.Message}";
+                AgentOutput.Current.RenderError(errorMsg);
+
+                _session.History.AddAssistantMessage(
+                    $"[Error occurred: {fallbackEx.Message}. I'll try a different approach.]");
+
+                return errorMsg;
+            }
         }
         catch (Exception ex) when (!ct.IsCancellationRequested && IsToolCallingError(ex))
         {
@@ -298,6 +389,9 @@ public sealed class AgentLoop
             // Remove intermediate messages SK added during failed auto-function-calling
             while (_session.History.Count > historySnapshot)
                 _session.History.RemoveAt(_session.History.Count - 1);
+
+            DebugLogger.Log(DebugCategory.Agents,
+                "Tool calling format error, retrying without tools: {0}", ex.Message);
 
             sw.Restart();
             try
@@ -327,11 +421,17 @@ public sealed class AgentLoop
                     response, durationMs: sw.ElapsedMilliseconds,
                     tokensOut: tokenEstimate).ConfigureAwait(false);
 
+                turnEntry.Attributes["tool_calling_fallback"] = "true";
+                turnEntry.Complete();
+                _session.LastTimeline = traceCtx.Timeline;
+
                 return response;
             }
             catch (Exception retryEx) when (!ct.IsCancellationRequested)
             {
                 sw.Stop();
+                turnEntry.Complete("error", retryEx.Message);
+                _session.LastTimeline = traceCtx.Timeline;
                 output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, 0, totalBytes));
                 var errorMsg = $"Error: {retryEx.Message}";
                 AgentOutput.Current.RenderError(errorMsg);
@@ -344,6 +444,23 @@ public sealed class AgentLoop
         {
             output.EndStreaming();
             sw.Stop();
+
+            // Attempt fallback model if available and error is retriable
+            if (IsRetriableError(ex) && _session.FallbackModels.Count > 0)
+            {
+                output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, 0, totalBytes));
+                var fallbackResult = await TryFallbackAsync(userMessage, streaming: true, ct).ConfigureAwait(false);
+                if (fallbackResult is not null)
+                {
+                    turnEntry.Attributes["fallback"] = "true";
+                    turnEntry.Complete();
+                    _session.LastTimeline = traceCtx.Timeline;
+                    return fallbackResult;
+                }
+            }
+
+            turnEntry.Complete("error", ex.Message);
+            _session.LastTimeline = traceCtx.Timeline;
             output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, 0, totalBytes));
             var errorMsg = $"Error: {ex.Message}";
             AgentOutput.Current.RenderError(errorMsg);
@@ -365,5 +482,225 @@ public sealed class AgentLoop
                 return true;
         }
         return false;
+    }
+
+    /// <summary>
+    /// Builds provider-appropriate execution settings for the current model.
+    /// Uses <see cref="OpenAIPromptExecutionSettings"/> for <c>MaxTokens</c> support
+    /// with SK's unified <see cref="FunctionChoiceBehavior"/> (not the deprecated
+    /// <c>ToolCallBehavior</c>) so tool calling works across all connector types.
+    /// MEAI adapters read <c>FunctionChoiceBehavior</c> and <c>ModelId</c> from the
+    /// base <see cref="PromptExecutionSettings"/> class.
+    /// </summary>
+    private OpenAIPromptExecutionSettings BuildExecutionSettings()
+    {
+        var supportsTools = _session.CurrentModel?.Capabilities
+            .HasFlag(ModelCapabilities.ToolCalling) ?? false;
+
+        // Loadout-aware tool scoping: instead of disabling ALL tools when the
+        // context window is tight, apply progressively smaller loadouts that keep
+        // the most essential tools (always including toolDiscovery so agents can
+        // still find and activate tools on demand).
+        if (supportsTools)
+        {
+            var contextWindow = _session.CurrentModel?.ContextWindowTokens ?? 128_000;
+            var toolCount = _session.Kernel.Plugins.SelectMany(p => p).Count();
+            var estimatedToolTokens = toolCount * 200;
+
+            if (estimatedToolTokens > contextWindow / 2 &&
+                _session.LoadoutRegistry is not null)
+            {
+                var loadoutName = SelectLoadoutForContext(contextWindow);
+                ApplyLoadoutScoping(loadoutName);
+
+                // Re-check after scoping
+                toolCount = _session.Kernel.Plugins.SelectMany(p => p).Count();
+                estimatedToolTokens = toolCount * 200;
+
+                DebugLogger.Log(DebugCategory.Agents,
+                    "Applied '{0}' loadout: {1} tools (~{2} tokens) for {3}-token context window",
+                    loadoutName, toolCount, estimatedToolTokens, contextWindow);
+
+                // If still too large even after loadout scoping, disable as last resort
+                if (estimatedToolTokens > contextWindow / 2)
+                {
+                    DebugLogger.Log(DebugCategory.Agents,
+                        "Disabling tools: even '{0}' loadout ({1} tools, ~{2} tokens) exceeds half of {3}-token context window",
+                        loadoutName, toolCount, estimatedToolTokens, contextWindow);
+                    supportsTools = false;
+                }
+            }
+            else if (estimatedToolTokens > contextWindow / 2)
+            {
+                // No loadout registry -- fall back to disabling all tools
+                DebugLogger.Log(DebugCategory.Agents,
+                    "Disabling tools: {0} tools (~{1} tokens) exceed half of {2}-token context window",
+                    toolCount, estimatedToolTokens, contextWindow);
+                supportsTools = false;
+            }
+        }
+
+        var maxTokens = _session.CurrentModel?.MaxOutputTokens;
+        if (maxTokens is null or <= 0)
+        {
+            maxTokens = 4096;
+        }
+
+        return new OpenAIPromptExecutionSettings
+        {
+            ModelId = _session.CurrentModel?.Id,
+            MaxTokens = maxTokens,
+            FunctionChoiceBehavior = supportsTools
+                ? FunctionChoiceBehavior.Auto()
+                : null,
+        };
+    }
+
+    /// <summary>
+    /// Detects when a streaming connection was terminated prematurely by the server.
+    /// This occurs with Foundry Local and similar providers that silently close SSE
+    /// connections when the request payload is large (e.g. many tools).
+    /// </summary>
+    internal static bool IsStreamingPrematureEnd(Exception ex)
+    {
+        // Walk exception chain looking for HttpIOException or ResponseEnded indicators
+        for (var current = ex; current != null; current = current.InnerException)
+        {
+            var msg = current.Message;
+            if (msg.Contains("ResponseEnded", StringComparison.OrdinalIgnoreCase) ||
+                msg.Contains("response ended prematurely", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            // .NET's HttpIOException (System.Net.Http) with HttpRequestError.ResponseEnded
+            if (string.Equals(current.GetType().Name, "HttpIOException", StringComparison.Ordinal))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Determines whether an exception is retriable (429/500/503/timeout)
+    /// and therefore eligible for model fallback.
+    /// </summary>
+    private static bool IsRetriableError(Exception ex)
+    {
+        if (ex is TaskCanceledException or TimeoutException)
+            return true;
+
+        if (ex is HttpRequestException httpEx)
+        {
+            return httpEx.StatusCode is
+                System.Net.HttpStatusCode.InternalServerError or   // 500
+                System.Net.HttpStatusCode.TooManyRequests or       // 429
+                System.Net.HttpStatusCode.ServiceUnavailable or    // 503
+                System.Net.HttpStatusCode.GatewayTimeout;          // 504
+        }
+
+        // Check inner exceptions (SK wraps HTTP errors)
+        if (ex.InnerException is HttpRequestException inner)
+        {
+            return inner.StatusCode is
+                System.Net.HttpStatusCode.InternalServerError or
+                System.Net.HttpStatusCode.TooManyRequests or
+                System.Net.HttpStatusCode.ServiceUnavailable or
+                System.Net.HttpStatusCode.GatewayTimeout;
+        }
+
+        // Check message for common patterns
+        var msg = ex.Message;
+        return msg.Contains("429", StringComparison.Ordinal) ||
+               msg.Contains("rate limit", StringComparison.OrdinalIgnoreCase) ||
+               msg.Contains("overloaded", StringComparison.OrdinalIgnoreCase) ||
+               msg.Contains("model: Field required", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Attempts to switch to a fallback model and retry the turn.
+    /// Returns null if all fallbacks fail.
+    /// </summary>
+    private async Task<string?> TryFallbackAsync(
+        string userMessage, bool streaming, CancellationToken ct)
+    {
+        var output = AgentOutput.Current;
+
+        foreach (var fallbackModel in _session.FallbackModels)
+        {
+            output.RenderWarning(
+                $"Primary model unavailable, falling back to {fallbackModel}...");
+
+            DebugLogger.Log(DebugCategory.Providers,
+                "Attempting fallback to model: {0}", fallbackModel);
+
+            try
+            {
+                // Try to switch model via the session's registry
+                var switched = await _session.TrySwitchModelAsync(fallbackModel, ct)
+                    .ConfigureAwait(false);
+
+                if (!switched)
+                {
+                    output.RenderWarning($"  Fallback model '{fallbackModel}' not available.");
+                    continue;
+                }
+
+                // Remove the user message we already added (it'll be re-added by the recursive call)
+                if (_session.History.Count > 0 &&
+                    _session.History[^1].Role == AuthorRole.User)
+                {
+                    _session.History.RemoveAt(_session.History.Count - 1);
+                }
+
+                // Retry with the new model
+                return streaming
+                    ? await RunTurnStreamingAsync(userMessage, ct).ConfigureAwait(false)
+                    : await RunTurnAsync(userMessage, ct).ConfigureAwait(false);
+            }
+            catch (Exception fallbackEx)
+            {
+                output.RenderWarning(
+                    $"  Fallback to {fallbackModel} also failed: {fallbackEx.Message}");
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Selects the appropriate tool loadout based on the available context window size.
+    /// </summary>
+    internal static string SelectLoadoutForContext(int contextWindowTokens)
+    {
+        return contextWindowTokens switch
+        {
+            >= 128_000 => WellKnownLoadouts.Full,
+            >= 64_000 => WellKnownLoadouts.Developer,
+            _ => WellKnownLoadouts.Minimal,
+        };
+    }
+
+    /// <summary>
+    /// Removes plugins from the kernel that are not in the active set for the given loadout.
+    /// Always preserves the <c>toolDiscovery</c> plugin so agents can still find and
+    /// activate additional tools on demand.
+    /// </summary>
+    private void ApplyLoadoutScoping(string loadoutName)
+    {
+        var registry = _session.LoadoutRegistry!;
+        var activePlugins = registry.ResolveActivePlugins(
+            loadoutName, _session.Kernel.Plugins);
+
+        var toRemove = _session.Kernel.Plugins
+            .Where(p => !activePlugins.Contains(p.Name) &&
+                        !p.Name.Equals("toolDiscovery", StringComparison.OrdinalIgnoreCase))
+            .Select(p => p.Name)
+            .ToList();
+
+        foreach (var name in toRemove)
+        {
+            _session.Kernel.Plugins.Remove(
+                _session.Kernel.Plugins.First(p =>
+                    p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)));
+        }
     }
 }

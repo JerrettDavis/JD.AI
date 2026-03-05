@@ -29,6 +29,8 @@ public sealed class PolicySpec
     public DataPolicy? Data { get; set; }
     public SessionPolicy? Sessions { get; set; }
     public AuditPolicy? Audit { get; set; }
+    public WorkflowPolicy? Workflows { get; set; }
+    public CircuitBreakerPolicy? CircuitBreaker { get; set; }
 }
 
 #pragma warning disable CA2227 // Settable collection properties required for YAML deserialization
@@ -54,6 +56,10 @@ public sealed class BudgetPolicy
 {
     public decimal? MaxDailyUsd { get; set; }
     public decimal? MaxMonthlyUsd { get; set; }
+
+    /// <summary>Per-session budget limit set via <c>--max-budget-usd</c>.</summary>
+    public decimal? MaxSessionUsd { get; set; }
+
     public int AlertThresholdPercent { get; set; } = 80;
 }
 
@@ -80,4 +86,53 @@ public sealed class AuditPolicy
     public string? Url { get; set; }
     public string? ConnectionString { get; set; }
     public string? Server { get; set; }
+}
+
+/// <summary>
+/// Controls who can publish, install, and manage shared workflows.
+/// Roles are compared against the current user identity (e.g. from Environment.UserName
+/// or an org identity provider).
+/// </summary>
+public sealed class WorkflowPolicy
+{
+#pragma warning disable CA2227 // Settable collection properties required for YAML deserialization
+
+    /// <summary>
+    /// Roles or usernames permitted to publish workflows.
+    /// Empty means anyone can publish (no restriction).
+    /// </summary>
+    public IList<string> PublishAllowed { get; set; } = [];
+
+    /// <summary>
+    /// Roles or usernames explicitly denied from publishing.
+    /// Deny takes precedence over allow.
+    /// </summary>
+    public IList<string> PublishDenied { get; set; } = [];
+
+#pragma warning restore CA2227
+}
+
+/// <summary>
+/// Configures tool loop detection and circuit breaker thresholds.
+/// When <see cref="Hardened"/> is true, circuit breakers cannot be reset by users.
+/// </summary>
+public sealed class CircuitBreakerPolicy
+{
+    /// <summary>Number of identical tool+args calls that trigger a warning.</summary>
+    public int RepetitionWarningThreshold { get; set; } = 3;
+
+    /// <summary>Number of identical tool+args calls that trigger a hard stop.</summary>
+    public int RepetitionHardStopThreshold { get; set; } = 5;
+
+    /// <summary>Number of alternating A→B→A→B calls that constitutes a ping-pong loop.</summary>
+    public int PingPongThreshold { get; set; } = 4;
+
+    /// <summary>Rolling window of recent calls to inspect.</summary>
+    public int WindowSize { get; set; } = 50;
+
+    /// <summary>Seconds the circuit stays open before half-open probe.</summary>
+    public int CooldownSeconds { get; set; } = 30;
+
+    /// <summary>When true, circuit breakers cannot be disabled or reset by users.</summary>
+    public bool Hardened { get; set; }
 }

@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -8,9 +9,11 @@ namespace JD.AI.Core.Tools;
 /// Tools for creating and applying unified diff patches.
 /// Enables structured multi-location file edits via standard patch format.
 /// </summary>
+[ToolPlugin("diff")]
 public sealed class DiffTools
 {
     [KernelFunction("create_patch")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description(
         "Create a unified diff patch from a list of file edits. Each edit specifies " +
         "a file path, the old text to find, and the new text to replace it with. " +
@@ -59,6 +62,7 @@ public sealed class DiffTools
     }
 
     [KernelFunction("apply_patch")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description(
         "Apply a set of text replacements to files. Each edit specifies a file path, " +
         "old text to find, and new text to replace it with. All edits are applied atomically — " +

@@ -4,16 +4,21 @@ using JD.AI.Commands;
 using JD.AI.Core.Agents;
 using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Agents.Orchestration;
+using JD.AI.Core.Channels;
 using JD.AI.Core.Config;
 using JD.AI.Core.Governance;
 using JD.AI.Core.Governance.Audit;
-using JD.AI.Core.LocalModels;
 using JD.AI.Core.Mcp;
+using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
-using JD.AI.Core.Providers.Credentials;
 using JD.AI.Core.Providers.Metadata;
 using JD.AI.Core.Providers.ModelSearch;
+using JD.AI.Core.Safety;
+using JD.AI.Core.Skills;
+using JD.AI.Core.Tools;
+using JD.AI.Core.Usage;
 using JD.AI.Rendering;
+using JD.AI.Startup;
 using JD.AI.Tools;
 using JD.AI.Workflows;
 using JD.AI.Workflows.Store;
@@ -25,6 +30,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.SemanticKernel;
 using Spectre.Console;
 
@@ -38,89 +44,24 @@ Console.OutputEncoding = System.Text.Encoding.UTF8;
 Console.InputEncoding = System.Text.Encoding.UTF8;
 
 // Parse CLI flags
-var skipPermissions = args.Contains("--dangerously-skip-permissions");
-var forceUpdateCheck = args.Contains("--force-update-check");
-var resumeId = args.SkipWhile(a => !string.Equals(a, "--resume", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
-var isNewSession = args.Contains("--new");
-var cliModel = args.SkipWhile(a => !string.Equals(a, "--model", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
-var cliProvider = args.SkipWhile(a => !string.Equals(a, "--provider", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
-var gatewayMode = args.Contains("--gateway");
-var gatewayPort = args.SkipWhile(a => !string.Equals(a, "--gateway-port", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
+var opts = await CliArgumentParser.ParseAsync(args).ConfigureAwait(false);
 
-// Handle 'mcp' subcommand early (before provider detection).
-// Allow global options (starting with '-') to appear before the 'mcp' subcommand,
-// e.g. `jdai --debug mcp list` works the same as `jdai mcp list`.
-var firstNonOptionIndex = Array.FindIndex(args, a => !a.StartsWith('-'));
-if (firstNonOptionIndex >= 0 && string.Equals(args[firstNonOptionIndex], "mcp", StringComparison.OrdinalIgnoreCase))
+// Handle 'mcp' / 'plugin' subcommands early (before provider detection)
+if (opts.Subcommand != null)
 {
-    var mcpArgs = args.Skip(firstNonOptionIndex + 1).ToArray();
-    return await McpCliHandler.RunAsync(mcpArgs).ConfigureAwait(false);
-}
-// Print mode: non-interactive, query → stdout → exit
-var printMode = args.Contains("-p") || args.Contains("--print");
-var printQuery = printMode
-    ? args.SkipWhile(a => !string.Equals(a, "-p", StringComparison.OrdinalIgnoreCase) &&
-                          !string.Equals(a, "--print", StringComparison.OrdinalIgnoreCase))
-        .Skip(1).FirstOrDefault()
-    : null;
-
-// Continue most recent session
-var continueSession = args.Contains("-c") || args.Contains("--continue");
-
-// System prompt overrides
-var systemPromptOverride = args.SkipWhile(a => !string.Equals(a, "--system-prompt", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
-var appendSystemPrompt = args.SkipWhile(a => !string.Equals(a, "--append-system-prompt", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
-var systemPromptFile = args.SkipWhile(a => !string.Equals(a, "--system-prompt-file", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
-var appendSystemPromptFile = args.SkipWhile(a => !string.Equals(a, "--append-system-prompt-file", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
-
-// Output format for print mode
-var outputFormat = args.SkipWhile(a => !string.Equals(a, "--output-format", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault() ?? "text";
-
-// Max turns limit
-var maxTurnsStr = args.SkipWhile(a => !string.Equals(a, "--max-turns", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
-int? maxTurns = int.TryParse(maxTurnsStr, out var mt) ? mt : null;
-
-// Verbose mode
-var verboseMode = args.Contains("--verbose");
-
-// Additional working directories
-var addDirs = new List<string>();
-for (var i = 0; i < args.Length; i++)
-{
-    if (string.Equals(args[i], "--add-dir", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+    return opts.Subcommand switch
     {
-        addDirs.Add(args[++i]);
-    }
-}
-
-// Tool filtering
-var allowedTools = args.SkipWhile(a => !string.Equals(a, "--allowedTools", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault()?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-var disallowedTools = args.SkipWhile(a => !string.Equals(a, "--disallowedTools", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault()?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-// Read piped stdin if available (e.g. `cat file | jdai -p "query"`)
-string? pipedInput = null;
-if (Console.IsInputRedirected)
-{
-    pipedInput = await Console.In.ReadToEndAsync().ConfigureAwait(false);
+        "mcp" => await McpCliHandler.RunAsync(opts.SubcommandArgs).ConfigureAwait(false),
+        "plugin" => await PluginCliHandler.RunAsync(opts.SubcommandArgs).ConfigureAwait(false),
+        _ => 1,
+    };
 }
 
 // --gateway: start the Gateway as an embedded ASP.NET host alongside the TUI
 Microsoft.AspNetCore.Builder.WebApplication? gatewayHost = null;
-if (gatewayMode)
+if (opts.GatewayMode)
 {
-    var port = gatewayPort ?? "5100";
+    var port = opts.GatewayPort ?? "5100";
     var gwBuilder = Microsoft.AspNetCore.Builder.WebApplication.CreateBuilder(["--urls", $"http://localhost:{port}"]);
     gwBuilder.Logging.SetMinimumLevel(LogLevel.Warning);
 
@@ -130,321 +71,193 @@ if (gatewayMode)
 
     gatewayHost = gwApp;
     _ = gwApp.StartAsync();
-    if (!printMode)
+    if (!opts.PrintMode)
     {
         AnsiConsole.MarkupLine($"[dim]Gateway started on http://localhost:{port}[/]");
     }
 }
 
 // Fire background update check immediately (non-blocking)
-var updateCheckTask = UpdateChecker.CheckAsync(forceUpdateCheck);
+var updateCheckTask = UpdateChecker.CheckAsync(opts.ForceUpdateCheck);
 
-if (!printMode)
-{
-    AnsiConsole.MarkupLine("[dim]Detecting providers...[/]");
-}
-
-// 1. Build provider registry with all detectors
-var credentialStore = new EncryptedFileStore();
-var providerConfig = new ProviderConfigurationManager(credentialStore);
-
-var detectors = new IProviderDetector[]
-{
-    // OAuth / credential-harvesting providers
-    new ClaudeCodeDetector(),
-    new CopilotDetector(),
-    new OpenAICodexDetector(),
-    // Local providers
-    new OllamaDetector(),
-    new FoundryLocalDetector(),
-    new LocalModelDetector(),
-    // API key providers
-    new OpenAIDetector(providerConfig),
-    new AzureOpenAIDetector(providerConfig),
-    new AnthropicDetector(providerConfig),
-    new GoogleGeminiDetector(providerConfig),
-    new MistralDetector(providerConfig),
-    new AmazonBedrockDetector(providerConfig),
-    new HuggingFaceDetector(providerConfig),
-    new OpenAICompatibleDetector(providerConfig),
-};
-var metadataProvider = new ModelMetadataProvider();
-var registry = new ProviderRegistry(detectors, metadataProvider);
-
-// 2. Detect available providers and show status
-var providers = await registry.DetectProvidersAsync().ConfigureAwait(false);
-if (!printMode)
-{
-    foreach (var p in providers)
-    {
-        var icon = p.IsAvailable ? "[green]✓[/]" : "[red]✗[/]";
-        AnsiConsole.MarkupLine($"  {icon} [bold]{Markup.Escape(p.Name)}[/]: {Markup.Escape(p.StatusMessage ?? "Unknown")}");
-    }
-}
-
-var allModels = await registry.GetModelsAsync().ConfigureAwait(false);
-
-if (allModels.Count == 0)
-{
-    Console.Error.WriteLine("No AI providers available.");
-    return 1;
-}
-
-// 3. Let user pick a model (or use CLI flags / per-project defaults / global defaults / first available)
+// 1-3. Detect providers, list models, select model
 using var configStore = new AtomicConfigStore();
-ProviderModelInfo selectedModel;
-if (cliModel != null)
-{
-    // --model flag: match by display name or model ID (case-insensitive)
-    var candidates = allModels.Where(m =>
-        m.DisplayName.Contains(cliModel, StringComparison.OrdinalIgnoreCase) ||
-        m.Id.Contains(cliModel, StringComparison.OrdinalIgnoreCase)).ToList();
+var providerSetup = await ProviderOrchestrator.DetectAndSelectAsync(opts, configStore).ConfigureAwait(false);
+if (providerSetup is null) return 1;
 
-    if (cliProvider != null)
-    {
-        candidates = candidates.Where(m =>
-            m.ProviderName.Contains(cliProvider, StringComparison.OrdinalIgnoreCase)).ToList();
-    }
+var registry = providerSetup.Registry;
+var providerConfig = providerSetup.ProviderConfig;
+var metadataProvider = providerSetup.MetadataProvider;
+var allModels = providerSetup.AllModels;
+var selectedModel = providerSetup.SelectedModel;
+var kernel = providerSetup.Kernel;
 
-    if (candidates.Count == 0)
-    {
-        AnsiConsole.MarkupLine($"[red]No model matching '{Markup.Escape(cliModel)}' found.[/]");
-        return 1;
-    }
-
-    selectedModel = candidates[0];
-}
-else if (cliProvider != null)
-{
-    var candidates = allModels.Where(m =>
-        m.ProviderName.Contains(cliProvider, StringComparison.OrdinalIgnoreCase)).ToList();
-
-    if (candidates.Count == 0)
-    {
-        AnsiConsole.MarkupLine($"[red]No models from provider '{Markup.Escape(cliProvider)}' found.[/]");
-        return 1;
-    }
-
-    selectedModel = candidates.Count == 1 || printMode
-        ? candidates[0]
-        : AnsiConsole.Prompt(
-            new SelectionPrompt<ProviderModelInfo>()
-                .Title("Select a model:")
-                .PageSize(15)
-                .UseConverter(m => Markup.Escape($"[{m.ProviderName}] {m.DisplayName}"))
-                .AddChoices(candidates));
-}
-else
-{
-    // Check per-project then global defaults from config store
-    var cfgProjectPath = Directory.GetCurrentDirectory();
-    var defaultModel = await configStore.GetDefaultModelAsync(cfgProjectPath).ConfigureAwait(false);
-    var defaultProvider = await configStore.GetDefaultProviderAsync(cfgProjectPath).ConfigureAwait(false);
-
-    List<ProviderModelInfo>? defaultCandidates = null;
-
-    if (defaultModel is not null)
-    {
-        defaultCandidates = allModels.Where(m =>
-            m.DisplayName.Contains(defaultModel, StringComparison.OrdinalIgnoreCase) ||
-            m.Id.Contains(defaultModel, StringComparison.OrdinalIgnoreCase)).ToList();
-
-        if (defaultProvider is not null)
-        {
-            defaultCandidates = defaultCandidates.Where(m =>
-                m.ProviderName.Contains(defaultProvider, StringComparison.OrdinalIgnoreCase)).ToList();
-        }
-    }
-    else if (defaultProvider is not null)
-    {
-        defaultCandidates = allModels.Where(m =>
-            m.ProviderName.Contains(defaultProvider, StringComparison.OrdinalIgnoreCase)).ToList();
-    }
-
-    if (defaultCandidates is { Count: > 0 })
-    {
-        selectedModel = defaultCandidates[0];
-    }
-    else if (allModels.Count == 1 || printMode)
-    {
-        selectedModel = allModels[0];
-    }
-    else
-    {
-        selectedModel = AnsiConsole.Prompt(
-            new SelectionPrompt<ProviderModelInfo>()
-                .Title("Select a model:")
-                .PageSize(15)
-                .UseConverter(m => Markup.Escape($"[{m.ProviderName}] {m.DisplayName}"))
-                .AddChoices(allModels));
-    }
-}
-
-// 4. Build initial kernel with the selected model
-var kernel = registry.BuildKernel(selectedModel);
-
-// 5. Create agent session
-var session = new AgentSession(registry, kernel, selectedModel);
-
-// Apply CLI flags
-if (skipPermissions)
-{
-    session.SkipPermissions = true;
-    if (!printMode) ChatRenderer.RenderWarning("--dangerously-skip-permissions: ALL tool confirmations disabled.");
-}
-if (verboseMode)
-{
-    session.Verbose = true;
-}
-
-// Initialize session persistence
-var projectPath = Directory.GetCurrentDirectory();
-if (!isNewSession)
-{
-    // --continue: auto-resume the most recent session for this project
-    if (continueSession && resumeId == null)
-    {
-        await session.InitializePersistenceAsync(projectPath).ConfigureAwait(false);
-        if (session.Store != null)
-        {
-            var projectHash = JD.AI.Core.Sessions.ProjectHasher.Hash(projectPath);
-            var recentSessions = await session.Store.ListSessionsAsync(projectHash, 1).ConfigureAwait(false);
-            if (recentSessions.Count > 0)
-            {
-                resumeId = recentSessions[0].Id;
-            }
-        }
-    }
-
-    await session.InitializePersistenceAsync(projectPath, resumeId).ConfigureAwait(false);
-    if (resumeId != null && session.SessionInfo != null)
-    {
-        // Restore last-used model from session's model switch history
-        var lastSwitch = session.SessionInfo.ModelSwitchHistory.LastOrDefault();
-        if (lastSwitch != null)
-        {
-            var restored = allModels.FirstOrDefault(m =>
-                string.Equals(m.Id, lastSwitch.ModelId, StringComparison.Ordinal) &&
-                string.Equals(m.ProviderName, lastSwitch.ProviderName, StringComparison.Ordinal));
-            if (restored != null)
-            {
-                selectedModel = restored;
-                kernel = registry.BuildKernel(selectedModel);
-                session = new AgentSession(registry, kernel, selectedModel)
-                {
-                    Store = session.Store,
-                    SessionInfo = session.SessionInfo,
-                    SkipPermissions = session.SkipPermissions,
-                    Verbose = session.Verbose,
-                };
-                // Re-restore history into the new session's ChatHistory
-                foreach (var turn in session.SessionInfo.Turns)
-                {
-                    if (string.Equals(turn.Role, "user", StringComparison.Ordinal))
-                        session.History.AddUserMessage(turn.Content ?? string.Empty);
-                    else if (string.Equals(turn.Role, "assistant", StringComparison.Ordinal))
-                        session.History.AddAssistantMessage(turn.Content ?? string.Empty);
-                }
-                if (!printMode) ChatRenderer.RenderInfo($"Restored model: [{restored.ProviderName}] {restored.DisplayName}");
-            }
-        }
-        else if (session.SessionInfo.ModelId != null && session.SessionInfo.ProviderName != null)
-        {
-            // Fallback: use the session's original model_id/provider_name
-            var restored = allModels.FirstOrDefault(m =>
-                string.Equals(m.Id, session.SessionInfo.ModelId, StringComparison.Ordinal) &&
-                string.Equals(m.ProviderName, session.SessionInfo.ProviderName, StringComparison.Ordinal));
-            if (restored != null && !string.Equals(restored.Id, selectedModel.Id, StringComparison.Ordinal))
-            {
-                selectedModel = restored;
-                kernel = registry.BuildKernel(selectedModel);
-                session = new AgentSession(registry, kernel, selectedModel)
-                {
-                    Store = session.Store,
-                    SessionInfo = session.SessionInfo,
-                    SkipPermissions = session.SkipPermissions,
-                    Verbose = session.Verbose,
-                };
-                foreach (var turn in session.SessionInfo.Turns)
-                {
-                    if (string.Equals(turn.Role, "user", StringComparison.Ordinal))
-                        session.History.AddUserMessage(turn.Content ?? string.Empty);
-                    else if (string.Equals(turn.Role, "assistant", StringComparison.Ordinal))
-                        session.History.AddAssistantMessage(turn.Content ?? string.Empty);
-                }
-                if (!printMode) ChatRenderer.RenderInfo($"Restored model: [{restored.ProviderName}] {restored.DisplayName}");
-            }
-        }
-        if (!printMode) ChatRenderer.RenderInfo($"Resumed session: {session.SessionInfo.Name ?? session.SessionInfo.Id} ({session.SessionInfo.Turns.Count} turns)");
-    }
-}
-else
-{
-    await session.InitializePersistenceAsync(projectPath).ConfigureAwait(false);
-}
+// 4-5. Create and configure agent session (persistence, resume, worktree, etc.)
+var sessionSetup = await SessionConfigurator.ConfigureAsync(opts, providerSetup).ConfigureAwait(false);
+var session = sessionSetup.Session;
+selectedModel = sessionSetup.SelectedModel;
+kernel = sessionSetup.Kernel;
+var projectPath = sessionSetup.ProjectPath;
+var worktreeManager = sessionSetup.WorktreeManager;
 
 // 6. Register built-in tools
 kernel.Plugins.AddFromType<FileTools>("file");
 kernel.Plugins.AddFromType<SearchTools>("search");
 kernel.Plugins.AddFromType<ShellTools>("shell");
 kernel.Plugins.AddFromType<GitTools>("git");
+kernel.Plugins.AddFromType<GitHubTools>("github");
 kernel.Plugins.AddFromType<WebTools>("web");
+kernel.Plugins.AddFromType<BrowserTools>("browser");
 kernel.Plugins.AddFromType<ThinkTools>("think");
 kernel.Plugins.AddFromType<EnvironmentTools>("environment");
 kernel.Plugins.AddFromType<NotebookTools>("notebook");
 kernel.Plugins.AddFromType<ClipboardTools>("clipboard");
 kernel.Plugins.AddFromType<DiffTools>("diff");
 kernel.Plugins.AddFromType<BatchEditTools>("batchEdit");
+kernel.Plugins.AddFromType<MultimodalTools>("multimodal");
+kernel.Plugins.AddFromType<ParityDocsTools>("parityDocs");
+kernel.Plugins.AddFromType<McpTransportTools>("mcp");
+kernel.Plugins.AddFromType<MigrationTools>("migration");
+kernel.Plugins.AddFromType<SkillParityTools>("skillParity");
+kernel.Plugins.AddFromType<McpEcosystemTools>("mcpEcosystem");
+kernel.Plugins.AddFromType<TailscaleTools>("tailscale");
+kernel.Plugins.AddFromType<EncodingCryptoTools>("encoding");
 kernel.Plugins.AddFromObject(new MemoryTools(), "memory");
-kernel.Plugins.AddFromObject(new TaskTools(), "tasks");
+var taskTools = new TaskTools();
+kernel.Plugins.AddFromObject(taskTools, "tasks");
 var usageTools = new UsageTools();
 usageTools.SetModel(selectedModel);
 kernel.Plugins.AddFromObject(usageTools, "usage");
+var capabilityTools = new CapabilityTools(kernel);
+kernel.Plugins.AddFromObject(capabilityTools, "capabilities");
+kernel.Plugins.AddFromObject(new BenchmarkTools(kernel), "benchmark");
 kernel.Plugins.AddFromObject(
     new QuestionTools(req => QuestionnaireSession.Run(req)), "questions");
+var processSessionManager = new ProcessSessionManager();
+kernel.Plugins.AddFromObject(new ExecProcessTools(processSessionManager), "runtime");
+var webSearchTools = new WebSearchTools();
+kernel.ImportPluginFromObject(webSearchTools, "WebSearchTools");
+kernel.ImportPluginFromObject(new OpenClawCompatibilityTools(taskTools, webSearchTools), "openclaw");
+kernel.Plugins.AddFromObject(new SessionOrchestrationTools(session), "sessions");
+kernel.Plugins.AddFromObject(new SchedulerTools(), "scheduler");
+kernel.Plugins.AddFromObject(
+    new GatewayOpsTools(Environment.GetEnvironmentVariable("JDAI_GATEWAY_URL")), "gateway");
 
-// 7. Load Claude Code skills, plugins, and hooks if available
-var skillDirs = new[]
+// Channel ops tools — only registered when a channel registry is available
+var channelRegistry = new ChannelRegistry();
+kernel.Plugins.AddFromObject(new ChannelOpsTools(channelRegistry), "channels");
+
+// 7. Load managed skills with precedence + metadata gating + hot reload support
+var userClaudeSkillsDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "skills");
+var workspaceClaudeSkillsDir = Path.Combine(Directory.GetCurrentDirectory(), ".claude", "skills");
+var managedSkillsDir = Path.Combine(DataDirectories.Root, "skills");
+var workspaceSkillsDir = Path.Combine(Directory.GetCurrentDirectory(), ".jdai", "skills");
+var bundledSkillsDir = Path.Combine(AppContext.BaseDirectory, "skills");
+var userSkillsConfigPath = Path.Combine(DataDirectories.Root, "skills.json");
+var workspaceSkillsConfigPath = Path.Combine(Directory.GetCurrentDirectory(), ".jdai", "skills.json");
+
+using var skillLifecycleManager = new SkillLifecycleManager(
+    [
+        new SkillSourceDirectory("bundled", bundledSkillsDir, SkillSourceKind.Bundled, 0),
+        new SkillSourceDirectory("managed-legacy", userClaudeSkillsDir, SkillSourceKind.Managed, -1),
+        new SkillSourceDirectory("managed", managedSkillsDir, SkillSourceKind.Managed, 0),
+        new SkillSourceDirectory("workspace-legacy", workspaceClaudeSkillsDir, SkillSourceKind.Workspace, -1),
+        new SkillSourceDirectory("workspace", workspaceSkillsDir, SkillSourceKind.Workspace, 0),
+    ],
+    userConfigPath: userSkillsConfigPath,
+    workspaceConfigPath: workspaceSkillsConfigPath);
+
+var loadedSkillPluginNames = new HashSet<string>(StringComparer.Ordinal);
+var skillsStagingDir = Path.Combine(DataDirectories.Root, "runtime", "skills");
+
+void CopyDirectory(string sourceDir, string targetDir)
 {
-    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "skills"),
-    Path.Combine(Directory.GetCurrentDirectory(), ".claude", "skills"),
-    Path.Combine(Directory.GetCurrentDirectory(), ".jdai", "skills"),
-};
-
-var skillIndex = 0;
-foreach (var dir in skillDirs.Where(Directory.Exists))
-{
-    try
+    Directory.CreateDirectory(targetDir);
+    foreach (var file in Directory.EnumerateFiles(sourceDir))
     {
-        // Each directory gets a unique plugin name to avoid duplicate key errors
-        var suffix = skillIndex == 0 ? "" : $"_{skillIndex}";
-        var pluginName = $"Skills{suffix}";
-        skillIndex++;
-
-        var builder = Kernel.CreateBuilder();
-        JD.SemanticKernel.Extensions.Skills.KernelBuilderExtensions.UseSkills(
-            builder, dir, opts => opts.PluginName = pluginName);
-        var skillKernel = builder.Build();
-        foreach (var plugin in skillKernel.Plugins)
-        {
-            if (kernel.Plugins.TryGetPlugin(plugin.Name, out _))
-            {
-                if (!printMode) ChatRenderer.RenderWarning($"  Skipped duplicate skill plugin '{plugin.Name}' from {dir}");
-                continue;
-            }
-
-            kernel.Plugins.Add(plugin);
-        }
-
-        if (!printMode) ChatRenderer.RenderInfo($"  Loaded skills from {dir}");
+        var destination = Path.Combine(targetDir, Path.GetFileName(file));
+        File.Copy(file, destination, overwrite: true);
     }
-#pragma warning disable CA1031 // non-fatal
-    catch (Exception ex)
+
+    foreach (var dir in Directory.EnumerateDirectories(sourceDir))
     {
-        if (!printMode) ChatRenderer.RenderWarning($"  Failed to load skills from {dir}: {ex.Message}");
+        var destination = Path.Combine(targetDir, Path.GetFileName(dir));
+        CopyDirectory(dir, destination);
     }
-#pragma warning restore CA1031
 }
+
+void StageSkills(IReadOnlyList<ActiveSkill> activeSkills)
+{
+    if (Directory.Exists(skillsStagingDir))
+        Directory.Delete(skillsStagingDir, recursive: true);
+
+    Directory.CreateDirectory(skillsStagingDir);
+
+    foreach (var skill in activeSkills.OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase))
+    {
+        var folderName = string.Concat(
+            skill.SkillKey.Select(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_' ? ch : '_'));
+        if (string.IsNullOrWhiteSpace(folderName))
+            folderName = $"skill_{Guid.NewGuid():N}";
+
+        var destination = Path.Combine(skillsStagingDir, folderName);
+        if (Directory.Exists(destination))
+            destination = Path.Combine(skillsStagingDir, $"{folderName}_{Guid.NewGuid():N}");
+
+        CopyDirectory(skill.DirectoryPath, destination);
+    }
+}
+
+void UnloadManagedSkillPlugins()
+{
+    foreach (var pluginName in loadedSkillPluginNames.ToArray())
+    {
+        if (kernel.Plugins.TryGetPlugin(pluginName, out var plugin))
+            kernel.Plugins.Remove(plugin);
+    }
+
+    loadedSkillPluginNames.Clear();
+}
+
+void ApplySkillsSnapshot(SkillSnapshot snapshot, bool announceReload)
+{
+    UnloadManagedSkillPlugins();
+
+    if (snapshot.ActiveSkills.Count == 0)
+    {
+        if (!opts.PrintMode && announceReload)
+            ChatRenderer.RenderInfo("  Skills reloaded (0 active).");
+        return;
+    }
+
+    StageSkills(snapshot.ActiveSkills);
+    var builder = Kernel.CreateBuilder();
+    JD.SemanticKernel.Extensions.Skills.KernelBuilderExtensions.UseSkills(
+        builder, skillsStagingDir, opts => opts.PluginName = "skillsManaged");
+    var skillKernel = builder.Build();
+
+    foreach (var plugin in skillKernel.Plugins)
+    {
+        if (kernel.Plugins.TryGetPlugin(plugin.Name, out var existing))
+            kernel.Plugins.Remove(existing);
+
+        kernel.Plugins.Add(plugin);
+        loadedSkillPluginNames.Add(plugin.Name);
+    }
+
+    if (!opts.PrintMode && announceReload)
+        ChatRenderer.RenderInfo($"  Skills reloaded ({snapshot.ActiveSkills.Count} active).");
+}
+
+void RefreshSkills(bool announceReload)
+{
+    if (!skillLifecycleManager.TryRefresh(out var snapshot))
+        return;
+
+    ApplySkillsSnapshot(snapshot, announceReload);
+}
+
+RefreshSkills(announceReload: false);
 
 var pluginDirs = new[]
 {
@@ -464,22 +277,39 @@ foreach (var dir in pluginDirs.Where(Directory.Exists))
         {
             if (kernel.Plugins.TryGetPlugin(plugin.Name, out _))
             {
-                if (!printMode) ChatRenderer.RenderWarning($"  Skipped duplicate plugin '{plugin.Name}' from {dir}");
+                if (!opts.PrintMode) ChatRenderer.RenderWarning($"  Skipped duplicate plugin '{plugin.Name}' from {dir}");
                 continue;
             }
 
             kernel.Plugins.Add(plugin);
         }
 
-        if (!printMode) ChatRenderer.RenderInfo($"  Loaded plugins from {dir}");
+        if (!opts.PrintMode) ChatRenderer.RenderInfo($"  Loaded plugins from {dir}");
     }
 #pragma warning disable CA1031
     catch (Exception ex)
     {
-        if (!printMode) ChatRenderer.RenderWarning($"  Failed to load plugins from {dir}: {ex.Message}");
+        if (!opts.PrintMode) ChatRenderer.RenderWarning($"  Failed to load plugins from {dir}: {ex.Message}");
     }
 #pragma warning restore CA1031
 }
+
+// 7b. Load installed SDK plugins from the JD.AI plugin registry
+var pluginLoader = new JD.AI.Core.Plugins.PluginLoader(
+    NullLogger<JD.AI.Core.Plugins.PluginLoader>.Instance);
+var pluginRegistry = new PluginRegistryStore();
+var pluginInstaller = new PluginInstaller(
+    new HttpClient(),
+    NullLogger<PluginInstaller>.Instance);
+var pluginContextFactory = new DelegatePluginContextFactory(
+    () => new TerminalPluginContext(kernel));
+var pluginManager = new PluginLifecycleManager(
+    pluginInstaller,
+    pluginRegistry,
+    pluginLoader,
+    pluginContextFactory,
+    NullLogger<PluginLifecycleManager>.Instance);
+await pluginManager.LoadEnabledAsync().ConfigureAwait(false);
 
 // 8. Load governance policies, audit, and budget
 var policies = PolicyLoader.Load(projectPath);
@@ -488,7 +318,7 @@ if (policies.Count > 0)
 {
     var resolvedSpec = PolicyResolver.Resolve(policies);
     policyEvaluator = new PolicyEvaluator(resolvedSpec);
-    if (!printMode) ChatRenderer.RenderInfo($"  Loaded {policies.Count} governance policy file(s)");
+    if (!opts.PrintMode) ChatRenderer.RenderInfo($"  Loaded {policies.Count} governance policy file(s)");
 }
 
 var auditSinks = new List<IAuditSink>();
@@ -514,15 +344,63 @@ session.AuditService = auditService;
 
 using var budgetTracker = new BudgetTracker();
 
-// 8a. Add tool confirmation filter with governance
-kernel.AutoFunctionInvocationFilters.Add(
-    new ToolConfirmationFilter(session, policyEvaluator, auditService));
+// Construct budget policy from CLI + governance
+BudgetPolicy? budgetPolicy = null;
+if (opts.MaxBudgetUsd.HasValue)
+{
+    budgetPolicy = new BudgetPolicy { MaxSessionUsd = opts.MaxBudgetUsd };
+}
+// Merge with governance budget policy if present
+var governanceBudget = policies
+    .SelectMany(p => p.Spec.Budget is { } b ? [b] : Array.Empty<BudgetPolicy>())
+    .FirstOrDefault();
+if (governanceBudget is not null)
+{
+    budgetPolicy ??= new BudgetPolicy();
+    budgetPolicy.MaxDailyUsd ??= governanceBudget.MaxDailyUsd;
+    budgetPolicy.MaxMonthlyUsd ??= governanceBudget.MaxMonthlyUsd;
+    budgetPolicy.MaxSessionUsd ??= governanceBudget.MaxSessionUsd;
+}
 
-// 8b. Load project instructions (JDAI.md, CLAUDE.md, AGENTS.md, etc.)
+// 8a. Create circuit breaker for tool loop detection
+CircuitBreaker? circuitBreaker = null;
+{
+    var cbPolicy = policies
+        .SelectMany(p => p.Spec.CircuitBreaker is { } cb ? [cb] : Array.Empty<CircuitBreakerPolicy>())
+        .FirstOrDefault();
+
+    var detector = new ToolLoopDetector(
+        windowSize: cbPolicy?.WindowSize ?? 50,
+        repetitionWarningThreshold: cbPolicy?.RepetitionWarningThreshold ?? 3,
+        repetitionHardStopThreshold: cbPolicy?.RepetitionHardStopThreshold ?? 5,
+        pingPongThreshold: cbPolicy?.PingPongThreshold ?? 4);
+
+    circuitBreaker = new CircuitBreaker(
+        detector,
+        cooldownPeriod: TimeSpan.FromSeconds(cbPolicy?.CooldownSeconds ?? 30),
+        hardenedMode: cbPolicy?.Hardened ?? false);
+}
+
+// 8b. Add tool confirmation filter with governance + circuit breaker
+kernel.AutoFunctionInvocationFilters.Add(
+    new ToolConfirmationFilter(session, policyEvaluator, auditService, circuitBreaker));
+
+// 8b2. Register policy tools (needs policyEvaluator + auditService from step 8)
+kernel.Plugins.AddFromObject(new PolicyTools(policyEvaluator, auditService), "policy");
+
+// 8b3. Register tool loadout system and discovery tools
+var loadoutRegistry = new ToolLoadoutRegistry();
+var allPlugins = kernel.Plugins.ToList().AsReadOnly();
+session.LoadoutRegistry = loadoutRegistry;
+session.AllPlugins = allPlugins;
+kernel.Plugins.AddFromObject(
+    new ToolDiscoveryTools(kernel, loadoutRegistry, allPlugins), "toolDiscovery");
+
+// 8c. Load project instructions (JDAI.md, CLAUDE.md, AGENTS.md, etc.)
 var instructions = InstructionsLoader.Load();
 if (instructions.HasInstructions)
 {
-    if (!printMode) ChatRenderer.RenderInfo($"  Loaded {instructions.Files.Count} instruction file(s)");
+    if (!opts.PrintMode) ChatRenderer.RenderInfo($"  Loaded {instructions.Files.Count} instruction file(s)");
 }
 
 // 8c. Set up subagent runner and register tools
@@ -534,13 +412,10 @@ ICheckpointStrategy checkpointStrategy = Directory.Exists(Path.Combine(Directory
     ? new StashCheckpointStrategy()
     : new DirectoryCheckpointStrategy();
 
-// 8e. Register web search tools
-kernel.ImportPluginFromObject(new WebSearchTools(), "WebSearchTools");
-
 // 8f. Tool filtering (--allowedTools / --disallowedTools)
-if (allowedTools is { Length: > 0 })
+if (opts.AllowedTools is { Length: > 0 })
 {
-    var allowed = new HashSet<string>(allowedTools, StringComparer.OrdinalIgnoreCase);
+    var allowed = new HashSet<string>(opts.AllowedTools, StringComparer.OrdinalIgnoreCase);
     var toRemove = kernel.Plugins
         .SelectMany(p => p.Select(f => (Plugin: p, Function: f)))
         .Where(pf => !allowed.Contains(pf.Function.Name) && !allowed.Contains($"{pf.Plugin.Name}-{pf.Function.Name}"))
@@ -553,9 +428,9 @@ if (allowedTools is { Length: > 0 })
             kernel.Plugins.Remove(kernel.Plugins[name]);
     }
 }
-if (disallowedTools is { Length: > 0 })
+if (opts.DisallowedTools is { Length: > 0 })
 {
-    var disallowed = new HashSet<string>(disallowedTools, StringComparer.OrdinalIgnoreCase);
+    var disallowed = new HashSet<string>(opts.DisallowedTools, StringComparer.OrdinalIgnoreCase);
     var toRemove = kernel.Plugins.Where(p => disallowed.Contains(p.Name)).Select(p => p.Name).ToList();
     foreach (var name in toRemove)
     {
@@ -565,13 +440,13 @@ if (disallowedTools is { Length: > 0 })
 
 // 9. Build system prompt
 string systemPrompt;
-if (systemPromptOverride != null)
+if (opts.SystemPromptOverride != null)
 {
-    systemPrompt = systemPromptOverride;
+    systemPrompt = opts.SystemPromptOverride;
 }
-else if (systemPromptFile != null && File.Exists(systemPromptFile))
+else if (opts.SystemPromptFile != null && File.Exists(opts.SystemPromptFile))
 {
-    systemPrompt = await File.ReadAllTextAsync(systemPromptFile).ConfigureAwait(false);
+    systemPrompt = await File.ReadAllTextAsync(opts.SystemPromptFile).ConfigureAwait(false);
 }
 else
 {
@@ -599,13 +474,13 @@ else
 }
 
 // Append additional prompt text
-if (appendSystemPrompt != null)
+if (opts.AppendSystemPrompt != null)
 {
-    systemPrompt += "\n\n" + appendSystemPrompt;
+    systemPrompt += "\n\n" + opts.AppendSystemPrompt;
 }
-if (appendSystemPromptFile != null && File.Exists(appendSystemPromptFile))
+if (opts.AppendSystemPromptFile != null && File.Exists(opts.AppendSystemPromptFile))
 {
-    systemPrompt += "\n\n" + await File.ReadAllTextAsync(appendSystemPromptFile).ConfigureAwait(false);
+    systemPrompt += "\n\n" + await File.ReadAllTextAsync(opts.AppendSystemPromptFile).ConfigureAwait(false);
 }
 
 // Plan mode injection
@@ -649,8 +524,22 @@ var modelSearchAggregator = new ModelSearchAggregator(new IRemoteModelSearch[]
     new HuggingFaceModelSearch(searchHttp),
     new FoundryLocalModelSearch(),
 });
+// Centralized usage metering
+var usageMeter = new SqliteUsageMeter(DataDirectories.UsageDb);
+await usageMeter.InitializeAsync();
+session.UsageMeter = usageMeter;
+
+string GetSkillsStatus() => skillLifecycleManager.FormatStatusReport();
+string ReloadSkills()
+{
+    RefreshSkills(announceReload: true);
+    return skillLifecycleManager.FormatStatusReport();
+}
+
 var commandRouter = new SlashCommandRouter(
     session, registry, instructions, checkpointStrategy,
+    pluginLoader: pluginLoader,
+    pluginManager: pluginManager,
     workflowCatalog: workflowCatalog,
     workflowStore: workflowStore,
     getSpinnerStyle: () => spectreOutput.Style,
@@ -664,7 +553,11 @@ var commandRouter = new SlashCommandRouter(
     getVimMode: () => interactiveInput.VimModeEnabled,
     onVimModeChanged: enabled => interactiveInput.VimModeEnabled = enabled,
     getOutputStyle: () => ChatRenderer.CurrentOutputStyle,
-    onOutputStyleChanged: ChatRenderer.SetOutputStyle);
+    onOutputStyleChanged: ChatRenderer.SetOutputStyle,
+    usageMeter: usageMeter,
+    policyEvaluator: policyEvaluator,
+    getSkillsStatus: GetSkillsStatus,
+    reloadSkills: ReloadSkills);
 
 // Hook double-ESC at empty prompt → open history viewer
 interactiveInput.OnDoubleEscape += (sender, e) =>
@@ -694,8 +587,33 @@ interactiveInput.OnDoubleEscape += (sender, e) =>
     }
 };
 
+// Hook Shift+Tab → cycle permission mode (plan mode toggle)
+interactiveInput.OnTogglePlanMode += (_, _) =>
+{
+    session.PermissionMode = session.PermissionMode switch
+    {
+        JD.AI.Core.Agents.PermissionMode.Normal => JD.AI.Core.Agents.PermissionMode.Plan,
+        JD.AI.Core.Agents.PermissionMode.Plan => JD.AI.Core.Agents.PermissionMode.AcceptEdits,
+        JD.AI.Core.Agents.PermissionMode.AcceptEdits => JD.AI.Core.Agents.PermissionMode.Normal,
+        _ => JD.AI.Core.Agents.PermissionMode.Normal,
+    };
+    ChatRenderer.RenderInfo($"Permission mode: {session.PermissionMode}");
+};
+
+// Hook Alt+T → toggle extended thinking (future feature placeholder)
+interactiveInput.OnToggleExtendedThinking += (_, _) =>
+{
+    ChatRenderer.RenderInfo("Extended thinking is not yet available for this model.");
+};
+
+// Hook Alt+P → cycle through recent models
+interactiveInput.OnCycleModel += (_, _) =>
+{
+    ChatRenderer.RenderInfo("Use /model to switch models interactively.");
+};
+
 // 11. Render welcome banner
-if (!printMode)
+if (!opts.PrintMode)
 {
     ChatRenderer.RenderBanner(
         selectedModel.DisplayName,
@@ -705,14 +623,14 @@ if (!printMode)
 
 // 11b. Show update notification if background check completed
 var pendingUpdate = await updateCheckTask.ConfigureAwait(false);
-if (pendingUpdate is not null && !printMode)
+if (pendingUpdate is not null && !opts.PrintMode)
 {
     AnsiConsole.MarkupLine(UpdatePrompter.FormatNotification(pendingUpdate));
     AnsiConsole.WriteLine();
 }
 
 // 11c. System prompt budget check
-if (!printMode)
+if (!opts.PrintMode)
 {
     var systemPromptTokens = session.SystemPromptTokens;
     var contextWindow = selectedModel.ContextWindowTokens;
@@ -736,19 +654,19 @@ if (!printMode)
 }
 
 // Print mode: non-interactive execution
-if (printMode)
+if (opts.PrintMode)
 {
     var query = new System.Text.StringBuilder();
-    if (pipedInput != null)
+    if (opts.PipedInput != null)
     {
-        query.AppendLine(pipedInput);
+        query.AppendLine(opts.PipedInput);
         query.AppendLine("---");
     }
-    if (printQuery != null)
+    if (opts.PrintQuery != null)
     {
-        query.Append(printQuery);
+        query.Append(opts.PrintQuery);
     }
-    else if (pipedInput == null)
+    else if (opts.PipedInput == null)
     {
         Console.Error.WriteLine("Error: --print requires a query argument or piped input.");
         return 1;
@@ -762,17 +680,18 @@ if (printMode)
     while (currentPrintMessage != null)
     {
         turnCount++;
-        if (maxTurns.HasValue && turnCount > maxTurns.Value)
+        if (opts.MaxTurns.HasValue && turnCount > opts.MaxTurns.Value)
         {
-            Console.Error.WriteLine($"Error: max turns ({maxTurns.Value}) exceeded.");
+            Console.Error.WriteLine($"Error: max turns ({opts.MaxTurns.Value}) exceeded.");
             return 1;
         }
 
-        lastResponse = await printAgentLoop.RunTurnAsync(currentPrintMessage).ConfigureAwait(false);
+        using (skillLifecycleManager.BeginRunScope())
+            lastResponse = await printAgentLoop.RunTurnAsync(currentPrintMessage).ConfigureAwait(false);
         currentPrintMessage = null;
     }
 
-    if (string.Equals(outputFormat, "json", StringComparison.OrdinalIgnoreCase))
+    if (string.Equals(opts.OutputFormat, "json", StringComparison.OrdinalIgnoreCase))
     {
         var jsonResult = new
         {
@@ -787,6 +706,39 @@ if (printMode)
     else
     {
         Console.Write(lastResponse);
+    }
+
+    // JSON schema validation
+    if (opts.JsonSchemaArg is not null)
+    {
+        try
+        {
+            var schema = JD.AI.Core.Agents.OutputSchemaValidator.LoadSchema(opts.JsonSchemaArg);
+            var errors = JD.AI.Core.Agents.OutputSchemaValidator.Validate(lastResponse, schema);
+            if (errors.Count > 0)
+            {
+                // Retry once with schema feedback
+                var retryPrompt = JD.AI.Core.Agents.OutputSchemaValidator.GenerateRetryPrompt(errors, schema);
+                using (skillLifecycleManager.BeginRunScope())
+                    lastResponse = await printAgentLoop.RunTurnAsync(retryPrompt).ConfigureAwait(false);
+                errors = JD.AI.Core.Agents.OutputSchemaValidator.Validate(lastResponse, schema);
+                if (errors.Count > 0)
+                {
+                    Console.Error.WriteLine("Schema validation failed:");
+                    foreach (var err in errors)
+                        Console.Error.WriteLine($"  - {err}");
+                    return JD.AI.Core.Agents.OutputSchemaValidator.SchemaValidationExitCode;
+                }
+
+                // Output the corrected response
+                Console.Write(lastResponse);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Schema error: {ex.Message}");
+            return JD.AI.Core.Agents.OutputSchemaValidator.SchemaValidationExitCode;
+        }
     }
 
     return 0;
@@ -837,6 +789,8 @@ Console.CancelKeyPress += (_, e) =>
 
 while (!appCts.IsCancellationRequested)
 {
+    RefreshSkills(announceReload: true);
+
     var inputResult = ChatRenderer.ReadInputStructured(interactiveInput);
 
     if (inputResult is null)
@@ -924,14 +878,41 @@ while (!appCts.IsCancellationRequested)
 
     while (currentMessage != null && !appCts.IsCancellationRequested)
     {
+        // Budget enforcement: check before each turn
+        if (budgetPolicy is not null)
+        {
+            // Check session-level budget
+            if (budgetPolicy.MaxSessionUsd.HasValue &&
+                session.SessionSpendUsd >= budgetPolicy.MaxSessionUsd.Value)
+            {
+                ChatRenderer.RenderWarning(
+                    $"Budget limit (${budgetPolicy.MaxSessionUsd:F2}) reached — spent ${session.SessionSpendUsd:F2}.");
+                if (opts.PrintMode) { Environment.ExitCode = 2; }
+                break;
+            }
+
+            // Check daily/monthly budgets
+            if (!await budgetTracker.IsWithinBudgetAsync(budgetPolicy, appCts.Token).ConfigureAwait(false))
+            {
+                var status = await budgetTracker.GetStatusAsync(appCts.Token).ConfigureAwait(false);
+                ChatRenderer.RenderWarning(
+                    $"Budget exceeded — daily: ${status.TodayUsd:F2}, monthly: ${status.MonthUsd:F2}.");
+                if (opts.PrintMode) { Environment.ExitCode = 2; }
+                break;
+            }
+        }
+
         using var turnMonitor = new TurnInputMonitor(appCts.Token);
         Volatile.Write(ref activeTurnMonitor, turnMonitor);
 
         try
         {
-            await agentLoop
-                .RunTurnStreamingAsync(currentMessage, turnMonitor.Token)
-                .ConfigureAwait(false);
+            using (skillLifecycleManager.BeginRunScope())
+            {
+                await agentLoop
+                    .RunTurnStreamingAsync(currentMessage, turnMonitor.Token)
+                    .ConfigureAwait(false);
+            }
         }
         catch (OperationCanceledException) when (!appCts.IsCancellationRequested)
         {
@@ -941,6 +922,29 @@ while (!appCts.IsCancellationRequested)
         finally
         {
             Volatile.Write(ref activeTurnMonitor, null);
+        }
+
+        // Estimate cost for the turn and track session spend
+        if (budgetPolicy is not null && session.CurrentModel is not null)
+        {
+            // Rough estimate: ~$0.003/1k input, ~$0.015/1k output for mid-tier models
+            // Local models (Ollama, Foundry, LlamaSharp) are free
+            var provider = session.CurrentModel.ProviderName;
+            var isLocal = string.Equals(provider, "Ollama", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(provider, "Foundry Local", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(provider, "Local", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(provider, "LlamaSharp", StringComparison.OrdinalIgnoreCase);
+
+            if (!isLocal)
+            {
+                var lastTurn = session.SessionInfo?.Turns.LastOrDefault();
+                var tokensOut = lastTurn?.TokensOut ?? 0;
+                var estimatedCost = tokensOut * 0.015m / 1000m; // conservative estimate
+                session.SessionSpendUsd += estimatedCost;
+
+                await budgetTracker.RecordSpendAsync(estimatedCost, provider, appCts.Token)
+                    .ConfigureAwait(false);
+            }
         }
 
         // Check for queued steering message
@@ -975,6 +979,13 @@ while (!appCts.IsCancellationRequested)
 }
 
 appCts.Dispose();
+
+// Clean up worktree if used
+if (worktreeManager is not null)
+{
+    ChatRenderer.RenderInfo("Cleaning up worktree...");
+    await worktreeManager.DisposeAsync().ConfigureAwait(false);
+}
 
 if (gatewayHost is not null)
 {

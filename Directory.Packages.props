@@ -28,6 +28,8 @@
     <PackageVersion Include="Spectre.Console" Version="0.54.0" />
     <PackageVersion Include="WorkflowFramework" Version="0.15.0" />
     <PackageVersion Include="HtmlAgilityPack" Version="1.12.4" />
+    <PackageVersion Include="UglyToad.PdfPig" Version="1.7.0-custom-5" />
+    <PackageVersion Include="SixLabors.ImageSharp" Version="3.1.12" />
     <PackageVersion Include="LLamaSharp" Version="0.26.0" />
     <PackageVersion Include="LLamaSharp.Backend.Cpu" Version="0.26.0" />
   </ItemGroup>
@@ -83,5 +85,8 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="Xunit.SkippableFact" Version="1.5.61" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.Playwright" Version="1.51.0" />
+    <PackageVersion Include="Reqnroll" Version="3.3.3" />
+    <PackageVersion Include="Reqnroll.xUnit" Version="3.3.3" />
   </ItemGroup>
 </Project>

@@ -44,6 +44,7 @@ JD.AI auto-detects available providers. No manual configuration needed.
 | **Multi-provider** | [14 AI providers](user-guide/provider-setup.md) including Claude Code, Copilot, Ollama, OpenAI, Anthropic, Azure, Gemini, Bedrock, Foundry Local, and more |
 | **35+ slash commands** | [Model switching, sessions, context, workflows, defaults](user-guide/commands.md) |
 | **17 tool categories** | [Files, search, shell, git, web, memory, subagents, think, tasks, code execution, clipboard, questions, diff/patch, batch edit, usage tracking](user-guide/tools.md) |
+| **Tool loadouts** | [Curated tool bundles](developer-guide/tool-loadouts.md) — expose only the tools each agent needs; 5 built-ins (minimal, developer, research, devops, full) |
 | **5 subagent types** | [Explore, task, plan, review, general-purpose](developer-guide/subagents.md) |
 | **4 orchestration strategies** | [Sequential, fan-out, supervisor, debate](developer-guide/orchestration.md) team coordination |
 | **6 channel adapters** | [Discord, Signal, Slack, Telegram, Web, OpenClaw](developer-guide/channels.md) |
@@ -52,7 +53,7 @@ JD.AI auto-detects available providers. No manual configuration needed.
 | **Workflows** | [Composable multi-step automation](developer-guide/workflows.md) with /workflow commands |
 | **Observability** | [OpenTelemetry tracing, metrics, health checks](operations/observability.md) |
 | **Git checkpointing** | [Safe rollback with stash/directory/commit](user-guide/checkpointing.md) strategies |
-| **Skills & plugins** | [Claude Code skills/plugins/hooks](developer-guide/plugins.md) integration |
+| **Skills & plugins** | [Native managed skills/plugins/hooks lifecycle](developer-guide/plugins.md) |
 | **Auto-update** | Check and apply updates via NuGet from your terminal |
 
 ![Subagent execution and team orchestration](images/demo-orchestration.png)
@@ -76,6 +77,7 @@ For developers building on JD.AI. Architecture, custom tools, providers, plugins
 
 - [Architecture Overview](developer-guide/index.md) — How JD.AI is built
 - [Custom Tools](developer-guide/custom-tools.md) — Write your own Semantic Kernel tools
+- [Tool Loadouts](developer-guide/tool-loadouts.md) — Curated tool bundles for agents and workflows
 - [Custom Providers](developer-guide/custom-providers.md) — Add new AI providers
 - [Plugin SDK](developer-guide/plugins.md) — Build distributable plugins
 - [Gateway API](developer-guide/gateway-api.md) — REST & SignalR integration

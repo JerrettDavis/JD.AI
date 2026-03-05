@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text;
+using JD.AI.Core.Attributes;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -7,9 +8,11 @@ namespace JD.AI.Core.Tools;
 /// <summary>
 /// File system tools for the AI agent.
 /// </summary>
+[ToolPlugin("file")]
 public sealed class FileTools
 {
     [KernelFunction("read_file")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Read the contents of a file. Returns the text content with line numbers.")]
     public static string ReadFile(
         [Description("Absolute or relative file path")] string path,
@@ -35,6 +38,7 @@ public sealed class FileTools
     }
 
     [KernelFunction("write_file")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Write content to a file, creating it if it doesn't exist.")]
     public static string WriteFile(
         [Description("Absolute or relative file path")] string path,
@@ -51,6 +55,7 @@ public sealed class FileTools
     }
 
     [KernelFunction("edit_file")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Replace exactly one occurrence of old_str with new_str in a file.")]
     public static string EditFile(
         [Description("Absolute or relative file path")] string path,
@@ -82,6 +87,7 @@ public sealed class FileTools
     }
 
     [KernelFunction("list_directory")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("List files and directories. Returns a tree-like listing.")]
     public static string ListDirectory(
         [Description("Directory path (defaults to current directory)")] string? path = null,

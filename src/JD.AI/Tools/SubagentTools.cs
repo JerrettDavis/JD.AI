@@ -2,6 +2,8 @@ using System.ComponentModel;
 using System.Text.Json;
 using JD.AI.Agent;
 using JD.AI.Core.Agents.Orchestration;
+using JD.AI.Core.Attributes;
+using JD.AI.Core.Tools;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Tools;
@@ -9,6 +11,7 @@ namespace JD.AI.Tools;
 /// <summary>
 /// Kernel functions for spawning subagents and teams from the parent agent loop.
 /// </summary>
+[ToolPlugin("subagents", RequiresInjection = true)]
 public sealed class SubagentTools
 {
     private readonly TeamOrchestrator _orchestrator;
@@ -19,6 +22,7 @@ public sealed class SubagentTools
     }
 
     [KernelFunction("spawn_agent")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Spawn a specialized subagent to handle a task. Types: explore (fast codebase Q&A), task (run commands), plan (create implementation plans), review (code review), general (full capability). Modes: single (default, one-shot), multi (multi-turn with tool calling loop).")]
     public async Task<string> SpawnAgentAsync(
         [Description("Subagent type: explore, task, plan, review, or general")] string type,
@@ -45,6 +49,7 @@ public sealed class SubagentTools
     }
 
     [KernelFunction("spawn_team")]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("""
         Spawn an orchestrated team of agents. Strategies:
         - 'sequential': Agents run in order, each gets previous output (pipeline)
@@ -89,6 +94,7 @@ public sealed class SubagentTools
     }
 
     [KernelFunction("query_team_context")]
+    [ToolSafetyTier(SafetyTier.AutoApprove)]
     [Description("Query the current team's shared scratchpad or event log. Use key to read a specific scratchpad entry, or 'events' to get the event log, or 'results' to see completed agent outputs.")]
     public string QueryTeamContext(
         [Description("What to query: a scratchpad key, 'events', or 'results'")] string key)

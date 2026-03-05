@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Text.Json;
 using JD.AI.Core.Agents;
 using Microsoft.Data.Sqlite;
@@ -10,6 +11,8 @@ namespace JD.AI.Core.Sessions;
 /// </summary>
 public sealed class SessionStore : IDisposable
 {
+    private static readonly ActivitySource SessionActivity = new("JD.AI.Sessions");
+
     private readonly string _connectionString;
     private SqliteConnection? _connection;
 
@@ -128,6 +131,10 @@ public sealed class SessionStore : IDisposable
 
     public async Task CreateSessionAsync(SessionInfo session)
     {
+        using var activity = SessionActivity.StartActivity("jdai.session.create");
+        activity?.SetTag("jdai.session.id", session.Id);
+        activity?.SetTag("jdai.session.project_hash", session.ProjectHash);
+
         var conn = await GetConnectionAsync().ConfigureAwait(false);
         using var cmd = conn.CreateCommand();
         cmd.CommandText = """
@@ -175,6 +182,11 @@ public sealed class SessionStore : IDisposable
 
     public async Task SaveTurnAsync(TurnRecord turn)
     {
+        using var activity = SessionActivity.StartActivity("jdai.session.save_turn");
+        activity?.SetTag("jdai.session.id", turn.SessionId);
+        activity?.SetTag("jdai.turn.index", turn.TurnIndex);
+        activity?.SetTag("jdai.turn.role", turn.Role);
+
         var conn = await GetConnectionAsync().ConfigureAwait(false);
         using var tx = conn.BeginTransaction();
 
@@ -241,6 +253,9 @@ public sealed class SessionStore : IDisposable
 
     public async Task<SessionInfo?> GetSessionAsync(string id)
     {
+        using var activity = SessionActivity.StartActivity("jdai.session.load");
+        activity?.SetTag("jdai.session.id", id);
+
         var conn = await GetConnectionAsync().ConfigureAwait(false);
         SessionInfo? session = null;
 
