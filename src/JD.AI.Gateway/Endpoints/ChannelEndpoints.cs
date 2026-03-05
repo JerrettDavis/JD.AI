@@ -6,7 +6,7 @@ public static class ChannelEndpoints
 {
     public static void MapChannelEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/channels").WithTags("Channels");
+        var group = app.MapGroup("/api/v1/channels").WithTags("Channels");
 
         group.MapGet("/", (IChannelRegistry registry) =>
         {
