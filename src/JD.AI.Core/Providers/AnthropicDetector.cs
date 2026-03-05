@@ -1,3 +1,6 @@
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json.Serialization;
 using Anthropic.SDK;
 using JD.AI.Core.Providers.Credentials;
 using Microsoft.Extensions.AI;
@@ -9,7 +12,8 @@ namespace JD.AI.Core.Providers;
 
 /// <summary>
 /// Detects Anthropic API availability via API key.
-/// Uses Anthropic's native messages API through the Anthropic SDK.
+/// Dynamically discovers models from the Anthropic API, falling back to a
+/// curated catalog of well-known Claude models.
 /// </summary>
 public sealed class AnthropicDetector : ApiKeyProviderDetectorBase
 {
@@ -28,6 +32,29 @@ public sealed class AnthropicDetector : ApiKeyProviderDetectorBase
     }
 
     protected override IReadOnlyList<ProviderModelInfo> KnownModels => KnownModelsCatalog;
+
+    protected override async Task<IReadOnlyList<ProviderModelInfo>> DiscoverModelsAsync(
+        string apiKey, CancellationToken ct)
+    {
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+        http.DefaultRequestHeaders.Add("x-api-key", apiKey);
+        http.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+
+        var response = await http
+            .GetFromJsonAsync<AnthropicModelsResponse>(
+                "https://api.anthropic.com/v1/models?limit=20", ct)
+            .ConfigureAwait(false);
+
+        if (response?.Data is not { Count: > 0 })
+            return KnownModels;
+
+        return response.Data
+            .Where(m => !string.IsNullOrEmpty(m.Id) && string.Equals(m.Type, "model", StringComparison.Ordinal))
+            .OrderByDescending(m => m.CreatedAt)
+            .Select(m => new ProviderModelInfo(
+                m.Id!, m.DisplayName ?? m.Id!, ProviderName))
+            .ToList();
+    }
 
     protected override void ConfigureKernel(IKernelBuilder builder, ProviderModelInfo model, string apiKey)
     {
@@ -50,4 +77,13 @@ public sealed class AnthropicDetector : ApiKeyProviderDetectorBase
         builder.Services.AddSingleton<IChatCompletionService>(sp =>
             sp.GetRequiredService<IChatClient>().AsChatCompletionService(sp));
     }
+
+    private sealed record AnthropicModelsResponse(
+        [property: JsonPropertyName("data")] List<AnthropicModel>? Data);
+
+    private sealed record AnthropicModel(
+        [property: JsonPropertyName("id")] string? Id,
+        [property: JsonPropertyName("display_name")] string? DisplayName,
+        [property: JsonPropertyName("type")] string? Type,
+        [property: JsonPropertyName("created_at")] string? CreatedAt);
 }
