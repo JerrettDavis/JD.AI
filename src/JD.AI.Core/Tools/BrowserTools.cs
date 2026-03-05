@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using JD.AI.Core.Attributes;
+using JD.AI.Core.Infrastructure;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -73,7 +74,7 @@ public sealed class BrowserTools
             if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
                 || (!string.Equals(uri.Scheme, "http", StringComparison.Ordinal) && !string.Equals(uri.Scheme, "https", StringComparison.Ordinal)))
             {
-                return $"Error: Invalid URL '{url}'. Only http/https URLs are supported.";
+                return OutputFormatter.Error($"Invalid URL '{url}'. Only http/https URLs are supported.");
             }
 
             Process.Start(new ProcessStartInfo
@@ -105,12 +106,12 @@ public sealed class BrowserTools
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
             || (!string.Equals(uri.Scheme, "http", StringComparison.Ordinal) && !string.Equals(uri.Scheme, "https", StringComparison.Ordinal)))
         {
-            return $"Error: Invalid URL '{url}'.";
+            return OutputFormatter.Error($"Invalid URL '{url}'.");
         }
 
         var browserPath = FindBrowser();
         if (browserPath is null)
-            return "Error: No Chromium-based browser found. Install Chrome or Edge.";
+            return OutputFormatter.Error("No Chromium-based browser found. Install Chrome or Edge.");
 
         outputPath ??= Path.Combine(Path.GetTempPath(), $"screenshot-{DateTime.UtcNow:yyyyMMdd-HHmmss}.png");
         var dir = Path.GetDirectoryName(outputPath);
@@ -125,7 +126,7 @@ public sealed class BrowserTools
             return $"Screenshot saved to: {outputPath}\nSize: {info.Length:N0} bytes ({width}x{height})";
         }
 
-        return $"Error: Screenshot failed.\n{result}";
+        return OutputFormatter.Error($"Screenshot failed.\n{result}");
     }
 
     // ── PDF ─────────────────────────────────────────────────
@@ -140,12 +141,12 @@ public sealed class BrowserTools
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
             || (!string.Equals(uri.Scheme, "http", StringComparison.Ordinal) && !string.Equals(uri.Scheme, "https", StringComparison.Ordinal)))
         {
-            return $"Error: Invalid URL '{url}'.";
+            return OutputFormatter.Error($"Invalid URL '{url}'.");
         }
 
         var browserPath = FindBrowser();
         if (browserPath is null)
-            return "Error: No Chromium-based browser found. Install Chrome or Edge.";
+            return OutputFormatter.Error("No Chromium-based browser found. Install Chrome or Edge.");
 
         outputPath ??= Path.Combine(Path.GetTempPath(), $"capture-{DateTime.UtcNow:yyyyMMdd-HHmmss}.pdf");
         var dir = Path.GetDirectoryName(outputPath);
@@ -160,7 +161,7 @@ public sealed class BrowserTools
             return $"PDF saved to: {outputPath}\nSize: {info.Length:N0} bytes";
         }
 
-        return $"Error: PDF capture failed.\n{result}";
+        return OutputFormatter.Error($"PDF capture failed.\n{result}");
     }
 
     // ── Content extraction ──────────────────────────────────
@@ -175,18 +176,18 @@ public sealed class BrowserTools
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
             || (!string.Equals(uri.Scheme, "http", StringComparison.Ordinal) && !string.Equals(uri.Scheme, "https", StringComparison.Ordinal)))
         {
-            return $"Error: Invalid URL '{url}'.";
+            return OutputFormatter.Error($"Invalid URL '{url}'.");
         }
 
         var browserPath = FindBrowser();
         if (browserPath is null)
-            return "Error: No Chromium-based browser found. Install Chrome or Edge.";
+            return OutputFormatter.Error("No Chromium-based browser found. Install Chrome or Edge.");
 
         var args = $"--headless --disable-gpu --no-sandbox --dump-dom \"{uri.AbsoluteUri}\"";
         var output = await RunProcessAsync(browserPath, args, timeoutSeconds: 30);
 
         if (string.IsNullOrWhiteSpace(output))
-            return "Error: No content returned from page.";
+            return OutputFormatter.Error("No content returned from page.");
 
         if (output.Length > maxChars)
             output = string.Concat(output.AsSpan(0, maxChars),
@@ -208,12 +209,12 @@ public sealed class BrowserTools
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
             || (!string.Equals(uri.Scheme, "http", StringComparison.Ordinal) && !string.Equals(uri.Scheme, "https", StringComparison.Ordinal)))
         {
-            return $"Error: Invalid URL '{url}'.";
+            return OutputFormatter.Error($"Invalid URL '{url}'.");
         }
 
         var browserPath = FindBrowser();
         if (browserPath is null)
-            return "Error: No Chromium-based browser found. Install Chrome or Edge.";
+            return OutputFormatter.Error("No Chromium-based browser found. Install Chrome or Edge.");
 
         var args = new StringBuilder($"--headless --disable-gpu --no-sandbox --enable-logging --v=1 --virtual-time-budget={waitMs}");
 
@@ -300,7 +301,7 @@ public sealed class BrowserTools
 
             using var process = Process.Start(psi);
             if (process is null)
-                return "Error: Failed to start process.";
+                return OutputFormatter.Error("Failed to start process.");
 
             var outputTask = process.StandardOutput.ReadToEndAsync();
             var errorTask = process.StandardError.ReadToEndAsync();
@@ -309,7 +310,7 @@ public sealed class BrowserTools
             if (!completed)
             {
                 process.Kill(entireProcessTree: true);
-                return $"Error: Process timed out after {timeoutSeconds}s.";
+                return OutputFormatter.Error($"Process timed out after {timeoutSeconds}s.");
             }
 
             var stdout = await outputTask;
@@ -319,7 +320,7 @@ public sealed class BrowserTools
         }
         catch (Exception ex)
         {
-            return $"Error: {ex.Message}";
+            return OutputFormatter.Error(ex.Message);
         }
     }
 }

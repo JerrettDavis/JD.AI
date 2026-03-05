@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using JD.AI.Core.Attributes;
+using JD.AI.Core.Infrastructure;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -12,7 +13,7 @@ namespace JD.AI.Core.Tools;
 [ToolPlugin("mcpEcosystem")]
 public sealed class McpEcosystemTools
 {
-    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions s_jsonOptions = JsonDefaults.Indented;
 
     [KernelFunction("mcp_import_scan")]
     [ToolSafetyTier(SafetyTier.AutoApprove)]

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text.Json;
 using JD.AI.Core.Attributes;
+using JD.AI.Core.Infrastructure;
 using JD.AI.Core.Questions;
 using Microsoft.SemanticKernel;
 
@@ -75,11 +76,5 @@ public sealed class QuestionTools
         }, JsonOptions);
     }
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true,
-        WriteIndented = false,
-        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
-    };
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Compact;
 }

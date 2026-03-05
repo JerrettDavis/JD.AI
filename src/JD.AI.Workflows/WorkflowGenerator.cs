@@ -1,4 +1,5 @@
 using System.Text.Json;
+using JD.AI.Core.Infrastructure;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 
@@ -207,7 +208,7 @@ public sealed class WorkflowGenerator
 
         try
         {
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var options = JsonDefaults.Options;
             using var doc = JsonDocument.Parse(responseText);
             var root = doc.RootElement;
 

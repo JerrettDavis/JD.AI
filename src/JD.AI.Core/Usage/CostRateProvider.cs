@@ -1,4 +1,5 @@
 using System.Text.Json;
+using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Core.Usage;
 
@@ -77,10 +78,7 @@ public sealed class CostRateProvider
             _rates.Add(entry);
     }
 
-    private static readonly JsonSerializerOptions s_jsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-    };
+    private static readonly JsonSerializerOptions s_jsonOptions = JsonDefaults.Options;
 
     /// <summary>Loads rate overrides from a JSON file.</summary>
     public async Task LoadFromFileAsync(string path, CancellationToken ct = default)

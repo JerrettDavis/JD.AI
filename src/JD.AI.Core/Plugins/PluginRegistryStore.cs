@@ -1,5 +1,6 @@
 using System.Text.Json;
 using JD.AI.Core.Config;
+using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Core.Plugins;
 
@@ -8,11 +9,7 @@ namespace JD.AI.Core.Plugins;
 /// </summary>
 public sealed class PluginRegistryStore
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        WriteIndented = true,
-        PropertyNameCaseInsensitive = true,
-    };
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Options;
 
     private readonly string _registryPath;
     private readonly Lock _lock = new();
