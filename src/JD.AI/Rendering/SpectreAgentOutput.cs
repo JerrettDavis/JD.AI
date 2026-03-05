@@ -62,6 +62,15 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
         return confirmed;
     }
 
+    public bool ConfirmWorkflowPrompt(string triggeringTool)
+    {
+        PauseProgress();
+        ChatRenderer.RenderInfo($"  📋 Tool '{triggeringTool}' requested — this looks like multi-step work.");
+        var accepted = ChatRenderer.ConfirmWorkflow("Start a workflow?");
+        ResumeProgress();
+        return accepted;
+    }
+
     public void BeginTurn()
     {
         _progress = new TurnProgress(Style, ModelName);

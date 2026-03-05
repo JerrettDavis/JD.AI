@@ -16,7 +16,7 @@ public sealed class AgentWorkflowDefinition
 }
 
 /// <summary>Step kind within an agent workflow.</summary>
-public enum AgentStepKind { Skill, Tool, Nested, Loop, Conditional }
+public enum AgentStepKind { Skill, Tool, Nested, Loop, Conditional, Agent }
 
 /// <summary>A single step definition within an <see cref="AgentWorkflowDefinition"/>.</summary>
 public sealed class AgentStepDefinition
@@ -27,6 +27,11 @@ public sealed class AgentStepDefinition
     public string? Condition { get; set; }
     public IList<AgentStepDefinition> SubSteps { get; init; } = [];
     public string CorrelationId { get; set; } = Guid.NewGuid().ToString("N")[..8];
+
+    /// <summary>
+    /// For <see cref="AgentStepKind.Agent"/> steps: the plugin names the LLM is allowed to use.
+    /// </summary>
+    public IList<string> AllowedPlugins { get; init; } = [];
 
     public static AgentStepDefinition RunSkill(string name) =>
         new() { Name = name, Kind = AgentStepKind.Skill, Target = name };
@@ -74,6 +79,16 @@ public sealed class AgentStepDefinition
             Kind = AgentStepKind.Conditional,
             Condition = condition,
             SubSteps = [.. subSteps],
+        };
+
+    public static AgentStepDefinition AgentStep(
+        string name, string promptTemplate, params string[] allowedPlugins) =>
+        new()
+        {
+            Name = name,
+            Kind = AgentStepKind.Agent,
+            Target = promptTemplate,
+            AllowedPlugins = [.. allowedPlugins],
         };
 }
 

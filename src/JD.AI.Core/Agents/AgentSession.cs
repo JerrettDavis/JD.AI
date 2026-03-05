@@ -107,6 +107,27 @@ public sealed class AgentSession
     public IToolLoadoutRegistry? LoadoutRegistry { get; set; }
 
     /// <summary>
+    /// The name of the currently executing workflow, if any.
+    /// When set, tool calls are recognized as workflow-coordinated and skip the
+    /// workflow enforcement prompt.
+    /// </summary>
+    public string? ActiveWorkflowName { get; set; }
+
+    /// <summary>
+    /// When true, the user has declined the workflow prompt for the current turn.
+    /// Reset at the start of each turn by <see cref="ResetTurnState"/>.
+    /// </summary>
+    public bool WorkflowDeclinedThisTurn { get; set; }
+
+    /// <summary>
+    /// Resets per-turn transient state. Called at the start of each agent turn.
+    /// </summary>
+    public void ResetTurnState()
+    {
+        WorkflowDeclinedThisTurn = false;
+    }
+
+    /// <summary>
     /// Snapshot of all registered plugins before loadout scoping is applied.
     /// </summary>
     public IReadOnlyList<KernelPlugin>? AllPlugins { get; set; }
