@@ -26,10 +26,10 @@ public static class TextChunker
         int overlapChars = DefaultOverlapChars)
     {
         ArgumentNullException.ThrowIfNull(text);
-        if (maxChunkChars <= 0) throw new ArgumentOutOfRangeException(nameof(maxChunkChars));
-        if (overlapChars < 0) throw new ArgumentOutOfRangeException(nameof(overlapChars));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxChunkChars);
+        ArgumentOutOfRangeException.ThrowIfNegative(overlapChars);
         if (overlapChars >= maxChunkChars)
-            throw new ArgumentException("Overlap must be less than chunk size");
+            throw new ArgumentException("Overlap must be less than chunk size", nameof(overlapChars));
 
         if (text.Length <= maxChunkChars)
         {
@@ -91,12 +91,12 @@ public static class TextChunker
         return chunks.AsReadOnly();
     }
 
-    private static IReadOnlyList<string> SplitParagraphs(string text)
+    private static string[] SplitParagraphs(string text)
     {
         return text.Split(["\n\n", "\r\n\r\n"], StringSplitOptions.RemoveEmptyEntries);
     }
 
-    private static IReadOnlyList<string> SplitSentences(string text)
+    private static List<string> SplitSentences(string text)
     {
         var sentences = new List<string>();
         var start = 0;
