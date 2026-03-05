@@ -7,12 +7,21 @@ namespace JD.AI.Workflows;
 public sealed class AgentWorkflowDefinition
 {
     public string Name { get; set; } = string.Empty;
-    public string Version { get; set; } = "1.0";
+    public string Version { get; set; } = "1.0.0";
     public string Description { get; set; } = string.Empty;
     public IList<string> Tags { get; init; } = [];
     public IList<AgentStepDefinition> Steps { get; init; } = [];
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>Whether this version is deprecated. Deprecated versions are excluded from "latest" resolution.</summary>
+    public bool Deprecated { get; set; }
+
+    /// <summary>Optional migration guidance when <see cref="Deprecated"/> is true (e.g. "Use v2.0.0 instead").</summary>
+    public string? DeprecationMessage { get; set; }
+
+    /// <summary>Parses <see cref="Version"/> as a <see cref="WorkflowVersion"/>.</summary>
+    public WorkflowVersion GetSemVer() => WorkflowVersion.Parse(Version);
 }
 
 /// <summary>Step kind within an agent workflow.</summary>

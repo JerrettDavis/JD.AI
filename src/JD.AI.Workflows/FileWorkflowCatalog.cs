@@ -43,11 +43,11 @@ public sealed class FileWorkflowCatalog : IWorkflowCatalog
                 : null;
         }
 
-        // Return latest version
+        // Return latest non-deprecated version (semantic ordering)
         var files = Directory.GetFiles(_baseDirectory, $"{Sanitize(name)}-*.json");
         if (files.Length == 0) return null;
 
-        var latest = files.OrderByDescending(f => f).First();
+        var latest = files.OrderByDescending(ParseVersionFromPath).First();
         return await ReadAsync(latest, ct).ConfigureAwait(false);
     }
 
@@ -84,6 +84,21 @@ public sealed class FileWorkflowCatalog : IWorkflowCatalog
 
     private static string Sanitize(string input) =>
         string.Concat(input.Select(c => char.IsLetterOrDigit(c) || c == '-' || c == '.' ? c : '_'));
+
+    private static WorkflowVersion ParseVersionFromPath(string path)
+    {
+        var fileName = Path.GetFileNameWithoutExtension(path);
+        // File format: {name}-{version}.json — extract version after last dash-delimited semver
+        var dashIdx = fileName.LastIndexOf('-');
+        if (dashIdx >= 0)
+        {
+            var versionPart = fileName[(dashIdx + 1)..];
+            if (WorkflowVersion.TryParse(versionPart, out var v))
+                return v;
+        }
+
+        return new WorkflowVersion(0, 0, 0);
+    }
 
     private static async Task<AgentWorkflowDefinition?> ReadAsync(string path, CancellationToken ct)
     {

@@ -48,7 +48,7 @@ public class WorkflowDefinitionTests
     public void Definition_HasDefaults()
     {
         var def = new AgentWorkflowDefinition();
-        def.Version.Should().Be("1.0");
+        def.Version.Should().Be("1.0.0");
         def.Steps.Should().BeEmpty();
         def.Tags.Should().BeEmpty();
         def.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));

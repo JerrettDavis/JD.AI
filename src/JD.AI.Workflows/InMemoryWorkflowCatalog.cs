@@ -84,6 +84,6 @@ public sealed class InMemoryWorkflowCatalog : IWorkflowCatalog
         }
     }
 
-    private static Version ParseVersion(string versionString) =>
-        Version.TryParse(versionString, out var v) ? v : new Version(0, 0);
+    private static WorkflowVersion ParseVersion(string versionString) =>
+        WorkflowVersion.TryParse(versionString, out var v) ? v : new WorkflowVersion(0, 0, 0);
 }
