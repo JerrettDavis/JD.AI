@@ -116,4 +116,82 @@ public sealed class AuditServiceTests
             e.PolicyResult == PolicyDecision.Deny &&
             e.Severity == AuditSeverity.Warning), default);
     }
+
+    [Fact]
+    public async Task EmitAsync_SinkFailure_EnqueuesDeadLetter()
+    {
+        var failingSink = Substitute.For<IAuditSink>();
+        failingSink.Name.Returns("failing-sink");
+        failingSink.WriteAsync(Arg.Any<AuditEvent>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Sink failure"));
+
+        var service = new AuditService([failingSink]);
+        var evt = MakeEvent();
+
+        await service.EmitAsync(evt);
+
+        service.DeadLetterCount.Should().Be(1);
+        var deadLetters = service.DrainDeadLetters();
+        deadLetters.Should().HaveCount(1);
+        deadLetters[0].SinkName.Should().Be("failing-sink");
+        deadLetters[0].Event.Should().BeSameAs(evt);
+        deadLetters[0].ErrorMessage.Should().Be("Sink failure");
+    }
+
+    [Fact]
+    public async Task EmitAsync_MultipleSinkFailures_TracksAll()
+    {
+        var sink1 = Substitute.For<IAuditSink>();
+        sink1.Name.Returns("s1");
+        sink1.WriteAsync(Arg.Any<AuditEvent>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new IOException("s1 fail"));
+
+        var sink2 = Substitute.For<IAuditSink>();
+        sink2.Name.Returns("s2");
+        sink2.WriteAsync(Arg.Any<AuditEvent>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new IOException("s2 fail"));
+
+        var service = new AuditService([sink1, sink2]);
+        await service.EmitAsync(MakeEvent());
+
+        service.DeadLetterCount.Should().Be(2);
+    }
+
+    [Fact]
+    public void DrainDeadLetters_EmptiesQueue()
+    {
+        var service = new AuditService([]);
+        var deadLetters = service.DrainDeadLetters();
+        deadLetters.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AuditEvent_ToolFields_AreSettable()
+    {
+        var evt = new AuditEvent
+        {
+            Action = "tool.invoke",
+            ToolName = "web_search",
+            ToolArguments = "query=test",
+            ToolResult = "Found 5 results",
+            DurationMs = 1234,
+        };
+
+        evt.ToolName.Should().Be("web_search");
+        evt.ToolArguments.Should().Be("query=test");
+        evt.ToolResult.Should().Be("Found 5 results");
+        evt.DurationMs.Should().Be(1234);
+    }
+
+    [Fact]
+    public void AuditEvent_PreviousHash_ForTamperEvidence()
+    {
+        var evt = new AuditEvent
+        {
+            Action = "test",
+            PreviousHash = "abc123def456",
+        };
+
+        evt.PreviousHash.Should().Be("abc123def456");
+    }
 }
