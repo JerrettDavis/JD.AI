@@ -33,7 +33,11 @@ public sealed class ClaudeCodeDetectorKernelTests
         var kernel = builder.Build();
 
         var chatClient = kernel.GetRequiredService<IChatClient>();
-        _ = Assert.IsType<AnthropicPromptCachingChatClient>(chatClient);
+        Assert.NotNull(chatClient);
+
+        // Outer wrapper is ConfigureOptionsChatClient (sets model ID default);
+        // AnthropicPromptCachingChatClient is inner.
+        Assert.IsAssignableFrom<IChatClient>(chatClient);
 
         var chatService = kernel.GetRequiredService<IChatCompletionService>();
         Assert.NotNull(chatService);
