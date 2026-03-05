@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using JD.AI.Core.Config;
+using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Core.Governance;
 
@@ -13,12 +14,7 @@ public sealed class BudgetTracker : IBudgetTracker, IDisposable
     private readonly string _budgetFilePath;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    };
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Options;
 
     public BudgetTracker() : this(Path.Combine(DataDirectories.Root, "budget.json"))
     {

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using JD.AI.Core.Config;
+using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Core.Tools;
 
@@ -12,7 +13,7 @@ namespace JD.AI.Core.Tools;
 /// </summary>
 public sealed class ProcessSessionManager
 {
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Indented;
 
     private readonly ConcurrentDictionary<string, ScopeState> _scopes =
         new(StringComparer.Ordinal);

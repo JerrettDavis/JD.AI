@@ -1,7 +1,6 @@
 using System.ComponentModel;
-using System.Diagnostics;
-using System.Text;
 using JD.AI.Core.Attributes;
+using JD.AI.Core.Infrastructure;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -68,23 +67,10 @@ public sealed class ClipboardTools
     {
         try
         {
-            var psi = new ProcessStartInfo
-            {
-                FileName = command,
-                Arguments = args,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
-
-            using var process = Process.Start(psi)!;
-            var output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
-            await process.WaitForExitAsync().ConfigureAwait(false);
-
-            return process.ExitCode == 0
-                ? (string.IsNullOrEmpty(output) ? "(clipboard empty)" : output)
-                : $"Failed: exit code {process.ExitCode}";
+            var result = await ProcessExecutor.RunAsync(command, args).ConfigureAwait(false);
+            return result.Success
+                ? (string.IsNullOrEmpty(result.StandardOutput) ? "(clipboard empty)" : result.StandardOutput)
+                : $"Failed: exit code {result.ExitCode}";
         }
         catch (Exception ex)
         {
@@ -96,25 +82,10 @@ public sealed class ClipboardTools
     {
         try
         {
-            var psi = new ProcessStartInfo
-            {
-                FileName = command,
-                Arguments = args,
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
-
-            using var process = Process.Start(psi)!;
-            await process.StandardInput.WriteAsync(input).ConfigureAwait(false);
-            process.StandardInput.Close();
-            await process.WaitForExitAsync().ConfigureAwait(false);
-
-            return process.ExitCode == 0
+            var result = await ProcessExecutor.RunAsync(command, args, standardInput: input).ConfigureAwait(false);
+            return result.Success
                 ? $"Copied {input.Length} characters to clipboard."
-                : $"Failed: exit code {process.ExitCode}";
+                : $"Failed: exit code {result.ExitCode}";
         }
         catch (Exception ex)
         {

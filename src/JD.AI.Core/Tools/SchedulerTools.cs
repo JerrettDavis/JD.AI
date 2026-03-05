@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Text;
 using JD.AI.Core.Attributes;
+using JD.AI.Core.Infrastructure;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -57,11 +58,11 @@ public sealed class SchedulerTools
         [Description("Optional description")] string? description = null)
     {
         if (string.IsNullOrWhiteSpace(name))
-            return "Error: Task name cannot be empty.";
+            return OutputFormatter.Error("Task name cannot be empty.");
         if (string.IsNullOrWhiteSpace(schedule))
-            return "Error: Schedule cannot be empty.";
+            return OutputFormatter.Error("Schedule cannot be empty.");
         if (string.IsNullOrWhiteSpace(command))
-            return "Error: Command cannot be empty.";
+            return OutputFormatter.Error("Command cannot be empty.");
 
         lock (_lock)
         {
@@ -91,7 +92,7 @@ public sealed class SchedulerTools
         {
             var idx = _tasks.FindIndex(t => t.Id == taskId);
             if (idx < 0)
-                return $"Error: Task #{taskId} not found.";
+                return OutputFormatter.Error($"Task #{taskId} not found.");
 
             var name = _tasks[idx].Name;
             _tasks.RemoveAt(idx);
@@ -112,7 +113,7 @@ public sealed class SchedulerTools
         {
             var task = _tasks.Find(t => t.Id == taskId);
             if (task is null)
-                return $"Error: Task #{taskId} not found.";
+                return OutputFormatter.Error($"Task #{taskId} not found.");
 
             if (!string.IsNullOrWhiteSpace(schedule))
                 task.Schedule = schedule;
@@ -123,7 +124,7 @@ public sealed class SchedulerTools
                 if (!string.Equals(status, "active", StringComparison.OrdinalIgnoreCase) &&
                     !string.Equals(status, "paused", StringComparison.OrdinalIgnoreCase))
                 {
-                    return "Error: Status must be 'active' or 'paused'.";
+                    return OutputFormatter.Error("Status must be 'active' or 'paused'.");
                 }
 
                 task.Status = status.ToLowerInvariant();
@@ -143,7 +144,7 @@ public sealed class SchedulerTools
         {
             var task = _tasks.Find(t => t.Id == taskId);
             if (task is null)
-                return $"Error: Task #{taskId} not found.";
+                return OutputFormatter.Error($"Task #{taskId} not found.");
 
             task.LastRunUtc = DateTime.UtcNow;
             task.RunCount++;
@@ -161,7 +162,7 @@ public sealed class SchedulerTools
         {
             var task = _tasks.Find(t => t.Id == taskId);
             if (task is null)
-                return $"Error: Task #{taskId} not found.";
+                return OutputFormatter.Error($"Task #{taskId} not found.");
 
             var sb = new StringBuilder();
             sb.AppendLine(CultureInfo.InvariantCulture, $"## Task #{task.Id}: {task.Name}");

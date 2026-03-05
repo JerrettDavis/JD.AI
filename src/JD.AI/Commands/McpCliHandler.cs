@@ -1,5 +1,5 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
+using JD.AI.Core.Infrastructure;
 using JD.AI.Core.Mcp;
 using JD.SemanticKernel.Extensions.Mcp;
 
@@ -11,13 +11,7 @@ namespace JD.AI.Commands;
 /// </summary>
 internal static class McpCliHandler
 {
-    private static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
-    };
+    private static readonly JsonSerializerOptions JsonOpts = JsonDefaults.Options;
 
     /// <summary>
     /// Dispatches the <c>jdai mcp &lt;subcommand&gt;</c> CLI.

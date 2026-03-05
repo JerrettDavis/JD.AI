@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
 using JD.AI.Core.Attributes;
+using JD.AI.Core.Infrastructure;
 using Microsoft.SemanticKernel;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
@@ -124,7 +125,7 @@ public sealed class MultimodalTools
                     .ToString();
             }
 
-            return $"Error: File not found or unsupported: {source}";
+            return OutputFormatter.Error($"File not found or unsupported: {source}");
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -137,15 +138,15 @@ public sealed class MultimodalTools
     private static string AnalyzeLocalImage(string path, bool includeData, int maxDimension)
     {
         if (!File.Exists(path))
-            return $"Error: File not found: {path}";
+            return OutputFormatter.Error($"File not found: {path}");
 
         var ext = Path.GetExtension(path);
         if (!AllowedImageExtensions.Contains(ext))
-            return $"Error: Unsupported image format: {ext}. Supported: {string.Join(", ", AllowedImageExtensions)}";
+            return OutputFormatter.Error($"Unsupported image format: {ext}. Supported: {string.Join(", ", AllowedImageExtensions)}");
 
         var fi = new FileInfo(path);
         if (fi.Length > MaxFileSizeBytes)
-            return $"Error: File too large ({FormatBytes(fi.Length)}). Maximum: {FormatBytes(MaxFileSizeBytes)}";
+            return OutputFormatter.Error($"File too large ({FormatBytes(fi.Length)}). Maximum: {FormatBytes(MaxFileSizeBytes)}");
 
         // SVG is text-based, handle separately
         if (string.Equals(ext, ".svg", StringComparison.OrdinalIgnoreCase))
@@ -207,7 +208,7 @@ public sealed class MultimodalTools
 
         var contentLength = response.Content.Headers.ContentLength ?? 0;
         if (contentLength > MaxFileSizeBytes)
-            return $"Error: Remote file too large ({FormatBytes(contentLength)}). Maximum: {FormatBytes(MaxFileSizeBytes)}";
+            return OutputFormatter.Error($"Remote file too large ({FormatBytes(contentLength)}). Maximum: {FormatBytes(MaxFileSizeBytes)}");
 
         var tempPath = Path.Combine(Path.GetTempPath(), $"jdai-img-{Guid.NewGuid():N}{GetExtFromUri(uri, ".png")}");
         try
@@ -228,15 +229,15 @@ public sealed class MultimodalTools
     private static string AnalyzeLocalPdf(string path, int startPage, int endPage, int maxChars)
     {
         if (!File.Exists(path))
-            return $"Error: File not found: {path}";
+            return OutputFormatter.Error($"File not found: {path}");
 
         var ext = Path.GetExtension(path);
         if (!AllowedPdfExtensions.Contains(ext))
-            return $"Error: Not a PDF file: {ext}";
+            return OutputFormatter.Error($"Not a PDF file: {ext}");
 
         var fi = new FileInfo(path);
         if (fi.Length > MaxFileSizeBytes)
-            return $"Error: File too large ({FormatBytes(fi.Length)}). Maximum: {FormatBytes(MaxFileSizeBytes)}";
+            return OutputFormatter.Error($"File too large ({FormatBytes(fi.Length)}). Maximum: {FormatBytes(MaxFileSizeBytes)}");
 
         using var doc = PdfDocument.Open(path);
         var totalPages = doc.NumberOfPages;
@@ -308,7 +309,7 @@ public sealed class MultimodalTools
 
         var contentLength = response.Content.Headers.ContentLength ?? 0;
         if (contentLength > MaxFileSizeBytes)
-            return $"Error: Remote file too large ({FormatBytes(contentLength)}). Maximum: {FormatBytes(MaxFileSizeBytes)}";
+            return OutputFormatter.Error($"Remote file too large ({FormatBytes(contentLength)}). Maximum: {FormatBytes(MaxFileSizeBytes)}");
 
         var tempPath = Path.Combine(Path.GetTempPath(), $"jdai-pdf-{Guid.NewGuid():N}.pdf");
         try
