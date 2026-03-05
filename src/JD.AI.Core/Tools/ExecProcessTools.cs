@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text.Json;
 using JD.AI.Core.Attributes;
+using JD.AI.Core.Infrastructure;
 using JD.AI.Core.Tracing;
 using Microsoft.SemanticKernel;
 
@@ -12,7 +13,7 @@ namespace JD.AI.Core.Tools;
 [ToolPlugin("runtime", RequiresInjection = true)]
 public sealed class ExecProcessTools
 {
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Indented;
 
     private readonly ProcessSessionManager _manager;
 

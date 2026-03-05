@@ -1,7 +1,7 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Text;
 using JD.AI.Core.Attributes;
+using JD.AI.Core.Infrastructure;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -129,36 +129,15 @@ public sealed class GitTools
     private static async Task<string> RunGitAsync(string args, string? path)
     {
         var workDir = path ?? Directory.GetCurrentDirectory();
-        var psi = new ProcessStartInfo
-        {
-            FileName = "git",
-            Arguments = $"--no-pager {args}",
-            WorkingDirectory = workDir,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
+        var result = await ProcessExecutor.RunAsync("git", $"--no-pager {args}", workDir).ConfigureAwait(false);
 
-        using var process = new Process { StartInfo = psi };
         var sb = new StringBuilder();
+        if (!string.IsNullOrWhiteSpace(result.StandardOutput))
+            sb.Append(result.StandardOutput);
+        if (!result.Success && !string.IsNullOrWhiteSpace(result.StandardError))
+            sb.AppendLine($"Error (exit {result.ExitCode}): {result.StandardError}");
 
-        process.Start();
-        var stdout = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
-        var stderr = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
-        await process.WaitForExitAsync().ConfigureAwait(false);
-
-        if (!string.IsNullOrWhiteSpace(stdout))
-        {
-            sb.Append(stdout);
-        }
-
-        if (process.ExitCode != 0 && !string.IsNullOrWhiteSpace(stderr))
-        {
-            sb.AppendLine($"Error (exit {process.ExitCode}): {stderr}");
-        }
-
-        var result = sb.ToString();
-        return string.IsNullOrWhiteSpace(result) ? "(no output)" : result;
+        var output = sb.ToString();
+        return string.IsNullOrWhiteSpace(output) ? "(no output)" : output;
     }
 }

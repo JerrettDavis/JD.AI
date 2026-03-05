@@ -38,6 +38,15 @@ public static class JsonDefaults
     };
 
     /// <summary>
+    /// Indented-only options: PascalCase (default), indented output.
+    /// Suitable for tool output where property names should not be transformed.
+    /// </summary>
+    public static JsonSerializerOptions Indented { get; } = new()
+    {
+        WriteIndented = true,
+    };
+
+    /// <summary>
     /// Strict options: PascalCase, no relaxation. Suitable for API contracts
     /// and formal serialization.
     /// </summary>

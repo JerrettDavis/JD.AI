@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text;
 using JD.AI.Core.Attributes;
+using JD.AI.Core.Infrastructure;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -21,7 +22,7 @@ public sealed class FileTools
     {
         if (!File.Exists(path))
         {
-            return $"Error: File not found: {path}";
+            return OutputFormatter.Error($"File not found: {path}");
         }
 
         var lines = File.ReadAllLines(path);
@@ -64,21 +65,21 @@ public sealed class FileTools
     {
         if (!File.Exists(path))
         {
-            return $"Error: File not found: {path}";
+            return OutputFormatter.Error($"File not found: {path}");
         }
 
         var content = File.ReadAllText(path);
         var idx = content.IndexOf(oldStr, StringComparison.Ordinal);
         if (idx < 0)
         {
-            return "Error: old_str not found in file.";
+            return OutputFormatter.Error("old_str not found in file.");
         }
 
         // Ensure uniqueness
         var secondIdx = content.IndexOf(oldStr, idx + oldStr.Length, StringComparison.Ordinal);
         if (secondIdx >= 0)
         {
-            return "Error: old_str matches multiple locations. Provide more context to make it unique.";
+            return OutputFormatter.Error("old_str matches multiple locations. Provide more context to make it unique.");
         }
 
         var updated = string.Concat(content.AsSpan(0, idx), newStr, content.AsSpan(idx + oldStr.Length));
@@ -96,7 +97,7 @@ public sealed class FileTools
         var dir = path ?? Directory.GetCurrentDirectory();
         if (!Directory.Exists(dir))
         {
-            return $"Error: Directory not found: {dir}";
+            return OutputFormatter.Error($"Directory not found: {dir}");
         }
 
         var sb = new StringBuilder();

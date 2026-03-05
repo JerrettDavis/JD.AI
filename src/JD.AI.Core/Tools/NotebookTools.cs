@@ -1,7 +1,7 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Text;
 using JD.AI.Core.Attributes;
+using JD.AI.Core.Infrastructure;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -100,67 +100,24 @@ public sealed class NotebookTools
 
     private static async Task<string> RunCodeAsync(string command, string args, TimeSpan timeout)
     {
-        var psi = new ProcessStartInfo
-        {
-            FileName = command,
-            Arguments = args,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-
-        using var process = new Process { StartInfo = psi };
-        var sb = new StringBuilder();
-
+        ProcessResult result;
         try
         {
-            process.Start();
+            result = await ProcessExecutor.RunAsync(command, args, timeout: timeout).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return $"Failed to start '{command}': {ex.Message}. Is the runtime installed?";
         }
 
-        using var cts = new CancellationTokenSource(timeout);
+        var sb = new StringBuilder();
+        if (!string.IsNullOrWhiteSpace(result.StandardOutput))
+            sb.AppendLine(result.StandardOutput);
+        if (!string.IsNullOrWhiteSpace(result.StandardError))
+            sb.AppendLine($"[stderr] {result.StandardError}");
+        sb.AppendLine($"[exit code: {result.ExitCode}]");
 
-        try
-        {
-            var stdoutTask = process.StandardOutput.ReadToEndAsync(cts.Token);
-            var stderrTask = process.StandardError.ReadToEndAsync(cts.Token);
-
-            await process.WaitForExitAsync(cts.Token).ConfigureAwait(false);
-
-            var stdout = await stdoutTask.ConfigureAwait(false);
-            var stderr = await stderrTask.ConfigureAwait(false);
-
-            if (!string.IsNullOrWhiteSpace(stdout))
-            {
-                sb.AppendLine(stdout);
-            }
-
-            if (!string.IsNullOrWhiteSpace(stderr))
-            {
-                sb.AppendLine($"[stderr] {stderr}");
-            }
-
-            sb.AppendLine($"[exit code: {process.ExitCode}]");
-        }
-        catch (OperationCanceledException)
-        {
-            try
-            {
-                process.Kill(entireProcessTree: true);
-            }
-            catch
-            {
-                // Best effort kill
-            }
-
-            return $"Execution timed out after {timeout.TotalSeconds}s. Process killed.";
-        }
-
-        var result = sb.ToString();
-        return string.IsNullOrWhiteSpace(result) ? "(no output)" : result;
+        var output = sb.ToString();
+        return string.IsNullOrWhiteSpace(output) ? "(no output)" : output;
     }
 }

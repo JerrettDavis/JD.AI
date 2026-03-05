@@ -1,4 +1,5 @@
 using System.Text.Json;
+using JD.AI.Core.Infrastructure;
 using JD.AI.Plugins.SDK;
 
 namespace JD.AI.Core.Plugins;
@@ -8,10 +9,7 @@ namespace JD.AI.Core.Plugins;
 /// </summary>
 public static class PluginManifestReader
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true,
-    };
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Options;
 
     public static async Task<PluginManifest> ReadAsync(string manifestPath, CancellationToken ct = default)
     {

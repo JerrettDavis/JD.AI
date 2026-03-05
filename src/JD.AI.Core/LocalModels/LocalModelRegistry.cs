@@ -1,4 +1,5 @@
 using System.Text.Json;
+using JD.AI.Core.Infrastructure;
 using JD.AI.Core.LocalModels.Sources;
 using Microsoft.Extensions.Logging;
 
@@ -9,11 +10,7 @@ namespace JD.AI.Core.LocalModels;
 /// </summary>
 public sealed class LocalModelRegistry
 {
-    private static readonly JsonSerializerOptions s_jsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
+    private static readonly JsonSerializerOptions s_jsonOptions = JsonDefaults.Options;
 
     private readonly string _registryPath;
     private readonly string _modelsDir;

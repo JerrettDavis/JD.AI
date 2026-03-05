@@ -12,9 +12,11 @@ public sealed class FileAuditSink : IAuditSink, IDisposable
     private readonly string _baseDir;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
+    // Audit sinks use PascalCase enums for backward compatibility with
+    // external consumers (Elasticsearch queries, jq scripts, docs).
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         Converters = { new JsonStringEnumConverter() },
     };

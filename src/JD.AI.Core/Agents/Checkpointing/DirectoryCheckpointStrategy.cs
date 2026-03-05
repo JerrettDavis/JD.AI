@@ -1,4 +1,5 @@
 using System.Text.Json;
+using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Core.Agents.Checkpointing;
 
@@ -8,7 +9,7 @@ namespace JD.AI.Core.Agents.Checkpointing;
 /// </summary>
 public sealed class DirectoryCheckpointStrategy : ICheckpointStrategy
 {
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Indented;
 
     private readonly string _workingDir;
     private readonly string _checkpointRoot;

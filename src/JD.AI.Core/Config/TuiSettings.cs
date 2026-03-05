@@ -1,5 +1,5 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
+using JD.AI.Core.Infrastructure;
 using JD.AI.Core.PromptCaching;
 
 namespace JD.AI.Core.Config;
@@ -11,12 +11,7 @@ public sealed record TuiSettings
 {
     private const string FileName = "tui-settings.json";
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
-    };
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Options;
 
     /// <summary>The spinner/progress display style during LLM turns.</summary>
     public SpinnerStyle SpinnerStyle { get; init; } = SpinnerStyle.Normal;

@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text;
 using JD.AI.Core.Attributes;
 using JD.AI.Core.Channels;
+using JD.AI.Core.Infrastructure;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -53,7 +54,7 @@ public sealed class ChannelOpsTools
     {
         var channel = _registry.GetChannel(channelType);
         if (channel is null)
-            return $"Error: Channel '{channelType}' not found. Use channel_list to see available channels.";
+            return OutputFormatter.Error($"Channel '{channelType}' not found. Use channel_list to see available channels.");
 
         var sb = new StringBuilder();
         sb.AppendLine(CultureInfo.InvariantCulture, $"## Channel: {channel.DisplayName}");
@@ -73,14 +74,14 @@ public sealed class ChannelOpsTools
         [Description("Message content to send")] string message)
     {
         if (string.IsNullOrWhiteSpace(message))
-            return "Error: Message content cannot be empty.";
+            return OutputFormatter.Error("Message content cannot be empty.");
 
         var channel = _registry.GetChannel(channelType);
         if (channel is null)
-            return $"Error: Channel '{channelType}' not found.";
+            return OutputFormatter.Error($"Channel '{channelType}' not found.");
 
         if (!channel.IsConnected)
-            return $"Error: Channel '{channelType}' is not connected. Connect it first.";
+            return OutputFormatter.Error($"Channel '{channelType}' is not connected. Connect it first.");
 
         try
         {
@@ -101,7 +102,7 @@ public sealed class ChannelOpsTools
     {
         var channel = _registry.GetChannel(channelType);
         if (channel is null)
-            return $"Error: Channel '{channelType}' not found.";
+            return OutputFormatter.Error($"Channel '{channelType}' not found.");
 
         if (channel.IsConnected)
             return $"Channel '{channelType}' is already connected.";
@@ -125,7 +126,7 @@ public sealed class ChannelOpsTools
     {
         var channel = _registry.GetChannel(channelType);
         if (channel is null)
-            return $"Error: Channel '{channelType}' not found.";
+            return OutputFormatter.Error($"Channel '{channelType}' not found.");
 
         if (!channel.IsConnected)
             return $"Channel '{channelType}' is already disconnected.";

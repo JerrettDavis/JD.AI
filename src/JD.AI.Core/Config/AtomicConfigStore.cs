@@ -1,5 +1,5 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
+using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Core.Config;
 
@@ -14,12 +14,7 @@ public sealed class AtomicConfigStore : IDisposable
     private const int MaxRetries = 5;
     private const int InitialBackoffMs = 50;
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Options;
 
     private readonly string _configPath;
     private readonly SemaphoreSlim _semaphore = new(1, 1);

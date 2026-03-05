@@ -5,6 +5,7 @@ using System.Text.Json;
 using JD.AI.Core.Attributes;
 using JD.AI.Core.Governance;
 using JD.AI.Core.Governance.Audit;
+using JD.AI.Core.Infrastructure;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -16,7 +17,7 @@ namespace JD.AI.Core.Tools;
 [ToolPlugin("policy", RequiresInjection = true)]
 public sealed class PolicyTools
 {
-    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions s_jsonOptions = JsonDefaults.Indented;
 
     private readonly IPolicyEvaluator? _policyEvaluator;
     private readonly AuditService? _auditService;
