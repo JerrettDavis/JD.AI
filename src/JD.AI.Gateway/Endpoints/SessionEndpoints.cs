@@ -15,8 +15,15 @@ public static class SessionEndpoints
             var sessions = await store.ListSessionsAsync(limit: offset + clampedLimit + 1);
             var items = sessions.Select(s => new
             {
-                s.Id, s.Name, s.ProviderName, s.ModelId,
-                s.CreatedAt, s.UpdatedAt, s.MessageCount, s.TotalTokens, s.IsActive
+                s.Id,
+                s.Name,
+                s.ProviderName,
+                s.ModelId,
+                s.CreatedAt,
+                s.UpdatedAt,
+                s.MessageCount,
+                s.TotalTokens,
+                s.IsActive,
             }).ToList();
 
             // If no cursor was provided, return plain array for backward compat
