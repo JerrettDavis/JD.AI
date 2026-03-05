@@ -40,7 +40,11 @@ builder.Services.AddSingleton<IRateLimiter>(
     new SlidingWindowRateLimiter(gatewayConfig.RateLimit.MaxRequestsPerMinute));
 
 // --- Core services ---
-builder.Services.AddSingleton<IEventBus, InProcessEventBus>();
+builder.Services.AddEventBus(new EventBusOptions
+{
+    Provider = gatewayConfig.EventBus.Provider,
+    RedisConnectionString = gatewayConfig.EventBus.RedisConnectionString,
+});
 builder.Services.AddSingleton<IChannelRegistry, ChannelRegistry>();
 builder.Services.AddSingleton<IProviderDetector, ClaudeCodeDetector>();
 builder.Services.AddSingleton<IProviderDetector, CopilotDetector>();

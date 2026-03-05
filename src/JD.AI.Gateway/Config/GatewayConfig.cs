@@ -13,6 +13,17 @@ public sealed class GatewayConfig
     public RoutingConfig Routing { get; set; } = new();
     public OpenClawGatewayConfig OpenClaw { get; set; } = new();
     public TelemetryGatewayConfig Telemetry { get; set; } = new();
+    public EventBusConfig EventBus { get; set; } = new();
+}
+
+/// <summary>Event bus infrastructure settings nested under <c>Gateway:EventBus</c>.</summary>
+public sealed class EventBusConfig
+{
+    /// <summary>Provider type: <c>"InProcess"</c> (default) or <c>"Redis"</c>.</summary>
+    public string Provider { get; set; } = "InProcess";
+
+    /// <summary>Redis connection string. Required when <see cref="Provider"/> is <c>"Redis"</c>.</summary>
+    public string? RedisConnectionString { get; set; }
 }
 
 public sealed class ServerConfig
