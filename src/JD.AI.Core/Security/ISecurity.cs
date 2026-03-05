@@ -63,7 +63,17 @@ public interface IRateLimiter
 {
     /// <summary>Returns true if the request is allowed; false if rate-limited.</summary>
     Task<bool> AllowAsync(string key, CancellationToken ct = default);
+
+    /// <summary>Checks the rate limit and returns detailed result with remaining quota and reset time.</summary>
+    Task<RateLimitResult> CheckAsync(string key, CancellationToken ct = default);
 }
+
+/// <summary>Result of a rate limit check with quota metadata.</summary>
+public sealed record RateLimitResult(
+    bool Allowed,
+    int Limit,
+    int Remaining,
+    DateTimeOffset ResetsAt);
 
 /// <summary>
 /// Simple sliding window rate limiter.
@@ -83,6 +93,15 @@ public sealed class SlidingWindowRateLimiter : IRateLimiter
 
     public Task<bool> AllowAsync(string key, CancellationToken ct = default)
     {
+        var result = Check(key);
+        return Task.FromResult(result.Allowed);
+    }
+
+    public Task<RateLimitResult> CheckAsync(string key, CancellationToken ct = default) =>
+        Task.FromResult(Check(key));
+
+    private RateLimitResult Check(string key)
+    {
         lock (_lock)
         {
             var now = DateTimeOffset.UtcNow;
@@ -96,11 +115,13 @@ public sealed class SlidingWindowRateLimiter : IRateLimiter
             while (queue.Count > 0 && now - queue.Peek() >= _window)
                 queue.Dequeue();
 
+            var resetsAt = queue.Count > 0 ? queue.Peek() + _window : now + _window;
+
             if (queue.Count >= _maxRequests)
-                return Task.FromResult(false);
+                return new RateLimitResult(false, _maxRequests, 0, resetsAt);
 
             queue.Enqueue(now);
-            return Task.FromResult(true);
+            return new RateLimitResult(true, _maxRequests, _maxRequests - queue.Count, resetsAt);
         }
     }
 }

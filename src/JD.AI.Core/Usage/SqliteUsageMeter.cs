@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using JD.AI.Core.Infrastructure;
 using Microsoft.Data.Sqlite;
 
 namespace JD.AI.Core.Usage;
@@ -15,7 +16,7 @@ public sealed class SqliteUsageMeter : IUsageMeter, IAsyncDisposable
     private readonly CostRateProvider _costRates;
     private readonly BudgetConfig _budget;
     private bool _initialized;
-    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions s_jsonOptions = JsonDefaults.Indented;
 
     public SqliteUsageMeter(string dbPath, CostRateProvider? costRates = null, BudgetConfig? budget = null)
     {

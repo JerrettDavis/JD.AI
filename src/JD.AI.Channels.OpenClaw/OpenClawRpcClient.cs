@@ -3,6 +3,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using JD.AI.Core.Infrastructure;
 using Microsoft.Extensions.Logging;
 using NSec.Cryptography;
 
@@ -23,11 +24,7 @@ public sealed class OpenClawRpcClient : IAsyncDisposable
     private static readonly string[] DefaultScopes =
         ["operator.admin", "operator.read", "operator.write", "operator.approvals", "operator.pairing"];
 
-    private static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    };
+    private static readonly JsonSerializerOptions JsonOpts = JsonDefaults.Compact;
 
     private readonly OpenClawConfig _config;
     private readonly ILogger _logger;

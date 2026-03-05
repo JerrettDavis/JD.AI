@@ -9,9 +9,11 @@ public sealed class MetersTests
     public void AllMeterNames_ContainsAgentMeter()
     {
         var names = Meters.AllMeterNames;
-        names.Should().HaveCount(1);
+        names.Should().HaveCount(2);
         names.Should().Contain(Meters.AgentMeterName);
+        names.Should().Contain(Meters.GenAiMeterName);
         Meters.AgentMeterName.Should().Be("JD.AI.Agent");
+        Meters.GenAiMeterName.Should().Be("JD.AI.GenAI");
     }
 
     [Fact]

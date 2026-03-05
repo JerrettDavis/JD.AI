@@ -176,11 +176,27 @@ static void RunDaemon(string[] args)
     }
 
     builder.Services.AddSingleton<IAuthProvider>(authProvider);
-    builder.Services.AddSingleton<IRateLimiter>(
-        new SlidingWindowRateLimiter(gatewayConfig.RateLimit.MaxRequestsPerMinute));
+    if (string.Equals(gatewayConfig.RateLimit.Provider, "Redis", StringComparison.OrdinalIgnoreCase)
+        && !string.IsNullOrWhiteSpace(gatewayConfig.RateLimit.RedisConnectionString))
+    {
+        builder.Services.AddSingleton<IRateLimiter>(sp =>
+            new RedisRateLimiter(
+                StackExchange.Redis.ConnectionMultiplexer.Connect(gatewayConfig.RateLimit.RedisConnectionString),
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<RedisRateLimiter>>(),
+                gatewayConfig.RateLimit.MaxRequestsPerMinute));
+    }
+    else
+    {
+        builder.Services.AddSingleton<IRateLimiter>(
+            new SlidingWindowRateLimiter(gatewayConfig.RateLimit.MaxRequestsPerMinute));
+    }
 
     // --- Core services ---
-    builder.Services.AddSingleton<IEventBus, InProcessEventBus>();
+    builder.Services.AddEventBus(new EventBusOptions
+    {
+        Provider = gatewayConfig.EventBus.Provider,
+        RedisConnectionString = gatewayConfig.EventBus.RedisConnectionString,
+    });
     builder.Services.AddSingleton<IChannelRegistry, ChannelRegistry>();
     builder.Services.AddSingleton<IProviderDetector, ClaudeCodeDetector>();
     builder.Services.AddSingleton<IProviderDetector, CopilotDetector>();
@@ -365,6 +381,7 @@ static void RunDaemon(string[] args)
 
     // --- Health ---
     app.MapHealthChecks("/health");
+    app.MapGet("/health/startup", () => Results.Ok(new { Status = "Started" }));
     app.MapGet("/ready", () => Results.Ok(new { Status = "Ready" }));
 
     // --- REST API endpoints ---

@@ -1,6 +1,6 @@
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
+using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Workflows;
 
@@ -9,12 +9,7 @@ namespace JD.AI.Workflows;
 /// </summary>
 public sealed class WorkflowEmitter : IWorkflowEmitter
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Converters = { new JsonStringEnumConverter() },
-    };
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Options;
 
     public WorkflowArtifact Emit(
         AgentWorkflowDefinition definition,
