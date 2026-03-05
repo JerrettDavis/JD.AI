@@ -1,8 +1,8 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using JD.AI.Core.Attributes;
+using JD.AI.Core.Infrastructure;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -94,21 +94,6 @@ public sealed class EnvironmentTools
         return sb.ToString();
     }
 
-    private static async Task<string> RunCommandAsync(string command, string args)
-    {
-        var psi = new ProcessStartInfo
-        {
-            FileName = command,
-            Arguments = args,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-
-        using var process = Process.Start(psi)!;
-        var output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
-        await process.WaitForExitAsync().ConfigureAwait(false);
-        return output;
-    }
+    private static async Task<string> RunCommandAsync(string command, string args) =>
+        await ProcessExecutor.RunForOutputAsync(command, args).ConfigureAwait(false);
 }
