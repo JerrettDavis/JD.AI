@@ -1,5 +1,6 @@
 using FluentAssertions;
 using JD.AI.Core.Providers;
+using JD.SemanticKernel.Connectors.OpenAICodex;
 
 namespace JD.AI.Tests.Providers;
 
@@ -64,5 +65,61 @@ public sealed class OpenAICodexDetectorTests : IDisposable
         var models = OpenAICodexDetector.ReadModelsFromCache(_cachePath);
 
         models.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ApplyCredentialOverridesFromAuthFile_UsesApiKeyWhenPresent()
+    {
+        var authPath = Path.Combine(_tempDir, "auth.json");
+        File.WriteAllText(authPath, """
+                                    {
+                                      "OPENAI_API_KEY": "sk-codex-from-file",
+                                      "tokens": {
+                                        "id_token": "id-token-ignored"
+                                      }
+                                    }
+                                    """);
+
+        var options = new CodexSessionOptions { CredentialsPath = authPath };
+
+        OpenAICodexDetector.ApplyCredentialOverridesFromAuthFile(options);
+
+        options.ApiKey.Should().Be("sk-codex-from-file");
+        options.AccessToken.Should().BeNull();
+    }
+
+    [Fact]
+    public void ApplyCredentialOverridesFromAuthFile_UsesNestedIdTokenWhenApiKeyMissing()
+    {
+        var authPath = Path.Combine(_tempDir, "auth.json");
+        File.WriteAllText(authPath, """
+                                    {
+                                      "tokens": {
+                                        "access_token": "access-token",
+                                        "id_token": "id-token"
+                                      }
+                                    }
+                                    """);
+
+        var options = new CodexSessionOptions { CredentialsPath = authPath };
+
+        OpenAICodexDetector.ApplyCredentialOverridesFromAuthFile(options);
+
+        options.ApiKey.Should().BeNull();
+        options.AccessToken.Should().Be("id-token");
+    }
+
+    [Fact]
+    public void ApplyCredentialOverridesFromAuthFile_IgnoresMalformedJson()
+    {
+        var authPath = Path.Combine(_tempDir, "auth.json");
+        File.WriteAllText(authPath, "{not-json");
+
+        var options = new CodexSessionOptions { CredentialsPath = authPath };
+
+        OpenAICodexDetector.ApplyCredentialOverridesFromAuthFile(options);
+
+        options.ApiKey.Should().BeNull();
+        options.AccessToken.Should().BeNull();
     }
 }
