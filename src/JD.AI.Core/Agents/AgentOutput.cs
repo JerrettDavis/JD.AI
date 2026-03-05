@@ -41,6 +41,12 @@ public interface IAgentOutput
     /// Pauses any active spinner/progress indicator to avoid interleaved output.
     /// </summary>
     bool ConfirmToolCall(string toolName, string? args) => true;
+
+    /// <summary>
+    /// Prompts the user to start a workflow when an ad-hoc tool call is detected.
+    /// Returns true if the user wants to create a workflow, false to continue ad-hoc.
+    /// </summary>
+    bool ConfirmWorkflowPrompt(string triggeringTool) => false;
 }
 
 /// <summary>

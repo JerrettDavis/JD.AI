@@ -228,6 +228,29 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         var tier = ToolTiers.GetValueOrDefault(canonicalToolName, SafetyTier.AlwaysConfirm);
         var output = AgentOutput.Current;
 
+        // ── Workflow enforcement ────────────────────────────
+        // If a workflow is active, tool calls are coordinated — skip the prompt.
+        // If AutoApprove (read-only), let it through freely.
+        // If the user already declined this turn, don't nag again.
+        // Otherwise, prompt the user to start a workflow.
+        if (_session.ActiveWorkflowName is null &&
+            !_session.WorkflowDeclinedThisTurn &&
+            tier != SafetyTier.AutoApprove &&
+            _session.PermissionMode != PermissionMode.BypassAll)
+        {
+            if (output.ConfirmWorkflowPrompt(functionName))
+            {
+                // User wants a workflow — interrupt the LLM loop
+                context.Result = new FunctionResult(
+                    context.Function,
+                    "Workflow planning requested. Tool execution deferred to workflow.");
+                throw new WorkflowRequestedException(canonicalToolName);
+            }
+
+            // User declined — remember for this turn
+            _session.WorkflowDeclinedThisTurn = true;
+        }
+
         // Check if we need confirmation based on permission mode
         bool blocked = false;
         var needsConfirm = false;

@@ -60,6 +60,11 @@ public sealed class AgentWorkflowBuilder
                 stepDef.Name,
                 stepDef.Target ?? stepDef.Name)),
 
+            AgentStepKind.Agent => builder.Step(new AgentDecisionStep(
+                stepDef.Name,
+                stepDef.Target ?? "{prompt}",
+                stepDef.AllowedPlugins)),
+
             _ => builder,
         };
     }

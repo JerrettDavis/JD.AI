@@ -332,6 +332,34 @@ public static class ChatRenderer
         }
     }
 
+    /// <summary>
+    /// Workflow confirmation prompt. Defaults to No (Enter/N/Escape = decline).
+    /// </summary>
+    public static bool ConfirmWorkflow(string message)
+    {
+        AnsiConsole.Markup($"[aqua]📋 {Markup.Escape(message)}[/] [dim]([green]y[/]/[red]N[/])[/] ");
+
+        while (true)
+        {
+            var key = Console.ReadKey(intercept: true);
+            switch (key.Key)
+            {
+                case ConsoleKey.Y:
+                    AnsiConsole.MarkupLine("[green]y[/]");
+                    return true;
+
+                case ConsoleKey.N:
+                case ConsoleKey.Enter:
+                case ConsoleKey.Escape:
+                    AnsiConsole.MarkupLine("[red]n[/]");
+                    return false;
+
+                default:
+                    break;
+            }
+        }
+    }
+
     // ── Streaming rendering ────────────────────────────────
 
     /// <summary>Begin an assistant streaming block (response content).</summary>
