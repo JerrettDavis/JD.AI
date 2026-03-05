@@ -106,6 +106,39 @@ public sealed class SlashCommandRouterTests
     }
 
     [Fact]
+    public async Task Model_Switch_PersistsProjectDefaults_WhenConfigStoreIsProvided()
+    {
+        var newModel = new ProviderModelInfo("saved-model", "Saved Model", "SavedProvider");
+        _registry.GetModelsAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<ProviderModelInfo> { newModel });
+        _registry.BuildKernel(newModel).Returns(Kernel.CreateBuilder().Build());
+
+        var tempDirectory = Path.Combine(Path.GetTempPath(), $"jdai-defaults-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDirectory);
+        var originalDirectory = Directory.GetCurrentDirectory();
+
+        try
+        {
+            Directory.SetCurrentDirectory(tempDirectory);
+            var configPath = Path.Combine(tempDirectory, "config.json");
+            using var configStore = new AtomicConfigStore(configPath);
+            var router = new SlashCommandRouter(_session, _registry, configStore: configStore);
+
+            await router.ExecuteAsync("/model saved-model");
+            var config = await configStore.ReadAsync();
+
+            Assert.True(config.ProjectDefaults.TryGetValue(tempDirectory, out var defaults));
+            Assert.Equal("SavedProvider", defaults!.Provider);
+            Assert.Equal("saved-model", defaults.Model);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(originalDirectory);
+            Directory.Delete(tempDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Model_ReportsNotFound()
     {
         _registry.GetModelsAsync(Arg.Any<CancellationToken>())

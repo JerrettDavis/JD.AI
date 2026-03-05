@@ -46,13 +46,14 @@ Console.InputEncoding = System.Text.Encoding.UTF8;
 // Parse CLI flags
 var opts = await CliArgumentParser.ParseAsync(args).ConfigureAwait(false);
 
-// Handle 'mcp' / 'plugin' subcommands early (before provider detection)
+// Handle CLI subcommands early (before provider detection)
 if (opts.Subcommand != null)
 {
     return opts.Subcommand switch
     {
         "mcp" => await McpCliHandler.RunAsync(opts.SubcommandArgs).ConfigureAwait(false),
         "plugin" => await PluginCliHandler.RunAsync(opts.SubcommandArgs).ConfigureAwait(false),
+        "onboard" or "wizard" => await OnboardingCliHandler.RunAsync(opts.SubcommandArgs).ConfigureAwait(false),
         _ => 1,
     };
 }
