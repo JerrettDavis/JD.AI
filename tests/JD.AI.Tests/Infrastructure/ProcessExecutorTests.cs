@@ -29,9 +29,11 @@ public sealed class ProcessExecutorTests
     [Fact]
     public async Task RunAsync_WithTimeout_ReturnsTimeoutError()
     {
-        // Use a command that will hang
-        var cmd = OperatingSystem.IsWindows() ? "timeout" : "sleep";
-        var args = OperatingSystem.IsWindows() ? "/t 60 /nobreak" : "60";
+        // Use a command that actually blocks with redirected streams.
+        // Windows 'timeout' requires a console and exits immediately when
+        // streams are redirected, so use 'ping' with a long count instead.
+        var cmd = OperatingSystem.IsWindows() ? "ping" : "sleep";
+        var args = OperatingSystem.IsWindows() ? "-n 60 127.0.0.1" : "60";
 
         var result = await ProcessExecutor.RunAsync(cmd, args, timeout: TimeSpan.FromMilliseconds(500));
 
