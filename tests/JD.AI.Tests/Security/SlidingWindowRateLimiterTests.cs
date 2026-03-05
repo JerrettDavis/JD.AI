@@ -73,4 +73,43 @@ public class SlidingWindowRateLimiterTests
 
         (await limiter.AllowAsync("user1")).Should().BeFalse("61st request should be blocked");
     }
+
+    [Fact]
+    public async Task CheckAsync_ReturnsRemainingQuota()
+    {
+        var limiter = new SlidingWindowRateLimiter(maxRequests: 5, window: TimeSpan.FromMinutes(1));
+
+        var result = await limiter.CheckAsync("user1");
+
+        result.Allowed.Should().BeTrue();
+        result.Limit.Should().Be(5);
+        result.Remaining.Should().Be(4);
+        result.ResetsAt.Should().BeAfter(DateTimeOffset.UtcNow);
+    }
+
+    [Fact]
+    public async Task CheckAsync_AtLimit_RemainingIsZero()
+    {
+        var limiter = new SlidingWindowRateLimiter(maxRequests: 2, window: TimeSpan.FromMinutes(1));
+
+        await limiter.CheckAsync("user1");
+        await limiter.CheckAsync("user1");
+        var result = await limiter.CheckAsync("user1");
+
+        result.Allowed.Should().BeFalse();
+        result.Remaining.Should().Be(0);
+        result.Limit.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task CheckAsync_DecreasesRemaining()
+    {
+        var limiter = new SlidingWindowRateLimiter(maxRequests: 3, window: TimeSpan.FromMinutes(1));
+
+        var r1 = await limiter.CheckAsync("user1");
+        var r2 = await limiter.CheckAsync("user1");
+
+        r1.Remaining.Should().Be(2);
+        r2.Remaining.Should().Be(1);
+    }
 }

@@ -1,9 +1,10 @@
+using System.Globalization;
 using JD.AI.Core.Security;
 
 namespace JD.AI.Gateway.Middleware;
 
 /// <summary>
-/// Enforces per-identity (or per-IP) rate limiting.
+/// Enforces per-identity (or per-IP) rate limiting with standard rate limit headers.
 /// </summary>
 public sealed class RateLimitMiddleware(RequestDelegate next, IRateLimiter rateLimiter)
 {
@@ -35,8 +36,19 @@ public sealed class RateLimitMiddleware(RequestDelegate next, IRateLimiter rateL
             ? identity.Id
             : context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-        if (!await rateLimiter.AllowAsync(key, context.RequestAborted))
+        var result = await rateLimiter.CheckAsync(key, context.RequestAborted);
+
+        // Always set rate limit headers
+        var headers = context.Response.Headers;
+        headers["X-RateLimit-Limit"] = result.Limit.ToString(CultureInfo.InvariantCulture);
+        headers["X-RateLimit-Remaining"] = result.Remaining.ToString(CultureInfo.InvariantCulture);
+        headers["X-RateLimit-Reset"] = result.ResetsAt.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
+
+        if (!result.Allowed)
         {
+            var retryAfter = Math.Max(1, (int)(result.ResetsAt - DateTimeOffset.UtcNow).TotalSeconds);
+            headers["Retry-After"] = retryAfter.ToString(CultureInfo.InvariantCulture);
+
             context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
             await context.Response.WriteAsJsonAsync(
                 new { error = "Too Many Requests" },
