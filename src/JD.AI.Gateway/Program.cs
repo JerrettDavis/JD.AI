@@ -110,11 +110,15 @@ builder.Services.AddSingleton<ICommandRegistry>(sp =>
         sp.GetRequiredService<IQueryableAuditSink>()));
     return registry;
 });
-// --- Audit query sink (in-memory, queryable) ---
+// --- Audit sinks (in-memory queryable + durable file) ---
 var auditSink = new InMemoryAuditSink();
 builder.Services.AddSingleton(auditSink);
 builder.Services.AddSingleton<IQueryableAuditSink>(auditSink);
 builder.Services.AddSingleton<IAuditSink>(auditSink);
+var fileAuditSink = new FileAuditSink(Path.Combine(DataDirectories.Root, "audit"));
+builder.Services.AddSingleton<IAuditSink>(fileAuditSink);
+builder.Services.AddSingleton(sp => new AuditService(sp.GetServices<IAuditSink>(),
+    sp.GetService<Microsoft.Extensions.Logging.ILogger<AuditService>>()));
 
 builder.Services.AddSingleton<IVectorStore>(_ =>
     new SqliteVectorStore(DataDirectories.VectorsDb));
