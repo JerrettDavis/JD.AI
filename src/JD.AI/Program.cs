@@ -8,11 +8,9 @@ using JD.AI.Core.Channels;
 using JD.AI.Core.Config;
 using JD.AI.Core.Governance;
 using JD.AI.Core.Governance.Audit;
-using JD.AI.Core.LocalModels;
 using JD.AI.Core.Mcp;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
-using JD.AI.Core.Providers.Credentials;
 using JD.AI.Core.Providers.Metadata;
 using JD.AI.Core.Providers.ModelSearch;
 using JD.AI.Core.Safety;
@@ -20,6 +18,7 @@ using JD.AI.Core.Skills;
 using JD.AI.Core.Tools;
 using JD.AI.Core.Usage;
 using JD.AI.Rendering;
+using JD.AI.Startup;
 using JD.AI.Tools;
 using JD.AI.Workflows;
 using JD.AI.Workflows.Store;
@@ -45,137 +44,24 @@ Console.OutputEncoding = System.Text.Encoding.UTF8;
 Console.InputEncoding = System.Text.Encoding.UTF8;
 
 // Parse CLI flags
-var skipPermissions = args.Contains("--dangerously-skip-permissions");
-var forceUpdateCheck = args.Contains("--force-update-check");
-var resumeId = args.SkipWhile(a => !string.Equals(a, "--resume", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
-var isNewSession = args.Contains("--new");
-var cliModel = args.SkipWhile(a => !string.Equals(a, "--model", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
-var cliProvider = args.SkipWhile(a => !string.Equals(a, "--provider", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
-var gatewayMode = args.Contains("--gateway");
-var gatewayPort = args.SkipWhile(a => !string.Equals(a, "--gateway-port", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
+var opts = await CliArgumentParser.ParseAsync(args).ConfigureAwait(false);
 
-// Handle 'mcp' subcommand early (before provider detection).
-// Allow global options (starting with '-') to appear before the 'mcp' subcommand,
-// e.g. `jdai --debug mcp list` works the same as `jdai mcp list`.
-var firstNonOptionIndex = Array.FindIndex(args, a => !a.StartsWith('-'));
-if (firstNonOptionIndex >= 0 && string.Equals(args[firstNonOptionIndex], "mcp", StringComparison.OrdinalIgnoreCase))
+// Handle 'mcp' / 'plugin' subcommands early (before provider detection)
+if (opts.Subcommand != null)
 {
-    var mcpArgs = args.Skip(firstNonOptionIndex + 1).ToArray();
-    return await McpCliHandler.RunAsync(mcpArgs).ConfigureAwait(false);
-}
-if (firstNonOptionIndex >= 0 && string.Equals(args[firstNonOptionIndex], "plugin", StringComparison.OrdinalIgnoreCase))
-{
-    var pluginArgs = args.Skip(firstNonOptionIndex + 1).ToArray();
-    return await PluginCliHandler.RunAsync(pluginArgs).ConfigureAwait(false);
-}
-// Print mode: non-interactive, query → stdout → exit
-var printMode = args.Contains("-p") || args.Contains("--print");
-var printQuery = printMode
-    ? args.SkipWhile(a => !string.Equals(a, "-p", StringComparison.OrdinalIgnoreCase) &&
-                          !string.Equals(a, "--print", StringComparison.OrdinalIgnoreCase))
-        .Skip(1).FirstOrDefault()
-    : null;
-
-// Continue most recent session
-var continueSession = args.Contains("-c") || args.Contains("--continue");
-
-// System prompt overrides
-var systemPromptOverride = args.SkipWhile(a => !string.Equals(a, "--system-prompt", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
-var appendSystemPrompt = args.SkipWhile(a => !string.Equals(a, "--append-system-prompt", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
-var systemPromptFile = args.SkipWhile(a => !string.Equals(a, "--system-prompt-file", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
-var appendSystemPromptFile = args.SkipWhile(a => !string.Equals(a, "--append-system-prompt-file", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
-
-// Output format for print mode
-var outputFormat = args.SkipWhile(a => !string.Equals(a, "--output-format", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault() ?? "text";
-
-// Max turns limit
-var maxTurnsStr = args.SkipWhile(a => !string.Equals(a, "--max-turns", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
-int? maxTurns = int.TryParse(maxTurnsStr, out var mt) ? mt : null;
-
-// Verbose mode
-var verboseMode = args.Contains("--verbose");
-
-// Additional working directories
-var addDirs = new List<string>();
-for (var i = 0; i < args.Length; i++)
-{
-    if (string.Equals(args[i], "--add-dir", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+    return opts.Subcommand switch
     {
-        addDirs.Add(args[++i]);
-    }
-}
-
-// Tool filtering
-var allowedTools = args.SkipWhile(a => !string.Equals(a, "--allowedTools", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault()?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-var disallowedTools = args.SkipWhile(a => !string.Equals(a, "--disallowedTools", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault()?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-// Permission mode (plan / acceptEdits / dontAsk / normal)
-var permissionModeStr = args.SkipWhile(a => !string.Equals(a, "--permission-mode", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
-
-// Fallback model chain
-var fallbackModelStr = args.SkipWhile(a => !string.Equals(a, "--fallback-model", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
-var fallbackModels = fallbackModelStr?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
-
-// Session management flags
-var cliSessionId = args.SkipWhile(a => !string.Equals(a, "--session-id", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
-var forkSession = args.Contains("--fork-session");
-var noSessionPersistence = args.Contains("--no-session-persistence");
-
-// Budget limit
-var maxBudgetStr = args.SkipWhile(a => !string.Equals(a, "--max-budget-usd", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
-decimal? maxBudgetUsd = decimal.TryParse(maxBudgetStr, System.Globalization.CultureInfo.InvariantCulture, out var mb) ? mb : null;
-
-// Git worktree isolation
-var useWorktree = args.Contains("-w") || args.Contains("--worktree");
-
-// JSON schema validation for output
-var jsonSchemaArg = args.SkipWhile(a => !string.Equals(a, "--json-schema", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault();
-
-// Input format (text or stream-json)
-var inputFormat = args.SkipWhile(a => !string.Equals(a, "--input-format", StringComparison.OrdinalIgnoreCase))
-    .Skip(1).FirstOrDefault() ?? "text";
-
-// Debug logging
-var debugMode = args.Contains("--debug");
-var debugCategories = debugMode
-    ? args.SkipWhile(a => !string.Equals(a, "--debug", StringComparison.OrdinalIgnoreCase))
-        .Skip(1).FirstOrDefault()
-    : null;
-// If --debug value starts with '-' it's a different flag, not categories
-if (debugCategories != null && debugCategories.StartsWith('-'))
-{
-    debugCategories = null;
-}
-
-// Read piped stdin if available (e.g. `cat file | jdai -p "query"`)
-string? pipedInput = null;
-if (Console.IsInputRedirected)
-{
-    pipedInput = await Console.In.ReadToEndAsync().ConfigureAwait(false);
+        "mcp" => await McpCliHandler.RunAsync(opts.SubcommandArgs).ConfigureAwait(false),
+        "plugin" => await PluginCliHandler.RunAsync(opts.SubcommandArgs).ConfigureAwait(false),
+        _ => 1,
+    };
 }
 
 // --gateway: start the Gateway as an embedded ASP.NET host alongside the TUI
 Microsoft.AspNetCore.Builder.WebApplication? gatewayHost = null;
-if (gatewayMode)
+if (opts.GatewayMode)
 {
-    var port = gatewayPort ?? "5100";
+    var port = opts.GatewayPort ?? "5100";
     var gwBuilder = Microsoft.AspNetCore.Builder.WebApplication.CreateBuilder(["--urls", $"http://localhost:{port}"]);
     gwBuilder.Logging.SetMinimumLevel(LogLevel.Warning);
 
@@ -185,358 +71,34 @@ if (gatewayMode)
 
     gatewayHost = gwApp;
     _ = gwApp.StartAsync();
-    if (!printMode)
+    if (!opts.PrintMode)
     {
         AnsiConsole.MarkupLine($"[dim]Gateway started on http://localhost:{port}[/]");
     }
 }
 
 // Fire background update check immediately (non-blocking)
-var updateCheckTask = UpdateChecker.CheckAsync(forceUpdateCheck);
+var updateCheckTask = UpdateChecker.CheckAsync(opts.ForceUpdateCheck);
 
-if (!printMode)
-{
-    AnsiConsole.MarkupLine("[dim]Detecting providers...[/]");
-}
-
-// 1. Build provider registry with all detectors
-var credentialStore = new EncryptedFileStore();
-var providerConfig = new ProviderConfigurationManager(credentialStore);
-
-var detectors = new IProviderDetector[]
-{
-    // OAuth / credential-harvesting providers
-    new ClaudeCodeDetector(),
-    new CopilotDetector(),
-    new OpenAICodexDetector(),
-    // Local providers
-    new OllamaDetector(),
-    new FoundryLocalDetector(),
-    new LocalModelDetector(),
-    // API key providers
-    new OpenAIDetector(providerConfig),
-    new AzureOpenAIDetector(providerConfig),
-    new AnthropicDetector(providerConfig),
-    new GoogleGeminiDetector(providerConfig),
-    new MistralDetector(providerConfig),
-    new AmazonBedrockDetector(providerConfig),
-    new HuggingFaceDetector(providerConfig),
-    new OpenAICompatibleDetector(providerConfig),
-};
-var metadataProvider = new ModelMetadataProvider();
-var registry = new ProviderRegistry(detectors, metadataProvider);
-
-// 2. Detect available providers and show status
-var providers = await registry.DetectProvidersAsync().ConfigureAwait(false);
-if (!printMode)
-{
-    foreach (var p in providers)
-    {
-        var icon = p.IsAvailable ? "[green]✓[/]" : "[red]✗[/]";
-        AnsiConsole.MarkupLine($"  {icon} [bold]{Markup.Escape(p.Name)}[/]: {Markup.Escape(p.StatusMessage ?? "Unknown")}");
-    }
-}
-
-var allModels = await registry.GetModelsAsync().ConfigureAwait(false);
-
-if (allModels.Count == 0)
-{
-    Console.Error.WriteLine("No AI providers available.");
-    return 1;
-}
-
-// 3. Let user pick a model (or use CLI flags / per-project defaults / global defaults / first available)
+// 1-3. Detect providers, list models, select model
 using var configStore = new AtomicConfigStore();
-ProviderModelInfo selectedModel;
-if (cliModel != null)
-{
-    // --model flag: match by display name or model ID (case-insensitive)
-    var candidates = allModels.Where(m =>
-        m.DisplayName.Contains(cliModel, StringComparison.OrdinalIgnoreCase) ||
-        m.Id.Contains(cliModel, StringComparison.OrdinalIgnoreCase)).ToList();
+var providerSetup = await ProviderOrchestrator.DetectAndSelectAsync(opts, configStore).ConfigureAwait(false);
+if (providerSetup is null) return 1;
 
-    if (cliProvider != null)
-    {
-        candidates = candidates.Where(m =>
-            m.ProviderName.Contains(cliProvider, StringComparison.OrdinalIgnoreCase)).ToList();
-    }
+var registry = providerSetup.Registry;
+var providerConfig = providerSetup.ProviderConfig;
+var metadataProvider = providerSetup.MetadataProvider;
+var allModels = providerSetup.AllModels;
+var selectedModel = providerSetup.SelectedModel;
+var kernel = providerSetup.Kernel;
 
-    if (candidates.Count == 0)
-    {
-        AnsiConsole.MarkupLine($"[red]No model matching '{Markup.Escape(cliModel)}' found.[/]");
-        return 1;
-    }
-
-    selectedModel = candidates[0];
-}
-else if (cliProvider != null)
-{
-    var candidates = allModels.Where(m =>
-        m.ProviderName.Contains(cliProvider, StringComparison.OrdinalIgnoreCase)).ToList();
-
-    if (candidates.Count == 0)
-    {
-        AnsiConsole.MarkupLine($"[red]No models from provider '{Markup.Escape(cliProvider)}' found.[/]");
-        return 1;
-    }
-
-    selectedModel = candidates.Count == 1 || printMode
-        ? candidates[0]
-        : AnsiConsole.Prompt(
-            new SelectionPrompt<ProviderModelInfo>()
-                .Title("Select a model:")
-                .PageSize(15)
-                .UseConverter(m => Markup.Escape($"[{m.ProviderName}] {m.DisplayName}"))
-                .AddChoices(candidates));
-}
-else
-{
-    // Check per-project then global defaults from config store
-    var cfgProjectPath = Directory.GetCurrentDirectory();
-    var defaultModel = await configStore.GetDefaultModelAsync(cfgProjectPath).ConfigureAwait(false);
-    var defaultProvider = await configStore.GetDefaultProviderAsync(cfgProjectPath).ConfigureAwait(false);
-
-    List<ProviderModelInfo>? defaultCandidates = null;
-
-    if (defaultModel is not null)
-    {
-        defaultCandidates = allModels.Where(m =>
-            m.DisplayName.Contains(defaultModel, StringComparison.OrdinalIgnoreCase) ||
-            m.Id.Contains(defaultModel, StringComparison.OrdinalIgnoreCase)).ToList();
-
-        if (defaultProvider is not null)
-        {
-            defaultCandidates = defaultCandidates.Where(m =>
-                m.ProviderName.Contains(defaultProvider, StringComparison.OrdinalIgnoreCase)).ToList();
-        }
-    }
-    else if (defaultProvider is not null)
-    {
-        defaultCandidates = allModels.Where(m =>
-            m.ProviderName.Contains(defaultProvider, StringComparison.OrdinalIgnoreCase)).ToList();
-    }
-
-    if (defaultCandidates is { Count: > 0 })
-    {
-        selectedModel = defaultCandidates[0];
-    }
-    else if (allModels.Count == 1 || printMode)
-    {
-        selectedModel = allModels[0];
-    }
-    else
-    {
-        selectedModel = AnsiConsole.Prompt(
-            new SelectionPrompt<ProviderModelInfo>()
-                .Title("Select a model:")
-                .PageSize(15)
-                .UseConverter(m => Markup.Escape($"[{m.ProviderName}] {m.DisplayName}"))
-                .AddChoices(allModels));
-    }
-}
-
-// 4. Build initial kernel with the selected model
-var kernel = registry.BuildKernel(selectedModel);
-
-// 5. Create agent session
-var session = new AgentSession(registry, kernel, selectedModel);
-
-// Apply CLI flags
-if (skipPermissions)
-{
-    session.SkipPermissions = true;
-    if (!printMode) ChatRenderer.RenderWarning("--dangerously-skip-permissions: ALL tool confirmations disabled.");
-}
-if (verboseMode)
-{
-    session.Verbose = true;
-}
-
-// Apply permission mode
-if (permissionModeStr != null)
-{
-    session.PermissionMode = permissionModeStr.ToUpperInvariant() switch
-    {
-        "PLAN" => JD.AI.Core.Agents.PermissionMode.Plan,
-        "ACCEPTEDITS" => JD.AI.Core.Agents.PermissionMode.AcceptEdits,
-        "DONTASK" => JD.AI.Core.Agents.PermissionMode.BypassAll,
-        "NORMAL" => JD.AI.Core.Agents.PermissionMode.Normal,
-        _ => JD.AI.Core.Agents.PermissionMode.Normal,
-    };
-    if (!printMode)
-    {
-        ChatRenderer.RenderInfo($"Permission mode: {session.PermissionMode}");
-    }
-}
-
-// Apply fallback models
-if (fallbackModels.Length > 0)
-{
-    session.FallbackModels = fallbackModels;
-    if (!printMode)
-    {
-        ChatRenderer.RenderInfo($"Fallback models: {string.Join(" → ", fallbackModels)}");
-    }
-}
-
-// Apply session persistence flag
-if (noSessionPersistence)
-{
-    session.NoSessionPersistence = true;
-}
-
-// Apply budget limit
-if (maxBudgetUsd.HasValue)
-{
-    session.MaxBudgetUsd = maxBudgetUsd;
-    if (!printMode) ChatRenderer.RenderInfo($"Budget limit: ${maxBudgetUsd:F2}");
-}
-
-// Debug logging
-if (debugMode)
-{
-    session.Verbose = true;
-    var parsedCategories = JD.AI.Core.Tracing.DebugLogger.ParseCategories(debugCategories);
-    JD.AI.Core.Tracing.DebugLogger.Enable(parsedCategories);
-    if (!printMode)
-    {
-        var cats = debugCategories != null ? $" (categories: {debugCategories})" : "";
-        ChatRenderer.RenderInfo($"Debug logging enabled{cats}");
-    }
-}
-
-// Initialize session persistence
-var projectPath = Directory.GetCurrentDirectory();
-
-// --worktree / -w: create git worktree for isolated session
-JD.AI.Core.Tools.WorktreeManager? worktreeManager = null;
-if (useWorktree)
-{
-    try
-    {
-        worktreeManager = new JD.AI.Core.Tools.WorktreeManager(projectPath);
-        var wtPath = await worktreeManager.CreateAsync().ConfigureAwait(false);
-        projectPath = wtPath;
-        Directory.SetCurrentDirectory(wtPath);
-        if (!printMode)
-        {
-            ChatRenderer.RenderInfo($"Worktree created: {wtPath}");
-            ChatRenderer.RenderInfo($"  Branch: {worktreeManager.BranchName}");
-        }
-    }
-    catch (Exception ex)
-    {
-        ChatRenderer.RenderWarning($"Failed to create worktree: {ex.Message}");
-        worktreeManager = null;
-    }
-}
-if (noSessionPersistence)
-{
-    // --no-session-persistence: skip all session I/O
-    if (!printMode) ChatRenderer.RenderInfo("Session persistence disabled.");
-}
-else if (!isNewSession)
-{
-    // Use explicit --session-id if provided
-    if (cliSessionId != null)
-    {
-        resumeId = cliSessionId;
-    }
-
-    // --continue: auto-resume the most recent session for this project
-    if (continueSession && resumeId == null)
-    {
-        await session.InitializePersistenceAsync(projectPath).ConfigureAwait(false);
-        if (session.Store != null)
-        {
-            var projectHash = JD.AI.Core.Sessions.ProjectHasher.Hash(projectPath);
-            var recentSessions = await session.Store.ListSessionsAsync(projectHash, 1).ConfigureAwait(false);
-            if (recentSessions.Count > 0)
-            {
-                resumeId = recentSessions[0].Id;
-            }
-        }
-    }
-
-    await session.InitializePersistenceAsync(projectPath, resumeId).ConfigureAwait(false);
-    if (resumeId != null && session.SessionInfo != null)
-    {
-        // Restore last-used model from session's model switch history
-        var lastSwitch = session.SessionInfo.ModelSwitchHistory.LastOrDefault();
-        if (lastSwitch != null)
-        {
-            var restored = allModels.FirstOrDefault(m =>
-                string.Equals(m.Id, lastSwitch.ModelId, StringComparison.Ordinal) &&
-                string.Equals(m.ProviderName, lastSwitch.ProviderName, StringComparison.Ordinal));
-            if (restored != null)
-            {
-                selectedModel = restored;
-                kernel = registry.BuildKernel(selectedModel);
-                session = new AgentSession(registry, kernel, selectedModel)
-                {
-                    Store = session.Store,
-                    SessionInfo = session.SessionInfo,
-                    SkipPermissions = session.SkipPermissions,
-                    Verbose = session.Verbose,
-                    PermissionMode = session.PermissionMode,
-                    FallbackModels = session.FallbackModels,
-                    NoSessionPersistence = session.NoSessionPersistence,
-                };
-                // Re-restore history into the new session's ChatHistory
-                foreach (var turn in session.SessionInfo.Turns)
-                {
-                    if (string.Equals(turn.Role, "user", StringComparison.Ordinal))
-                        session.History.AddUserMessage(turn.Content ?? string.Empty);
-                    else if (string.Equals(turn.Role, "assistant", StringComparison.Ordinal))
-                        session.History.AddAssistantMessage(turn.Content ?? string.Empty);
-                }
-                if (!printMode) ChatRenderer.RenderInfo($"Restored model: [{restored.ProviderName}] {restored.DisplayName}");
-            }
-        }
-        else if (session.SessionInfo.ModelId != null && session.SessionInfo.ProviderName != null)
-        {
-            // Fallback: use the session's original model_id/provider_name
-            var restored = allModels.FirstOrDefault(m =>
-                string.Equals(m.Id, session.SessionInfo.ModelId, StringComparison.Ordinal) &&
-                string.Equals(m.ProviderName, session.SessionInfo.ProviderName, StringComparison.Ordinal));
-            if (restored != null && !string.Equals(restored.Id, selectedModel.Id, StringComparison.Ordinal))
-            {
-                selectedModel = restored;
-                kernel = registry.BuildKernel(selectedModel);
-                session = new AgentSession(registry, kernel, selectedModel)
-                {
-                    Store = session.Store,
-                    SessionInfo = session.SessionInfo,
-                    SkipPermissions = session.SkipPermissions,
-                    Verbose = session.Verbose,
-                    PermissionMode = session.PermissionMode,
-                    FallbackModels = session.FallbackModels,
-                    NoSessionPersistence = session.NoSessionPersistence,
-                };
-                foreach (var turn in session.SessionInfo.Turns)
-                {
-                    if (string.Equals(turn.Role, "user", StringComparison.Ordinal))
-                        session.History.AddUserMessage(turn.Content ?? string.Empty);
-                    else if (string.Equals(turn.Role, "assistant", StringComparison.Ordinal))
-                        session.History.AddAssistantMessage(turn.Content ?? string.Empty);
-                }
-                if (!printMode) ChatRenderer.RenderInfo($"Restored model: [{restored.ProviderName}] {restored.DisplayName}");
-            }
-        }
-        if (!printMode) ChatRenderer.RenderInfo($"Resumed session: {session.SessionInfo.Name ?? session.SessionInfo.Id} ({session.SessionInfo.Turns.Count} turns)");
-
-        // --fork-session: fork from the resumed session
-        if (forkSession)
-        {
-            await session.ForkSessionAsync("CLI fork").ConfigureAwait(false);
-            if (!printMode) ChatRenderer.RenderInfo("Forked session — changes diverge from here.");
-        }
-    }
-}
-else
-{
-    await session.InitializePersistenceAsync(projectPath).ConfigureAwait(false);
-}
+// 4-5. Create and configure agent session (persistence, resume, worktree, etc.)
+var sessionSetup = await SessionConfigurator.ConfigureAsync(opts, providerSetup).ConfigureAwait(false);
+var session = sessionSetup.Session;
+selectedModel = sessionSetup.SelectedModel;
+kernel = sessionSetup.Kernel;
+var projectPath = sessionSetup.ProjectPath;
+var worktreeManager = sessionSetup.WorktreeManager;
 
 // 6. Register built-in tools
 kernel.Plugins.AddFromType<FileTools>("file");
@@ -663,7 +225,7 @@ void ApplySkillsSnapshot(SkillSnapshot snapshot, bool announceReload)
 
     if (snapshot.ActiveSkills.Count == 0)
     {
-        if (!printMode && announceReload)
+        if (!opts.PrintMode && announceReload)
             ChatRenderer.RenderInfo("  Skills reloaded (0 active).");
         return;
     }
@@ -683,7 +245,7 @@ void ApplySkillsSnapshot(SkillSnapshot snapshot, bool announceReload)
         loadedSkillPluginNames.Add(plugin.Name);
     }
 
-    if (!printMode && announceReload)
+    if (!opts.PrintMode && announceReload)
         ChatRenderer.RenderInfo($"  Skills reloaded ({snapshot.ActiveSkills.Count} active).");
 }
 
@@ -715,19 +277,19 @@ foreach (var dir in pluginDirs.Where(Directory.Exists))
         {
             if (kernel.Plugins.TryGetPlugin(plugin.Name, out _))
             {
-                if (!printMode) ChatRenderer.RenderWarning($"  Skipped duplicate plugin '{plugin.Name}' from {dir}");
+                if (!opts.PrintMode) ChatRenderer.RenderWarning($"  Skipped duplicate plugin '{plugin.Name}' from {dir}");
                 continue;
             }
 
             kernel.Plugins.Add(plugin);
         }
 
-        if (!printMode) ChatRenderer.RenderInfo($"  Loaded plugins from {dir}");
+        if (!opts.PrintMode) ChatRenderer.RenderInfo($"  Loaded plugins from {dir}");
     }
 #pragma warning disable CA1031
     catch (Exception ex)
     {
-        if (!printMode) ChatRenderer.RenderWarning($"  Failed to load plugins from {dir}: {ex.Message}");
+        if (!opts.PrintMode) ChatRenderer.RenderWarning($"  Failed to load plugins from {dir}: {ex.Message}");
     }
 #pragma warning restore CA1031
 }
@@ -756,7 +318,7 @@ if (policies.Count > 0)
 {
     var resolvedSpec = PolicyResolver.Resolve(policies);
     policyEvaluator = new PolicyEvaluator(resolvedSpec);
-    if (!printMode) ChatRenderer.RenderInfo($"  Loaded {policies.Count} governance policy file(s)");
+    if (!opts.PrintMode) ChatRenderer.RenderInfo($"  Loaded {policies.Count} governance policy file(s)");
 }
 
 var auditSinks = new List<IAuditSink>();
@@ -784,9 +346,9 @@ using var budgetTracker = new BudgetTracker();
 
 // Construct budget policy from CLI + governance
 BudgetPolicy? budgetPolicy = null;
-if (maxBudgetUsd.HasValue)
+if (opts.MaxBudgetUsd.HasValue)
 {
-    budgetPolicy = new BudgetPolicy { MaxSessionUsd = maxBudgetUsd };
+    budgetPolicy = new BudgetPolicy { MaxSessionUsd = opts.MaxBudgetUsd };
 }
 // Merge with governance budget policy if present
 var governanceBudget = policies
@@ -830,7 +392,7 @@ kernel.Plugins.AddFromObject(new PolicyTools(policyEvaluator, auditService), "po
 var instructions = InstructionsLoader.Load();
 if (instructions.HasInstructions)
 {
-    if (!printMode) ChatRenderer.RenderInfo($"  Loaded {instructions.Files.Count} instruction file(s)");
+    if (!opts.PrintMode) ChatRenderer.RenderInfo($"  Loaded {instructions.Files.Count} instruction file(s)");
 }
 
 // 8c. Set up subagent runner and register tools
@@ -843,9 +405,9 @@ ICheckpointStrategy checkpointStrategy = Directory.Exists(Path.Combine(Directory
     : new DirectoryCheckpointStrategy();
 
 // 8f. Tool filtering (--allowedTools / --disallowedTools)
-if (allowedTools is { Length: > 0 })
+if (opts.AllowedTools is { Length: > 0 })
 {
-    var allowed = new HashSet<string>(allowedTools, StringComparer.OrdinalIgnoreCase);
+    var allowed = new HashSet<string>(opts.AllowedTools, StringComparer.OrdinalIgnoreCase);
     var toRemove = kernel.Plugins
         .SelectMany(p => p.Select(f => (Plugin: p, Function: f)))
         .Where(pf => !allowed.Contains(pf.Function.Name) && !allowed.Contains($"{pf.Plugin.Name}-{pf.Function.Name}"))
@@ -858,9 +420,9 @@ if (allowedTools is { Length: > 0 })
             kernel.Plugins.Remove(kernel.Plugins[name]);
     }
 }
-if (disallowedTools is { Length: > 0 })
+if (opts.DisallowedTools is { Length: > 0 })
 {
-    var disallowed = new HashSet<string>(disallowedTools, StringComparer.OrdinalIgnoreCase);
+    var disallowed = new HashSet<string>(opts.DisallowedTools, StringComparer.OrdinalIgnoreCase);
     var toRemove = kernel.Plugins.Where(p => disallowed.Contains(p.Name)).Select(p => p.Name).ToList();
     foreach (var name in toRemove)
     {
@@ -870,13 +432,13 @@ if (disallowedTools is { Length: > 0 })
 
 // 9. Build system prompt
 string systemPrompt;
-if (systemPromptOverride != null)
+if (opts.SystemPromptOverride != null)
 {
-    systemPrompt = systemPromptOverride;
+    systemPrompt = opts.SystemPromptOverride;
 }
-else if (systemPromptFile != null && File.Exists(systemPromptFile))
+else if (opts.SystemPromptFile != null && File.Exists(opts.SystemPromptFile))
 {
-    systemPrompt = await File.ReadAllTextAsync(systemPromptFile).ConfigureAwait(false);
+    systemPrompt = await File.ReadAllTextAsync(opts.SystemPromptFile).ConfigureAwait(false);
 }
 else
 {
@@ -904,13 +466,13 @@ else
 }
 
 // Append additional prompt text
-if (appendSystemPrompt != null)
+if (opts.AppendSystemPrompt != null)
 {
-    systemPrompt += "\n\n" + appendSystemPrompt;
+    systemPrompt += "\n\n" + opts.AppendSystemPrompt;
 }
-if (appendSystemPromptFile != null && File.Exists(appendSystemPromptFile))
+if (opts.AppendSystemPromptFile != null && File.Exists(opts.AppendSystemPromptFile))
 {
-    systemPrompt += "\n\n" + await File.ReadAllTextAsync(appendSystemPromptFile).ConfigureAwait(false);
+    systemPrompt += "\n\n" + await File.ReadAllTextAsync(opts.AppendSystemPromptFile).ConfigureAwait(false);
 }
 
 // Plan mode injection
@@ -1043,7 +605,7 @@ interactiveInput.OnCycleModel += (_, _) =>
 };
 
 // 11. Render welcome banner
-if (!printMode)
+if (!opts.PrintMode)
 {
     ChatRenderer.RenderBanner(
         selectedModel.DisplayName,
@@ -1053,14 +615,14 @@ if (!printMode)
 
 // 11b. Show update notification if background check completed
 var pendingUpdate = await updateCheckTask.ConfigureAwait(false);
-if (pendingUpdate is not null && !printMode)
+if (pendingUpdate is not null && !opts.PrintMode)
 {
     AnsiConsole.MarkupLine(UpdatePrompter.FormatNotification(pendingUpdate));
     AnsiConsole.WriteLine();
 }
 
 // 11c. System prompt budget check
-if (!printMode)
+if (!opts.PrintMode)
 {
     var systemPromptTokens = session.SystemPromptTokens;
     var contextWindow = selectedModel.ContextWindowTokens;
@@ -1084,19 +646,19 @@ if (!printMode)
 }
 
 // Print mode: non-interactive execution
-if (printMode)
+if (opts.PrintMode)
 {
     var query = new System.Text.StringBuilder();
-    if (pipedInput != null)
+    if (opts.PipedInput != null)
     {
-        query.AppendLine(pipedInput);
+        query.AppendLine(opts.PipedInput);
         query.AppendLine("---");
     }
-    if (printQuery != null)
+    if (opts.PrintQuery != null)
     {
-        query.Append(printQuery);
+        query.Append(opts.PrintQuery);
     }
-    else if (pipedInput == null)
+    else if (opts.PipedInput == null)
     {
         Console.Error.WriteLine("Error: --print requires a query argument or piped input.");
         return 1;
@@ -1110,9 +672,9 @@ if (printMode)
     while (currentPrintMessage != null)
     {
         turnCount++;
-        if (maxTurns.HasValue && turnCount > maxTurns.Value)
+        if (opts.MaxTurns.HasValue && turnCount > opts.MaxTurns.Value)
         {
-            Console.Error.WriteLine($"Error: max turns ({maxTurns.Value}) exceeded.");
+            Console.Error.WriteLine($"Error: max turns ({opts.MaxTurns.Value}) exceeded.");
             return 1;
         }
 
@@ -1121,7 +683,7 @@ if (printMode)
         currentPrintMessage = null;
     }
 
-    if (string.Equals(outputFormat, "json", StringComparison.OrdinalIgnoreCase))
+    if (string.Equals(opts.OutputFormat, "json", StringComparison.OrdinalIgnoreCase))
     {
         var jsonResult = new
         {
@@ -1139,11 +701,11 @@ if (printMode)
     }
 
     // JSON schema validation
-    if (jsonSchemaArg is not null)
+    if (opts.JsonSchemaArg is not null)
     {
         try
         {
-            var schema = JD.AI.Core.Agents.OutputSchemaValidator.LoadSchema(jsonSchemaArg);
+            var schema = JD.AI.Core.Agents.OutputSchemaValidator.LoadSchema(opts.JsonSchemaArg);
             var errors = JD.AI.Core.Agents.OutputSchemaValidator.Validate(lastResponse, schema);
             if (errors.Count > 0)
             {
@@ -1317,7 +879,7 @@ while (!appCts.IsCancellationRequested)
             {
                 ChatRenderer.RenderWarning(
                     $"Budget limit (${budgetPolicy.MaxSessionUsd:F2}) reached — spent ${session.SessionSpendUsd:F2}.");
-                if (printMode) { Environment.ExitCode = 2; }
+                if (opts.PrintMode) { Environment.ExitCode = 2; }
                 break;
             }
 
@@ -1327,7 +889,7 @@ while (!appCts.IsCancellationRequested)
                 var status = await budgetTracker.GetStatusAsync(appCts.Token).ConfigureAwait(false);
                 ChatRenderer.RenderWarning(
                     $"Budget exceeded — daily: ${status.TodayUsd:F2}, monthly: ${status.MonthUsd:F2}.");
-                if (printMode) { Environment.ExitCode = 2; }
+                if (opts.PrintMode) { Environment.ExitCode = 2; }
                 break;
             }
         }
