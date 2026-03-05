@@ -68,6 +68,13 @@ public sealed class AgentDefinition
     public int MaxTurns { get; set; }
     public IList<string> Tools { get; set; } = [];
     public ModelParameters Parameters { get; set; } = new();
+
+    /// <summary>
+    /// Ordered list of fallback providers to try when the primary provider is unavailable.
+    /// Each entry is "provider/model" (e.g. "copilot/claude-sonnet-4-6") or just "provider"
+    /// (auto-selects first available model).
+    /// </summary>
+    public IList<string> FallbackProviders { get; set; } = [];
 }
 
 /// <summary>Tunable model inference parameters (Ollama, OpenAI, etc.).</summary>

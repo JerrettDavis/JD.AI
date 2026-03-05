@@ -166,7 +166,8 @@ public sealed class GatewayOrchestrator : IHostedService
             try
             {
                 var poolId = await _agentPool.SpawnAgentAsync(
-                    def.Provider, def.Model, def.SystemPrompt, ct, def.Parameters);
+                    def.Provider, def.Model, def.SystemPrompt, ct, def.Parameters,
+                    def.FallbackProviders as IReadOnlyList<string> ?? [.. def.FallbackProviders]);
 
                 _spawnedAgents[def.Id] = poolId;
                 _logger.LogInformation(

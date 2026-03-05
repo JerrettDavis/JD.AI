@@ -15,7 +15,7 @@ public sealed class OllamaResilienceTests
             "Ollama API error 500: {\"error\":\"model runner has unexpectedly stopped, " +
             "this may be due to resource limitations or an internal error\"}");
 
-        AgentPoolService.IsTransientOllamaError(ex).Should().BeTrue();
+        AgentPoolService.IsTransientProviderError(ex).Should().BeTrue();
     }
 
     [Fact]
@@ -24,7 +24,7 @@ public sealed class OllamaResilienceTests
         var ex = new InvalidOperationException(
             "Failed due to resource limitations on the host");
 
-        AgentPoolService.IsTransientOllamaError(ex).Should().BeTrue();
+        AgentPoolService.IsTransientProviderError(ex).Should().BeTrue();
     }
 
     [Fact]
@@ -35,7 +35,7 @@ public sealed class OllamaResilienceTests
             inner: null,
             statusCode: System.Net.HttpStatusCode.InternalServerError);
 
-        AgentPoolService.IsTransientOllamaError(ex).Should().BeTrue();
+        AgentPoolService.IsTransientProviderError(ex).Should().BeTrue();
     }
 
     [Fact]
@@ -46,7 +46,7 @@ public sealed class OllamaResilienceTests
             inner: null,
             statusCode: System.Net.HttpStatusCode.ServiceUnavailable);
 
-        AgentPoolService.IsTransientOllamaError(ex).Should().BeTrue();
+        AgentPoolService.IsTransientProviderError(ex).Should().BeTrue();
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public sealed class OllamaResilienceTests
             inner: null,
             statusCode: System.Net.HttpStatusCode.BadGateway);
 
-        AgentPoolService.IsTransientOllamaError(ex).Should().BeTrue();
+        AgentPoolService.IsTransientProviderError(ex).Should().BeTrue();
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public sealed class OllamaResilienceTests
             (int)System.Net.Sockets.SocketError.ConnectionRefused);
         var httpEx = new HttpRequestException("Connection refused", socketEx);
 
-        AgentPoolService.IsTransientOllamaError(httpEx).Should().BeTrue();
+        AgentPoolService.IsTransientProviderError(httpEx).Should().BeTrue();
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public sealed class OllamaResilienceTests
         var ioEx = new IOException("The response ended prematurely.");
         var httpEx = new HttpRequestException("Error sending request", ioEx);
 
-        AgentPoolService.IsTransientOllamaError(httpEx).Should().BeTrue();
+        AgentPoolService.IsTransientProviderError(httpEx).Should().BeTrue();
     }
 
     [Fact]
@@ -88,7 +88,7 @@ public sealed class OllamaResilienceTests
         var outer = new InvalidOperationException(
             "Chat completion failed", inner);
 
-        AgentPoolService.IsTransientOllamaError(outer).Should().BeTrue();
+        AgentPoolService.IsTransientProviderError(outer).Should().BeTrue();
     }
 
     [Fact]
@@ -99,7 +99,7 @@ public sealed class OllamaResilienceTests
             inner: null,
             statusCode: System.Net.HttpStatusCode.BadRequest);
 
-        AgentPoolService.IsTransientOllamaError(ex).Should().BeFalse();
+        AgentPoolService.IsTransientProviderError(ex).Should().BeFalse();
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public sealed class OllamaResilienceTests
             inner: null,
             statusCode: System.Net.HttpStatusCode.NotFound);
 
-        AgentPoolService.IsTransientOllamaError(ex).Should().BeFalse();
+        AgentPoolService.IsTransientProviderError(ex).Should().BeFalse();
     }
 
     [Fact]
@@ -120,7 +120,7 @@ public sealed class OllamaResilienceTests
         var ex = new ArgumentException("Invalid parameter");
 #pragma warning restore MA0015
 
-        AgentPoolService.IsTransientOllamaError(ex).Should().BeFalse();
+        AgentPoolService.IsTransientProviderError(ex).Should().BeFalse();
     }
 
     [Fact]
@@ -128,7 +128,7 @@ public sealed class OllamaResilienceTests
     {
         var ex = new InvalidOperationException("Object reference not set");
 
-        AgentPoolService.IsTransientOllamaError(ex).Should().BeFalse();
+        AgentPoolService.IsTransientProviderError(ex).Should().BeFalse();
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public sealed class OllamaResilienceTests
         var ex = new InvalidOperationException(
             "HTTP request returned status code 500 with error response");
 
-        AgentPoolService.IsTransientOllamaError(ex).Should().BeTrue();
+        AgentPoolService.IsTransientProviderError(ex).Should().BeTrue();
     }
 
     [Fact]
@@ -146,5 +146,17 @@ public sealed class OllamaResilienceTests
     {
         AgentPoolService.MaxRetries.Should().Be(3);
         AgentPoolService.BaseRetryDelay.Should().Be(TimeSpan.FromSeconds(2));
+    }
+
+    [Theory]
+    [InlineData("copilot/claude-sonnet-4-6", "copilot", "claude-sonnet-4-6")]
+    [InlineData("ollama/qwen3.5:27b", "ollama", "qwen3.5:27b")]
+    [InlineData("claude-code", "claude-code", null)]
+    [InlineData("openai", "openai", null)]
+    public void ParseProviderModel_SplitsCorrectly(string input, string expectedProvider, string? expectedModel)
+    {
+        var (provider, model) = AgentPoolService.ParseProviderModel(input);
+        provider.Should().Be(expectedProvider);
+        model.Should().Be(expectedModel);
     }
 }

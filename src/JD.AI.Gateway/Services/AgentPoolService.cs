@@ -51,7 +51,8 @@ public sealed class AgentPoolService : IHostedService
 
     public async Task<string> SpawnAgentAsync(
         string provider, string model, string? systemPrompt,
-        CancellationToken ct, ModelParameters? parameters = null)
+        CancellationToken ct, ModelParameters? parameters = null,
+        IReadOnlyList<string>? fallbackProviders = null)
     {
         var allProviders = await _providers.DetectProvidersAsync(ct);
         var providerInfo = allProviders.FirstOrDefault(p =>
@@ -75,7 +76,7 @@ public sealed class AgentPoolService : IHostedService
             history.AddSystemMessage(systemPrompt);
 
         var id = Guid.NewGuid().ToString("N")[..12];
-        var instance = new AgentInstance(id, provider, model, kernel, history, parameters);
+        var instance = new AgentInstance(id, provider, model, kernel, history, parameters, fallbackProviders);
         _agents[id] = instance;
 
         await _eventBus.PublishAsync(
@@ -139,6 +140,24 @@ public sealed class AgentPoolService : IHostedService
             turnActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             Meters.ProviderErrors.Add(1,
                 new KeyValuePair<string, object?>("gen_ai.system", agent.Provider));
+
+            // Try fallback providers before giving up
+            var fallbackResult = await TryFallbackProvidersAsync(agent, settings, ct).ConfigureAwait(false);
+            if (fallbackResult is not null)
+            {
+                content = fallbackResult;
+                agent.History.AddAssistantMessage(content);
+                agent.TurnCount++;
+
+                turnActivity?.SetTag("jdai.agent.fallback_used", "true");
+
+                await _eventBus.PublishAsync(
+                    new GatewayEvent("agent.turn_complete", agentId, DateTimeOffset.UtcNow,
+                        new { Turn = agent.TurnCount, Fallback = true }), ct);
+
+                return content;
+            }
+
             throw;
         }
 
@@ -150,8 +169,92 @@ public sealed class AgentPoolService : IHostedService
     }
 
     /// <summary>
+    /// Tries each configured fallback provider/model in order. Returns the
+    /// response content on first success, or <c>null</c> if all fallbacks fail.
+    /// </summary>
+    private async Task<string?> TryFallbackProvidersAsync(
+        AgentInstance agent, OpenAIPromptExecutionSettings settings, CancellationToken ct)
+    {
+        if (agent.FallbackProviders.Count == 0)
+            return null;
+
+        foreach (var fallback in agent.FallbackProviders)
+        {
+            if (ct.IsCancellationRequested) break;
+
+            var (fbProvider, fbModel) = ParseProviderModel(fallback);
+
+            try
+            {
+                var allProviders = await _providers.DetectProvidersAsync(ct);
+                var providerInfo = allProviders.FirstOrDefault(p =>
+                    p.Name.Equals(fbProvider, StringComparison.OrdinalIgnoreCase));
+
+                if (providerInfo is null || !providerInfo.IsAvailable)
+                {
+                    _logger.LogDebug("Fallback provider '{Provider}' not available, skipping", fbProvider);
+                    continue;
+                }
+
+                var modelInfo = fbModel is not null
+                    ? providerInfo.Models.FirstOrDefault(m =>
+                        m.Id.Equals(fbModel, StringComparison.OrdinalIgnoreCase)
+                        || m.DisplayName.Equals(fbModel, StringComparison.OrdinalIgnoreCase)
+                        || m.Id.StartsWith(fbModel + ":", StringComparison.OrdinalIgnoreCase))
+                    : providerInfo.Models.Count > 0 ? providerInfo.Models[0] : null;
+
+                if (modelInfo is null)
+                {
+                    _logger.LogDebug("No suitable model found for fallback provider '{Provider}', skipping", fbProvider);
+                    continue;
+                }
+
+                var detector = _providers.GetDetector(fbProvider);
+                if (detector is null) continue;
+
+                var fbKernel = detector.BuildKernel(modelInfo);
+                var fbChat = fbKernel.GetRequiredService<IChatCompletionService>();
+
+                _logger.LogInformation(
+                    "Falling back to {Provider}/{Model} for agent {AgentId}",
+                    fbProvider, modelInfo.Id, agent.Id);
+
+                await _eventBus.PublishAsync(
+                    new GatewayEvent("agent.fallback", agent.Id, DateTimeOffset.UtcNow,
+                        new { Provider = fbProvider, Model = modelInfo.Id }), ct);
+
+                var result = await fbChat.GetChatMessageContentAsync(
+                    agent.History, settings, cancellationToken: ct).ConfigureAwait(false);
+
+                return result.Content ?? "";
+            }
+#pragma warning disable CA1031
+            catch (Exception fbEx)
+            {
+                _logger.LogWarning(
+                    "Fallback provider '{Provider}' also failed: {Error}",
+                    fallback, fbEx.Message);
+            }
+#pragma warning restore CA1031
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Parses "provider/model" or "provider" into its components.
+    /// </summary>
+    internal static (string Provider, string? Model) ParseProviderModel(string input)
+    {
+        var slashIdx = input.IndexOf('/', StringComparison.Ordinal);
+        return slashIdx >= 0
+            ? (input[..slashIdx], input[(slashIdx + 1)..])
+            : (input, null);
+    }
+
+    /// <summary>
     /// Sends a chat completion request with exponential-backoff retry for
-    /// transient Ollama errors (model runner crash, 500s, connection resets).
+    /// transient provider errors (model runner crash, 500s, connection resets).
     /// </summary>
     internal async Task<ChatMessageContent> SendWithRetryAsync(
         IChatCompletionService chat, AgentInstance agent,
@@ -179,7 +282,7 @@ public sealed class AgentPoolService : IHostedService
 
                 return result;
             }
-            catch (Exception ex) when (attempt < MaxRetries && IsTransientOllamaError(ex) && !ct.IsCancellationRequested)
+            catch (Exception ex) when (attempt < MaxRetries && IsTransientProviderError(ex) && !ct.IsCancellationRequested)
             {
                 sw.Stop();
                 providerActivity?.AddException(ex);
@@ -187,7 +290,7 @@ public sealed class AgentPoolService : IHostedService
 
                 var delay = BaseRetryDelay * Math.Pow(2, attempt);
                 _logger.LogWarning(
-                    "Ollama transient error on attempt {Attempt}/{MaxRetries}: {Error}. Retrying in {Delay}s...",
+                    "Transient provider error on attempt {Attempt}/{MaxRetries}: {Error}. Retrying in {Delay}s...",
                     attempt + 1, MaxRetries, ex.Message, delay.TotalSeconds);
 
                 await _eventBus.PublishAsync(
@@ -207,11 +310,11 @@ public sealed class AgentPoolService : IHostedService
     }
 
     /// <summary>
-    /// Determines whether an exception represents a transient Ollama error
+    /// Determines whether an exception represents a transient provider error
     /// that is likely to succeed on retry (model runner crash, resource limits,
     /// connection reset, timeout).
     /// </summary>
-    internal static bool IsTransientOllamaError(Exception ex)
+    internal static bool IsTransientProviderError(Exception ex)
     {
         // Walk the exception chain for inner causes
         for (var current = ex; current is not null; current = current.InnerException)
@@ -297,7 +400,8 @@ public sealed class AgentPoolService : IHostedService
     internal sealed class AgentInstance(
         string id, string provider, string model,
         Kernel kernel, ChatHistory history,
-        ModelParameters? parameters = null)
+        ModelParameters? parameters = null,
+        IReadOnlyList<string>? fallbackProviders = null)
     {
         public string Id => id;
         public string Provider => provider;
@@ -305,6 +409,7 @@ public sealed class AgentPoolService : IHostedService
         public Kernel Kernel => kernel;
         public ChatHistory History => history;
         public ModelParameters? Parameters => parameters;
+        public IReadOnlyList<string> FallbackProviders => fallbackProviders ?? [];
         public int TurnCount { get; set; }
         public DateTimeOffset CreatedAt { get; } = DateTimeOffset.UtcNow;
     }
