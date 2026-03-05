@@ -61,7 +61,7 @@ internal static class ModelPicker
 
         foreach (var group in grouped)
         {
-            prompt.AddChoiceGroup(group.First(), group.Skip(1));
+            prompt.AddChoices(group);
         }
 
         try
