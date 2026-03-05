@@ -826,6 +826,14 @@ kernel.AutoFunctionInvocationFilters.Add(
 // 8b2. Register policy tools (needs policyEvaluator + auditService from step 8)
 kernel.Plugins.AddFromObject(new PolicyTools(policyEvaluator, auditService), "policy");
 
+// 8b3. Register tool loadout system and discovery tools
+var loadoutRegistry = new ToolLoadoutRegistry();
+var allPlugins = kernel.Plugins.ToList().AsReadOnly();
+session.LoadoutRegistry = loadoutRegistry;
+session.AllPlugins = allPlugins;
+kernel.Plugins.AddFromObject(
+    new ToolDiscoveryTools(kernel, loadoutRegistry, allPlugins), "toolDiscovery");
+
 // 8c. Load project instructions (JDAI.md, CLAUDE.md, AGENTS.md, etc.)
 var instructions = InstructionsLoader.Load();
 if (instructions.HasInstructions)

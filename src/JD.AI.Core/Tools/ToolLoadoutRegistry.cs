@@ -82,6 +82,9 @@ public sealed class ToolLoadoutRegistry : IToolLoadoutRegistry
             // ── Security ──────────────────────────────────────────────────────
             ["policy"] = ToolCategory.Security,
             ["encoding"] = ToolCategory.Security,
+
+            // ── Tool Discovery ──────────────────────────────────────────────────────────────────────
+            ["toolDiscovery"] = ToolCategory.Orchestration,
         };
 
     private readonly Dictionary<string, ToolLoadout> _loadouts =
@@ -256,6 +259,7 @@ public sealed class ToolLoadoutRegistry : IToolLoadoutRegistry
         Register(ToolLoadoutBuilder
             .Create(WellKnownLoadouts.Minimal)
             .AddPlugin("think")
+            .AddPlugin("toolDiscovery")
             .IncludeCategory(ToolCategory.Filesystem)
             .IncludeCategory(ToolCategory.Shell)
             .AddDiscoverable("*")
@@ -299,6 +303,7 @@ public sealed class ToolLoadoutRegistry : IToolLoadoutRegistry
         // Full — all categories loaded
         Register(ToolLoadoutBuilder
             .Create(WellKnownLoadouts.Full)
+            .AddPlugin("toolDiscovery")
             .IncludeCategory(ToolCategory.Filesystem)
             .IncludeCategory(ToolCategory.Git)
             .IncludeCategory(ToolCategory.GitHub)

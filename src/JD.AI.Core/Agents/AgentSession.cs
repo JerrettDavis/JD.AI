@@ -3,6 +3,7 @@ using JD.AI.Core.Governance.Audit;
 using JD.AI.Core.PromptCaching;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Sessions;
+using JD.AI.Core.Tools;
 using JD.AI.Core.Tracing;
 using JD.AI.Core.Usage;
 using JD.SemanticKernel.Extensions.Compaction;
@@ -99,6 +100,16 @@ public sealed class AgentSession
     /// exposed. Set to <see langword="null"/> to expose all registered plugins (default).
     /// </summary>
     public string? ActiveLoadoutName { get; set; }
+
+    /// <summary>
+    /// The tool loadout registry for this session, used by loadout-aware scoping.
+    /// </summary>
+    public IToolLoadoutRegistry? LoadoutRegistry { get; set; }
+
+    /// <summary>
+    /// Snapshot of all registered plugins before loadout scoping is applied.
+    /// </summary>
+    public IReadOnlyList<KernelPlugin>? AllPlugins { get; set; }
 
     /// <summary>
     /// When true, supported providers can automatically enable prompt caching.
