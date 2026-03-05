@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text;
 using JD.AI.Core.PromptCaching;
 using JD.AI.Core.Providers;
+using JD.AI.Core.Tools;
 using JD.AI.Core.Tracing;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -362,18 +363,42 @@ public sealed class AgentLoop
         var supportsTools = _session.CurrentModel?.Capabilities
             .HasFlag(ModelCapabilities.ToolCalling) ?? false;
 
-        // Disable tools when the model's context window is too small to fit them.
-        // Each tool definition consumes ~200 tokens (name, description, schema).
-        // If the estimated tool tokens would exceed half the context window,
-        // the model has no room for conversation — disable tools to avoid OOM.
+        // Loadout-aware tool scoping: instead of disabling ALL tools when the
+        // context window is tight, apply progressively smaller loadouts that keep
+        // the most essential tools (always including toolDiscovery so agents can
+        // still find and activate tools on demand).
         if (supportsTools)
         {
             var contextWindow = _session.CurrentModel?.ContextWindowTokens ?? 128_000;
             var toolCount = _session.Kernel.Plugins.SelectMany(p => p).Count();
             var estimatedToolTokens = toolCount * 200;
 
-            if (estimatedToolTokens > contextWindow / 2)
+            if (estimatedToolTokens > contextWindow / 2 &&
+                _session.LoadoutRegistry is not null)
             {
+                var loadoutName = SelectLoadoutForContext(contextWindow);
+                ApplyLoadoutScoping(loadoutName);
+
+                // Re-check after scoping
+                toolCount = _session.Kernel.Plugins.SelectMany(p => p).Count();
+                estimatedToolTokens = toolCount * 200;
+
+                DebugLogger.Log(DebugCategory.Agents,
+                    "Applied '{0}' loadout: {1} tools (~{2} tokens) for {3}-token context window",
+                    loadoutName, toolCount, estimatedToolTokens, contextWindow);
+
+                // If still too large even after loadout scoping, disable as last resort
+                if (estimatedToolTokens > contextWindow / 2)
+                {
+                    DebugLogger.Log(DebugCategory.Agents,
+                        "Disabling tools: even '{0}' loadout ({1} tools, ~{2} tokens) exceeds half of {3}-token context window",
+                        loadoutName, toolCount, estimatedToolTokens, contextWindow);
+                    supportsTools = false;
+                }
+            }
+            else if (estimatedToolTokens > contextWindow / 2)
+            {
+                // No loadout registry -- fall back to disabling all tools
                 DebugLogger.Log(DebugCategory.Agents,
                     "Disabling tools: {0} tools (~{1} tokens) exceed half of {2}-token context window",
                     toolCount, estimatedToolTokens, contextWindow);
@@ -505,5 +530,43 @@ public sealed class AgentLoop
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Selects the appropriate tool loadout based on the available context window size.
+    /// </summary>
+    internal static string SelectLoadoutForContext(int contextWindowTokens)
+    {
+        return contextWindowTokens switch
+        {
+            >= 128_000 => WellKnownLoadouts.Full,
+            >= 64_000 => WellKnownLoadouts.Developer,
+            _ => WellKnownLoadouts.Minimal,
+        };
+    }
+
+    /// <summary>
+    /// Removes plugins from the kernel that are not in the active set for the given loadout.
+    /// Always preserves the <c>toolDiscovery</c> plugin so agents can still find and
+    /// activate additional tools on demand.
+    /// </summary>
+    private void ApplyLoadoutScoping(string loadoutName)
+    {
+        var registry = _session.LoadoutRegistry!;
+        var activePlugins = registry.ResolveActivePlugins(
+            loadoutName, _session.Kernel.Plugins);
+
+        var toRemove = _session.Kernel.Plugins
+            .Where(p => !activePlugins.Contains(p.Name) &&
+                        !p.Name.Equals("toolDiscovery", StringComparison.OrdinalIgnoreCase))
+            .Select(p => p.Name)
+            .ToList();
+
+        foreach (var name in toRemove)
+        {
+            _session.Kernel.Plugins.Remove(
+                _session.Kernel.Plugins.First(p =>
+                    p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)));
+        }
     }
 }
