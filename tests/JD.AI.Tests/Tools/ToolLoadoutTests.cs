@@ -1,7 +1,7 @@
+using System.ComponentModel;
 using JD.AI.Core.Agents;
 using JD.AI.Core.Tools;
 using Microsoft.SemanticKernel;
-using System.ComponentModel;
 
 namespace JD.AI.Tests.Tools;
 

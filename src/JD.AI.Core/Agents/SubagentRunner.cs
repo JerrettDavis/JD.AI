@@ -162,11 +162,11 @@ public sealed class SubagentRunner
     internal static string GetLoadoutName(SubagentType type) => type switch
     {
         SubagentType.Explore => WellKnownLoadouts.Research,
-        SubagentType.Task    => WellKnownLoadouts.Minimal,
-        SubagentType.Plan    => WellKnownLoadouts.Developer,
-        SubagentType.Review  => WellKnownLoadouts.Developer,
+        SubagentType.Task => WellKnownLoadouts.Minimal,
+        SubagentType.Plan => WellKnownLoadouts.Developer,
+        SubagentType.Review => WellKnownLoadouts.Developer,
         SubagentType.General => WellKnownLoadouts.Full,
-        _                    => WellKnownLoadouts.Minimal,
+        _ => WellKnownLoadouts.Minimal,
     };
 
     /// <summary>
@@ -176,11 +176,11 @@ public sealed class SubagentRunner
     private static HashSet<string> GetDefaultPluginSet(SubagentType type) => type switch
     {
         SubagentType.Explore => ["file", "search", "git", "memory"],
-        SubagentType.Task    => ["shell", "file", "search"],
-        SubagentType.Plan    => ["file", "search", "memory", "git"],
-        SubagentType.Review  => ["file", "search", "git"],
+        SubagentType.Task => ["shell", "file", "search"],
+        SubagentType.Plan => ["file", "search", "memory", "git"],
+        SubagentType.Review => ["file", "search", "git"],
         SubagentType.General => ["file", "search", "git", "shell", "web", "memory"],
-        _                    => [],
+        _ => [],
     };
 
     private static string GetSystemPrompt(SubagentType type) => type switch
