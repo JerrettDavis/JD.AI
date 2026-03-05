@@ -162,21 +162,32 @@ public sealed class AgentLoop
 
             turnEntry.Attributes["workflow_requested"] = wfEx.TriggeringTool;
 
-            // Generate a workflow plan from the user's message
-            var planResponse = await RunWorkflowPlanningAsync(userMessage, ct).ConfigureAwait(false);
+            try
+            {
+                var planResponse = await RunWorkflowPlanningAsync(userMessage, ct).ConfigureAwait(false);
 
-            _session.History.AddAssistantMessage(planResponse);
+                _session.History.AddAssistantMessage(planResponse);
 
-            var planTokens = JD.SemanticKernel.Extensions.Compaction.TokenEstimator
-                .EstimateTokens(planResponse);
+                var planTokens = JD.SemanticKernel.Extensions.Compaction.TokenEstimator
+                    .EstimateTokens(planResponse);
 
-            await _session.RecordAssistantTurnAsync(
-                planResponse, durationMs: sw.ElapsedMilliseconds,
-                tokensOut: planTokens).ConfigureAwait(false);
+                await _session.RecordAssistantTurnAsync(
+                    planResponse, durationMs: sw.ElapsedMilliseconds,
+                    tokensOut: planTokens).ConfigureAwait(false);
 
-            turnEntry.Complete();
-            _session.LastTimeline = traceCtx.Timeline;
-            return planResponse;
+                turnEntry.Complete();
+                _session.LastTimeline = traceCtx.Timeline;
+                return planResponse;
+            }
+            catch (Exception planEx) when (!ct.IsCancellationRequested)
+            {
+                turnEntry.Complete("error", planEx.Message);
+                _session.LastTimeline = traceCtx.Timeline;
+                var errorMsg = $"Error during workflow planning: {planEx.Message}";
+                AgentOutput.Current.RenderError(errorMsg);
+                _session.History.AddAssistantMessage($"[Workflow planning failed: {planEx.Message}]");
+                return errorMsg;
+            }
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
@@ -532,21 +543,34 @@ public sealed class AgentLoop
 
             turnEntry.Attributes["workflow_requested"] = wfEx.TriggeringTool;
 
-            var planResponse = await RunWorkflowPlanningAsync(userMessage, ct).ConfigureAwait(false);
+            try
+            {
+                var planResponse = await RunWorkflowPlanningAsync(userMessage, ct).ConfigureAwait(false);
 
-            _session.History.AddAssistantMessage(planResponse);
+                _session.History.AddAssistantMessage(planResponse);
 
-            var planTokens = JD.SemanticKernel.Extensions.Compaction.TokenEstimator
-                .EstimateTokens(planResponse);
+                var planTokens = JD.SemanticKernel.Extensions.Compaction.TokenEstimator
+                    .EstimateTokens(planResponse);
 
-            await _session.RecordAssistantTurnAsync(
-                planResponse, durationMs: sw.ElapsedMilliseconds,
-                tokensOut: planTokens).ConfigureAwait(false);
+                await _session.RecordAssistantTurnAsync(
+                    planResponse, durationMs: sw.ElapsedMilliseconds,
+                    tokensOut: planTokens).ConfigureAwait(false);
 
-            output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, planTokens, 0));
-            turnEntry.Complete();
-            _session.LastTimeline = traceCtx.Timeline;
-            return planResponse;
+                output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, planTokens, 0));
+                turnEntry.Complete();
+                _session.LastTimeline = traceCtx.Timeline;
+                return planResponse;
+            }
+            catch (Exception planEx) when (!ct.IsCancellationRequested)
+            {
+                turnEntry.Complete("error", planEx.Message);
+                _session.LastTimeline = traceCtx.Timeline;
+                output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, 0, totalBytes));
+                var errorMsg = $"Error during workflow planning: {planEx.Message}";
+                AgentOutput.Current.RenderError(errorMsg);
+                _session.History.AddAssistantMessage($"[Workflow planning failed: {planEx.Message}]");
+                return errorMsg;
+            }
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
