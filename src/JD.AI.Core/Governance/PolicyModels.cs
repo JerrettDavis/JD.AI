@@ -16,6 +16,15 @@ public sealed class PolicyMetadata
 #pragma warning disable CA1805 // Explicitly initialized to default — intentional for clarity
     public int Priority { get; set; } = 0;
 #pragma warning restore CA1805
+
+    /// <summary>Version identifier for this policy document (e.g., "1.0.0").</summary>
+    public string? Version { get; set; }
+
+    /// <summary>
+    /// When <c>true</c>, this policy's HMAC-SHA256 signature must be verified
+    /// before the policy is applied. Unsigned or tampered policies are rejected.
+    /// </summary>
+    public bool RequireSignature { get; set; }
 }
 
 public enum PolicyScope { Global, Organization, Team, Project, User }
