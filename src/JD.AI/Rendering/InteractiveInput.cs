@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Rendering;
 
@@ -1124,22 +1125,10 @@ public sealed class InteractiveInput
             arguments = "-selection clipboard -o";
         }
 
-        var psi = new ProcessStartInfo
-        {
-            FileName = fileName,
-            Arguments = arguments,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
+        var result = ProcessExecutor.RunAsync(
+            fileName, arguments, timeout: TimeSpan.FromSeconds(3))
+            .GetAwaiter().GetResult();
 
-        using var proc = Process.Start(psi);
-        if (proc is null) return null;
-
-        var output = proc.StandardOutput.ReadToEnd();
-        proc.WaitForExit(3000);
-
-        return string.IsNullOrEmpty(output) ? null : output;
+        return string.IsNullOrEmpty(result.StandardOutput) ? null : result.StandardOutput;
     }
 }

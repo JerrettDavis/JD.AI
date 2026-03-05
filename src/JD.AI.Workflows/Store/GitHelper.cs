@@ -1,9 +1,9 @@
-using System.Diagnostics;
+using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Workflows.Store;
 
 /// <summary>
-/// Runs git CLI commands via <see cref="Process.Start"/>.
+/// Runs git CLI commands via <see cref="ProcessExecutor"/>.
 /// This avoids the heavy native dependencies of LibGit2Sharp.
 /// </summary>
 internal static class GitHelper
@@ -14,51 +14,22 @@ internal static class GitHelper
         string arguments,
         CancellationToken ct = default)
     {
-        var psi = new ProcessStartInfo("git")
-        {
-            WorkingDirectory = workingDirectory,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
+        var result = await ProcessExecutor.RunAsync(
+            "git", arguments, workingDirectory: workingDirectory, cancellationToken: ct)
+            .ConfigureAwait(false);
 
-        // Use ArgumentList for safe argument passing (no shell quoting issues)
-        foreach (var arg in SplitArguments(arguments))
-            psi.ArgumentList.Add(arg);
-
-        using var process = Process.Start(psi)
-            ?? throw new InvalidOperationException("Failed to start git process.");
-
-        var outputTask = process.StandardOutput.ReadToEndAsync(ct);
-        var errorTask = process.StandardError.ReadToEndAsync(ct);
-
-        await process.WaitForExitAsync(ct).ConfigureAwait(false);
-
-        var output = await outputTask.ConfigureAwait(false);
-        var error = await errorTask.ConfigureAwait(false);
-
-        return (process.ExitCode, output.Trim(), error.Trim());
+        return (result.ExitCode, result.StandardOutput, result.StandardError);
     }
 
     /// <summary>Throws if git is not available on the PATH.</summary>
     public static async Task EnsureGitAvailableAsync(CancellationToken ct = default)
     {
-        var psi = new ProcessStartInfo("git")
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        psi.ArgumentList.Add("--version");
-
         try
         {
-            using var process = Process.Start(psi)
-                ?? throw new InvalidOperationException("git not found on PATH.");
-            await process.WaitForExitAsync(ct).ConfigureAwait(false);
-            if (process.ExitCode != 0)
+            var result = await ProcessExecutor.RunAsync(
+                "git", "--version", timeout: TimeSpan.FromSeconds(5), cancellationToken: ct)
+                .ConfigureAwait(false);
+            if (!result.Success)
                 throw new InvalidOperationException("git not found on PATH.");
         }
         catch (Exception ex) when (ex is not InvalidOperationException)
@@ -66,36 +37,5 @@ internal static class GitHelper
             throw new InvalidOperationException(
                 "git is not available on PATH. Install git to use the GitWorkflowStore.", ex);
         }
-    }
-
-    /// <summary>Splits a space-delimited argument string, respecting quoted segments.</summary>
-    internal static IEnumerable<string> SplitArguments(string arguments)
-    {
-        var inQuote = false;
-        var current = new System.Text.StringBuilder();
-
-        foreach (var ch in arguments)
-        {
-            if (ch == '"')
-            {
-                inQuote = !inQuote;
-                continue;
-            }
-
-            if (ch == ' ' && !inQuote)
-            {
-                if (current.Length > 0)
-                {
-                    yield return current.ToString();
-                    current.Clear();
-                }
-                continue;
-            }
-
-            current.Append(ch);
-        }
-
-        if (current.Length > 0)
-            yield return current.ToString();
     }
 }

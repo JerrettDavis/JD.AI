@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Core.Tools.Sandbox;
 
@@ -47,47 +47,34 @@ public sealed class RestrictedSandbox : ISandbox
         }
 
         var isWindows = OperatingSystem.IsWindows();
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = isWindows ? "cmd.exe" : "/bin/sh",
-            Arguments = isWindows ? $"/c {command}" : $"-c \"{command.Replace("\"", "\\\"")}\"",
-            WorkingDirectory = workingDirectory,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
+        var fileName = isWindows ? "cmd.exe" : "/bin/sh";
+        var arguments = isWindows ? $"/c {command}" : $"-c \"{command.Replace("\"", "\\\"")}\"";
 
-        // Strip sensitive environment variables
+        // Build environment with sensitive variables stripped
+        var envVars = new Dictionary<string, string>();
         foreach (var key in Environment.GetEnvironmentVariables().Keys.Cast<string>())
         {
-            if (SensitiveEnvPrefixes.Any(p => key.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+            if (!SensitiveEnvPrefixes.Any(p => key.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
             {
-                startInfo.Environment.Remove(key);
+                envVars[key] = Environment.GetEnvironmentVariable(key) ?? "";
             }
         }
 
-        using var process = new Process { StartInfo = startInfo };
-        process.Start();
-
         var effectiveTimeout = Math.Min(timeoutSeconds, 30);
-        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeoutCts.CancelAfter(TimeSpan.FromSeconds(effectiveTimeout));
 
         try
         {
-            var output = await process.StandardOutput.ReadToEndAsync(timeoutCts.Token).ConfigureAwait(false);
-            var error = await process.StandardError.ReadToEndAsync(timeoutCts.Token).ConfigureAwait(false);
-            await process.WaitForExitAsync(timeoutCts.Token).ConfigureAwait(false);
+            var result = await ProcessExecutor.RunAsync(
+                fileName, arguments,
+                workingDirectory: workingDirectory,
+                timeout: TimeSpan.FromSeconds(effectiveTimeout),
+                environmentVariables: envVars,
+                cancellationToken: ct).ConfigureAwait(false);
 
-            return new SandboxResult(process.ExitCode, output, error, TimedOut: false);
+            return new SandboxResult(result.ExitCode, result.StandardOutput, result.StandardError, TimedOut: false);
         }
-        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !ct.IsCancellationRequested)
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            try { process.Kill(entireProcessTree: true); }
-#pragma warning disable CA1031
-            catch { /* best effort */ }
-#pragma warning restore CA1031
             return new SandboxResult(-1, "", "Command timed out (restricted mode).", TimedOut: true);
         }
     }
