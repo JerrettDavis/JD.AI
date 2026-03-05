@@ -58,7 +58,7 @@ public sealed class InMemoryVectorStore : IVectorStore
     internal static double CosineSimilarity(float[] a, float[] b)
     {
         if (a.Length != b.Length)
-            throw new ArgumentException("Vectors must have the same dimensionality");
+            throw new ArgumentException("Vectors must have the same dimensionality", nameof(b));
 
         var dotProduct = 0.0;
         var normA = 0.0;
