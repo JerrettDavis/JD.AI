@@ -362,6 +362,7 @@ static void RunDaemon(string[] args)
 
     // --- Health ---
     app.MapHealthChecks("/health");
+    app.MapGet("/health/startup", () => Results.Ok(new { Status = "Started" }));
     app.MapGet("/ready", () => Results.Ok(new { Status = "Ready" }));
 
     // --- REST API endpoints ---
