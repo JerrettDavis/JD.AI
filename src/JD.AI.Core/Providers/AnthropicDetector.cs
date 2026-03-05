@@ -41,7 +41,10 @@ public sealed class AnthropicDetector : ApiKeyProviderDetectorBase
         builder.Services.AddSingleton<IChatClient>(sp =>
         {
             var client = sp.GetRequiredService<AnthropicClient>();
-            return new AnthropicPromptCachingChatClient(client.Messages);
+            return new ChatClientBuilder(
+                    new AnthropicPromptCachingChatClient(client.Messages))
+                .ConfigureOptions(o => o.ModelId ??= model.Id)
+                .Build();
         });
 
         builder.Services.AddSingleton<IChatCompletionService>(sp =>

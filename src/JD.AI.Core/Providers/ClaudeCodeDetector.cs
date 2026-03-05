@@ -83,13 +83,14 @@ public sealed class ClaudeCodeDetector : IProviderDetector
     {
         var options = BuildSessionOptions();
         var builder = Kernel.CreateBuilder();
-        ConfigureKernelBuilder(builder, options);
+        ConfigureKernelBuilder(builder, options, model.Id);
         return builder.Build();
     }
 
     internal static void ConfigureKernelBuilder(
         IKernelBuilder builder,
-        ClaudeCodeSessionOptions options)
+        ClaudeCodeSessionOptions options,
+        string modelId = ClaudeModels.Default)
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(options);
@@ -122,7 +123,10 @@ public sealed class ClaudeCodeDetector : IProviderDetector
                 new APIAuthentication(token),
                 httpClient);
 
-            return new AnthropicPromptCachingChatClient(anthropicClient.Messages);
+            return new ChatClientBuilder(
+                    new AnthropicPromptCachingChatClient(anthropicClient.Messages))
+                .ConfigureOptions(o => o.ModelId ??= modelId)
+                .Build();
         });
 
         builder.Services.AddSingleton<IChatCompletionService>(sp =>
