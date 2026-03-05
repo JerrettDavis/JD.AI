@@ -69,6 +69,7 @@ public sealed class RestrictedSandbox : ISandbox
                 workingDirectory: workingDirectory,
                 timeout: TimeSpan.FromSeconds(effectiveTimeout),
                 environmentVariables: envVars,
+                clearEnvironment: true,
                 cancellationToken: ct).ConfigureAwait(false);
 
             return new SandboxResult(result.ExitCode, result.StandardOutput, result.StandardError, TimedOut: false);

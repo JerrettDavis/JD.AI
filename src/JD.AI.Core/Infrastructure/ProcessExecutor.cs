@@ -34,6 +34,10 @@ public static class ProcessExecutor
     /// <param name="timeout">Optional timeout (defaults to 30s).</param>
     /// <param name="standardInput">Optional text to write to stdin.</param>
     /// <param name="environmentVariables">Optional extra environment variables.</param>
+    /// <param name="clearEnvironment">
+    /// When true, clears inherited environment variables before adding
+    /// <paramref name="environmentVariables"/>. Used by sandboxes to strip sensitive vars.
+    /// </param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A <see cref="ProcessResult"/> with exit code, stdout, and stderr.</returns>
     public static async Task<ProcessResult> RunAsync(
@@ -43,6 +47,7 @@ public static class ProcessExecutor
         TimeSpan? timeout = null,
         string? standardInput = null,
         IReadOnlyDictionary<string, string>? environmentVariables = null,
+        bool clearEnvironment = false,
         CancellationToken cancellationToken = default)
     {
         var effectiveTimeout = timeout ?? DefaultTimeout;
@@ -63,6 +68,9 @@ public static class ProcessExecutor
 
         if (environmentVariables is not null)
         {
+            if (clearEnvironment)
+                psi.Environment.Clear();
+
             foreach (var (key, value) in environmentVariables)
                 psi.Environment[key] = value;
         }
