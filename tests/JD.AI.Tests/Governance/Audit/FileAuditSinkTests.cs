@@ -69,7 +69,7 @@ public sealed class FileAuditSinkTests : IDisposable
         var parsed = JsonDocument.Parse(lines[0]);
         parsed.RootElement.GetProperty("action").GetString().Should().Be("test-action");
         parsed.RootElement.GetProperty("userId").GetString().Should().Be("user-42");
-        parsed.RootElement.GetProperty("severity").GetString().Should().Be("warning");
+        parsed.RootElement.GetProperty("severity").GetString().Should().Be("Warning");
     }
 
     [Fact]

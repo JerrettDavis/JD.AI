@@ -1,7 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using JD.AI.Core.Infrastructure;
+using System.Text.Json.Serialization;
 
 namespace JD.AI.Core.Governance.Audit;
 
@@ -16,7 +16,14 @@ public sealed class ElasticsearchAuditSink : IAuditSink
     private readonly string _endpoint;
     private readonly string _indexTemplate;
 
-    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Compact;
+    // Audit sinks use PascalCase enums for backward compatibility with
+    // external consumers (Elasticsearch queries, jq scripts, docs).
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        Converters = { new JsonStringEnumConverter() },
+    };
 
     public ElasticsearchAuditSink(HttpClient httpClient, string endpoint, string indexTemplate, string? token = null)
     {
