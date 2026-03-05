@@ -111,6 +111,69 @@ public sealed class BuildExecutionSettingsTests
         Assert.Null(settings.FunctionChoiceBehavior);
     }
 
+    [Fact]
+    public void Settings_SmallContextWithManyTools_DisablesFunctionChoiceBehavior()
+    {
+        // 28,672-token context with 154 tools (~30,800 estimated tokens) → tools disabled
+        var model = new ProviderModelInfo(
+            "qwen2.5-coder-1.5b-instruct-generic-cpu:4",
+            "qwen2.5-coder-1.5b",
+            "Foundry Local",
+            ContextWindowTokens: 28_672,
+            Capabilities: ModelCapabilities.Chat | ModelCapabilities.ToolCalling);
+
+        var registry = new ProviderRegistry([]);
+        var kernel = Kernel.CreateBuilder().Build();
+        // Register 154 tools to simulate the real jdai tool set
+        for (var i = 0; i < 30; i++)
+        {
+            kernel.Plugins.AddFromFunctions($"plugin{i}", [
+                KernelFunctionFactory.CreateFromMethod((string x) => x, $"t{i}_a", $"Tool {i} alpha"),
+                KernelFunctionFactory.CreateFromMethod((string x) => x, $"t{i}_b", $"Tool {i} beta"),
+                KernelFunctionFactory.CreateFromMethod((string x) => x, $"t{i}_c", $"Tool {i} gamma"),
+                KernelFunctionFactory.CreateFromMethod((string x) => x, $"t{i}_d", $"Tool {i} delta"),
+                KernelFunctionFactory.CreateFromMethod((string x) => x, $"t{i}_e", $"Tool {i} epsilon"),
+            ]);
+        }
+
+        var session = new AgentSession(registry, kernel, model);
+        var loop = new AgentLoop(session);
+        var settings = Build(loop);
+
+        Assert.Null(settings.FunctionChoiceBehavior);
+    }
+
+    [Fact]
+    public void Settings_LargeContextWithManyTools_EnablesFunctionChoiceBehavior()
+    {
+        // 128K context with 154 tools (~30,800 estimated tokens) → tools enabled
+        var model = new ProviderModelInfo(
+            "qwen2.5-coder-14b-instruct-generic-cpu:4",
+            "qwen2.5-coder-14b",
+            "Foundry Local",
+            ContextWindowTokens: 128_000,
+            Capabilities: ModelCapabilities.Chat | ModelCapabilities.ToolCalling);
+
+        var registry = new ProviderRegistry([]);
+        var kernel = Kernel.CreateBuilder().Build();
+        for (var i = 0; i < 30; i++)
+        {
+            kernel.Plugins.AddFromFunctions($"plugin{i}", [
+                KernelFunctionFactory.CreateFromMethod((string x) => x, $"t{i}_a", $"Tool {i} alpha"),
+                KernelFunctionFactory.CreateFromMethod((string x) => x, $"t{i}_b", $"Tool {i} beta"),
+                KernelFunctionFactory.CreateFromMethod((string x) => x, $"t{i}_c", $"Tool {i} gamma"),
+                KernelFunctionFactory.CreateFromMethod((string x) => x, $"t{i}_d", $"Tool {i} delta"),
+                KernelFunctionFactory.CreateFromMethod((string x) => x, $"t{i}_e", $"Tool {i} epsilon"),
+            ]);
+        }
+
+        var session = new AgentSession(registry, kernel, model);
+        var loop = new AgentLoop(session);
+        var settings = Build(loop);
+
+        Assert.IsType<AutoFunctionChoiceBehavior>(settings.FunctionChoiceBehavior);
+    }
+
     // ── Never uses deprecated ToolCallBehavior ─────────────
 
     [Fact]
