@@ -94,6 +94,13 @@ public sealed class AgentSession
     public bool PlanMode { get; set; }
 
     /// <summary>
+    /// The name of the active <see cref="JD.AI.Core.Tools.ToolLoadout"/> for this session.
+    /// When set, agents and tooling systems may use this to filter which plugins are
+    /// exposed. Set to <see langword="null"/> to expose all registered plugins (default).
+    /// </summary>
+    public string? ActiveLoadoutName { get; set; }
+
+    /// <summary>
     /// When true, supported providers can automatically enable prompt caching.
     /// </summary>
     public bool PromptCachingEnabled { get; set; } = true;
