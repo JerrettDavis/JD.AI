@@ -27,6 +27,8 @@
           "user-guide/**/toc.yml",
           "developer-guide/**/*.md",
           "developer-guide/**/toc.yml",
+          "architecture/**/*.md",
+          "architecture/**/toc.yml",
           "operations/**/*.md",
           "operations/**/toc.yml",
           "reference/**/*.md",

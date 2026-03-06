@@ -345,5 +345,5 @@ The following is a complete, production-quality org instruction file for an engi
 ## See also
 
 - [Configuration](configuration.md) — environment variables, data directories, and instruction file format
-- [Commands Reference](commands-reference.md) — `/instructions` and other slash commands
+- [Commands Reference](../reference/commands.md) — `/instructions` and other slash commands
 - [Common Workflows](common-workflows.md) — practical development guides

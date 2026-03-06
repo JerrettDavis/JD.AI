@@ -332,8 +332,10 @@ public sealed class SettingsPageSteps
     }
 
     [Given(@"a channel has a setting containing ""(.*)"" in its key")]
-    public async Task GivenAChannelHasASettingContainingInItsKey(string _keyword)
+    public async Task GivenAChannelHasASettingContainingInItsKey(string keyword)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(keyword);
+
         // Wait for settings to render with channel data
         await _page.WaitForTimeoutAsync(500);
     }
