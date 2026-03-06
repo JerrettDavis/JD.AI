@@ -48,6 +48,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\JD.AI.Plugins.SDK\JD.AI.Plugins.SDK.csproj" />
+    <ProjectReference Include="..\JD.AI.Connectors.Sdk\JD.AI.Connectors.Sdk.csproj" />
   </ItemGroup>
 
 </Project>
