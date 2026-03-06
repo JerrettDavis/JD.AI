@@ -295,6 +295,8 @@ export OPENROUTER_API_KEY=sk-or-...
 
 **Models available:** Dynamically discovered from the OpenRouter catalog — includes Claude, GPT-4, Gemini, Llama, Mistral, and hundreds more. Each model includes context length, pricing, and capability metadata.
 
+For the full guide — model discovery, pricing, model selection — see [OpenRouter](openrouter.md).
+
 > [!TIP]
 > Best for accessing multiple model families through a single API key, comparing models, and pay-per-use pricing across vendors.
 

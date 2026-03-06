@@ -179,6 +179,6 @@ Set `HF_TOKEN` for authenticated access. Check network connectivity.
 
 ## See also
 
-- [Provider Setup](provider-setup.md) — all 14 supported providers
+- [Provider Setup](provider-setup.md) — all 15 supported providers
 - [Commands](commands.md) — `/local` and `/models` commands
 - [Configuration](configuration.md) — environment variables and data directories
