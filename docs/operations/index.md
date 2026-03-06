@@ -7,6 +7,8 @@ description: "Guide to deploying, monitoring, securing, and governing JD.AI in p
 
 This section covers deploying, monitoring, securing, and governing JD.AI in production environments. Whether you are running a single-instance developer setup or a multi-team enterprise deployment, these guides provide the operational knowledge you need.
 
+![Operations dashboard overview](../images/dashboard/dashboard-overview.png)
+
 ## What's covered
 
 ### [Service Deployment](deployment.md)

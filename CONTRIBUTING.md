@@ -49,6 +49,16 @@ The project has **772+ tests** across **3 test projects** (`JD.AI.Tests`, `JD.AI
 - Add XML doc comments for public APIs
 - Keep test coverage high
 
+## Documentation & Screenshots
+
+Docs and README content should be visual and task-oriented. When you add or update user-facing docs:
+
+- Include screenshots or GIFs for key workflows (TUI, daemon/service flows, dashboard pages, channel routing).
+- Prefer real captures generated via:
+  - `npm --prefix docs/scripts run screenshots` (Playwright static screenshots)
+  - `./docs/tapes/generate.sh` (VHS recordings and frame captures)
+- Use concise alt text that explains what the reader should notice in the image.
+
 ## Code Quality Requirements
 
 All pull requests must pass the following analyzer checks (CI enforced):

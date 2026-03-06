@@ -78,6 +78,12 @@ jobs:
           name: coverage-report
           path: coverage-report
 
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage-report/Cobertura.xml
+          fail_ci_if_error: false
+
       - name: Add coverage summary to PR
         uses: marocchino/sticky-pull-request-comment@v2
         with:
@@ -127,6 +133,32 @@ jobs:
           --configuration Release
           --no-build
           --filter "Category!=Integration"
+          --collect:"XPlat Code Coverage"
+          --
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI]*"
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*"
+
+      - name: Install ReportGenerator
+        run: dotnet tool update -g dotnet-reportgenerator-globaltool
+
+      - name: Combine coverage reports
+        shell: bash
+        run: |
+          REPORTS=$(find . -type f -path "*/TestResults/*/coverage.cobertura.xml" | tr '\n' ';')
+          reportgenerator \
+            -reports:"$REPORTS" \
+            -targetdir:"coverage-report" \
+            -reporttypes:"Cobertura;TextSummary" \
+            -assemblyfilters:"+JD.AI;-*Tests*" \
+            -filefilters:"-**/*.Tests/*;-**/*Tests*/**"
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage-report/Cobertura.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
 
       - name: Pack
         run: >
@@ -164,18 +196,14 @@ jobs:
 
       - name: Create git tag
         shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           TAG="v${NBGV_NuGetPackageVersion}"
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
+          if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
             echo "Tag $TAG already exists — skipping."
           else
-            gh api "repos/${{ github.repository }}/git/refs" \
-              -X POST \
-              -f "ref=refs/tags/$TAG" \
-              -f "sha=${{ github.sha }}"
+            git tag "$TAG"
+            git push origin "$TAG"
             echo "Created tag $TAG"
           fi
 

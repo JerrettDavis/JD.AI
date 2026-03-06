@@ -1,28 +1,19 @@
 using FluentAssertions;
 using JD.AI.Core.LocalModels.Sources;
+using JD.AI.Tests.Fixtures;
 
 namespace JD.AI.Tests.LocalModels;
 
 public class DirectoryModelSourceTests : IDisposable
 {
-    private readonly string _tempDir;
+    private readonly TempDirectoryFixture _fixture = new();
 
-    public DirectoryModelSourceTests()
-    {
-        _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-dirscan-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(_tempDir);
-    }
-
-    public void Dispose()
-    {
-        if (Directory.Exists(_tempDir))
-            Directory.Delete(_tempDir, recursive: true);
-    }
+    public void Dispose() => _fixture.Dispose();
 
     [Fact]
     public async Task ScanAsync_EmptyDir_ReturnsEmpty()
     {
-        var source = new DirectoryModelSource(_tempDir);
+        var source = new DirectoryModelSource(_fixture.DirectoryPath);
         var models = await source.ScanAsync();
         models.Should().BeEmpty();
     }
@@ -30,11 +21,11 @@ public class DirectoryModelSourceTests : IDisposable
     [Fact]
     public async Task ScanAsync_FindsGgufFiles()
     {
-        await File.WriteAllBytesAsync(Path.Combine(_tempDir, "model-a-Q4_K_M.gguf"), new byte[128]);
-        await File.WriteAllBytesAsync(Path.Combine(_tempDir, "model-b.gguf"), new byte[64]);
-        await File.WriteAllBytesAsync(Path.Combine(_tempDir, "readme.txt"), new byte[32]);
+        await File.WriteAllBytesAsync(Path.Combine(_fixture.DirectoryPath, "model-a-Q4_K_M.gguf"), new byte[128]);
+        await File.WriteAllBytesAsync(Path.Combine(_fixture.DirectoryPath, "model-b.gguf"), new byte[64]);
+        await File.WriteAllBytesAsync(Path.Combine(_fixture.DirectoryPath, "readme.txt"), new byte[32]);
 
-        var source = new DirectoryModelSource(_tempDir);
+        var source = new DirectoryModelSource(_fixture.DirectoryPath);
         var models = await source.ScanAsync();
 
         models.Should().HaveCount(2);
@@ -43,9 +34,9 @@ public class DirectoryModelSourceTests : IDisposable
     [Fact]
     public async Task ScanAsync_ParsesQuantization()
     {
-        await File.WriteAllBytesAsync(Path.Combine(_tempDir, "llama-7b-Q4_K_M.gguf"), new byte[128]);
+        await File.WriteAllBytesAsync(Path.Combine(_fixture.DirectoryPath, "llama-7b-Q4_K_M.gguf"), new byte[128]);
 
-        var source = new DirectoryModelSource(_tempDir);
+        var source = new DirectoryModelSource(_fixture.DirectoryPath);
         var models = await source.ScanAsync();
 
         models.Should().ContainSingle();
@@ -55,11 +46,11 @@ public class DirectoryModelSourceTests : IDisposable
     [Fact]
     public async Task ScanAsync_RecursiveSubdirs()
     {
-        var subDir = Path.Combine(_tempDir, "subfolder");
+        var subDir = Path.Combine(_fixture.DirectoryPath, "subfolder");
         Directory.CreateDirectory(subDir);
         await File.WriteAllBytesAsync(Path.Combine(subDir, "nested.gguf"), new byte[64]);
 
-        var source = new DirectoryModelSource(_tempDir);
+        var source = new DirectoryModelSource(_fixture.DirectoryPath);
         var models = await source.ScanAsync();
 
         models.Should().ContainSingle();
@@ -68,7 +59,7 @@ public class DirectoryModelSourceTests : IDisposable
     [Fact]
     public async Task ScanAsync_NonexistentDir_ReturnsEmpty()
     {
-        var source = new DirectoryModelSource(Path.Combine(_tempDir, "nope"));
+        var source = new DirectoryModelSource(Path.Combine(_fixture.DirectoryPath, "nope"));
         var models = await source.ScanAsync();
         models.Should().BeEmpty();
     }

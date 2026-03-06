@@ -7,6 +7,8 @@ description: "IChannel interface, message types, writing a custom channel adapte
 
 Channel adapters connect the JD.AI Gateway to external messaging platforms. Each adapter implements the `IChannel` interface and translates platform-specific messaging into a unified `ChannelMessage` format.
 
+![Channel connectivity dashboard view](../images/dashboard/dashboard-channels.png)
+
 JD.AI ships with six adapters:
 
 | Channel | Package | Transport |
@@ -59,6 +61,16 @@ public interface ICommandAwareChannel
 ```
 
 The gateway automatically registers commands with command-aware channels after connection. Discord and Slack support native slash commands; Signal uses prefix commands (`!jdai-help`).
+
+### Native commands vs OpenClaw bridge commands
+
+- Native adapters (Discord/Slack/Signal) register channel commands directly (for example, `/jdai-route` on Discord/Slack or `!jdai-route` on Signal).
+- OpenClaw does not register platform-native JD.AI commands. Instead, the OpenClaw routing service intercepts `/jdai-...` messages inside bridge sessions and executes them via the gateway command registry.
+
+Use this model when documenting runtime handoff:
+
+- **Native channels:** JD.AI is the primary command/runtime owner.
+- **OpenClaw bridge:** OpenClaw remains transport; JD.AI command execution is opt-in via `/jdai-*`.
 
 ## ChannelMessage
 

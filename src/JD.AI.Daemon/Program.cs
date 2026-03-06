@@ -406,6 +406,19 @@ static void RunDaemon(string[] args)
 
 static async Task RunUpdateCommandAsync(bool checkOnly)
 {
+    IServiceManager? serviceManager = null;
+    var shouldReconcileService = false;
+    try
+    {
+        serviceManager = CreateServiceManager();
+        var status = await serviceManager.GetStatusAsync();
+        shouldReconcileService = status.State != ServiceState.NotInstalled;
+    }
+    catch (PlatformNotSupportedException)
+    {
+        // Update checks are supported on all platforms, but service reconciliation is Windows/Linux only.
+    }
+
     // Build a minimal host just for the update checker
     var builder = Host.CreateApplicationBuilder([]);
     builder.Services.Configure<UpdateConfig>(
@@ -435,20 +448,25 @@ static async Task RunUpdateCommandAsync(bool checkOnly)
     }
 
     Console.WriteLine("Applying update via 'dotnet tool update'...");
-    var process = new System.Diagnostics.Process
+    var packageId = host.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<UpdateConfig>>().Value.PackageId;
+    var updateResult = await JD.AI.Core.Infrastructure.ProcessExecutor.RunAsync(
+        "dotnet", $"tool update -g {packageId}",
+        timeout: TimeSpan.FromSeconds(120)).ConfigureAwait(false);
+
+    if (!updateResult.Success)
     {
-        StartInfo = new System.Diagnostics.ProcessStartInfo
-        {
-            FileName = "dotnet",
-            Arguments = $"tool update -g {host.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<UpdateConfig>>().Value.PackageId}",
-            UseShellExecute = false,
-        },
-    };
+        Console.WriteLine($"✗ Update failed: {updateResult.StandardError}");
+        return;
+    }
 
-    process.Start();
-    await process.WaitForExitAsync();
+    if (shouldReconcileService && serviceManager is not null)
+    {
+        var reconcileResult = await serviceManager.InstallAsync();
+        if (reconcileResult.Success)
+            Console.WriteLine("Service configuration refreshed.");
+        else
+            Console.WriteLine($"Warning: package updated, but failed to refresh service/task config: {reconcileResult.Message}");
+    }
 
-    Console.WriteLine(process.ExitCode == 0
-        ? $"✓ Updated to {update.LatestVersion}. Restart the service to apply."
-        : "✗ Update failed. Check the output above.");
+    Console.WriteLine($"✓ Updated to {update.LatestVersion}. Restart the service to apply.");
 }

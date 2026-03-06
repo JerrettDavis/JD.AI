@@ -1,24 +1,15 @@
 using FluentAssertions;
 using JD.AI.Core.Governance;
+using JD.AI.Tests.Fixtures;
 using YamlDotNet.Core;
 
 namespace JD.AI.Tests.Governance;
 
 public sealed class PolicyParserTests : IDisposable
 {
-    private readonly string _tempDir;
+    private readonly TempDirectoryFixture _fixture = new();
 
-    public PolicyParserTests()
-    {
-        _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-parser-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(_tempDir);
-    }
-
-    public void Dispose()
-    {
-        try { Directory.Delete(_tempDir, recursive: true); }
-        catch { /* best effort */ }
-    }
+    public void Dispose() => _fixture.Dispose();
 
     private static string MinimalYaml(string name = "test-policy") => $$"""
         apiVersion: jdai/v1
@@ -176,7 +167,7 @@ public sealed class PolicyParserTests : IDisposable
     [Fact]
     public void ParseFile_ValidFile_ReturnsDocument()
     {
-        var filePath = Path.Combine(_tempDir, "policy.yaml");
+        var filePath = Path.Combine(_fixture.DirectoryPath, "policy.yaml");
         File.WriteAllText(filePath, MinimalYaml("file-test"));
 
         var doc = PolicyParser.ParseFile(filePath);
@@ -187,11 +178,11 @@ public sealed class PolicyParserTests : IDisposable
     [Fact]
     public void ParseDirectory_WithYamlFiles_ReturnsAllDocuments()
     {
-        File.WriteAllText(Path.Combine(_tempDir, "p1.yaml"), MinimalYaml("p1"));
-        File.WriteAllText(Path.Combine(_tempDir, "p2.yml"), MinimalYaml("p2"));
-        File.WriteAllText(Path.Combine(_tempDir, "readme.txt"), "not a policy");
+        File.WriteAllText(Path.Combine(_fixture.DirectoryPath, "p1.yaml"), MinimalYaml("p1"));
+        File.WriteAllText(Path.Combine(_fixture.DirectoryPath, "p2.yml"), MinimalYaml("p2"));
+        File.WriteAllText(Path.Combine(_fixture.DirectoryPath, "readme.txt"), "not a policy");
 
-        var docs = PolicyParser.ParseDirectory(_tempDir).ToList();
+        var docs = PolicyParser.ParseDirectory(_fixture.DirectoryPath).ToList();
 
         docs.Should().HaveCount(2);
         docs.Select(d => d.Metadata.Name).Should().Contain(["p1", "p2"]);
@@ -200,7 +191,7 @@ public sealed class PolicyParserTests : IDisposable
     [Fact]
     public void ParseDirectory_NonExistentDirectory_ReturnsEmpty()
     {
-        var nonExistent = Path.Combine(_tempDir, "does-not-exist");
+        var nonExistent = Path.Combine(_fixture.DirectoryPath, "does-not-exist");
 
         var docs = PolicyParser.ParseDirectory(nonExistent).ToList();
 
@@ -210,10 +201,10 @@ public sealed class PolicyParserTests : IDisposable
     [Fact]
     public void ParseDirectory_InvalidFileAmongstValid_SkipsInvalid()
     {
-        File.WriteAllText(Path.Combine(_tempDir, "good.yaml"), MinimalYaml("good"));
-        File.WriteAllText(Path.Combine(_tempDir, "bad.yaml"), "bad:\n  yaml:\n    nope:\n  oops");
+        File.WriteAllText(Path.Combine(_fixture.DirectoryPath, "good.yaml"), MinimalYaml("good"));
+        File.WriteAllText(Path.Combine(_fixture.DirectoryPath, "bad.yaml"), "bad:\n  yaml:\n    nope:\n  oops");
 
-        var docs = PolicyParser.ParseDirectory(_tempDir).ToList();
+        var docs = PolicyParser.ParseDirectory(_fixture.DirectoryPath).ToList();
 
         docs.Should().HaveCount(1);
         docs[0].Metadata.Name.Should().Be("good");

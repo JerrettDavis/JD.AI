@@ -1,25 +1,20 @@
 using JD.AI.Core.Tools;
+using JD.AI.Tests.Fixtures;
 
 namespace JD.AI.Tests;
 
 public class MigrationToolsTests : IDisposable
 {
-    private readonly string _tempDir;
+    private readonly TempDirectoryFixture _fixture = new();
     private readonly string _claudeDir;
 
     public MigrationToolsTests()
     {
-        _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-migration-test-{Guid.NewGuid():N}");
-        _claudeDir = Path.Combine(_tempDir, ".claude");
+        _claudeDir = Path.Combine(_fixture.DirectoryPath, ".claude");
         Directory.CreateDirectory(_claudeDir);
     }
 
-    public void Dispose()
-    {
-        if (Directory.Exists(_tempDir))
-            Directory.Delete(_tempDir, true);
-        GC.SuppressFinalize(this);
-    }
+    public void Dispose() => _fixture.Dispose();
 
     // ── migration_scan ───────────────────────────────────────
 
@@ -160,7 +155,7 @@ public class MigrationToolsTests : IDisposable
     [Fact]
     public void Convert_FromFile_WorksCorrectly()
     {
-        var filePath = Path.Combine(_tempDir, "CLAUDE.md");
+        var filePath = Path.Combine(_fixture.DirectoryPath, "CLAUDE.md");
         File.WriteAllText(filePath, "Use claude code tools.\nSee CLAUDE.md.");
 
         var result = MigrationTools.ConvertInstructions(filePath);
