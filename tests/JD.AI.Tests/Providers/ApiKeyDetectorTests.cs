@@ -75,6 +75,44 @@ public sealed class ApiKeyDetectorTests : IDisposable
     }
 
     [Fact]
+    public async Task HuggingFaceDetector_WithApiKey_ReturnsFallbackModels()
+    {
+        // A syntactically valid but fake key — causes HTTP 401 on hub discovery,
+        // which triggers fallback to the curated catalog.
+        await _store.SetAsync("jdai:provider:huggingface:apikey", "hf_fakekey_unittest");
+
+        var detector = new HuggingFaceDetector(_config);
+        var result = await detector.DetectAsync();
+
+        result.IsAvailable.Should().BeTrue();
+        result.Models.Should().NotBeEmpty();
+        result.Models.Should().AllSatisfy(m =>
+            m.ProviderName.Should().Be("HuggingFace"));
+        // Verify a known catalog model is present as fallback
+        result.Models.Should().Contain(m => m.Id.Contains("Llama", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task HuggingFaceDetector_BuildKernel_UsesNewRouterEndpoint()
+    {
+        await _store.SetAsync("jdai:provider:huggingface:apikey", "hf_fakekey_unittest");
+
+        var detector = new HuggingFaceDetector(_config);
+        var result = await detector.DetectAsync();
+
+        result.IsAvailable.Should().BeTrue();
+        result.Models.Should().NotBeEmpty();
+
+        // BuildKernel should not throw — endpoint switch from HuggingFace connector
+        // to OpenAI-compatible router is transparent to callers.
+        var kernel = detector.BuildKernel(result.Models[0]);
+
+        kernel.Should().NotBeNull();
+        var chatSvc = kernel.GetAllServices<Microsoft.SemanticKernel.ChatCompletion.IChatCompletionService>();
+        chatSvc.Should().NotBeEmpty();
+    }
+
+    [Fact]
     public async Task AzureOpenAIDetector_NoApiKey_ReturnsUnavailable()
     {
         var detector = new AzureOpenAIDetector(_config);
