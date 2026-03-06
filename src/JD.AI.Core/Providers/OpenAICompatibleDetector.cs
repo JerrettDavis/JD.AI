@@ -7,15 +7,15 @@ using Microsoft.SemanticKernel;
 namespace JD.AI.Core.Providers;
 
 /// <summary>
-/// Generic detector for OpenAI-compatible API endpoints.
-/// Supports multiple named instances (Groq, Together, DeepSeek, OpenRouter, etc.).
-/// Each instance is stored as openai-compat:{alias} in the credential store.
+///     Generic detector for OpenAI-compatible API endpoints.
+///     Supports multiple named instances (Groq, Together, DeepSeek, OpenRouter, etc.).
+///     Each instance is stored as openai-compat:{alias} in the credential store.
 /// </summary>
 public sealed class OpenAICompatibleDetector : IProviderDetector
 {
+    private static readonly HttpClient SharedClient = new();
     private readonly ProviderConfigurationManager _config;
     private readonly Dictionary<string, InstanceConfig> _instances = new(StringComparer.OrdinalIgnoreCase);
-    private static readonly HttpClient SharedClient = new();
 
     public OpenAICompatibleDetector(ProviderConfigurationManager config)
     {
@@ -30,19 +30,17 @@ public sealed class OpenAICompatibleDetector : IProviderDetector
         var allModels = new List<ProviderModelInfo>();
 
         // Check for configured instances in the credential store
-        var keys = await _config.Store.ListKeysAsync("jdai:provider:openai-compat:", ct)
-            .ConfigureAwait(false);
+        var keys = await _config.Store.ListKeysAsync("jdai:provider:openai-compat:", ct).ConfigureAwait(false);
 
         // Extract unique alias names from keys like jdai:provider:openai-compat:{alias}:{field}
-        var aliases = keys
-            .Select(k =>
+        var aliases = keys.Select(k =>
             {
                 var parts = k.Split(':');
                 return parts.Length >= 4 ? parts[3] : null;
-            })
-            .Where(a => a != null)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+            }).
+            Where(a => a != null).
+            Distinct(StringComparer.OrdinalIgnoreCase).
+            ToList();
 
         // Also check for well-known compatible providers via env vars
         var wellKnown = new Dictionary<string, (string envKey, string baseUrl)>(StringComparer.OrdinalIgnoreCase)
@@ -50,9 +48,8 @@ public sealed class OpenAICompatibleDetector : IProviderDetector
             ["groq"] = ("GROQ_API_KEY", "https://api.groq.com/openai/v1"),
             ["together"] = ("TOGETHER_API_KEY", "https://api.together.xyz/v1"),
             ["deepseek"] = ("DEEPSEEK_API_KEY", "https://api.deepseek.com/v1"),
-            ["openrouter"] = ("OPENROUTER_API_KEY", "https://openrouter.ai/api/v1"),
             ["fireworks"] = ("FIREWORKS_API_KEY", "https://api.fireworks.ai/inference/v1"),
-            ["perplexity"] = ("PERPLEXITY_API_KEY", "https://api.perplexity.ai"),
+            ["perplexity"] = ("PERPLEXITY_API_KEY", "https://api.perplexity.ai")
         };
 
         foreach (var (alias, (envKey, baseUrl)) in wellKnown)
@@ -73,10 +70,9 @@ public sealed class OpenAICompatibleDetector : IProviderDetector
             if (_instances.ContainsKey(alias!))
                 continue; // Already loaded from env vars
 
-            var apiKey = await _config.GetCredentialAsync($"openai-compat:{alias}", "apikey", ct)
-                .ConfigureAwait(false);
-            var baseUrl = await _config.GetCredentialAsync($"openai-compat:{alias}", "baseurl", ct)
-                .ConfigureAwait(false);
+            var apiKey = await _config.GetCredentialAsync($"openai-compat:{alias}", "apikey", ct).ConfigureAwait(false);
+            var baseUrl = await _config.GetCredentialAsync($"openai-compat:{alias}", "baseurl", ct).
+                ConfigureAwait(false);
 
             if (string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(baseUrl))
                 continue;
@@ -92,14 +88,15 @@ public sealed class OpenAICompatibleDetector : IProviderDetector
         }
 
         if (_instances.Count == 0)
-        {
-            return new ProviderInfo(ProviderName, IsAvailable: false,
-                StatusMessage: "No compatible endpoints configured", Models: []);
-        }
+            return new ProviderInfo(ProviderName,
+                false,
+                "No compatible endpoints configured",
+                []);
 
-        return new ProviderInfo(ProviderName, IsAvailable: true,
-            StatusMessage: $"{_instances.Count} endpoint(s) - {allModels.Count} model(s)",
-            Models: allModels);
+        return new ProviderInfo(ProviderName,
+            true,
+            $"{_instances.Count} endpoint(s) - {allModels.Count} model(s)",
+            allModels);
     }
 
     public Kernel BuildKernel(ProviderModelInfo model)
@@ -119,12 +116,12 @@ public sealed class OpenAICompatibleDetector : IProviderDetector
 
 #pragma warning disable SKEXP0010
         builder.AddOpenAIChatCompletion(
-            modelId: modelId,
-            apiKey: instance.ApiKey,
+            modelId,
+            instance.ApiKey,
             httpClient: new HttpClient
             {
                 BaseAddress = new Uri(instance.BaseUrl.TrimEnd('/') + "/"),
-                Timeout = TimeSpan.FromMinutes(10),
+                Timeout = TimeSpan.FromMinutes(10)
             });
 #pragma warning restore SKEXP0010
 
@@ -132,7 +129,9 @@ public sealed class OpenAICompatibleDetector : IProviderDetector
     }
 
     private static async Task<List<ProviderModelInfo>> DiscoverModelsAsync(
-        string alias, InstanceConfig instance, CancellationToken ct)
+        string alias,
+        InstanceConfig instance,
+        CancellationToken ct)
     {
         try
         {
@@ -144,16 +143,14 @@ public sealed class OpenAICompatibleDetector : IProviderDetector
             if (!resp.IsSuccessStatusCode)
                 return GetFallbackModels(alias);
 
-            var body = await resp.Content
-                .ReadFromJsonAsync<ModelsResponse>(ct).ConfigureAwait(false);
+            var body = await resp.Content.ReadFromJsonAsync<ModelsResponse>(ct).ConfigureAwait(false);
 
-            return (body?.Data ?? [])
-                .Where(m => m.Id != null)
-                .Select(m => new ProviderModelInfo(
+            return (body?.Data ?? []).Where(m => m.Id != null).
+                Select(m => new ProviderModelInfo(
                     $"{alias}/{m.Id!}",
                     $"[{alias}] {m.Id}",
-                    "OpenAI-Compatible"))
-                .ToList();
+                    "OpenAI-Compatible")).
+                ToList();
         }
 #pragma warning disable CA1031
         catch
@@ -172,10 +169,8 @@ public sealed class OpenAICompatibleDetector : IProviderDetector
     private sealed record InstanceConfig(string ApiKey, string BaseUrl, string Alias);
 
     private sealed record ModelsResponse(
-        [property: JsonPropertyName("data")]
-        List<ModelEntry>? Data);
+        [property: JsonPropertyName("data")] List<ModelEntry>? Data);
 
     private sealed record ModelEntry(
-        [property: JsonPropertyName("id")]
-        string? Id);
+        [property: JsonPropertyName("id")] string? Id);
 }

@@ -6,9 +6,9 @@ namespace JD.AI.Tests.Providers;
 
 public sealed class ApiKeyDetectorTests : IDisposable
 {
-    private readonly string _tempDir;
-    private readonly EncryptedFileStore _store;
     private readonly ProviderConfigurationManager _config;
+    private readonly EncryptedFileStore _store;
+    private readonly string _tempDir;
 
     public ApiKeyDetectorTests()
     {
@@ -20,8 +20,14 @@ public sealed class ApiKeyDetectorTests : IDisposable
 
     public void Dispose()
     {
-        try { Directory.Delete(_tempDir, recursive: true); }
-        catch { /* best effort cleanup */ }
+        try
+        {
+            Directory.Delete(_tempDir, true);
+        }
+        catch
+        {
+            /* best effort cleanup */
+        }
     }
 
     [Fact]
@@ -113,6 +119,32 @@ public sealed class ApiKeyDetectorTests : IDisposable
     }
 
     [Fact]
+    public async Task OpenRouterDetector_NoApiKey_ReturnsUnavailable()
+    {
+        var detector = new OpenRouterDetector(_config);
+
+        var result = await detector.DetectAsync();
+
+        result.IsAvailable.Should().BeFalse();
+        result.Models.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task OpenRouterDetector_WithApiKey_ReturnsKnownModels()
+    {
+        await _store.SetAsync("jdai:provider:openrouter:apikey", "sk-or-test-key");
+
+        var detector = new OpenRouterDetector(_config);
+        var result = await detector.DetectAsync();
+
+        result.IsAvailable.Should().BeTrue();
+        result.Models.Should().NotBeEmpty();
+        result.Models.Should().
+            Contain(m =>
+                m.ProviderName.Equals("OpenRouter", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public async Task AnthropicDetector_WithApiKey_ReturnsModels()
     {
         await _store.SetAsync("jdai:provider:anthropic:apikey", "sk-ant-test-key");
@@ -122,8 +154,9 @@ public sealed class ApiKeyDetectorTests : IDisposable
 
         result.IsAvailable.Should().BeTrue();
         result.Models.Should().NotBeEmpty();
-        result.Models.Should().Contain(m =>
-            m.ProviderName.Equals("Anthropic", StringComparison.OrdinalIgnoreCase));
+        result.Models.Should().
+            Contain(m =>
+                m.ProviderName.Equals("Anthropic", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -136,7 +169,8 @@ public sealed class ApiKeyDetectorTests : IDisposable
 
         result.IsAvailable.Should().BeTrue();
         result.Models.Should().NotBeEmpty();
-        result.Models.Should().Contain(m =>
-            m.ProviderName.Equals("Google Gemini", StringComparison.OrdinalIgnoreCase));
+        result.Models.Should().
+            Contain(m =>
+                m.ProviderName.Equals("Google Gemini", StringComparison.OrdinalIgnoreCase));
     }
 }
