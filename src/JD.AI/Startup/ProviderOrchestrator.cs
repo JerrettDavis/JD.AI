@@ -110,11 +110,21 @@ internal static class ProviderOrchestrator
         EvaluateInteractivePolicy,
     ];
 
+    internal static Func<(ProviderRegistry Registry, ProviderConfigurationManager ProviderConfig, ModelMetadataProvider
+        MetadataProvider)>
+        RegistryFactory
+    { get; set; } = CreateRegistryCore;
+
     internal static Func<IModelRouter> RouterFactory { get; set; } = static () => new DefaultModelRouter();
 
     internal static (ProviderRegistry Registry, ProviderConfigurationManager ProviderConfig, ModelMetadataProvider
         MetadataProvider)
         CreateRegistry()
+        => RegistryFactory();
+
+    private static (ProviderRegistry Registry, ProviderConfigurationManager ProviderConfig, ModelMetadataProvider
+        MetadataProvider)
+        CreateRegistryCore()
     {
         var credentialStore = new EncryptedFileStore();
         var providerConfig = new ProviderConfigurationManager(credentialStore);
