@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Gateway.Tests;
 
@@ -15,14 +16,14 @@ public sealed class HealthEndpointTests : IClassFixture<GatewayTestFactory>
     [Fact]
     public async Task Health_ReturnsHealthy()
     {
-        var response = await _client.GetAsync("/health");
+        var response = await _client.GetAsync(GatewayRuntimeDefaults.HealthPath);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
     public async Task Ready_ReturnsOk()
     {
-        var response = await _client.GetAsync("/ready");
+        var response = await _client.GetAsync(GatewayRuntimeDefaults.ReadyPath);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var body = await response.Content.ReadFromJsonAsync<ReadyResponse>();
@@ -32,14 +33,14 @@ public sealed class HealthEndpointTests : IClassFixture<GatewayTestFactory>
     [Fact]
     public async Task HealthReady_ReturnsOk()
     {
-        var response = await _client.GetAsync("/health/ready");
+        var response = await _client.GetAsync(GatewayRuntimeDefaults.HealthReadyPath);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
     public async Task HealthLive_ReturnsOk()
     {
-        var response = await _client.GetAsync("/health/live");
+        var response = await _client.GetAsync(GatewayRuntimeDefaults.HealthLivePath);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var body = await response.Content.ReadFromJsonAsync<LiveResponse>();

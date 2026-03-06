@@ -1,4 +1,5 @@
 using FluentAssertions;
+using JD.AI.Core.Infrastructure;
 using JD.AI.Gateway.Config;
 
 namespace JD.AI.Gateway.Tests;
@@ -10,8 +11,8 @@ public sealed class GatewayConfigTests
     {
         var config = new GatewayConfig();
 
-        config.Server.Port.Should().Be(18789);
-        config.Server.Host.Should().Be("localhost");
+        config.Server.Port.Should().Be(GatewayRuntimeDefaults.DefaultPort);
+        config.Server.Host.Should().Be(GatewayRuntimeDefaults.DefaultHost);
         config.Auth.Enabled.Should().BeFalse();
         config.RateLimit.Enabled.Should().BeTrue();
         config.RateLimit.MaxRequestsPerMinute.Should().Be(60);

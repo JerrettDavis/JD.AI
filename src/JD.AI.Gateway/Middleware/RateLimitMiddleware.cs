@@ -1,4 +1,5 @@
 using System.Globalization;
+using JD.AI.Core.Infrastructure;
 using JD.AI.Core.Security;
 
 namespace JD.AI.Gateway.Middleware;
@@ -12,8 +13,8 @@ public sealed class RateLimitMiddleware(RequestDelegate next, IRateLimiter rateL
     {
         var path = context.Request.Path.Value ?? "";
 
-        if (path.StartsWith("/health", StringComparison.OrdinalIgnoreCase) ||
-            path.StartsWith("/ready", StringComparison.OrdinalIgnoreCase) ||
+        if (path.StartsWith(GatewayRuntimeDefaults.HealthPath, StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith(GatewayRuntimeDefaults.ReadyPath, StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/_framework", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/_content", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/css", StringComparison.OrdinalIgnoreCase) ||
