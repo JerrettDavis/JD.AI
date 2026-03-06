@@ -17,8 +17,8 @@ internal static class AgentsCliHandler
         {
             return sub switch
             {
-                "list"    => await ListAsync(registry, args[1..]).ConfigureAwait(false),
-                "tag"     => await TagAsync(registry, args[1..]).ConfigureAwait(false),
+                "list" => await ListAsync(registry, args[1..]).ConfigureAwait(false),
+                "tag" => await TagAsync(registry, args[1..]).ConfigureAwait(false),
                 "promote" => await PromoteAsync(registry, args[1..]).ConfigureAwait(false),
                 "remove" or "unregister"
                           => await RemoveAsync(registry, args[1..]).ConfigureAwait(false),
@@ -37,7 +37,7 @@ internal static class AgentsCliHandler
 
     private static async Task<int> ListAsync(FileAgentDefinitionRegistry registry, string[] args)
     {
-        var env   = GetFlag(args, "--env") ?? AgentEnvironments.Dev;
+        var env = GetFlag(args, "--env") ?? AgentEnvironments.Dev;
         var verbose = args.Contains("--verbose") || args.Contains("-v");
 
         var agentsRoot = Path.Combine(DataDirectories.Root, "agents");
@@ -114,10 +114,10 @@ internal static class AgentsCliHandler
             return 1;
         }
 
-        var name    = args[0];
+        var name = args[0];
         var version = args.Length > 1 && !args[1].StartsWith("--") ? args[1] : "latest";
-        var from    = GetFlag(args, "--from") ?? AgentEnvironments.Dev;
-        var to      = GetFlag(args, "--to");
+        var from = GetFlag(args, "--from") ?? AgentEnvironments.Dev;
+        var to = GetFlag(args, "--to");
 
         if (to is null)
         {
@@ -154,9 +154,9 @@ internal static class AgentsCliHandler
             return 1;
         }
 
-        var name    = args[0];
+        var name = args[0];
         var version = args[1];
-        var env     = GetFlag(args[2..], "--env") ?? AgentEnvironments.Dev;
+        var env = GetFlag(args[2..], "--env") ?? AgentEnvironments.Dev;
 
         await registry.UnregisterAsync(name, version, env).ConfigureAwait(false);
         Console.WriteLine($"✓ Removed '{name}@{version}' from '{env}'.");
