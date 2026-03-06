@@ -8,6 +8,7 @@ using JD.AI.Core.Channels;
 using JD.AI.Core.Config;
 using JD.AI.Core.Governance;
 using JD.AI.Core.Governance.Audit;
+using JD.AI.Core.Infrastructure;
 using JD.AI.Core.Mcp;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
@@ -64,18 +65,19 @@ Microsoft.AspNetCore.Builder.WebApplication? gatewayHost = null;
 if (opts.GatewayMode)
 {
     var port = opts.GatewayPort ?? "5100";
-    var gwBuilder = Microsoft.AspNetCore.Builder.WebApplication.CreateBuilder(["--urls", $"http://localhost:{port}"]);
+    var gwBuilder = Microsoft.AspNetCore.Builder.WebApplication.CreateBuilder(
+        ["--urls", $"http://{GatewayRuntimeDefaults.DefaultHost}:{port}"]);
     gwBuilder.Logging.SetMinimumLevel(LogLevel.Warning);
 
     var gwApp = gwBuilder.Build();
-    gwApp.MapGet("/health", () => Results.Ok(new { Status = "Healthy" }));
-    gwApp.MapGet("/ready", () => Results.Ok(new { Status = "Ready" }));
+    gwApp.MapGet(GatewayRuntimeDefaults.HealthPath, () => Results.Ok(new { Status = "Healthy" }));
+    gwApp.MapGet(GatewayRuntimeDefaults.ReadyPath, () => Results.Ok(new { Status = "Ready" }));
 
     gatewayHost = gwApp;
     _ = gwApp.StartAsync();
     if (!opts.PrintMode)
     {
-        AnsiConsole.MarkupLine($"[dim]Gateway started on http://localhost:{port}[/]");
+        AnsiConsole.MarkupLine($"[dim]Gateway started on http://{GatewayRuntimeDefaults.DefaultHost}:{port}[/]");
     }
 }
 

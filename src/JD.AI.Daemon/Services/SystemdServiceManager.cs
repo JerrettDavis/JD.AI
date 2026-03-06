@@ -10,7 +10,7 @@ namespace JD.AI.Daemon.Services;
 [SupportedOSPlatform("linux")]
 public sealed class SystemdServiceManager : IServiceManager
 {
-    private const string ServiceName = "jdai-daemon";
+    private const string ServiceName = DaemonServiceIdentity.LinuxServiceName;
     private const string UnitFileName = $"{ServiceName}.service";
     private const string UnitFilePath = $"/etc/systemd/system/{UnitFileName}";
 
@@ -18,7 +18,7 @@ public sealed class SystemdServiceManager : IServiceManager
     {
         var toolPath = GetToolPath();
         if (toolPath is null)
-            return new ServiceResult(false, "Cannot locate jdai-daemon. Is it installed via 'dotnet tool install -g JD.AI.Daemon'?");
+            return new ServiceResult(false, $"Cannot locate {DaemonServiceIdentity.ToolCommand}. Is it installed via 'dotnet tool install -g JD.AI.Daemon'?");
 
         var user = Environment.UserName;
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -26,7 +26,7 @@ public sealed class SystemdServiceManager : IServiceManager
 
         var unitContent = $"""
             [Unit]
-            Description=JD.AI Gateway Daemon
+            Description={DaemonServiceIdentity.WindowsDisplayName}
             Documentation=https://jerrettdavis.github.io/JD.AI/
             After=network-online.target
             Wants=network-online.target
@@ -59,14 +59,14 @@ public sealed class SystemdServiceManager : IServiceManager
         catch (UnauthorizedAccessException)
         {
             return new ServiceResult(false,
-                $"Permission denied writing {UnitFilePath}. Run with sudo:\n  sudo jdai-daemon install");
+                $"Permission denied writing {UnitFilePath}. Run with sudo:\n  sudo {DaemonServiceIdentity.ToolCommand} install");
         }
 
         await RunSystemctlAsync("daemon-reload", ct);
         await RunSystemctlAsync($"enable {ServiceName}", ct);
 
         return new ServiceResult(true,
-            $"Service '{ServiceName}' installed and enabled. Run 'jdai-daemon start' to begin.");
+            $"Service '{ServiceName}' installed and enabled. Run '{DaemonServiceIdentity.ToolCommand} start' to begin.");
     }
 
     public async Task<ServiceResult> UninstallAsync(CancellationToken ct = default)
@@ -85,7 +85,7 @@ public sealed class SystemdServiceManager : IServiceManager
         catch (UnauthorizedAccessException)
         {
             return new ServiceResult(false,
-                $"Permission denied deleting {UnitFilePath}. Run with sudo:\n  sudo jdai-daemon uninstall");
+                $"Permission denied deleting {UnitFilePath}. Run with sudo:\n  sudo {DaemonServiceIdentity.ToolCommand} uninstall");
         }
 
         await RunSystemctlAsync("daemon-reload", ct);
@@ -145,7 +145,7 @@ public sealed class SystemdServiceManager : IServiceManager
     private static string? GetToolPath()
     {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var toolPath = Path.Combine(home, ".dotnet", "tools", "jdai-daemon");
+        var toolPath = Path.Combine(home, ".dotnet", "tools", DaemonServiceIdentity.ToolCommand);
         return File.Exists(toolPath) ? toolPath : null;
     }
 
