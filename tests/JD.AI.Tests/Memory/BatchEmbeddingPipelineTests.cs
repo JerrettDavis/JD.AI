@@ -5,6 +5,8 @@ namespace JD.AI.Tests.Memory;
 
 public sealed class BatchEmbeddingPipelineTests
 {
+    private static readonly float[] FakeEmbedding = [1f, 0f, 0f];
+
     private sealed class FakeEmbedder : IEmbeddingProvider
     {
         public string ProviderName => "fake";
@@ -15,7 +17,7 @@ public sealed class BatchEmbeddingPipelineTests
             IReadOnlyList<string> texts, CancellationToken ct = default)
         {
             CallCount++;
-            var results = texts.Select(_ => new float[] { 1f, 0f, 0f }).ToList();
+            var results = texts.Select(_ => FakeEmbedding).ToList();
             return Task.FromResult<IReadOnlyList<float[]>>(results);
         }
     }
