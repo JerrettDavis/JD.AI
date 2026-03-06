@@ -70,4 +70,104 @@ public sealed class TextChunkerTests
         var chunks = TextChunker.Chunk("");
         chunks.Should().HaveCount(1);
     }
+
+    [Fact]
+    public void Chunk_ZeroMaxChunkChars_Throws()
+    {
+        var act = () => TextChunker.Chunk("text", maxChunkChars: 0);
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void Chunk_NegativeOverlap_Throws()
+    {
+        var act = () => TextChunker.Chunk("text", maxChunkChars: 100, overlapChars: -1);
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void Chunk_OverlapEqualToChunkSize_Throws()
+    {
+        var act = () => TextChunker.Chunk("text", maxChunkChars: 10, overlapChars: 10);
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void Chunk_LargeParagraph_SplitsBySentences()
+    {
+        // One paragraph (no \n\n) that exceeds max, forcing sentence splitting
+        var text = "First sentence. Second sentence. Third sentence. Fourth sentence. Fifth sentence.";
+
+        var chunks = TextChunker.Chunk(text, maxChunkChars: 40, overlapChars: 5);
+
+        chunks.Count.Should().BeGreaterThan(1);
+        var allText = string.Join(" ", chunks.Select(c => c.Text));
+        allText.Should().Contain("First");
+        allText.Should().Contain("Fifth");
+    }
+
+    [Fact]
+    public void Chunk_CharOffsets_AreNonDecreasing()
+    {
+        var text = string.Join("\n\n", Enumerable.Range(0, 10).Select(i => $"Paragraph {i} is here."));
+
+        var chunks = TextChunker.Chunk(text, maxChunkChars: 50, overlapChars: 10);
+
+        chunks.Count.Should().BeGreaterThan(1);
+        for (var i = 1; i < chunks.Count; i++)
+            chunks[i].CharOffset.Should().BeGreaterThanOrEqualTo(chunks[i - 1].CharOffset);
+    }
+
+    [Fact]
+    public void Chunk_OverlapZero_NoOverlapContent()
+    {
+        var text = "Alpha paragraph.\n\nBeta paragraph.\n\nGamma paragraph.";
+
+        var chunks = TextChunker.Chunk(text, maxChunkChars: 25, overlapChars: 0);
+
+        chunks.Count.Should().BeGreaterThan(1);
+        // With zero overlap, consecutive chunks should not share content
+        for (var i = 1; i < chunks.Count; i++)
+            chunks[i].CharOffset.Should().BeGreaterThan(chunks[i - 1].CharOffset);
+    }
+
+    [Fact]
+    public void Chunk_ExactlyMaxLength_ReturnsSingleChunk()
+    {
+        var text = new string('a', 100);
+
+        var chunks = TextChunker.Chunk(text, maxChunkChars: 100, overlapChars: 10);
+
+        chunks.Should().HaveCount(1);
+        chunks[0].Text.Should().Be(text);
+    }
+
+    [Fact]
+    public void Chunk_WindowsLineEndings_SplitsCorrectly()
+    {
+        var text = "Para one.\r\n\r\nPara two.\r\n\r\nPara three.";
+
+        var chunks = TextChunker.Chunk(text, maxChunkChars: 20, overlapChars: 5);
+
+        chunks.Count.Should().BeGreaterThan(1);
+        var allText = string.Join(" ", chunks.Select(c => c.Text));
+        allText.Should().Contain("one");
+        allText.Should().Contain("three");
+    }
+
+    [Fact]
+    public void TextChunk_RecordEquality()
+    {
+        var a = new TextChunk("hello", 0, 0);
+        var b = new TextChunk("hello", 0, 0);
+        a.Should().Be(b);
+    }
+
+    [Fact]
+    public void Chunk_DefaultParameters_DoNotThrow()
+    {
+        var text = new string('x', 5000);
+        var act = () => TextChunker.Chunk(text);
+        act.Should().NotThrow();
+    }
 }
