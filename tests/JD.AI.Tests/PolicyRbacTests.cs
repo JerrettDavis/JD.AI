@@ -26,7 +26,7 @@ public sealed class PolicyRbacTests
     [Fact]
     public void EvaluateTool_RoleDenyWins_EvenIfBaseAllows()
     {
-        var spec = WithRoles(new Dictionary<string, RoleDefinition>
+        var spec = WithRoles(new Dictionary<string, RoleDefinition>(StringComparer.OrdinalIgnoreCase)
         {
             ["guest"] = new() { DenyTools = ["ReadFile"] }
         });
@@ -46,7 +46,7 @@ public sealed class PolicyRbacTests
             Tools = new ToolPolicy { Denied = ["ReadFile"] },
             Roles = new RolePolicy
             {
-                Definitions = new Dictionary<string, RoleDefinition>
+                Definitions = new Dictionary<string, RoleDefinition>(StringComparer.OrdinalIgnoreCase)
                 {
                     ["superuser"] = new() { AllowTools = ["ReadFile"] }
                 }
@@ -68,7 +68,7 @@ public sealed class PolicyRbacTests
             Tools = new ToolPolicy { Allowed = ["ListFiles"] },
             Roles = new RolePolicy
             {
-                Definitions = new Dictionary<string, RoleDefinition>
+                Definitions = new Dictionary<string, RoleDefinition>(StringComparer.OrdinalIgnoreCase)
                 {
                     ["developer"] = new() { AllowTools = ["ReadFile", "WriteFile"] }
                 }
@@ -93,7 +93,7 @@ public sealed class PolicyRbacTests
     [Fact]
     public void EvaluateTool_InheritedRoleDenyApplied()
     {
-        var spec = WithRoles(new Dictionary<string, RoleDefinition>
+        var spec = WithRoles(new Dictionary<string, RoleDefinition>(StringComparer.OrdinalIgnoreCase)
         {
             ["base"] = new() { DenyTools = ["DangerousTool"] },
             ["derived"] = new() { Inherits = ["base"] }
@@ -109,7 +109,7 @@ public sealed class PolicyRbacTests
     [Fact]
     public void EvaluateTool_CircularInheritanceDoesNotInfiniteLoop()
     {
-        var spec = WithRoles(new Dictionary<string, RoleDefinition>
+        var spec = WithRoles(new Dictionary<string, RoleDefinition>(StringComparer.OrdinalIgnoreCase)
         {
             ["a"] = new() { Inherits = ["b"] },
             ["b"] = new() { Inherits = ["a"], DenyTools = ["BannedTool"] }
@@ -129,7 +129,7 @@ public sealed class PolicyRbacTests
     [Fact]
     public void EvaluateProvider_RoleDenyWins()
     {
-        var spec = WithRoles(new Dictionary<string, RoleDefinition>
+        var spec = WithRoles(new Dictionary<string, RoleDefinition>(StringComparer.OrdinalIgnoreCase)
         {
             ["restricted"] = new() { DenyProviders = ["OpenAI"] }
         });
@@ -149,7 +149,7 @@ public sealed class PolicyRbacTests
             Providers = new ProviderPolicy { Denied = ["OpenAI"] },
             Roles = new RolePolicy
             {
-                Definitions = new Dictionary<string, RoleDefinition>
+                Definitions = new Dictionary<string, RoleDefinition>(StringComparer.OrdinalIgnoreCase)
                 {
                     ["admin"] = new() { AllowProviders = ["OpenAI"] }
                 }
@@ -168,7 +168,7 @@ public sealed class PolicyRbacTests
     [Fact]
     public void EvaluateModel_RoleDenyModelPattern()
     {
-        var spec = WithRoles(new Dictionary<string, RoleDefinition>
+        var spec = WithRoles(new Dictionary<string, RoleDefinition>(StringComparer.OrdinalIgnoreCase)
         {
             ["limited"] = new() { DenyModels = ["gpt-4*"] }
         });
@@ -207,7 +207,7 @@ public sealed class PolicyRbacTests
             {
                 Roles = new RolePolicy
                 {
-                    Definitions = new Dictionary<string, RoleDefinition>
+                    Definitions = new Dictionary<string, RoleDefinition>(StringComparer.OrdinalIgnoreCase)
                     {
                         ["developer"] = new() { AllowTools = ["ReadFile"] }
                     }
@@ -222,7 +222,7 @@ public sealed class PolicyRbacTests
             {
                 Roles = new RolePolicy
                 {
-                    Definitions = new Dictionary<string, RoleDefinition>
+                    Definitions = new Dictionary<string, RoleDefinition>(StringComparer.OrdinalIgnoreCase)
                     {
                         ["developer"] = new() { AllowTools = ["WriteFile"] }
                     }

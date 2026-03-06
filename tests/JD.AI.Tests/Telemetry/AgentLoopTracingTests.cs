@@ -158,8 +158,10 @@ public sealed class AgentLoopTracingTests
         // AgentLoop uses null-conditional ?. so this must not throw.
         Activity? activity = null;
         var nullableActivity = activity;
+#pragma warning disable CA1508 // Intentional null-conditional guard test
         nullableActivity?.SetStatus(ActivityStatusCode.Ok);
         nullableActivity?.SetGenAiRequestAttributes("sys", "model");
+#pragma warning restore CA1508
         // No exception means the null-conditional guards are correct.
     }
 }

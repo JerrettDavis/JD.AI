@@ -96,7 +96,7 @@ public sealed class FileAgentDefinitionRegistryTests : IDisposable
         Assert.Equal(2, devList.Count);
 
         var stagingList = await _registry.ListAsync(AgentEnvironments.Staging);
-        Assert.Equal(1, stagingList.Count);
+        Assert.Single(stagingList);
     }
 
     [Fact]
