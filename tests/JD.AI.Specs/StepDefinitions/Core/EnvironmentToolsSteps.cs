@@ -37,17 +37,19 @@ public sealed class EnvironmentToolsSteps
     {
         var result = _context.Get<string>("EnvResult");
         // The environment tool masks variables containing KEY, SECRET, TOKEN, PASSWORD
-        // We verify the masking logic by checking that the output contains "***" somewhere
-        // if any such env vars exist
-        var lines = result.Split('\n');
-        var sensitiveLines = lines.Where(l =>
-            l.Contains(varNamePart, StringComparison.OrdinalIgnoreCase) &&
-            l.Contains('='));
+        // Only match against variable names; values can legitimately contain "key"
+        // (for example branch names) and should not influence this assertion.
+        var sensitiveLines = result
+            .Split('\n')
+            .Select(line => line.Split('=', 2))
+            .Where(parts =>
+                parts.Length == 2 &&
+                parts[0].Contains(varNamePart, StringComparison.OrdinalIgnoreCase))
+            .Select(parts => new { Name = parts[0], Value = parts[1].Trim() });
 
         foreach (var line in sensitiveLines)
         {
-            var value = line[(line.IndexOf('=') + 1)..].Trim();
-            value.Should().Be(maskedValue);
+            line.Value.Should().Be(maskedValue, $"variable '{line.Name}' should be masked");
         }
     }
 }
