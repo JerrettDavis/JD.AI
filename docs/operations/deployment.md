@@ -36,6 +36,11 @@ This creates a Windows Service named **JDAIDaemon** with:
 - **Automatic startup** — starts with Windows
 - **Recovery policy** — restarts on failure (5s, 10s, 30s backoff)
 - **Display name** — "JD.AI Gateway Daemon"
+- **OpenClaw gateway task** — scheduled task `\OpenClaw Gateway` (runs as `SYSTEM` at startup)
+- **OpenClaw watchdog task** — scheduled task `\OpenClaw Gateway Watchdog` (runs every minute)
+- **OpenClaw launcher scripts** — `~/.openclaw/gateway-service.cmd` and `~/.openclaw/gateway-watchdog.cmd`
+
+`jdai-daemon install` is idempotent on Windows: running it again updates the existing service definition and re-applies scheduled task configuration.
 
 ## Linux (systemd)
 
@@ -138,7 +143,7 @@ Caddy automatically provisions TLS certificates and handles WebSocket upgrades.
 | `jdai-daemon start` | Start the installed service |
 | `jdai-daemon stop` | Stop the running service |
 | `jdai-daemon status` | Show service state, version, uptime |
-| `jdai-daemon update` | Check for and apply NuGet updates |
+| `jdai-daemon update` | Check/apply NuGet updates and refresh installed service/task config |
 | `jdai-daemon update --check-only` | Check for updates without applying |
 | `jdai-daemon logs [-n 50]` | Show recent service logs |
 
@@ -178,7 +183,8 @@ Add an `Updates` section to your `appsettings.json`:
 2. **Notification** — If `NotifyChannels` is true, connected channels receive an update alert
 3. **Drain** — Active agents finish in-flight work (up to `DrainTimeout`)
 4. **Apply** — Runs `dotnet tool update -g JD.AI.Daemon`
-5. **Restart** — The service exits; Windows Service recovery or systemd restart brings it back on the new version
+5. **Reconcile** — If the daemon service is installed, `jdai-daemon update` re-applies service/task definitions
+6. **Restart** — The service exits; Windows Service recovery or systemd restart brings it back on the new version
 
 ### Manual update
 
@@ -217,6 +223,12 @@ sudo jdai-daemon uninstall
 ```
 
 This stops the service (if running), removes the Windows Service entry or systemd unit file, and reloads the daemon.
+
+On Windows, uninstall also removes:
+
+- Scheduled tasks `\OpenClaw Gateway` and `\OpenClaw Gateway Watchdog`
+- `~/.openclaw/gateway-service.cmd`
+- `~/.openclaw/gateway-watchdog.cmd`
 
 ## Troubleshooting
 
