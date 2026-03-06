@@ -38,6 +38,7 @@
     <PackageReference Include="SixLabors.ImageSharp" />
     <PackageReference Include="LLamaSharp" />
     <PackageReference Include="LLamaSharp.Backend.Cpu" />
+    <PackageReference Include="SSH.NET" />
     <PackageReference Include="StackExchange.Redis" />
   </ItemGroup>
 
