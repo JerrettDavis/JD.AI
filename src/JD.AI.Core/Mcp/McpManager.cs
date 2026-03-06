@@ -49,9 +49,54 @@ public sealed class McpManager
         return new McpRegistry(providers);
     }
 
+    private static McpRegistry CreateExternalRegistry()
+    {
+        var cwd = Directory.GetCurrentDirectory();
+        IReadOnlyList<IMcpDiscoveryProvider> providers =
+        [
+            new ClaudeCodeMcpDiscoveryProvider(cwd),
+            new ClaudeDesktopMcpDiscoveryProvider(),
+            new VsCodeMcpDiscoveryProvider(cwd),
+            new CodexMcpDiscoveryProvider(cwd),
+            new CopilotMcpDiscoveryProvider(),
+        ];
+        return new McpRegistry(providers);
+    }
+
     /// <summary>Discovers and merges servers from all providers via the registry.</summary>
     public Task<IReadOnlyList<McpServerDefinition>> GetAllServersAsync(CancellationToken ct = default)
         => _registry.GetAllAsync(ct);
+
+    /// <summary>
+    /// Returns servers discovered from external tool configs (Claude Code, Claude Desktop,
+    /// VS Code, Codex, Copilot) that are not already present in the JD.AI-managed config.
+    /// </summary>
+    public Task<IReadOnlyList<McpServerDefinition>> GetImportCandidatesAsync(
+        CancellationToken ct = default)
+        => GetImportCandidatesAsync(CreateExternalRegistry(), ct);
+
+    /// <summary>
+    /// Returns import candidates using the provided external registry (for testing).
+    /// </summary>
+    internal async Task<IReadOnlyList<McpServerDefinition>> GetImportCandidatesAsync(
+        IMcpRegistry externalRegistry,
+        CancellationToken ct = default)
+    {
+        var external = await externalRegistry.GetAllAsync(ct).ConfigureAwait(false);
+
+        IReadOnlyList<McpServerDefinition> jdAiServers =
+            _jdAiProvider is not null
+                ? await _jdAiProvider.DiscoverAsync(ct).ConfigureAwait(false)
+                : [];
+
+        var jdAiNames = jdAiServers
+            .Select(s => s.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return external
+            .Where(s => !jdAiNames.Contains(s.Name))
+            .ToList();
+    }
 
     /// <summary>
     /// Returns the cached status for a server, or <see cref="McpServerStatus.Default"/>
