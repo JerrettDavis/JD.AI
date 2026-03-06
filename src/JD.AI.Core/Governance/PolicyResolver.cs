@@ -45,6 +45,7 @@ public static class PolicyResolver
         var dataSpecs = ordered.Select(p => p.Spec.Data).Where(d => d is not null).ToList();
         var sessionSpecs = ordered.Select(p => p.Spec.Sessions).Where(s => s is not null).ToList();
         var auditSpecs = ordered.Select(p => p.Spec.Audit).Where(a => a is not null).ToList();
+        var roleSpecs = ordered.Select(p => p.Spec.Roles).Where(r => r is not null).Select(r => r!).ToList();
 
         result.Tools = MergeToolPolicy(toolSpecs!);
         result.Providers = MergeProviderPolicy(providerSpecs!);
@@ -53,6 +54,7 @@ public static class PolicyResolver
         result.Data = MergeDataPolicy(dataSpecs!);
         result.Sessions = MergeSessionPolicy(sessionSpecs!);
         result.Audit = MergeAuditPolicy(auditSpecs!);
+        result.Roles = MergeRolePolicy(roleSpecs);
 
         return result;
     }
@@ -209,5 +211,38 @@ public static class PolicyResolver
         }
 
         return [.. result];
+    }
+
+    /// <summary>
+    /// Merges role policies additively: later (more specific) scopes can define additional
+    /// roles or extend existing ones. All deny lists are unioned.
+    /// </summary>
+    private static RolePolicy? MergeRolePolicy(List<RolePolicy> specs)
+    {
+        if (specs.Count == 0)
+            return null;
+
+        var merged = new RolePolicy();
+        foreach (var spec in specs)
+        {
+            foreach (var (roleName, def) in spec.Definitions)
+            {
+                if (!merged.Definitions.TryGetValue(roleName, out var existing))
+                {
+                    existing = new RoleDefinition();
+                    merged.Definitions[roleName] = existing;
+                }
+
+                foreach (var item in def.AllowTools) existing.AllowTools.Add(item);
+                foreach (var item in def.DenyTools) existing.DenyTools.Add(item);
+                foreach (var item in def.AllowProviders) existing.AllowProviders.Add(item);
+                foreach (var item in def.DenyProviders) existing.DenyProviders.Add(item);
+                foreach (var item in def.AllowModels) existing.AllowModels.Add(item);
+                foreach (var item in def.DenyModels) existing.DenyModels.Add(item);
+                foreach (var item in def.Inherits) existing.Inherits.Add(item);
+            }
+        }
+
+        return merged;
     }
 }

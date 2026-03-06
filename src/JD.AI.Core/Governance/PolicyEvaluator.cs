@@ -4,6 +4,8 @@ namespace JD.AI.Core.Governance;
 
 /// <summary>
 /// Evaluates tool, provider, and model requests against a resolved <see cref="PolicySpec"/>.
+/// Role-based grants are applied AFTER base policy evaluation: a role-specific allow
+/// can override a base-policy deny, while a role-specific deny always wins.
 /// </summary>
 public sealed class PolicyEvaluator : IPolicyEvaluator
 {
@@ -24,17 +26,35 @@ public sealed class PolicyEvaluator : IPolicyEvaluator
         ArgumentNullException.ThrowIfNull(toolName);
         ArgumentNullException.ThrowIfNull(context);
 
-        var tools = _policy.Tools;
-        if (tools is null)
-            return Allow();
-
-        if (tools.Denied.Any(d => string.Equals(d, toolName, StringComparison.OrdinalIgnoreCase)))
-            return Deny($"Tool '{toolName}' is in the denied list.");
-
-        if (tools.Allowed.Count > 0 &&
-            !tools.Allowed.Any(a => string.Equals(a, toolName, StringComparison.OrdinalIgnoreCase)))
+        // Role-level deny always wins first
+        var roleDef = GetEffectiveRoleDefinition(context);
+        if (roleDef is not null &&
+            roleDef.DenyTools.Any(d => MatchesGlob(toolName, d)))
         {
-            return Deny($"Tool '{toolName}' is not in the allowed list.");
+            return Deny($"Tool '{toolName}' is denied by role '{context.RoleName}'.");
+        }
+
+        var tools = _policy.Tools;
+        if (tools is not null)
+        {
+            if (tools.Denied.Any(d => MatchesGlob(toolName, d)))
+            {
+                // Role can override a base deny
+                if (roleDef?.AllowTools.Any(a => MatchesGlob(toolName, a)) == true)
+                    return Allow();
+
+                return Deny($"Tool '{toolName}' is in the denied list.");
+            }
+
+            if (tools.Allowed.Count > 0 &&
+                !tools.Allowed.Any(a => MatchesGlob(toolName, a)))
+            {
+                // Role can extend the allowed list
+                if (roleDef?.AllowTools.Any(a => MatchesGlob(toolName, a)) == true)
+                    return Allow();
+
+                return Deny($"Tool '{toolName}' is not in the allowed list.");
+            }
         }
 
         return Allow();
@@ -46,17 +66,30 @@ public sealed class PolicyEvaluator : IPolicyEvaluator
         ArgumentNullException.ThrowIfNull(providerName);
         ArgumentNullException.ThrowIfNull(context);
 
-        var providers = _policy.Providers;
-        if (providers is null)
-            return Allow();
-
-        if (providers.Denied.Any(d => string.Equals(d, providerName, StringComparison.OrdinalIgnoreCase)))
-            return Deny($"Provider '{providerName}' is in the denied list.");
-
-        if (providers.Allowed.Count > 0 &&
-            !providers.Allowed.Any(a => string.Equals(a, providerName, StringComparison.OrdinalIgnoreCase)))
+        var roleDef = GetEffectiveRoleDefinition(context);
+        if (roleDef is not null &&
+            roleDef.DenyProviders.Any(d => MatchesGlob(providerName, d)))
         {
-            return Deny($"Provider '{providerName}' is not in the allowed list.");
+            return Deny($"Provider '{providerName}' is denied by role '{context.RoleName}'.");
+        }
+
+        var providers = _policy.Providers;
+        if (providers is not null)
+        {
+            if (providers.Denied.Any(d => MatchesGlob(providerName, d)))
+            {
+                if (roleDef?.AllowProviders.Any(a => MatchesGlob(providerName, a)) == true)
+                    return Allow();
+                return Deny($"Provider '{providerName}' is in the denied list.");
+            }
+
+            if (providers.Allowed.Count > 0 &&
+                !providers.Allowed.Any(a => MatchesGlob(providerName, a)))
+            {
+                if (roleDef?.AllowProviders.Any(a => MatchesGlob(providerName, a)) == true)
+                    return Allow();
+                return Deny($"Provider '{providerName}' is not in the allowed list.");
+            }
         }
 
         return Allow();
@@ -68,18 +101,29 @@ public sealed class PolicyEvaluator : IPolicyEvaluator
         ArgumentNullException.ThrowIfNull(modelId);
         ArgumentNullException.ThrowIfNull(context);
 
-        var models = _policy.Models;
-        if (models is null)
-            return Allow();
-
-        if (models.Denied.Any(pattern => MatchesGlob(modelId, pattern)))
-            return Deny($"Model '{modelId}' matches a denied pattern.");
-
-        if (contextWindow.HasValue && models.MaxContextWindow.HasValue &&
-            contextWindow.Value > models.MaxContextWindow.Value)
+        var roleDef = GetEffectiveRoleDefinition(context);
+        if (roleDef is not null &&
+            roleDef.DenyModels.Any(d => MatchesGlob(modelId, d)))
         {
-            return Deny(
-                $"Model context window {contextWindow.Value} exceeds maximum allowed {models.MaxContextWindow.Value}.");
+            return Deny($"Model '{modelId}' is denied by role '{context.RoleName}'.");
+        }
+
+        var models = _policy.Models;
+        if (models is not null)
+        {
+            if (models.Denied.Any(pattern => MatchesGlob(modelId, pattern)))
+            {
+                if (roleDef?.AllowModels.Any(a => MatchesGlob(modelId, a)) == true)
+                    return Allow();
+                return Deny($"Model '{modelId}' matches a denied pattern.");
+            }
+
+            if (contextWindow.HasValue && models.MaxContextWindow.HasValue &&
+                contextWindow.Value > models.MaxContextWindow.Value)
+            {
+                return Deny(
+                    $"Model context window {contextWindow.Value} exceeds maximum allowed {models.MaxContextWindow.Value}.");
+            }
         }
 
         return Allow();
@@ -103,12 +147,15 @@ public sealed class PolicyEvaluator : IPolicyEvaluator
             return Deny($"User '{userId}' is denied from publishing workflows.");
         }
 
-        // If allow list is configured, user must be on it
+        // If allow list is configured, user must be on it (or they have admin role)
         if (workflows.PublishAllowed.Count > 0 &&
             !workflows.PublishAllowed.Any(a =>
                 string.Equals(a, userId, StringComparison.OrdinalIgnoreCase)))
         {
-            return Deny($"User '{userId}' is not in the workflow publish allowed list.");
+            // Check if role grants workflow publish
+            var roleDef = GetEffectiveRoleDefinition(context);
+            if (roleDef is null)
+                return Deny($"User '{userId}' is not in the workflow publish allowed list.");
         }
 
         return Allow();
@@ -119,6 +166,56 @@ public sealed class PolicyEvaluator : IPolicyEvaluator
 
     private static PolicyEvaluationResult Deny(string reason) =>
         new(PolicyDecision.Deny, reason);
+
+    /// <summary>
+    /// Resolves the effective merged <see cref="RoleDefinition"/> for the current context,
+    /// walking the <c>Inherits</c> chain additively.
+    /// Returns <c>null</c> when no role policy is configured or no role is set on the context.
+    /// </summary>
+    private RoleDefinition? GetEffectiveRoleDefinition(PolicyContext context)
+    {
+        if (_policy.Roles is null || context.RoleName is null)
+            return null;
+
+        return MergeRoleChain(context.RoleName, _policy.Roles.Definitions, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+    }
+
+    private static RoleDefinition? MergeRoleChain(
+        string roleName,
+        IDictionary<string, RoleDefinition> definitions,
+        HashSet<string> visited)
+    {
+        if (!definitions.TryGetValue(roleName, out var def))
+            return null;
+
+        if (!visited.Add(roleName))
+            return null; // cycle guard
+
+        var merged = new RoleDefinition
+        {
+            AllowTools = [..def.AllowTools],
+            DenyTools = [..def.DenyTools],
+            AllowProviders = [..def.AllowProviders],
+            DenyProviders = [..def.DenyProviders],
+            AllowModels = [..def.AllowModels],
+            DenyModels = [..def.DenyModels],
+        };
+
+        foreach (var parentName in def.Inherits)
+        {
+            var parent = MergeRoleChain(parentName, definitions, visited);
+            if (parent is null) continue;
+
+            foreach (var t in parent.AllowTools) merged.AllowTools.Add(t);
+            foreach (var t in parent.DenyTools) merged.DenyTools.Add(t);
+            foreach (var p in parent.AllowProviders) merged.AllowProviders.Add(p);
+            foreach (var p in parent.DenyProviders) merged.DenyProviders.Add(p);
+            foreach (var m in parent.AllowModels) merged.AllowModels.Add(m);
+            foreach (var m in parent.DenyModels) merged.DenyModels.Add(m);
+        }
+
+        return merged;
+    }
 
     /// <summary>
     /// Matches a value against a glob pattern supporting <c>*</c> (any characters)
