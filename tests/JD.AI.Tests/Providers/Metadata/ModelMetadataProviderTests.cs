@@ -149,7 +149,7 @@ public sealed class ModelMetadataProviderTests
     [Fact]
     public async Task Enrich_MatchedModel_UsesMetadataToDisableUnsupportedCapabilities()
     {
-        const string noToolsJson = """
+        const string NoToolsJson = """
             {
                 "openai/chat-basic": {
                     "mode": "chat",
@@ -160,7 +160,7 @@ public sealed class ModelMetadataProviderTests
             }
             """;
 
-        var source = new FakeMetadataSource(noToolsJson);
+        var source = new FakeMetadataSource(NoToolsJson);
         var provider = new ModelMetadataProvider(source);
         await provider.LoadAsync(forceRefresh: true);
 
