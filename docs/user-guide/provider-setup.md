@@ -1,11 +1,11 @@
 ---
 title: Provider Setup
-description: Configure any of JD.AI's 14 supported AI providers — cloud APIs, local models, and OAuth-based services.
+description: Configure any of JD.AI's 15 supported AI providers — cloud APIs, local models, and OAuth-based services.
 ---
 
 # Provider Setup
 
-JD.AI supports 14 AI providers. This guide walks through setting up each one — from quick environment variable configuration to the interactive `/provider add` wizard.
+JD.AI supports 15 AI providers. This guide walks through setting up each one — from quick environment variable configuration to the interactive `/provider add` wizard.
 
 ## Provider overview
 
@@ -15,7 +15,7 @@ JD.AI detects providers automatically on startup. Providers fall into three auth
 |----------|-----------|-------------|
 | **OAuth / session** | Claude Code, GitHub Copilot, OpenAI Codex | CLI authentication |
 | **Local** | Ollama, Local (LLamaSharp), Foundry Local | No auth needed |
-| **API key** | OpenAI, Azure OpenAI, Anthropic, Google Gemini, Mistral, AWS Bedrock, HuggingFace, OpenAI-Compatible | API key or credentials |
+| **API key** | OpenAI, Azure OpenAI, Anthropic, Google Gemini, Mistral, AWS Bedrock, HuggingFace, OpenRouter, OpenAI-Compatible | API key or credentials |
 
 ## Quick setup with `/provider add`
 
@@ -277,9 +277,28 @@ export HUGGINGFACE_API_KEY=hf_...
 
 **Models available:** Llama 3.3 70B, Llama 3.1 8B, Mixtral 8x7B, Phi-3, Qwen 2.5 72B.
 
+### OpenRouter
+
+OpenRouter is a unified API that routes requests to hundreds of AI models from multiple vendors (OpenAI, Anthropic, Google, Meta, Mistral, and more) through a single endpoint.
+
+```bash
+# Environment variable
+export OPENROUTER_API_KEY=sk-or-...
+
+# Or interactive setup
+/provider add openrouter
+```
+
+**Environment variable:** `OPENROUTER_API_KEY`
+
+**Models available:** Dynamically discovered from the OpenRouter catalog — includes Claude, GPT-4, Gemini, Llama, Mistral, and hundreds more. Each model includes context length, pricing, and capability metadata.
+
+> [!TIP]
+> Best for accessing multiple model families through a single API key, comparing models, and pay-per-use pricing across vendors.
+
 ### OpenAI-Compatible endpoints
 
-Connect to any OpenAI-compatible API — Groq, Together AI, DeepSeek, OpenRouter, Fireworks, Perplexity, LM Studio, vLLM, and more.
+Connect to any OpenAI-compatible API — Groq, Together AI, DeepSeek, Fireworks, Perplexity, LM Studio, vLLM, and more.
 
 ```bash
 # Provider-specific environment variables (auto-detected)
@@ -298,7 +317,6 @@ export DEEPSEEK_API_KEY=...
 | Groq | `GROQ_API_KEY` | `https://api.groq.com/openai/v1` |
 | Together AI | `TOGETHER_API_KEY` | `https://api.together.xyz/v1` |
 | DeepSeek | `DEEPSEEK_API_KEY` | `https://api.deepseek.com/v1` |
-| OpenRouter | `OPENROUTER_API_KEY` | `https://openrouter.ai/api/v1` |
 | Fireworks AI | `FIREWORKS_API_KEY` | `https://api.fireworks.ai/inference/v1` |
 | Perplexity | `PERPLEXITY_API_KEY` | `https://api.perplexity.ai` |
 
@@ -373,10 +391,10 @@ When you switch models mid-session, JD.AI prompts you to choose a transition mod
 | `AWS_SECRET_ACCESS_KEY` | AWS Bedrock | AWS secret access key |
 | `AWS_REGION` | AWS Bedrock | AWS region (default: `us-east-1`) |
 | `HUGGINGFACE_API_KEY` | HuggingFace | HuggingFace API token |
+| `OPENROUTER_API_KEY` | OpenRouter | OpenRouter API key |
 | `GROQ_API_KEY` | Groq | Groq API key |
 | `TOGETHER_API_KEY` | Together AI | Together AI API key |
 | `DEEPSEEK_API_KEY` | DeepSeek | DeepSeek API key |
-| `OPENROUTER_API_KEY` | OpenRouter | OpenRouter API key |
 | `FIREWORKS_API_KEY` | Fireworks AI | Fireworks AI API key |
 | `PERPLEXITY_API_KEY` | Perplexity | Perplexity API key |
 | `OLLAMA_ENDPOINT` | Ollama | Ollama API URL (default: `http://localhost:11434`) |
