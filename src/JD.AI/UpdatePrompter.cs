@@ -29,7 +29,7 @@ public static class UpdatePrompter
         if (!AnsiConsole.Profile.Capabilities.Interactive)
         {
             AnsiConsole.MarkupLine(
-                $"[dim]Run [bold]dotnet tool update -g JD.AI[/] to update.[/]");
+                $"[dim]Run [bold]jdai update[/] to update.[/]");
             return false;
         }
 

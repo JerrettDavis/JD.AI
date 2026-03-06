@@ -1,42 +1,26 @@
-using System.Net.Http.Json;
-using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using JD.AI.Core.Config;
 using JD.AI.Core.Infrastructure;
+using JD.AI.Core.Installation;
 
 namespace JD.AI;
 
 /// <summary>
-/// Checks NuGet for newer versions of the jdai tool and manages auto-update.
-/// Caches results for 24 hours to avoid spamming the API on every startup.
+/// Checks for newer versions of jdai and applies updates using the detected
+/// installation strategy (dotnet tool, GitHub release, or package manager).
+/// Caches results for 24 hours to avoid spamming upstream APIs on every startup.
 /// </summary>
 public static class UpdateChecker
 {
-    private const string PackageId = "JD.AI";
-    private const string NuGetIndexUrl = "https://api.nuget.org/v3-flatcontainer/JD.AI/index.json";
     private static readonly TimeSpan CacheExpiry = TimeSpan.FromHours(24);
     private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Indented;
 
     private static string CacheDir => DataDirectories.UpdateCacheDir;
-
     private static string CacheFile => Path.Combine(CacheDir, "update-check.json");
 
     /// <summary>Gets the running assembly's informational version.</summary>
-    public static string GetCurrentVersion()
-    {
-        var attr = typeof(UpdateChecker).Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>();
-        if (attr?.InformationalVersion is { } ver)
-        {
-            // Strip git metadata suffix (e.g. "0.1.42+abc1234" → "0.1.42")
-            var plusIdx = ver.IndexOf('+', StringComparison.Ordinal);
-            return plusIdx >= 0 ? ver[..plusIdx] : ver;
-        }
-
-        var asmVer = typeof(UpdateChecker).Assembly.GetName().Version;
-        return asmVer?.ToString(3) ?? "0.0.0";
-    }
+    public static string GetCurrentVersion() => InstallationDetector.GetCurrentVersion();
 
     /// <summary>
     /// Checks for an available update, respecting the 24-hour cache.
@@ -60,8 +44,10 @@ public static class UpdateChecker
                 }
             }
 
-            // Query NuGet
-            var latest = await FetchLatestVersionAsync(ct).ConfigureAwait(false);
+            // Detect installation and query the appropriate source
+            var info = await InstallationDetector.DetectAsync(ct).ConfigureAwait(false);
+            var strategy = InstallerFactory.Create(info);
+            var latest = await strategy.GetLatestVersionAsync(ct).ConfigureAwait(false);
             if (latest is null) return null;
 
             // Write cache
@@ -83,22 +69,17 @@ public static class UpdateChecker
     }
 
     /// <summary>
-    /// Runs <c>dotnet tool update -g JD.AI</c> and returns the process output.
+    /// Applies an update using the detected installation strategy.
     /// </summary>
     public static async Task<(bool Success, string Output)> ApplyUpdateAsync(CancellationToken ct = default)
     {
-        var result = await ProcessExecutor.RunAsync(
-            "dotnet", $"tool update -g {PackageId}",
-            timeout: TimeSpan.FromSeconds(120),
-            cancellationToken: ct).ConfigureAwait(false);
-
-        var output = string.IsNullOrWhiteSpace(result.StandardError)
-            ? result.StandardOutput
-            : $"{result.StandardOutput}\n{result.StandardError}";
-        return (result.Success, output.Trim());
+        var info = await InstallationDetector.DetectAsync(ct).ConfigureAwait(false);
+        var strategy = InstallerFactory.Create(info);
+        var result = await strategy.ApplyAsync(ct: ct).ConfigureAwait(false);
+        return (result.Success, result.Output);
     }
 
-    /// <summary>Compares two semver-ish version strings. Returns true if latest > current.</summary>
+    /// <summary>Compares two semver-ish version strings. Returns true if latest &gt; current.</summary>
     public static bool IsNewer(string latest, string current)
     {
         // Strip any pre-release suffixes for comparison
@@ -113,23 +94,6 @@ public static class UpdateChecker
         var currentVer = Parse(current);
         if (latestVer is null || currentVer is null) return false;
         return latestVer > currentVer;
-    }
-
-    private static async Task<string?> FetchLatestVersionAsync(CancellationToken ct)
-    {
-        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
-        http.DefaultRequestHeaders.UserAgent.ParseAdd("jdai-update-checker/1.0");
-
-        var response = await http.GetFromJsonAsync<NuGetVersionIndex>(NuGetIndexUrl, ct)
-            .ConfigureAwait(false);
-
-        // The index returns versions sorted ascending; last entry is the latest
-        if (response?.Versions is { Count: > 0 } versions)
-        {
-            return versions[^1];
-        }
-
-        return null;
     }
 
     private static UpdateCache? ReadCache()
@@ -150,12 +114,6 @@ public static class UpdateChecker
         Directory.CreateDirectory(CacheDir);
         var json = JsonSerializer.Serialize(cache, JsonOptions);
         File.WriteAllText(CacheFile, json);
-    }
-
-    private sealed class NuGetVersionIndex
-    {
-        [JsonPropertyName("versions")]
-        public List<string> Versions { get; set; } = [];
     }
 }
 
