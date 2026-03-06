@@ -3021,6 +3021,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         var vim = _getVimMode?.Invoke() ?? settings.VimMode;
         var output = _getOutputStyle?.Invoke() ?? settings.OutputStyle;
         var spinner = _getSpinnerStyle?.Invoke() ?? settings.SpinnerStyle;
+        var welcome = WelcomePanelSettings.Normalize(settings.Welcome);
+        var motdUrl = string.IsNullOrWhiteSpace(welcome.MotdUrl) ? "(none)" : welcome.MotdUrl;
 
         return $$"""
             Configuration:
@@ -3033,6 +3035,12 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
               autorun: {{_session.AutoRunEnabled.ToString().ToLowerInvariant()}}
               permissions: {{(!_session.SkipPermissions).ToString().ToLowerInvariant()}}
               plan_mode: {{_session.PlanMode.ToString().ToLowerInvariant()}}
+              welcome_model_summary: {{welcome.ShowModelSummary.ToString().ToLowerInvariant()}}
+              welcome_services: {{welcome.ShowServices.ToString().ToLowerInvariant()}}
+              welcome_cwd: {{welcome.ShowWorkingDirectory.ToString().ToLowerInvariant()}}
+              welcome_version: {{welcome.ShowVersion.ToString().ToLowerInvariant()}}
+              welcome_motd: {{welcome.ShowMotd.ToString().ToLowerInvariant()}}
+              welcome_motd_url: {{motdUrl}}
 
             Usage:
               /config get <key>
@@ -3046,6 +3054,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             return "Usage: /config get <key>";
 
         var token = NormalizeConfigKey(key);
+        var welcome = WelcomePanelSettings.Normalize(settings.Welcome);
         return token switch
         {
             "theme" => $"theme={ToThemeToken(_getTheme?.Invoke() ?? settings.Theme)}",
@@ -3057,6 +3066,12 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "autorun" => $"autorun={_session.AutoRunEnabled.ToString().ToLowerInvariant()}",
             "permissions" => $"permissions={(!_session.SkipPermissions).ToString().ToLowerInvariant()}",
             "plan_mode" => $"plan_mode={_session.PlanMode.ToString().ToLowerInvariant()}",
+            "welcome_model_summary" => $"welcome_model_summary={welcome.ShowModelSummary.ToString().ToLowerInvariant()}",
+            "welcome_services" => $"welcome_services={welcome.ShowServices.ToString().ToLowerInvariant()}",
+            "welcome_cwd" => $"welcome_cwd={welcome.ShowWorkingDirectory.ToString().ToLowerInvariant()}",
+            "welcome_version" => $"welcome_version={welcome.ShowVersion.ToString().ToLowerInvariant()}",
+            "welcome_motd" => $"welcome_motd={welcome.ShowMotd.ToString().ToLowerInvariant()}",
+            "welcome_motd_url" => $"welcome_motd_url={welcome.MotdUrl ?? "(none)"}",
             _ => $"Unknown config key '{key}'.",
         };
     }
@@ -3072,6 +3087,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
         var key = NormalizeConfigKey(parts[0]);
         var value = parts[1].Trim();
+        var welcome = WelcomePanelSettings.Normalize(settings.Welcome);
 
         switch (key)
         {
@@ -3137,13 +3153,52 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                 _session.PlanMode = plan;
                 return $"plan_mode={plan.ToString().ToLowerInvariant()}";
 
+            case "welcome_model_summary":
+                if (!TryParseOnOff(value, out var showModelSummary))
+                    return "welcome_model_summary expects on/off.";
+                SaveSettings(settings with { Welcome = welcome with { ShowModelSummary = showModelSummary } });
+                return $"welcome_model_summary={showModelSummary.ToString().ToLowerInvariant()}";
+
+            case "welcome_services":
+                if (!TryParseOnOff(value, out var showServices))
+                    return "welcome_services expects on/off.";
+                SaveSettings(settings with { Welcome = welcome with { ShowServices = showServices } });
+                return $"welcome_services={showServices.ToString().ToLowerInvariant()}";
+
+            case "welcome_cwd":
+                if (!TryParseOnOff(value, out var showCwd))
+                    return "welcome_cwd expects on/off.";
+                SaveSettings(settings with { Welcome = welcome with { ShowWorkingDirectory = showCwd } });
+                return $"welcome_cwd={showCwd.ToString().ToLowerInvariant()}";
+
+            case "welcome_version":
+                if (!TryParseOnOff(value, out var showVersion))
+                    return "welcome_version expects on/off.";
+                SaveSettings(settings with { Welcome = welcome with { ShowVersion = showVersion } });
+                return $"welcome_version={showVersion.ToString().ToLowerInvariant()}";
+
+            case "welcome_motd":
+                if (!TryParseOnOff(value, out var showMotd))
+                    return "welcome_motd expects on/off.";
+                SaveSettings(settings with { Welcome = welcome with { ShowMotd = showMotd } });
+                return $"welcome_motd={showMotd.ToString().ToLowerInvariant()}";
+
+            case "welcome_motd_url":
+                var motdUrl = value.Equals("none", StringComparison.OrdinalIgnoreCase)
+                              || value.Equals("off", StringComparison.OrdinalIgnoreCase)
+                              || value.Equals("-", StringComparison.Ordinal)
+                    ? null
+                    : value;
+                SaveSettings(settings with { Welcome = welcome with { MotdUrl = motdUrl } });
+                return $"welcome_motd_url={motdUrl ?? "(none)"}";
+
             default:
                 return $"Unknown config key '{parts[0]}'.";
         }
     }
 
     private static string NormalizeConfigKey(string key) =>
-        key.Trim().ToLowerInvariant().Replace('-', '_');
+        key.Trim().ToLowerInvariant().Replace('-', '_').Replace('.', '_');
 
     private static bool TryParseOnOff(string value, out bool enabled)
     {
