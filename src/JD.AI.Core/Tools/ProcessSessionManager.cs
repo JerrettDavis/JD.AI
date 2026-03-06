@@ -501,7 +501,17 @@ public sealed class ProcessSessionManager
         };
 
         var json = JsonSerializer.Serialize(payload, JsonOptions);
-        File.WriteAllText(record.MetadataPath, json);
+        try
+        {
+            File.WriteAllText(record.MetadataPath, json);
+        }
+#pragma warning disable CA1031
+        catch
+        {
+            // Best-effort persistence — directory may have been removed or the
+            // metadata root is unavailable. This is non-fatal.
+        }
+#pragma warning restore CA1031
     }
 
     private void DeleteMetadata(ProcessRecord record)
