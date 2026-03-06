@@ -219,6 +219,28 @@ public sealed class McpCliHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task Help_OutputIncludesBrowse()
+    {
+        var result = await CaptureStdoutAsync(
+            () => McpCliHandler.RunAsync(["--help"]));
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("browse", result.Output);
+    }
+
+    [Fact]
+    public async Task Browse_InvalidCategory_ReturnsOne()
+    {
+        // Non-interactive environment: the MultiSelectionPrompt will throw
+        // InvalidOperationException; BrowseAsync catches it and returns non-zero
+        // when the catalog is empty for the requested category.
+        var result = await CaptureStderrAsync(
+            () => McpCliHandler.RunAsync(["browse", "--category", "NonExistentCategory99"]));
+
+        Assert.Equal(1, result.ExitCode);
+    }
+
+    [Fact]
     public async Task UnknownSubcommand_ReturnsOne()
     {
         var result = await CaptureStderrAsync(
