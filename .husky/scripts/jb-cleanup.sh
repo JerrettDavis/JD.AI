@@ -4,6 +4,12 @@ set -euo pipefail
 # ── JetBrains CleanupCode Wrapper ──────────────────────────────
 # Wraps jb cleanupcode to handle exit code 3 (no items found)
 # as success, since that's expected when no .cs files are staged.
+#
+# Uses the custom "Pre-commit" profile (defined in .DotSettings)
+# which only applies formatting + using optimization.
+# Does NOT apply code transformations (var style, brace removal,
+# naming conventions, etc.) to prevent silently reverting semantic
+# changes during git hooks.
 
 FILES="$*"
 
@@ -13,7 +19,7 @@ if [ -z "$FILES" ]; then
 fi
 
 dotnet jb cleanupcode JD.AI.slnx \
-  --profile="Built-in: Full Cleanup" \
+  --profile="Pre-commit" \
   --include="$FILES" \
   --no-build \
   || rc=$?
