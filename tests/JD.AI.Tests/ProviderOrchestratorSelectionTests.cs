@@ -1,4 +1,5 @@
 using JD.AI.Core.Providers;
+using JD.AI.Core.Routing;
 using JD.AI.Startup;
 
 namespace JD.AI.Tests;
@@ -50,7 +51,7 @@ public sealed class ProviderOrchestratorSelectionTests
     }
 
     [Fact]
-    public void EvaluateSelection_DefaultModelPrecedesPrintModeFallback()
+    public void EvaluateSelection_DefaultModelPrecedesRouting()
     {
         var models = CreateModels();
         var opts = new CliOptions { PrintMode = true };
@@ -81,18 +82,22 @@ public sealed class ProviderOrchestratorSelectionTests
     }
 
     [Fact]
-    public void EvaluateSelection_PrintModeFallsBackToFirstModel()
+    public void EvaluateSelection_RoutingSelectsLocalModelAndFallbacks()
     {
         var models = CreateModels();
-        var opts = new CliOptions { PrintMode = true };
+        var opts = new CliOptions { PrintMode = true, RoutingStrategy = "local-first" };
 
         var decision = ProviderOrchestrator.EvaluateSelection(
             opts,
             models,
             defaultProvider: null,
-            defaultModel: null);
+            defaultModel: null,
+            router: new DefaultModelRouter(),
+            routingPolicy: RoutingPolicy.Default);
 
-        Assert.Equal("claude-sonnet", decision.SelectedModel?.Id);
+        Assert.Equal("ollama-chat", decision.SelectedModel?.Id);
+        Assert.NotNull(decision.FallbackModelIds);
+        Assert.Contains("claude-sonnet", decision.FallbackModelIds!);
     }
 
 
@@ -147,9 +152,9 @@ public sealed class ProviderOrchestratorSelectionTests
 
     private static List<ProviderModelInfo> CreateModels() =>
     [
-        new("claude-sonnet", "Claude Sonnet", "ClaudeCode"),
-        new("claude-haiku", "Claude Haiku", "ClaudeCode"),
-        new("ollama-chat", "Ollama Chat", "Ollama"),
-        new("ollama-coder", "Ollama Coder", "Ollama"),
+        new("claude-sonnet", "Claude Sonnet", "ClaudeCode", InputCostPerToken: 0.000003m, OutputCostPerToken: 0.000015m),
+        new("claude-haiku", "Claude Haiku", "ClaudeCode", InputCostPerToken: 0.0000008m, OutputCostPerToken: 0.000004m),
+        new("ollama-chat", "Ollama Chat", "Ollama", InputCostPerToken: 0m, OutputCostPerToken: 0m),
+        new("ollama-coder", "Ollama Coder", "Ollama", InputCostPerToken: 0m, OutputCostPerToken: 0m),
     ];
 }

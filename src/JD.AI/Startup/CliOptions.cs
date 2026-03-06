@@ -45,6 +45,9 @@ internal sealed record CliOptions
     public string[]? AllowedTools { get; init; }
     public string[]? DisallowedTools { get; init; }
     public string[] FallbackModels { get; init; } = [];
+    public string RoutingStrategy { get; init; } = "local-first";
+    public string[] RoutingFallbackProviders { get; init; } = [];
+    public string[] RoutingCapabilities { get; init; } = [];
 
     // Piped input
     public string? PipedInput { get; init; }
@@ -124,6 +127,11 @@ internal static class CliArgumentParser
         var permissionModeStr = GetFlagValue(args, "--permission-mode");
         var fallbackModelStr = GetFlagValue(args, "--fallback-model");
         var fallbackModels = fallbackModelStr?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
+        var routingStrategy = GetFlagValue(args, "--routing-strategy") ?? "local-first";
+        var routingFallbackProviders = (GetFlagValue(args, "--routing-fallback-providers") ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var routingCapabilities = (GetFlagValue(args, "--routing-capabilities") ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         var cliSessionId = GetFlagValue(args, "--session-id");
         var forkSession = args.Contains("--fork-session");
@@ -177,6 +185,9 @@ internal static class CliArgumentParser
             DisallowedTools = disallowedTools,
             PermissionModeStr = permissionModeStr,
             FallbackModels = fallbackModels,
+            RoutingStrategy = routingStrategy,
+            RoutingFallbackProviders = routingFallbackProviders,
+            RoutingCapabilities = routingCapabilities,
             CliSessionId = cliSessionId,
             ForkSession = forkSession,
             NoSessionPersistence = noSessionPersistence,
