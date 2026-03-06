@@ -22,6 +22,7 @@
 - [ ] All new and existing tests pass (`dotnet test`)
 - [ ] The solution builds with zero warnings (`dotnet build`)
 - [ ] I have updated the documentation if needed
+- [ ] For docs/README changes, I added or refreshed screenshots/GIFs where they improve clarity
 
 ## Testing
 

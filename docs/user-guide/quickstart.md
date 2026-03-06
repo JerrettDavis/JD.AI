@@ -7,6 +7,8 @@ description: Get productive with JD.AI in under five minutes — from launching 
 
 Get productive with JD.AI in under five minutes. This guide walks through a typical workflow — from launching the assistant to committing changes — so you can see how every major feature fits together.
 
+![Quickstart terminal workflow](../images/demo-chat.png)
+
 ## Before you begin
 
 Make sure you have:
