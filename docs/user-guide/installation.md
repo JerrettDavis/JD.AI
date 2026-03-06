@@ -11,7 +11,7 @@ Get JD.AI up and running on your machine. This page covers prerequisites, instal
 
 ## Prerequisites
 
-- [.NET 10.0 SDK](https://dotnet.microsoft.com/download) or later
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download) or later (not required for native binary installs)
 - At least one AI provider configured (see [Provider Setup](provider-setup.md))
 
 Verify your .NET version:
@@ -37,7 +37,7 @@ This makes the `jdai` command available system-wide.
 dotnet tool update --global JD.AI
 ```
 
-You can also check for updates from inside JD.AI with the `/update` command.
+You can also update from within JD.AI using `jdai update` or the `/update` slash command (see [Updating](#updating) below).
 
 ### Install to a local path
 
@@ -47,6 +47,40 @@ If you prefer not to install globally, use `--tool-path`:
 dotnet tool install JD.AI --tool-path ./tools
 ./tools/jdai
 ```
+
+## Install as a native binary (no .NET required)
+
+Pre-built self-contained binaries are published to [GitHub Releases](https://github.com/JerrettDavis/JD.AI/releases) for every release. No .NET SDK is needed.
+
+1. Download the archive for your platform from the latest release:
+
+   | Platform | Asset |
+   |----------|-------|
+   | Windows x64 | `jdai-win-x64.zip` |
+   | Windows ARM64 | `jdai-win-arm64.zip` |
+   | Linux x64 | `jdai-linux-x64.tar.gz` |
+   | Linux ARM64 | `jdai-linux-arm64.tar.gz` |
+   | macOS Intel | `jdai-osx-x64.tar.gz` |
+   | macOS Apple Silicon | `jdai-osx-arm64.tar.gz` |
+
+2. Extract and place the binary on your `PATH`:
+
+   ```bash
+   # Linux / macOS
+   tar -xzf jdai-linux-x64.tar.gz -C ~/.local/bin/
+
+   # Windows (PowerShell)
+   Expand-Archive jdai-win-x64.zip -DestinationPath "$env:LOCALAPPDATA\jdai"
+   # Then add that directory to your PATH
+   ```
+
+3. Verify:
+
+   ```bash
+   jdai --print "hello"
+   ```
+
+Once installed, use `jdai update` to update to newer releases without repeating these steps.
 
 ## Install from source
 
@@ -110,6 +144,46 @@ jdai --print "hello, are you working?"
 ```
 
 JD.AI should detect a provider, send the prompt, and print a response.
+
+## Updating
+
+JD.AI includes built-in `update` and `install` CLI commands that detect how the tool was installed and apply updates using the appropriate method.
+
+### `jdai update`
+
+Checks for a newer version and applies it:
+
+```bash
+jdai update
+```
+
+JD.AI automatically detects the installation method (dotnet tool, native binary, winget, chocolatey, scoop, brew, or apt) and runs the correct upgrade command. For native binary installs, it downloads the latest release from GitHub and replaces the binary in-place.
+
+| Flag | Description |
+|------|-------------|
+| `--check` | Check for updates without applying them |
+| `--force` | Force update even if already on the latest version |
+
+### `jdai install`
+
+Downloads and installs a specific version from GitHub Releases as a native binary. No .NET SDK required:
+
+```bash
+# Install the latest version
+jdai install
+
+# Install a specific version
+jdai install 1.2.0
+
+# Force reinstall
+jdai install --force
+```
+
+This always uses the GitHub release strategy regardless of the original installation method, making it useful for switching from a dotnet tool install to a self-contained binary.
+
+### In-session updates
+
+You can also check for updates during an interactive session using the `/update` slash command. JD.AI checks for updates automatically on startup and displays a notification when a newer version is available.
 
 ## Uninstall
 

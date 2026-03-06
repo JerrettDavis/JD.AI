@@ -54,6 +54,7 @@ if (opts.Subcommand != null)
         "mcp" => await McpCliHandler.RunAsync(opts.SubcommandArgs).ConfigureAwait(false),
         "plugin" => await PluginCliHandler.RunAsync(opts.SubcommandArgs).ConfigureAwait(false),
         "onboard" or "wizard" => await OnboardingCliHandler.RunAsync(opts.SubcommandArgs).ConfigureAwait(false),
+        "update" or "install" => await UpdateCliHandler.RunAsync(opts.Subcommand, opts.SubcommandArgs).ConfigureAwait(false),
         _ => 1,
     };
 }
@@ -76,6 +77,16 @@ if (opts.GatewayMode)
     {
         AnsiConsole.MarkupLine($"[dim]Gateway started on http://localhost:{port}[/]");
     }
+}
+
+// Clean up leftover backup from a previous native binary update
+var oldBinary = Environment.ProcessPath + ".old";
+if (oldBinary is not null && File.Exists(oldBinary))
+{
+    try { File.Delete(oldBinary); }
+#pragma warning disable CA1031
+    catch { /* best-effort cleanup */ }
+#pragma warning restore CA1031
 }
 
 // Fire background update check immediately (non-blocking)
