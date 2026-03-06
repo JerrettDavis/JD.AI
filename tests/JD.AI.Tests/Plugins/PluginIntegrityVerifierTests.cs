@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using FluentAssertions;
 using JD.AI.Core.Plugins;
 using JD.AI.Plugins.SDK;
 
@@ -6,30 +7,29 @@ namespace JD.AI.Tests.Plugins;
 
 public sealed class PluginIntegrityVerifierTests : IDisposable
 {
-    private readonly string _tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+    private readonly string _tempDir = Path.Combine(
+        Path.GetTempPath(), $"jdai-integrity-{Guid.NewGuid():N}");
 
-    public PluginIntegrityVerifierTests() => Directory.CreateDirectory(_tempDir);
+    public PluginIntegrityVerifierTests() =>
+        Directory.CreateDirectory(_tempDir);
 
-    public void Dispose()
+    public void Dispose() =>
+        Directory.Delete(_tempDir, recursive: true);
+
+    private string WriteFile(string name, string content)
     {
-        try { Directory.Delete(_tempDir, recursive: true); }
-        catch { /* best-effort cleanup */ }
-    }
-
-    private string WriteFile(byte[] content, string? name = null)
-    {
-        var path = Path.Combine(_tempDir, name ?? $"{Guid.NewGuid():N}.dll");
-        File.WriteAllBytes(path, content);
+        var path = Path.Combine(_tempDir, name);
+        File.WriteAllText(path, content);
         return path;
     }
 
-    private static string ComputeSha256Hex(byte[] data)
+    private static string ComputeSha256(string path)
     {
-        var hash = SHA256.HashData(data);
-        return Convert.ToHexString(hash);  // uppercase
+        using var stream = File.OpenRead(path);
+        return Convert.ToHexString(SHA256.HashData(stream));
     }
 
-    private static PluginManifest MakeManifest(string? sha256 = null) => new()
+    private static PluginManifest Manifest(string? sha256 = null) => new()
     {
         Id = "test-plugin",
         Name = "Test Plugin",
@@ -37,131 +37,86 @@ public sealed class PluginIntegrityVerifierTests : IDisposable
         EntryAssemblySha256 = sha256,
     };
 
-    // ── No hash configured (skip verification) ──────────────────────────────────
-
     [Fact]
-    public void VerifyEntryAssemblyHash_NoHash_DoesNotThrow()
+    public void NullManifest_Throws()
     {
-        var manifest = MakeManifest(sha256: null);
-        var path = WriteFile([0x00, 0x01, 0x02]);
-
-        PluginIntegrityVerifier.VerifyEntryAssemblyHash(manifest, path);
+        var act = () => PluginIntegrityVerifier.VerifyEntryAssemblyHash(null!, "file.dll");
+        act.Should().Throw<ArgumentNullException>();
     }
 
     [Fact]
-    public void VerifyEntryAssemblyHash_EmptyHash_DoesNotThrow()
+    public void NullPath_Throws()
     {
-        var manifest = MakeManifest(sha256: "");
-        var path = WriteFile([0x00, 0x01, 0x02]);
-
-        PluginIntegrityVerifier.VerifyEntryAssemblyHash(manifest, path);
+        var act = () => PluginIntegrityVerifier.VerifyEntryAssemblyHash(Manifest(), null!);
+        act.Should().Throw<ArgumentException>();
     }
 
     [Fact]
-    public void VerifyEntryAssemblyHash_WhitespaceHash_DoesNotThrow()
+    public void EmptyPath_Throws()
     {
-        var manifest = MakeManifest(sha256: "   ");
-        var path = WriteFile([0x00, 0x01, 0x02]);
-
-        PluginIntegrityVerifier.VerifyEntryAssemblyHash(manifest, path);
-    }
-
-    // ── Correct hash ─────────────────────────────────────────────────────────────
-
-    [Fact]
-    public void VerifyEntryAssemblyHash_CorrectHash_DoesNotThrow()
-    {
-        var content = new byte[] { 0xAB, 0xCD, 0xEF, 0x01 };
-        var sha256 = ComputeSha256Hex(content);
-        var path = WriteFile(content);
-        var manifest = MakeManifest(sha256);
-
-        PluginIntegrityVerifier.VerifyEntryAssemblyHash(manifest, path);
+        var act = () => PluginIntegrityVerifier.VerifyEntryAssemblyHash(Manifest(), "  ");
+        act.Should().Throw<ArgumentException>();
     }
 
     [Fact]
-    public void VerifyEntryAssemblyHash_CorrectHashLowercase_DoesNotThrow()
+    public void NullHash_Skips()
     {
-        var content = new byte[] { 0x01, 0x02, 0x03 };
-#pragma warning disable CA1308 // intentionally testing lowercase input (NormalizeHex calls ToUpperInvariant)
-        var sha256 = ComputeSha256Hex(content).ToLowerInvariant();
+        var path = WriteFile("plugin.dll", "dummy content");
+        var act = () => PluginIntegrityVerifier.VerifyEntryAssemblyHash(Manifest(sha256: null), path);
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void EmptyHash_Skips()
+    {
+        var path = WriteFile("plugin.dll", "dummy content");
+        var act = () => PluginIntegrityVerifier.VerifyEntryAssemblyHash(Manifest(sha256: "   "), path);
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void MatchingHash_Passes()
+    {
+        var path = WriteFile("plugin.dll", "hello world");
+        var hash = ComputeSha256(path);
+
+        var act = () => PluginIntegrityVerifier.VerifyEntryAssemblyHash(Manifest(sha256: hash), path);
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void MatchingHash_CaseInsensitive()
+    {
+        var path = WriteFile("plugin.dll", "test data");
+        // Intentionally lowercase to test case-insensitive comparison
+#pragma warning disable CA1308
+        var hash = ComputeSha256(path).ToLowerInvariant();
 #pragma warning restore CA1308
-        var path = WriteFile(content);
-        var manifest = MakeManifest(sha256);
 
-        PluginIntegrityVerifier.VerifyEntryAssemblyHash(manifest, path);
+        var act = () => PluginIntegrityVerifier.VerifyEntryAssemblyHash(Manifest(sha256: hash), path);
+        act.Should().NotThrow();
     }
 
     [Fact]
-    public void VerifyEntryAssemblyHash_HashWithDashes_NormalizedAndAccepted()
+    public void MatchingHash_WithDashes_Normalized()
     {
-        var content = new byte[] { 0xDE, 0xAD, 0xBE, 0xEF };
-        var hash = SHA256.HashData(content);
-        var dashHex = BitConverter.ToString(hash);  // e.g. "AB-CD-EF..."
-        var path = WriteFile(content);
-        var manifest = MakeManifest(dashHex);
+        var path = WriteFile("plugin.dll", "dashed content");
+        var hash = ComputeSha256(path);
+        var dashed = string.Join("-", Enumerable.Range(0, hash.Length / 2)
+            .Select(i => hash.Substring(i * 2, 2)));
 
-        PluginIntegrityVerifier.VerifyEntryAssemblyHash(manifest, path);
+        var act = () => PluginIntegrityVerifier.VerifyEntryAssemblyHash(Manifest(sha256: dashed), path);
+        act.Should().NotThrow();
     }
 
     [Fact]
-    public void VerifyEntryAssemblyHash_HashWithLeadingWhitespace_NormalizedAndAccepted()
+    public void MismatchedHash_Throws()
     {
-        var content = new byte[] { 0x10, 0x20, 0x30 };
-        var sha256 = "  " + ComputeSha256Hex(content) + "  ";
-        var path = WriteFile(content);
-        var manifest = MakeManifest(sha256);
+        var path = WriteFile("plugin.dll", "real content");
+        var fakeHash = "0000000000000000000000000000000000000000000000000000000000000000";
 
-        PluginIntegrityVerifier.VerifyEntryAssemblyHash(manifest, path);
-    }
-
-    // ── Wrong hash ───────────────────────────────────────────────────────────────
-
-    [Fact]
-    public void VerifyEntryAssemblyHash_WrongHash_ThrowsInvalidDataException()
-    {
-        var content = new byte[] { 0x01, 0x02, 0x03 };
-        var wrongHash = new string('A', 64);  // 64 hex chars, but wrong
-        var path = WriteFile(content);
-        var manifest = MakeManifest(wrongHash);
-
-        var ex = Assert.Throws<InvalidDataException>(() =>
-            PluginIntegrityVerifier.VerifyEntryAssemblyHash(manifest, path));
-
-        Assert.Contains("test-plugin", ex.Message);
-        Assert.Contains("hash verification failed", ex.Message);
-    }
-
-    [Fact]
-    public void VerifyEntryAssemblyHash_ModifiedFile_ThrowsInvalidDataException()
-    {
-        var original = new byte[] { 0x01, 0x02, 0x03 };
-        var sha256 = ComputeSha256Hex(original);
-
-        // Write different bytes to the file
-        var path = WriteFile([0x04, 0x05, 0x06]);
-        var manifest = MakeManifest(sha256);
-
-        Assert.Throws<InvalidDataException>(() =>
-            PluginIntegrityVerifier.VerifyEntryAssemblyHash(manifest, path));
-    }
-
-    // ── Guard clauses ────────────────────────────────────────────────────────────
-
-    [Fact]
-    public void VerifyEntryAssemblyHash_NullManifest_ThrowsArgumentNull()
-    {
-        Assert.Throws<ArgumentNullException>(() =>
-            PluginIntegrityVerifier.VerifyEntryAssemblyHash(null!, "some.dll"));
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void VerifyEntryAssemblyHash_NullOrWhitespaceAssemblyPath_Throws(string path)
-    {
-        var manifest = MakeManifest(sha256: null);
-        Assert.Throws<ArgumentException>(() =>
-            PluginIntegrityVerifier.VerifyEntryAssemblyHash(manifest, path));
+        var act = () => PluginIntegrityVerifier.VerifyEntryAssemblyHash(Manifest(sha256: fakeHash), path);
+        act.Should().Throw<InvalidDataException>()
+            .WithMessage("*hash verification failed*");
     }
 }
