@@ -62,6 +62,15 @@ internal static class SessionConfigurator
             }
         }
 
+        else if (providerSetup.RoutedFallbackModels.Count > 0)
+        {
+            session.FallbackModels = providerSetup.RoutedFallbackModels;
+            if (!opts.PrintMode)
+            {
+                ChatRenderer.RenderInfo($"Routed fallback models: {string.Join(" → ", providerSetup.RoutedFallbackModels)}");
+            }
+        }
+
         if (opts.NoSessionPersistence)
         {
             session.NoSessionPersistence = true;

@@ -31,4 +31,19 @@ public sealed class CliArgumentParserTests
         Assert.Equal("openai", opts.CliProvider);
         Assert.Equal("gpt-4.1", opts.CliModel);
     }
+
+    [Fact]
+    public async Task ParseAsync_RoutingFlags_AreCaptured()
+    {
+        var opts = await CliArgumentParser.ParseAsync(
+        [
+            "--routing-strategy", "capability",
+            "--routing-fallback-providers", "openai,openrouter",
+            "--routing-capabilities", "tools,vision"
+        ]);
+
+        Assert.Equal("capability", opts.RoutingStrategy);
+        Assert.Equal(["openai", "openrouter"], opts.RoutingFallbackProviders);
+        Assert.Equal(["tools", "vision"], opts.RoutingCapabilities);
+    }
 }

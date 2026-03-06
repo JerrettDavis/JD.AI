@@ -3,6 +3,7 @@ using JD.AI.Core.LocalModels;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Providers.Credentials;
 using JD.AI.Core.Providers.Metadata;
+using JD.AI.Core.Routing;
 using Microsoft.SemanticKernel;
 using Spectre.Console;
 
@@ -17,6 +18,7 @@ internal sealed record ProviderSetup(
     ModelMetadataProvider MetadataProvider,
     IReadOnlyList<ProviderModelInfo> AllModels,
     ProviderModelInfo SelectedModel,
+    IReadOnlyList<string> RoutedFallbackModels,
     Kernel Kernel);
 
 /// <summary>
@@ -34,7 +36,8 @@ internal static class ProviderOrchestrator
         IReadOnlyList<ProviderModelInfo> Models,
         string? DefaultProvider,
         string? DefaultModel,
-        IModelCapabilityRegistry? CapabilityRegistry,
+        IModelRouter Router,
+        RoutingPolicy RoutingPolicy,
         Func<IReadOnlyList<ProviderModelInfo>, ProviderModelInfo> PromptSelector);
 
     private sealed record ProviderModelSpecification(
@@ -63,10 +66,16 @@ internal static class ProviderOrchestrator
     internal sealed record ModelSelectionDecision(
         bool Handled,
         ProviderModelInfo? SelectedModel = null,
-        string? ErrorMessage = null)
+        string? ErrorMessage = null,
+        IReadOnlyList<string>? FallbackModelIds = null)
     {
         public static ModelSelectionDecision Continue => new(false);
-        public static ModelSelectionDecision Select(ProviderModelInfo model) => new(true, model);
+
+        public static ModelSelectionDecision Select(
+            ProviderModelInfo model,
+            IReadOnlyList<string>? fallbackModelIds = null) =>
+            new(true, model, null, fallbackModelIds);
+
         public static ModelSelectionDecision Error(string message) => new(true, null, message);
     }
 
@@ -96,10 +105,12 @@ internal static class ProviderOrchestrator
         EvaluateCliModelPolicy,
         EvaluateCliProviderPolicy,
         EvaluatePersistedDefaultPolicy,
-        EvaluateCapabilityPolicy,
+        EvaluateRoutingPolicy,
         EvaluateNonInteractivePolicy,
         EvaluateInteractivePolicy,
     ];
+
+    internal static Func<IModelRouter> RouterFactory { get; set; } = static () => new DefaultModelRouter();
 
     internal static (ProviderRegistry Registry, ProviderConfigurationManager ProviderConfig, ModelMetadataProvider
         MetadataProvider)
@@ -123,9 +134,12 @@ internal static class ProviderOrchestrator
         var defaultProvider = await configStore.GetDefaultProviderAsync(projectPath).ConfigureAwait(false);
         var defaultModel = await configStore.GetDefaultModelAsync(projectPath).ConfigureAwait(false);
 
-        if (!opts.PrintMode) AnsiConsole.MarkupLine("[dim]Detecting providers...[/]");
+        if (!opts.PrintMode)
+            AnsiConsole.MarkupLine("[dim]Detecting providers...[/]");
 
         var (registry, providerConfig, metadataProvider) = CreateRegistry();
+        var router = RouterFactory();
+        var routingPolicy = BuildRoutingPolicy(opts);
 
         // Fast path: prefer the persisted provider/model and refresh auth only for that provider.
         if (opts.CliModel is null
@@ -141,7 +155,8 @@ internal static class ProviderOrchestrator
                     preferred.Models,
                     defaultProvider,
                     defaultModel,
-                    capabilityRegistry: registry.CapabilityRegistry);
+                    router,
+                    routingPolicy);
 
                 if (fastSelection.ErrorMessage is not null)
                 {
@@ -164,6 +179,7 @@ internal static class ProviderOrchestrator
                         metadataProvider,
                         preferred.Models,
                         fastSelection.SelectedModel,
+                        fastSelection.FallbackModelIds ?? [],
                         kernelFast);
                 }
             }
@@ -171,12 +187,15 @@ internal static class ProviderOrchestrator
 
         var providers = await registry.DetectProvidersAsync(true).ConfigureAwait(false);
         if (!opts.PrintMode)
-            foreach (var p in providers)
+        {
+            foreach (var provider in providers)
             {
-                var icon = p.IsAvailable ? "[green]✓[/]" : "[red]✗[/]";
+                var icon = provider.IsAvailable ? "[green]✓[/]" : "[red]✗[/]";
                 AnsiConsole.MarkupLine(
-                    $"  {icon} [bold]{Markup.Escape(p.Name)}[/]: {Markup.Escape(p.StatusMessage ?? "Unknown")}");
+                    $"  {icon} [bold]{Markup.Escape(provider.Name)}[/]: " +
+                    $"{Markup.Escape(provider.StatusMessage ?? "Unknown")}");
             }
+        }
 
         var allModels = await registry.GetModelsAsync(true).ConfigureAwait(false);
         if (allModels.Count == 0)
@@ -190,7 +209,9 @@ internal static class ProviderOrchestrator
             allModels,
             defaultProvider,
             defaultModel,
-            capabilityRegistry: registry.CapabilityRegistry);
+            router,
+            routingPolicy);
+
         if (selection.ErrorMessage is not null)
         {
             RenderSelectionError(opts, selection.ErrorMessage);
@@ -203,7 +224,14 @@ internal static class ProviderOrchestrator
         await PersistSelectionAsync(configStore, projectPath, selection.SelectedModel).ConfigureAwait(false);
         var kernel = registry.BuildKernel(selection.SelectedModel);
 
-        return new ProviderSetup(registry, providerConfig, metadataProvider, allModels, selection.SelectedModel, kernel);
+        return new ProviderSetup(
+            registry,
+            providerConfig,
+            metadataProvider,
+            allModels,
+            selection.SelectedModel,
+            selection.FallbackModelIds ?? [],
+            kernel);
     }
 
     internal static ModelSelectionDecision EvaluateSelection(
@@ -211,7 +239,8 @@ internal static class ProviderOrchestrator
         IReadOnlyList<ProviderModelInfo> allModels,
         string? defaultProvider,
         string? defaultModel,
-        IModelCapabilityRegistry? capabilityRegistry = null,
+        IModelRouter? router = null,
+        RoutingPolicy? routingPolicy = null,
         Func<IReadOnlyList<ProviderModelInfo>, ProviderModelInfo>? promptSelector = null)
     {
         var context = new ModelSelectionContext(
@@ -219,7 +248,8 @@ internal static class ProviderOrchestrator
             allModels,
             defaultProvider,
             defaultModel,
-            capabilityRegistry,
+            router ?? new DefaultModelRouter(),
+            routingPolicy ?? RoutingPolicy.Default,
             promptSelector ?? PromptForModel);
 
         foreach (var policy in SelectionPolicies)
@@ -291,32 +321,20 @@ internal static class ProviderOrchestrator
             : ModelSelectionDecision.Continue;
     }
 
-
-    private static ModelSelectionDecision EvaluateCapabilityPolicy(ModelSelectionContext context)
+    private static ModelSelectionDecision EvaluateRoutingPolicy(ModelSelectionContext context)
     {
-        if (context.CapabilityRegistry is null)
+        var route = context.Router.Route(context.Models, context.RoutingPolicy);
+        if (route.SelectedModel is null)
             return ModelSelectionDecision.Continue;
 
-        var compatible = context.CapabilityRegistry.FindModels(
-            ModelCapability.ChatCompletion | ModelCapability.ToolCalling);
-        if (compatible.Count == 0)
-            return ModelSelectionDecision.Continue;
+        var fallbackIds = route.FallbackModels
+            .Select(static model => model.Id)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
-        var byKey = context.Models.ToDictionary(BuildModelKey, StringComparer.OrdinalIgnoreCase);
-        var candidates = compatible
-            .Select(entry => byKey.GetValueOrDefault(BuildModelKey(entry.ProviderName, entry.ModelId)))
-            .Where(static model => model is not null)
-            .Cast<ProviderModelInfo>()
-            .ToList();
-
-        if (candidates.Count == 0)
-            return ModelSelectionDecision.Continue;
-
-        if (candidates.Count == 1 || context.Options.PrintMode)
-            return ModelSelectionDecision.Select(candidates[0]);
-
-        return ModelSelectionDecision.Select(context.PromptSelector(candidates));
+        return ModelSelectionDecision.Select(route.SelectedModel, fallbackIds);
     }
+
     private static ModelSelectionDecision EvaluateNonInteractivePolicy(ModelSelectionContext context)
     {
         if (context.Models.Count == 1 || context.Options.PrintMode)
@@ -341,12 +359,65 @@ internal static class ProviderOrchestrator
     private static bool ContainsIgnoreCase(string source, string value) =>
         source.Contains(value, StringComparison.OrdinalIgnoreCase);
 
+    private static RoutingPolicy BuildRoutingPolicy(CliOptions opts)
+    {
+        var strategy = ParseRoutingStrategy(opts.RoutingStrategy);
+        var requiredCaps = ParseRoutingCapabilities(opts.RoutingCapabilities);
 
-    private static string BuildModelKey(ProviderModelInfo model) =>
-        BuildModelKey(model.ProviderName, model.Id);
+        var preferredProviders = strategy == RoutingStrategy.LocalFirst
+            ? new[] { "Ollama", "Foundry Local", "Local" }
+            : Array.Empty<string>();
 
-    private static string BuildModelKey(string providerName, string modelId) =>
-        $"{providerName}:{modelId}";
+        return new RoutingPolicy(
+            strategy,
+            requiredCaps,
+            preferredProviders,
+            opts.RoutingFallbackProviders);
+    }
+
+    private static RoutingStrategy ParseRoutingStrategy(string? raw) =>
+        raw?.Trim().ToLowerInvariant() switch
+        {
+            "local-first" or "local" => RoutingStrategy.LocalFirst,
+            "cost" or "cost-optimized" => RoutingStrategy.CostOptimized,
+            "capability" or "capability-driven" => RoutingStrategy.CapabilityDriven,
+            "latency" or "latency-optimized" => RoutingStrategy.LatencyOptimized,
+            _ => RoutingStrategy.LocalFirst,
+        };
+
+    private static ModelCapabilities ParseRoutingCapabilities(string[] rawCapabilities)
+    {
+        if (rawCapabilities.Length == 0)
+            return ModelCapabilities.Chat | ModelCapabilities.ToolCalling;
+
+        var caps = ModelCapabilities.None;
+        foreach (var capability in rawCapabilities)
+        {
+            switch (capability.Trim().ToLowerInvariant())
+            {
+                case "chat":
+                    caps |= ModelCapabilities.Chat;
+                    break;
+                case "tools":
+                case "tool-calling":
+                case "toolcalling":
+                case "json":
+                    caps |= ModelCapabilities.ToolCalling;
+                    break;
+                case "vision":
+                    caps |= ModelCapabilities.Vision;
+                    break;
+                case "embeddings":
+                    caps |= ModelCapabilities.Embeddings;
+                    break;
+            }
+        }
+
+        return caps == ModelCapabilities.None
+            ? ModelCapabilities.Chat | ModelCapabilities.ToolCalling
+            : caps;
+    }
+
     private static void RenderSelectionError(CliOptions opts, string message)
     {
         if (opts.PrintMode)
@@ -376,14 +447,14 @@ internal static class ProviderOrchestrator
     private static ProviderModelInfo PromptForModel(IReadOnlyList<ProviderModelInfo> models)
     {
         return AnsiConsole.Prompt(
-            new SelectionPrompt<ProviderModelInfo>().
-                Title("[bold]Select a model[/] [dim](💬=Chat 🔧=Tools 👁=Vision 📐=Embed)[/]").
-                PageSize(15).
-                UseConverter(m =>
+            new SelectionPrompt<ProviderModelInfo>()
+                .Title("[bold]Select a model[/] [dim](💬=Chat 🔧=Tools 👁=Vision 📐=Embed)[/]")
+                .PageSize(15)
+                .UseConverter(model =>
                 {
-                    var badge = m.Capabilities.ToBadge();
-                    return $"{badge} [dim][[{Markup.Escape(m.ProviderName)}]][/] {Markup.Escape(m.DisplayName)}";
-                }).
-                AddChoices(models));
+                    var badge = model.Capabilities.ToBadge();
+                    return $"{badge} [dim][[{Markup.Escape(model.ProviderName)}]][/] {Markup.Escape(model.DisplayName)}";
+                })
+                .AddChoices(models));
     }
 }
