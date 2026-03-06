@@ -123,7 +123,7 @@ internal static class OnboardingCliHandler
             return;
         }
 
-        IReadOnlyList<McpServerDefinition> toImport;
+        List<McpServerDefinition> toImport;
         try
         {
             var prompt = new MultiSelectionPrompt<McpServerDefinition>()
@@ -142,7 +142,8 @@ internal static class OnboardingCliHandler
         }
         catch (InvalidOperationException)
         {
-            toImport = candidates;
+            AnsiConsole.MarkupLine("[dim]Non-interactive terminal: import skipped. Run `jdai mcp list` anytime to review.[/]");
+            return;
         }
 
         if (toImport.Count == 0)

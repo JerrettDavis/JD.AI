@@ -13,6 +13,7 @@ public sealed class McpManager
 {
     private readonly IMcpRegistry _registry;
     private readonly JdAiMcpDiscoveryProvider? _jdAiProvider;
+    private readonly string _cwd;
     private readonly Dictionary<string, McpServerStatus> _statusCache =
         new(StringComparer.OrdinalIgnoreCase);
     private readonly Lock _statusLock = new();
@@ -22,21 +23,31 @@ public sealed class McpManager
     /// Claude Code, Claude Desktop, VS Code, Codex, Copilot, and the JD.AI-managed config.
     /// </summary>
     public McpManager()
-        : this(CreateDefaultRegistry(out var jdAiProvider), jdAiProvider)
+        : this(Directory.GetCurrentDirectory())
+    {
+    }
+
+    private McpManager(string cwd)
+        : this(CreateDefaultRegistry(cwd, out var jdAiProvider), jdAiProvider, cwd)
     {
     }
 
     /// <summary>Creates an <see cref="McpManager"/> with a custom registry and optional write provider.</summary>
     public McpManager(IMcpRegistry registry, JdAiMcpDiscoveryProvider? jdAiProvider = null)
+        : this(registry, jdAiProvider, Directory.GetCurrentDirectory())
+    {
+    }
+
+    private McpManager(IMcpRegistry registry, JdAiMcpDiscoveryProvider? jdAiProvider, string cwd)
     {
         _registry = registry;
         _jdAiProvider = jdAiProvider;
+        _cwd = cwd;
     }
 
-    private static McpRegistry CreateDefaultRegistry(out JdAiMcpDiscoveryProvider jdAiProvider)
+    private static McpRegistry CreateDefaultRegistry(string cwd, out JdAiMcpDiscoveryProvider jdAiProvider)
     {
         jdAiProvider = new JdAiMcpDiscoveryProvider();
-        var cwd = Directory.GetCurrentDirectory();
         IReadOnlyList<IMcpDiscoveryProvider> providers =
         [
             new ClaudeCodeMcpDiscoveryProvider(cwd),
@@ -49,19 +60,14 @@ public sealed class McpManager
         return new McpRegistry(providers);
     }
 
-    private static McpRegistry CreateExternalRegistry()
-    {
-        var cwd = Directory.GetCurrentDirectory();
-        IReadOnlyList<IMcpDiscoveryProvider> providers =
-        [
-            new ClaudeCodeMcpDiscoveryProvider(cwd),
+    private McpRegistry CreateExternalRegistry() =>
+        new([
+            new ClaudeCodeMcpDiscoveryProvider(_cwd),
             new ClaudeDesktopMcpDiscoveryProvider(),
-            new VsCodeMcpDiscoveryProvider(cwd),
-            new CodexMcpDiscoveryProvider(cwd),
+            new VsCodeMcpDiscoveryProvider(_cwd),
+            new CodexMcpDiscoveryProvider(_cwd),
             new CopilotMcpDiscoveryProvider(),
-        ];
-        return new McpRegistry(providers);
-    }
+        ]);
 
     /// <summary>Discovers and merges servers from all providers via the registry.</summary>
     public Task<IReadOnlyList<McpServerDefinition>> GetAllServersAsync(CancellationToken ct = default)
