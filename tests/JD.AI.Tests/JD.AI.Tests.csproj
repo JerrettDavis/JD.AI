@@ -9,6 +9,8 @@
     <ProjectReference Include="..\..\src\JD.AI\JD.AI.csproj" />
     <ProjectReference Include="..\..\src\JD.AI.Channels.OpenClaw\JD.AI.Channels.OpenClaw.csproj" />
     <ProjectReference Include="..\..\src\JD.AI.Daemon\JD.AI.Daemon.csproj" />
+    <ProjectReference Include="..\..\src\JD.AI.Credentials.Azure\JD.AI.Credentials.Azure.csproj" />
+    <ProjectReference Include="..\..\src\JD.AI.Credentials.Aws\JD.AI.Credentials.Aws.csproj" />
     <ProjectReference Include="..\..\src\JD.AI.Workflows\JD.AI.Workflows.csproj" />
   </ItemGroup>
 

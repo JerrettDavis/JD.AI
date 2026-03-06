@@ -4,6 +4,8 @@
     <Project Path="src/JD.AI.Telemetry/JD.AI.Telemetry.csproj" />
     <Project Path="src/JD.AI.Dashboard.Wasm/JD.AI.Dashboard.Wasm.csproj" />
     <Project Path="src/JD.AI.Gateway/JD.AI.Gateway.csproj" />
+    <Project Path="src/JD.AI.Credentials.Aws/JD.AI.Credentials.Aws.csproj" />
+    <Project Path="src/JD.AI.Credentials.Azure/JD.AI.Credentials.Azure.csproj" />
     <Project Path="src/JD.AI.Daemon/JD.AI.Daemon.csproj" />
     <Project Path="src/JD.AI.Plugins.SDK/JD.AI.Plugins.SDK.csproj" />
     <Project Path="src/JD.AI.Channels.Discord/JD.AI.Channels.Discord.csproj" />
