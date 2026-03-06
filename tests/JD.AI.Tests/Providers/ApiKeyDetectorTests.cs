@@ -1,28 +1,23 @@
 using FluentAssertions;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Providers.Credentials;
+using JD.AI.Tests.Fixtures;
 
 namespace JD.AI.Tests.Providers;
 
 public sealed class ApiKeyDetectorTests : IDisposable
 {
-    private readonly string _tempDir;
+    private readonly TempDirectoryFixture _fixture = new();
     private readonly EncryptedFileStore _store;
     private readonly ProviderConfigurationManager _config;
 
     public ApiKeyDetectorTests()
     {
-        _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-det-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(_tempDir);
-        _store = new EncryptedFileStore(_tempDir);
+        _store = new EncryptedFileStore(_fixture.DirectoryPath);
         _config = new ProviderConfigurationManager(_store);
     }
 
-    public void Dispose()
-    {
-        try { Directory.Delete(_tempDir, recursive: true); }
-        catch { /* best effort cleanup */ }
-    }
+    public void Dispose() => _fixture.Dispose();
 
     [Fact]
     public async Task OpenAIDetector_NoApiKey_ReturnsUnavailable()

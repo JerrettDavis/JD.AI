@@ -1,25 +1,23 @@
 using FluentAssertions;
 using JD.AI.Core.Governance;
+using JD.AI.Tests.Fixtures;
 
 namespace JD.AI.Tests.Governance;
 
 public sealed class BudgetTrackerTests : IDisposable
 {
-    private readonly string _tempDir;
+    private readonly TempDirectoryFixture _fixture = new();
     private readonly BudgetTracker _tracker;
 
     public BudgetTrackerTests()
     {
-        _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-budget-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(_tempDir);
-        _tracker = new BudgetTracker(Path.Combine(_tempDir, "budget.json"));
+        _tracker = new BudgetTracker(Path.Combine(_fixture.DirectoryPath, "budget.json"));
     }
 
     public void Dispose()
     {
         _tracker.Dispose();
-        try { Directory.Delete(_tempDir, recursive: true); }
-        catch { /* best effort */ }
+        _fixture.Dispose();
     }
 
     [Fact]
@@ -133,7 +131,7 @@ public sealed class BudgetTrackerTests : IDisposable
         await _tracker.RecordSpendAsync(3.00m, "openai");
 
         // Create a new tracker pointing to the same file
-        using var tracker2 = new BudgetTracker(Path.Combine(_tempDir, "budget.json"));
+        using var tracker2 = new BudgetTracker(Path.Combine(_fixture.DirectoryPath, "budget.json"));
         var status = await tracker2.GetStatusAsync();
 
         status.TodayUsd.Should().Be(3.00m);

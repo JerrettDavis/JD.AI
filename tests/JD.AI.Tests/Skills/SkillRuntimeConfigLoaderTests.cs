@@ -1,22 +1,19 @@
 using JD.AI.Core.Skills;
+using JD.AI.Tests.Fixtures;
 
 namespace JD.AI.Tests.Skills;
 
 public sealed class SkillRuntimeConfigLoaderTests : IDisposable
 {
-    private readonly string _root;
+    private readonly TempDirectoryFixture _fixture = new();
 
-    public SkillRuntimeConfigLoaderTests()
-    {
-        _root = Path.Combine(Path.GetTempPath(), $"jdai-skill-config-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(_root);
-    }
+    public void Dispose() => _fixture.Dispose();
 
     [Fact]
     public void Load_MergesUserAndWorkspaceWithWorkspaceOverride()
     {
-        var userPath = Path.Combine(_root, "user.json");
-        var workspacePath = Path.Combine(_root, "workspace.json");
+        var userPath = Path.Combine(_fixture.DirectoryPath, "user.json");
+        var workspacePath = Path.Combine(_fixture.DirectoryPath, "workspace.json");
 
         File.WriteAllText(userPath, """
             {
@@ -69,8 +66,8 @@ public sealed class SkillRuntimeConfigLoaderTests : IDisposable
     [Fact]
     public void Load_InvalidFilesFallsBackToDefaults()
     {
-        var userPath = Path.Combine(_root, "bad-user.json");
-        var workspacePath = Path.Combine(_root, "bad-workspace.json");
+        var userPath = Path.Combine(_fixture.DirectoryPath, "bad-user.json");
+        var workspacePath = Path.Combine(_fixture.DirectoryPath, "bad-workspace.json");
 
         File.WriteAllText(userPath, "{ this is invalid json }");
         File.WriteAllText(workspacePath, "[]");
@@ -84,20 +81,4 @@ public sealed class SkillRuntimeConfigLoaderTests : IDisposable
         Assert.Null(config.RootConfig);
     }
 
-    public void Dispose()
-    {
-        try
-        {
-            if (Directory.Exists(_root))
-                Directory.Delete(_root, recursive: true);
-        }
-        catch (IOException)
-        {
-            // Best effort temp cleanup.
-        }
-        catch (UnauthorizedAccessException)
-        {
-            // Best effort temp cleanup.
-        }
-    }
 }

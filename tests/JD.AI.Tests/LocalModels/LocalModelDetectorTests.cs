@@ -1,29 +1,20 @@
 using FluentAssertions;
 using JD.AI.Core.LocalModels;
 using JD.AI.Core.Providers;
+using JD.AI.Tests.Fixtures;
 
 namespace JD.AI.Tests.LocalModels;
 
 public class LocalModelDetectorTests : IDisposable
 {
-    private readonly string _tempDir;
+    private readonly TempDirectoryFixture _fixture = new();
 
-    public LocalModelDetectorTests()
-    {
-        _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-detector-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(_tempDir);
-    }
-
-    public void Dispose()
-    {
-        if (Directory.Exists(_tempDir))
-            Directory.Delete(_tempDir, recursive: true);
-    }
+    public void Dispose() => _fixture.Dispose();
 
     [Fact]
     public async Task DetectAsync_NoModels_NotAvailable()
     {
-        var registry = new LocalModelRegistry(_tempDir);
+        var registry = new LocalModelRegistry(_fixture.DirectoryPath);
         var detector = new LocalModelDetector(registry);
 
         var info = await detector.DetectAsync();
@@ -38,10 +29,10 @@ public class LocalModelDetectorTests : IDisposable
     public async Task DetectAsync_WithModels_Available()
     {
         // Create a dummy GGUF file
-        var ggufPath = Path.Combine(_tempDir, "test-7b-Q4_K_M.gguf");
+        var ggufPath = Path.Combine(_fixture.DirectoryPath, "test-7b-Q4_K_M.gguf");
         await File.WriteAllBytesAsync(ggufPath, new byte[1024]);
 
-        var registry = new LocalModelRegistry(_tempDir);
+        var registry = new LocalModelRegistry(_fixture.DirectoryPath);
         var detector = new LocalModelDetector(registry);
 
         var info = await detector.DetectAsync();
@@ -62,10 +53,10 @@ public class LocalModelDetectorTests : IDisposable
     [Fact]
     public async Task DetectAsync_MultipleModels_ReturnsAll()
     {
-        await File.WriteAllBytesAsync(Path.Combine(_tempDir, "model-a-Q4_K_M.gguf"), new byte[512]);
-        await File.WriteAllBytesAsync(Path.Combine(_tempDir, "model-b-Q5_K_S.gguf"), new byte[768]);
+        await File.WriteAllBytesAsync(Path.Combine(_fixture.DirectoryPath, "model-a-Q4_K_M.gguf"), new byte[512]);
+        await File.WriteAllBytesAsync(Path.Combine(_fixture.DirectoryPath, "model-b-Q5_K_S.gguf"), new byte[768]);
 
-        var registry = new LocalModelRegistry(_tempDir);
+        var registry = new LocalModelRegistry(_fixture.DirectoryPath);
         var detector = new LocalModelDetector(registry);
 
         var info = await detector.DetectAsync();
@@ -77,13 +68,13 @@ public class LocalModelDetectorTests : IDisposable
     [Fact]
     public async Task DetectAsync_PersistsRegistry()
     {
-        await File.WriteAllBytesAsync(Path.Combine(_tempDir, "persist-test.gguf"), new byte[256]);
+        await File.WriteAllBytesAsync(Path.Combine(_fixture.DirectoryPath, "persist-test.gguf"), new byte[256]);
 
-        var registry = new LocalModelRegistry(_tempDir);
+        var registry = new LocalModelRegistry(_fixture.DirectoryPath);
         var detector = new LocalModelDetector(registry);
         await detector.DetectAsync();
 
         // Registry file should exist now
-        File.Exists(Path.Combine(_tempDir, "registry.json")).Should().BeTrue();
+        File.Exists(Path.Combine(_fixture.DirectoryPath, "registry.json")).Should().BeTrue();
     }
 }

@@ -1,27 +1,22 @@
 using FluentAssertions;
 using JD.AI.Core.Providers.Credentials;
+using JD.AI.Tests.Fixtures;
 
 namespace JD.AI.Tests.Providers.Credentials;
 
 public sealed class ProviderConfigurationManagerTests : IDisposable
 {
-    private readonly string _tempDir;
+    private readonly TempDirectoryFixture _fixture = new();
     private readonly EncryptedFileStore _store;
     private readonly ProviderConfigurationManager _manager;
 
     public ProviderConfigurationManagerTests()
     {
-        _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-pcm-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(_tempDir);
-        _store = new EncryptedFileStore(_tempDir);
+        _store = new EncryptedFileStore(_fixture.DirectoryPath);
         _manager = new ProviderConfigurationManager(_store);
     }
 
-    public void Dispose()
-    {
-        try { Directory.Delete(_tempDir, recursive: true); }
-        catch { /* best effort cleanup */ }
-    }
+    public void Dispose() => _fixture.Dispose();
 
     [Fact]
     public async Task GetCredentialAsync_FromStore_ReturnsStoreValue()

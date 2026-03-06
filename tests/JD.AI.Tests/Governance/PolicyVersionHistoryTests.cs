@@ -1,25 +1,20 @@
 using FluentAssertions;
 using JD.AI.Core.Governance;
+using JD.AI.Tests.Fixtures;
 
 namespace JD.AI.Tests.Governance;
 
 public sealed class PolicyVersionHistoryTests : IDisposable
 {
-    private readonly string _tempDir;
+    private readonly TempDirectoryFixture _fixture = new();
     private readonly string _historyPath;
 
     public PolicyVersionHistoryTests()
     {
-        _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-pvh-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(_tempDir);
-        _historyPath = Path.Combine(_tempDir, "policy-history.jsonl");
+        _historyPath = Path.Combine(_fixture.DirectoryPath, "policy-history.jsonl");
     }
 
-    public void Dispose()
-    {
-        try { Directory.Delete(_tempDir, recursive: true); }
-        catch { /* best effort */ }
-    }
+    public void Dispose() => _fixture.Dispose();
 
     [Fact]
     public void Record_CreatesHistoryFile()
@@ -88,7 +83,7 @@ public sealed class PolicyVersionHistoryTests : IDisposable
     [Fact]
     public void GetHistory_NoFile_ReturnsEmpty()
     {
-        var noFilePath = Path.Combine(_tempDir, "nonexistent.jsonl");
+        var noFilePath = Path.Combine(_fixture.DirectoryPath, "nonexistent.jsonl");
         var history = new PolicyVersionHistory(noFilePath);
 
         var entries = history.GetHistory();

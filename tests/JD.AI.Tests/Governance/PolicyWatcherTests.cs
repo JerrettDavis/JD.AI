@@ -1,28 +1,19 @@
 using FluentAssertions;
 using JD.AI.Core.Governance;
+using JD.AI.Tests.Fixtures;
 
 namespace JD.AI.Tests.Governance;
 
 public sealed class PolicyWatcherTests : IDisposable
 {
-    private readonly string _tempDir;
+    private readonly TempDirectoryFixture _fixture = new();
 
-    public PolicyWatcherTests()
-    {
-        _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-pw-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(_tempDir);
-    }
-
-    public void Dispose()
-    {
-        try { Directory.Delete(_tempDir, recursive: true); }
-        catch { /* best effort */ }
-    }
+    public void Dispose() => _fixture.Dispose();
 
     [Fact]
     public void Constructor_ValidDirectory_CreatesWatchers()
     {
-        using var watcher = new PolicyWatcher([_tempDir], () => { });
+        using var watcher = new PolicyWatcher([_fixture.DirectoryPath], () => { });
 
         // Two watchers per directory (*.yaml + *.yml)
         watcher.WatcherCount.Should().Be(2);
@@ -31,7 +22,7 @@ public sealed class PolicyWatcherTests : IDisposable
     [Fact]
     public void Constructor_NonExistentDirectory_SkipsIt()
     {
-        var nonExistent = Path.Combine(_tempDir, "does-not-exist");
+        var nonExistent = Path.Combine(_fixture.DirectoryPath, "does-not-exist");
 
         using var watcher = new PolicyWatcher([nonExistent], () => { });
 
@@ -41,10 +32,10 @@ public sealed class PolicyWatcherTests : IDisposable
     [Fact]
     public void Constructor_MultipleDirectories_CreatesWatchersForEach()
     {
-        var dir2 = Path.Combine(_tempDir, "sub");
+        var dir2 = Path.Combine(_fixture.DirectoryPath, "sub");
         Directory.CreateDirectory(dir2);
 
-        using var watcher = new PolicyWatcher([_tempDir, dir2], () => { });
+        using var watcher = new PolicyWatcher([_fixture.DirectoryPath, dir2], () => { });
 
         watcher.WatcherCount.Should().Be(4); // 2 per directory
     }
@@ -55,12 +46,12 @@ public sealed class PolicyWatcherTests : IDisposable
         var reloadTriggered = new TaskCompletionSource<bool>();
 
         using var watcher = new PolicyWatcher(
-            [_tempDir],
+            [_fixture.DirectoryPath],
             () => reloadTriggered.TrySetResult(true),
             debounce: TimeSpan.FromMilliseconds(50));
 
         // Create a yaml file to trigger the watcher
-        await File.WriteAllTextAsync(Path.Combine(_tempDir, "test.yaml"), "content: test");
+        await File.WriteAllTextAsync(Path.Combine(_fixture.DirectoryPath, "test.yaml"), "content: test");
 
         var result = await Task.WhenAny(
             reloadTriggered.Task,
@@ -75,11 +66,11 @@ public sealed class PolicyWatcherTests : IDisposable
         var reloadTriggered = new TaskCompletionSource<bool>();
 
         using var watcher = new PolicyWatcher(
-            [_tempDir],
+            [_fixture.DirectoryPath],
             () => reloadTriggered.TrySetResult(true),
             debounce: TimeSpan.FromMilliseconds(50));
 
-        await File.WriteAllTextAsync(Path.Combine(_tempDir, "test.yml"), "content: test");
+        await File.WriteAllTextAsync(Path.Combine(_fixture.DirectoryPath, "test.yml"), "content: test");
 
         var result = await Task.WhenAny(
             reloadTriggered.Task,
@@ -91,7 +82,7 @@ public sealed class PolicyWatcherTests : IDisposable
     [Fact]
     public void Dispose_ClearsWatchers()
     {
-        var watcher = new PolicyWatcher([_tempDir], () => { });
+        var watcher = new PolicyWatcher([_fixture.DirectoryPath], () => { });
         watcher.WatcherCount.Should().Be(2);
 
         watcher.Dispose();
@@ -102,7 +93,7 @@ public sealed class PolicyWatcherTests : IDisposable
     [Fact]
     public void Dispose_CalledTwice_DoesNotThrow()
     {
-        var watcher = new PolicyWatcher([_tempDir], () => { });
+        var watcher = new PolicyWatcher([_fixture.DirectoryPath], () => { });
 
         var act = () =>
         {
