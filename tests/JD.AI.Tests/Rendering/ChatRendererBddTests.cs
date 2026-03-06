@@ -216,4 +216,126 @@ public sealed class ChatRendererBddTests : TinyBddXunitBase, IDisposable
             .Then("CurrentTheme is DefaultDark", _ => ChatRenderer.CurrentTheme == TuiTheme.DefaultDark)
             .AssertPassed();
     }
+
+    [Scenario("BuildIndicatorsLine renders daemon and gateway states"), Fact]
+    public async Task BuildIndicatorsLine_RendersIndicators()
+    {
+        string? result = null;
+
+        await Given("daemon and gateway indicators", () => (IReadOnlyList<WelcomeIndicator>)
+            [
+                new("Daemon", "running", IndicatorState.Healthy),
+                new("Gateway", "offline", IndicatorState.Warning),
+            ])
+            .When("building the indicator line", indicators =>
+            {
+                result = ChatRenderer.BuildIndicatorsLine(indicators);
+                return indicators;
+            })
+            .Then("the status line contains both indicators", _ =>
+                result is not null
+                && result.Contains("Services:", StringComparison.Ordinal)
+                && result.Contains("Daemon:", StringComparison.Ordinal)
+                && result.Contains("Gateway:", StringComparison.Ordinal)
+                && result.Contains("[green]running[/]", StringComparison.Ordinal)
+                && result.Contains("offline", StringComparison.Ordinal))
+            .AssertPassed();
+    }
+
+    [Scenario("BuildIndicatorsLine returns empty for null input"), Fact]
+    public async Task BuildIndicatorsLine_Null_ReturnsEmpty()
+    {
+        string? result = "placeholder";
+
+        await Given("no indicators", () => (IReadOnlyList<WelcomeIndicator>?)null)
+            .When("building the indicator line", indicators =>
+            {
+                result = ChatRenderer.BuildIndicatorsLine(indicators);
+                return indicators;
+            })
+            .Then("the result is empty", _ => string.IsNullOrEmpty(result))
+            .AssertPassed();
+    }
+
+    [Scenario("BuildWelcomeBody includes cwd version motd when enabled"), Fact]
+    public async Task BuildWelcomeBody_IncludesConfiguredDetails()
+    {
+        string? result = null;
+
+        await Given("welcome settings with all details enabled", () => new WelcomePanelSettings
+        {
+            ShowModelSummary = true,
+            ShowServices = true,
+            ShowWorkingDirectory = true,
+            ShowVersion = true,
+            ShowMotd = true,
+        })
+            .When("building the welcome body", settings =>
+            {
+                result = ChatRenderer.BuildWelcomeBody(
+                    modelName: "gpt-5.3-codex",
+                    providerName: "OpenAI Codex",
+                    totalModels: 5,
+                    indicators:
+                    [
+                        new WelcomeIndicator("Daemon", "running", IndicatorState.Healthy),
+                    ],
+                    details: new WelcomeBannerDetails(
+                        WorkingDirectory: "/repo/jdai",
+                        Version: "0.1.23",
+                        Motd: "Welcome operators"),
+                    settings: settings);
+
+                return settings;
+            })
+            .Then("the body includes all configured lines", _ =>
+                result is not null
+                && result.Contains("Provider:", StringComparison.Ordinal)
+                && result.Contains("Services:", StringComparison.Ordinal)
+                && result.Contains("CWD:", StringComparison.Ordinal)
+                && result.Contains("Version:", StringComparison.Ordinal)
+                && result.Contains("MoTD:", StringComparison.Ordinal))
+            .AssertPassed();
+    }
+
+    [Scenario("BuildWelcomeBody hides optional lines when disabled"), Fact]
+    public async Task BuildWelcomeBody_HidesDisabledDetails()
+    {
+        string? result = null;
+
+        await Given("welcome settings with optional lines disabled", () => new WelcomePanelSettings
+        {
+            ShowModelSummary = false,
+            ShowServices = false,
+            ShowWorkingDirectory = false,
+            ShowVersion = false,
+            ShowMotd = false,
+        })
+            .When("building the welcome body", settings =>
+            {
+                result = ChatRenderer.BuildWelcomeBody(
+                    modelName: "gpt-5.3-codex",
+                    providerName: "OpenAI Codex",
+                    totalModels: 5,
+                    indicators:
+                    [
+                        new WelcomeIndicator("Daemon", "running", IndicatorState.Healthy),
+                    ],
+                    details: new WelcomeBannerDetails(
+                        WorkingDirectory: "/repo/jdai",
+                        Version: "0.1.23",
+                        Motd: "Welcome operators"),
+                    settings: settings);
+
+                return settings;
+            })
+            .Then("the body omits optional lines", _ =>
+                result is not null
+                && !result.Contains("Provider:", StringComparison.Ordinal)
+                && !result.Contains("Services:", StringComparison.Ordinal)
+                && !result.Contains("CWD:", StringComparison.Ordinal)
+                && !result.Contains("Version:", StringComparison.Ordinal)
+                && !result.Contains("MoTD:", StringComparison.Ordinal))
+            .AssertPassed();
+    }
 }

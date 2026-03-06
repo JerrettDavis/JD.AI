@@ -565,6 +565,9 @@ public sealed class SlashCommandRouterTests
         Assert.Contains("vim_mode", result, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("prompt_cache", result, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("prompt_cache_ttl", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("welcome_cwd", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("welcome_version", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("welcome_motd", result, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -582,6 +585,24 @@ public sealed class SlashCommandRouterTests
         Assert.False(_session.PromptCachingEnabled);
         Assert.Equal("prompt_cache=false", getEnabled);
         Assert.Equal("prompt_cache_ttl=1h", getTtl);
+    }
+
+    [Fact]
+    public async Task Config_SetWelcomeFields_PersistsAndReturnsValues()
+    {
+        var setCwd = await _router.ExecuteAsync("/config set welcome.cwd off");
+        var setMotd = await _router.ExecuteAsync("/config set welcome_motd on");
+        var setMotdUrl = await _router.ExecuteAsync("/config set welcome_motd_url https://example.com/motd.txt");
+        var getCwd = await _router.ExecuteAsync("/config get welcome_cwd");
+        var getMotd = await _router.ExecuteAsync("/config get welcome_motd");
+        var getMotdUrl = await _router.ExecuteAsync("/config get welcome.motd_url");
+
+        Assert.Equal("welcome_cwd=false", setCwd);
+        Assert.Equal("welcome_motd=true", setMotd);
+        Assert.Equal("welcome_motd_url=https://example.com/motd.txt", setMotdUrl);
+        Assert.Equal("welcome_cwd=false", getCwd);
+        Assert.Equal("welcome_motd=true", getMotd);
+        Assert.Equal("welcome_motd_url=https://example.com/motd.txt", getMotdUrl);
     }
 
     [Fact]
