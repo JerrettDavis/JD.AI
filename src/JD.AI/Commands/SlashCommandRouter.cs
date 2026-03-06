@@ -753,7 +753,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             return """
                 Usage: /provider add <name>
                 Available providers: openai, azure-openai, anthropic, google-gemini,
-                  mistral, bedrock, huggingface, openai-compat
+                  mistral, bedrock, huggingface, openrouter, openai-compat
                 Example: /provider add openai
                 """;
         }
@@ -828,6 +828,13 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                 await _providerConfig.SetCredentialAsync("huggingface", "apikey", hfKey, ct)
                     .ConfigureAwait(false);
                 return "HuggingFace configured. Run /providers to verify.";
+
+            case "openrouter":
+                AnsiConsole.MarkupLine("[bold]Configure OpenRouter[/]");
+                var openrouterKey = AnsiConsole.Ask<string>("API Key (sk-or-...):");
+                await _providerConfig.SetCredentialAsync("openrouter", "apikey", openrouterKey, ct)
+                    .ConfigureAwait(false);
+                return "OpenRouter configured. Run /providers to verify.";
 
             case "openai-compat":
                 AnsiConsole.MarkupLine("[bold]Configure OpenAI-Compatible Endpoint[/]");
