@@ -251,12 +251,13 @@ public sealed class AgentLoop
         output.BeginTurn();
         long totalBytes = 0;
 
+        var contentStarted = false;
+
         try
         {
             var fullResponse = new StringBuilder();
             var thinkingCapture = new StringBuilder();
             var parser = new StreamingContentParser();
-            var contentStarted = false;
             var thinkingActive = false;
 
             await foreach (var chunk in chat.GetStreamingChatMessageContentsAsync(
@@ -476,7 +477,7 @@ public sealed class AgentLoop
             (IsToolCallingError(ex) ||
              IsToolsRejectedError(ex, settings.FunctionChoiceBehavior is not null)))
         {
-            output.EndStreaming();
+            if (contentStarted) output.EndStreaming();
             sw.Stop();
 
             // Remove intermediate messages SK added during failed auto-function-calling
@@ -525,7 +526,9 @@ public sealed class AgentLoop
                 sw.Stop();
                 turnEntry.Complete("error", retryEx.Message);
                 _session.LastTimeline = traceCtx.Timeline;
-                output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, 0, totalBytes));
+                // totalBytes here is from the failed original stream, not the retry (which was
+                // non-streaming). Report 0 to avoid mixing metrics from two different operations.
+                output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, 0, 0));
                 var errorMsg = $"Error: {retryEx.Message}";
                 AgentOutput.Current.RenderError(errorMsg);
                 _session.History.AddAssistantMessage(
@@ -636,9 +639,17 @@ public sealed class AgentLoop
 
         for (var current = ex; current != null; current = current.InnerException)
         {
+            // Prefer the typed StatusCode when available (SK's OpenAI connector sets it).
+            if (current is HttpRequestException { StatusCode: System.Net.HttpStatusCode.BadRequest })
+                return true;
+
+            // String fallback for providers/wrappers that don't propagate StatusCode.
+            // Anchored patterns only — avoid bare "400" which would match unrelated text
+            // like "Rate limit: retry after 400 seconds" or "error code 40001".
             var msg = current.Message;
-            if (msg.Contains("400", StringComparison.Ordinal) ||
-                msg.Contains("Bad Request", StringComparison.OrdinalIgnoreCase))
+            if (msg.Contains("400 (Bad Request)", StringComparison.OrdinalIgnoreCase) ||
+                msg.Contains("Status: 400", StringComparison.OrdinalIgnoreCase) ||
+                msg.Contains("StatusCode: 400", StringComparison.OrdinalIgnoreCase))
                 return true;
         }
         return false;
