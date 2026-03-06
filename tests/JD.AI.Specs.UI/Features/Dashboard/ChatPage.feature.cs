@@ -117,7 +117,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/Dashboard/ChatPage.feature.ndjson", 8);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/Dashboard/ChatPage.feature.ndjson", 15);
         }
         
         async global::System.Threading.Tasks.Task global::Xunit.IAsyncLifetime.InitializeAsync()
@@ -148,15 +148,17 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         [global::Xunit.SkippableFactAttribute(DisplayName="Displays chat header with title")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Chat Page")]
         [global::Xunit.TraitAttribute("Description", "Displays chat header with title")]
+        [global::Xunit.TraitAttribute("Category", "smoke")]
         public async global::System.Threading.Tasks.Task DisplaysChatHeaderWithTitle()
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = new string[] {
+                    "smoke"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "0";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Displays chat header with title", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 10
+#line 12
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -169,11 +171,14 @@ namespace JD.AI.Specs.UI.Features.Dashboard
 #line 7
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 11
-        await testRunner.ThenAsync("I should see the web chat header", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line 13
+        await testRunner.ThenAsync("I should see the chat header", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 12
+#line 14
         await testRunner.AndAsync("the header should display \"Web Chat\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 15
+        await testRunner.AndAsync("the header should have a chat icon", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -182,46 +187,14 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         [global::Xunit.SkippableFactAttribute(DisplayName="Displays message input area")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Chat Page")]
         [global::Xunit.TraitAttribute("Description", "Displays message input area")]
+        [global::Xunit.TraitAttribute("Category", "smoke")]
         public async global::System.Threading.Tasks.Task DisplaysMessageInputArea()
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = new string[] {
+                    "smoke"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "1";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Displays message input area", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = null;
-#line 14
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 7
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 15
-        await testRunner.ThenAsync("I should see the message input field", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-#line 16
-        await testRunner.AndAsync("the message input should have placeholder text", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.SkippableFactAttribute(DisplayName="Agent selector is available")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "Chat Page")]
-        [global::Xunit.TraitAttribute("Description", "Agent selector is available")]
-        public async global::System.Threading.Tasks.Task AgentSelectorIsAvailable()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "2";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Agent selector is available", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 18
@@ -238,55 +211,29 @@ namespace JD.AI.Specs.UI.Features.Dashboard
     await this.FeatureBackgroundAsync();
 #line hidden
 #line 19
-        await testRunner.ThenAsync("I should see the agent selector or no-agents warning", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+        await testRunner.ThenAsync("I should see the message input field", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.SkippableFactAttribute(DisplayName="Empty state shown when no messages")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "Chat Page")]
-        [global::Xunit.TraitAttribute("Description", "Empty state shown when no messages")]
-        public async global::System.Threading.Tasks.Task EmptyStateShownWhenNoMessages()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "3";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Empty state shown when no messages", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 20
+        await testRunner.AndAsync("the message input should have placeholder \"Type a message…\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
 #line 21
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 7
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 22
-        await testRunner.ThenAsync("I should see the chat empty state", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-#line 23
-        await testRunner.AndAsync("the empty state should display \"Start a conversation\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+        await testRunner.AndAsync("the message input should have a send icon", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Message history is displayed after sending")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Agent selector populates from running agents")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Chat Page")]
-        [global::Xunit.TraitAttribute("Description", "Message history is displayed after sending")]
-        public async global::System.Threading.Tasks.Task MessageHistoryIsDisplayedAfterSending()
+        [global::Xunit.TraitAttribute("Description", "Agent selector populates from running agents")]
+        [global::Xunit.TraitAttribute("Category", "requires-agents")]
+        public async global::System.Threading.Tasks.Task AgentSelectorPopulatesFromRunningAgents()
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = new string[] {
+                    "requires-agents"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "4";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Message history is displayed after sending", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string pickleIndex = "2";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Agent selector populates from running agents", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 25
@@ -303,36 +250,27 @@ namespace JD.AI.Specs.UI.Features.Dashboard
     await this.FeatureBackgroundAsync();
 #line hidden
 #line 26
-        await testRunner.GivenAsync("an agent is selected", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+        await testRunner.ThenAsync("I should see the agent selector dropdown", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 27
-        await testRunner.WhenAsync("I type \"Hello\" in the message input", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 28
-        await testRunner.AndAsync("I send the message", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-#line 29
-        await testRunner.ThenAsync("a user message bubble should appear", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-#line 30
-        await testRunner.AndAsync("the message bubble should contain \"Hello\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+        await testRunner.AndAsync("the dropdown should contain at least one agent option", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Clear chat button is available")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="No agents warning when none running")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Chat Page")]
-        [global::Xunit.TraitAttribute("Description", "Clear chat button is available")]
-        public async global::System.Threading.Tasks.Task ClearChatButtonIsAvailable()
+        [global::Xunit.TraitAttribute("Description", "No agents warning when none running")]
+        public async global::System.Threading.Tasks.Task NoAgentsWarningWhenNoneRunning()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "5";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Clear chat button is available", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string pickleIndex = "3";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("No agents warning when none running", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 32
+#line 29
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -345,8 +283,364 @@ namespace JD.AI.Specs.UI.Features.Dashboard
 #line 7
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 33
-        await testRunner.ThenAsync("I should see the clear chat button", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line 30
+        await testRunner.GivenAsync("there are no running agents", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 31
+        await testRunner.ThenAsync("I should see \"No agents running\" warning chip", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Empty state shown when no messages")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Chat Page")]
+        [global::Xunit.TraitAttribute("Description", "Empty state shown when no messages")]
+        public async global::System.Threading.Tasks.Task EmptyStateShownWhenNoMessages()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "4";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Empty state shown when no messages", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 34
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 7
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 35
+        await testRunner.ThenAsync("I should see the chat empty state", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 36
+        await testRunner.AndAsync("the empty state should display \"Start a conversation\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 37
+        await testRunner.AndAsync("the empty state should display \"Type a message below\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Input disabled when no agent selected")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Chat Page")]
+        [global::Xunit.TraitAttribute("Description", "Input disabled when no agent selected")]
+        public async global::System.Threading.Tasks.Task InputDisabledWhenNoAgentSelected()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "5";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Input disabled when no agent selected", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 40
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 7
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 41
+        await testRunner.GivenAsync("there are no running agents", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 42
+        await testRunner.ThenAsync("the message input should be disabled", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Empty input does not send")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Chat Page")]
+        [global::Xunit.TraitAttribute("Description", "Empty input does not send")]
+        public async global::System.Threading.Tasks.Task EmptyInputDoesNotSend()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "6";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Empty input does not send", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 44
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 7
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 45
+        await testRunner.GivenAsync("an agent is selected", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 46
+        await testRunner.WhenAsync("I type \"\" in the message input", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 47
+        await testRunner.AndAsync("I press Enter in the message input", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 48
+        await testRunner.ThenAsync("no message bubble should appear", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="User message bubble appears after sending")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Chat Page")]
+        [global::Xunit.TraitAttribute("Description", "User message bubble appears after sending")]
+        [global::Xunit.TraitAttribute("Category", "requires-agents")]
+        public async global::System.Threading.Tasks.Task UserMessageBubbleAppearsAfterSending()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "requires-agents"};
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "7";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("User message bubble appears after sending", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 52
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 7
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 53
+        await testRunner.GivenAsync("an agent is selected", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 54
+        await testRunner.WhenAsync("I type \"Hello\" in the message input", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 55
+        await testRunner.AndAsync("I send the message", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 56
+        await testRunner.ThenAsync("a user message bubble should appear on the right", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 57
+        await testRunner.AndAsync("the message bubble should contain \"Hello\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 58
+        await testRunner.AndAsync("the user bubble should show \"You\" label", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 59
+        await testRunner.AndAsync("the user bubble should show a timestamp", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Agent response streams with cursor indicator")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Chat Page")]
+        [global::Xunit.TraitAttribute("Description", "Agent response streams with cursor indicator")]
+        [global::Xunit.TraitAttribute("Category", "requires-agents")]
+        public async global::System.Threading.Tasks.Task AgentResponseStreamsWithCursorIndicator()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "requires-agents"};
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "8";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Agent response streams with cursor indicator", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 62
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 7
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 63
+        await testRunner.GivenAsync("an agent is selected", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 64
+        await testRunner.WhenAsync("I type \"Hi there\" in the message input", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 65
+        await testRunner.AndAsync("I send the message", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 66
+        await testRunner.ThenAsync("a streaming indicator should appear", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 67
+        await testRunner.AndAsync("an agent response bubble should eventually appear on the left", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Clear chat button disabled when empty")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Chat Page")]
+        [global::Xunit.TraitAttribute("Description", "Clear chat button disabled when empty")]
+        public async global::System.Threading.Tasks.Task ClearChatButtonDisabledWhenEmpty()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "9";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Clear chat button disabled when empty", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 70
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 7
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 71
+        await testRunner.ThenAsync("the clear chat button should be disabled", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Clear chat removes all messages")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Chat Page")]
+        [global::Xunit.TraitAttribute("Description", "Clear chat removes all messages")]
+        [global::Xunit.TraitAttribute("Category", "requires-agents")]
+        public async global::System.Threading.Tasks.Task ClearChatRemovesAllMessages()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "requires-agents"};
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "10";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Clear chat removes all messages", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 74
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 7
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 75
+        await testRunner.GivenAsync("an agent is selected", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 76
+        await testRunner.AndAsync("I have sent a message \"test\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 77
+        await testRunner.WhenAsync("I click the clear chat button", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 78
+        await testRunner.ThenAsync("no message bubbles should be visible", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 79
+        await testRunner.AndAsync("the empty state should be displayed", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Error during chat shows snackbar")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Chat Page")]
+        [global::Xunit.TraitAttribute("Description", "Error during chat shows snackbar")]
+        [global::Xunit.TraitAttribute("Category", "requires-agents")]
+        public async global::System.Threading.Tasks.Task ErrorDuringChatShowsSnackbar()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "requires-agents"};
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "11";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Error during chat shows snackbar", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 83
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 7
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 84
+        await testRunner.GivenAsync("an agent is selected", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 85
+        await testRunner.WhenAsync("a chat error occurs", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 86
+        await testRunner.ThenAsync("an error snackbar should appear", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Page title is correct")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Chat Page")]
+        [global::Xunit.TraitAttribute("Description", "Page title is correct")]
+        public async global::System.Threading.Tasks.Task PageTitleIsCorrect()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "12";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Page title is correct", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 89
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 7
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 90
+        await testRunner.ThenAsync("the browser page title should be \"Chat — JD.AI\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
