@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\JD.AI\JD.AI.csproj" />
+    <ProjectReference Include="..\..\src\JD.AI.Telemetry\JD.AI.Telemetry.csproj" />
     <ProjectReference Include="..\..\src\JD.AI.Channels.Discord\JD.AI.Channels.Discord.csproj" />
     <ProjectReference Include="..\..\src\JD.AI.Channels.OpenClaw\JD.AI.Channels.OpenClaw.csproj" />
     <ProjectReference Include="..\..\src\JD.AI.Channels.Signal\JD.AI.Channels.Signal.csproj" />
