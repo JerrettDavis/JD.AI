@@ -102,7 +102,7 @@ public sealed class ProviderOrchestratorSelectionTests
 
 
     [Fact]
-    public void EvaluateSelection_UsesCapabilityRegistryWhenNoOverrides()
+    public void EvaluateSelection_RoutingDefaultsPreferToolCapableModels()
     {
         var models = new List<ProviderModelInfo>
         {
@@ -120,15 +120,13 @@ public sealed class ProviderOrchestratorSelectionTests
                 Capabilities: ModelCapabilities.Chat | ModelCapabilities.ToolCalling),
         };
 
-        var registry = new ModelCapabilityRegistry();
-        registry.RegisterRange(models);
-
         var decision = ProviderOrchestrator.EvaluateSelection(
             new CliOptions { PrintMode = true },
             models,
             defaultProvider: null,
             defaultModel: null,
-            capabilityRegistry: registry);
+            router: new DefaultModelRouter(),
+            routingPolicy: RoutingPolicy.Default);
 
         Assert.Equal("tool-capable", decision.SelectedModel?.Id);
         Assert.Equal("Advanced", decision.SelectedModel?.ProviderName);
