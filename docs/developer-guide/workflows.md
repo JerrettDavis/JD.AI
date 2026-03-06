@@ -185,15 +185,77 @@ public class RunSkillStep : IWorkflowStep
 }
 ```
 
-## Workflow commands
+## Workflow Enforcement
+
+The workflow enforcement layer intercepts every tool call and determines whether a structured workflow is required before the agent proceeds. It sits between the user request and the workflow engine, acting as a gatekeeper.
+
+See [Workflow Enforcement](workflow-enforcement.md) for the full DSL reference, agent roles, and enforcement modes.
+
+In relation to the content on this page: the **workflow engine** (described above) executes step sequences, while the **enforcement layer** decides *whether* a workflow must be run at all and blocks raw tool calls when a matching plan-first workflow is required. The two layers work together — enforcement selects or mandates a workflow, the engine executes it.
+
+## Conversation-to-Workflow Capture
+
+The agent can turn a completed conversation into a reusable workflow automatically. After walking through a multi-step task interactively, run:
+
+```text
+/workflow capture
+```
+
+JD.AI inspects the recent conversation history, extracts the sequence of tool calls and skill invocations, and writes a new workflow YAML to `~/.jdai/workflows/`. You are prompted to name the workflow and optionally edit the generated YAML before saving.
+
+This is the fastest way to build a workflow — do it interactively once, capture it, then replay it across any project with `/workflow run <name>`.
+
+## Workflow Versioning
+
+Every `AgentWorkflowDefinition` carries an optional `Version` field. When you refine an existing workflow (add steps, change conditions, update parameters), JD.AI creates a new version and archives the previous one:
+
+```
+~/.jdai/workflows/
+  code-review-pipeline/
+    current.yaml          ← active version
+    versions/
+      1.0.yaml
+      1.1.yaml
+      2.0.yaml
+```
+
+**Version commands:**
 
 | Command | Description |
 |---------|-------------|
-| `/workflow list` | List all saved workflows |
+| `/workflow history <name>` | List all saved versions with timestamps |
+| `/workflow rollback <name> <version>` | Make an older version the active version |
+
+Example:
+
+```text
+> /workflow history code-review-pipeline
+code-review-pipeline versions:
+  2.0  (current)  2026-03-01 — added blackboard aggregation step
+  1.1             2026-02-14 — added conditional coverage gate
+  1.0             2026-01-30 — initial version
+
+> /workflow rollback code-review-pipeline 1.1
+Rolled back code-review-pipeline to version 1.1
+```
+
+Old versions are never deleted automatically; remove them manually from `~/.jdai/workflows/<name>/versions/` if needed.
+
+## Workflow Commands Reference
+
+| Command | Description |
+|---------|-------------|
+| `/workflow list` | Show all saved workflows |
+| `/workflow show <name>` | Display workflow YAML |
 | `/workflow run <name>` | Execute a saved workflow |
-| `/workflow refine <name>` | Adjust parameters and re-run |
-| `/workflow save <name>` | Save the current conversation as a workflow |
-| `/workflow delete <name>` | Remove a saved workflow |
+| `/workflow create` | Wizard to create a new workflow |
+| `/workflow capture` | Capture recent conversation as a workflow |
+| `/workflow edit <name>` | Open workflow in editor |
+| `/workflow delete <name>` | Remove a workflow |
+| `/workflow history <name>` | Show version history |
+| `/workflow rollback <name> <version>` | Revert to an earlier version |
+| `/workflow export <name> <file>` | Export workflow to a YAML file |
+| `/workflow import <file>` | Import workflow from a YAML file |
 
 ### Example usage
 

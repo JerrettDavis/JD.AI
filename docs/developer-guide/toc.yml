@@ -14,8 +14,14 @@
   href: subagents.md
 - name: Team Orchestration
   href: orchestration.md
+- name: Credential Management
+  href: credentials.md
 - name: Workflows
   href: workflows.md
+- name: Workflow Enforcement
+  href: workflow-enforcement.md
+- name: Skills
+  href: skills.md
 - name: MCP Integration
   href: mcp-integration.md
 - name: Channel Adapters

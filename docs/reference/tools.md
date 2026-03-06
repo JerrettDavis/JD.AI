@@ -6,7 +6,7 @@ description: "All built-in tools — file, search, shell, git, web, memory, suba
 
 JD.AI provides a set of built-in tools that the AI agent invokes automatically during conversations. Each tool call is confirmed before execution unless overridden by [`/autorun`](../user-guide/common-workflows.md), [`/permissions`](../user-guide/common-workflows.md), or the `--dangerously-skip-permissions` CLI flag.
 
-Tools are grouped into twenty categories: **File**, **Search**, **Shell**, **Exec/Process Sessions**, **Git**, **Web**, **Web Search**, **Memory**, **Subagent**, **Think**, **Environment**, **Tasks**, **Code Execution**, **Clipboard**, **Questions**, **Diff/Patch**, **Batch Edit**, **Usage Tracking**, **Encoding & Crypto**, and **Tailscale Integration**.
+Tools are grouped into twenty-seven categories: **File**, **Search**, **Shell**, **Exec/Process Sessions**, **Git**, **Web**, **Web Search**, **Memory**, **Subagent**, **Think**, **Environment**, **Tasks**, **Code Execution**, **Clipboard**, **Questions**, **Diff/Patch**, **Batch Edit**, **Usage Tracking**, **Encoding & Crypto**, **Tailscale Integration**, **Multimodal**, **Code Execution (Sandboxed)**, **Task Management**, **Scheduling**, **Notebook**, **Capability Introspection**, and **Policy/Governance**.
 
 ![Tool execution showing file reading and grep](../images/demo-tools.png)
 
@@ -481,6 +481,183 @@ A typical Tailscale orchestration workflow:
 - Store Tailscale API keys and OAuth secrets using environment variables (`TAILSCALE_API_KEY`, `TAILSCALE_OAUTH_CLIENT_ID`, `TAILSCALE_OAUTH_CLIENT_SECRET`) rather than in `~/.jdai/tailscale.json` when possible.
 - Use OAuth with least-privilege scopes rather than full API keys.
 - Rotate credentials periodically and remove unused API keys from the Tailscale admin console.
+
+## Multimodal tools
+
+| Function | Description |
+|----------|-------------|
+| `capture_screenshot` | Capture a screenshot of the current screen or a specific window. |
+| `analyze_image` | Analyse an image file and describe its contents. |
+| `describe_image` | Generate a natural-language description of a provided image path or URL. |
+
+### Parameters
+
+- **`capture_screenshot`** — `target` (string?, `"screen"` or window title, default `"screen"`), `outputPath` (string?, saves to temp if omitted).
+- **`analyze_image`** — `path` (string, local file or URL), `prompt` (string?, optional analysis instruction).
+- **`describe_image`** — `path` (string, local file or URL), `detail` (string?, `"low"` / `"high"`, default `"high"`).
+
+### Example
+
+```text
+> take a screenshot and describe what you see
+⚡ Tool: capture_screenshot()
+⚡ Tool: analyze_image(path: "/tmp/screenshot.png", prompt: "What UI elements are visible?")
+```
+
+## Code execution (sandboxed) tools
+
+Sandboxed process execution with isolated language runtimes. Unlike the inline `execute_code` tool, these runners launch full interpreter processes in a sandboxed working directory with file I/O support and longer timeouts.
+
+| Function | Description |
+|----------|-------------|
+| `run_python` | Execute a Python script file or inline code in an isolated process. |
+| `run_node` | Execute a Node.js script file or inline code in an isolated process. |
+| `run_bash` | Execute a bash/shell script in an isolated sandbox. |
+
+### Parameters
+
+- **`run_python`** — `code` (string), `args` (string[]?, optional CLI args), `cwd` (string?, sandbox dir), `timeoutSeconds` (int, default `60`), `packages` (string[]?, pip-install before run).
+- **`run_node`** — `code` (string), `args` (string[]?, optional), `cwd` (string?, sandbox dir), `timeoutSeconds` (int, default `60`), `packages` (string[]?, npm-install before run).
+- **`run_bash`** — `script` (string), `cwd` (string?, sandbox dir), `timeoutSeconds` (int, default `60`), `env` (object?, extra environment variables).
+
+### Example
+
+```text
+> run a data analysis script with pandas
+⚡ Tool: run_python(code: "import pandas as pd\ndf = pd.read_csv('data.csv')\nprint(df.describe())", packages: ["pandas"])
+```
+
+## Task management tools
+
+Higher-level project task management with assignment, ownership, and due-date tracking. Complements the basic task-tracking tools with team-oriented workflow features.
+
+| Function | Description |
+|----------|-------------|
+| `assign_task` | Assign a task to a team member or agent. |
+| `set_due_date` | Set or update a due date on an existing task. |
+| `list_assigned_tasks` | List tasks assigned to a specific owner. |
+| `get_task_summary` | Return a project summary: counts by status, overdue items, and upcoming deadlines. |
+
+### Parameters
+
+- **`assign_task`** — `id` (string), `owner` (string, username or agent name).
+- **`set_due_date`** — `id` (string), `dueDate` (string, ISO 8601 date).
+- **`list_assigned_tasks`** — `owner` (string), `status` (string?, filter).
+- **`get_task_summary`** — no parameters.
+
+### Example
+
+```text
+> assign the auth task to alice with a deadline
+⚡ Tool: assign_task(id: "task-3", owner: "alice")
+⚡ Tool: set_due_date(id: "task-3", dueDate: "2025-08-01")
+```
+
+## Scheduler tools
+
+Cron-style job scheduling for one-time and recurring tasks. Jobs are persisted to the agent's store and survive restarts.
+
+| Function | Description |
+|----------|-------------|
+| `schedule_job` | Schedule a command or workflow to run at a specified time or on a cron expression. |
+| `list_jobs` | List all scheduled jobs with their next run time and status. |
+| `cancel_job` | Cancel a scheduled job by ID. |
+| `get_job_status` | Retrieve the last execution status and output of a job. |
+
+### Parameters
+
+- **`schedule_job`** — `name` (string), `command` (string), `schedule` (string, ISO 8601 datetime or cron expression like `"0 9 * * 1-5"`), `recurring` (bool, default `false`), `description` (string?, optional).
+- **`list_jobs`** — `status` (string?, `"pending"`, `"running"`, `"completed"`, `"failed"`, or `"all"`, default `"all"`).
+- **`cancel_job`** — `id` (string).
+- **`get_job_status`** — `id` (string).
+
+### Example
+
+```text
+> run the nightly build every weekday at 2am
+⚡ Tool: schedule_job(name: "nightly-build", command: "dotnet build", schedule: "0 2 * * 1-5", recurring: true)
+
+> list all scheduled jobs
+⚡ Tool: list_jobs()
+```
+
+## Notebook tools
+
+Jupyter notebook integration for cell-by-cell execution, variable inspection, and output capture.
+
+| Function | Description |
+|----------|-------------|
+| `notebook_open` | Open a Jupyter notebook file and load its cells into the current session. |
+| `notebook_run_cell` | Execute a specific cell by index and return its output. |
+| `notebook_run_all` | Execute all cells in order and return a summary of outputs. |
+| `notebook_get_vars` | Inspect the current kernel variable namespace. |
+| `notebook_export` | Export the notebook with all outputs to a file (`.ipynb` or `.html`). |
+
+### Parameters
+
+- **`notebook_open`** — `path` (string, `.ipynb` file path).
+- **`notebook_run_cell`** — `index` (int, 0-based cell index), `code` (string?, override cell source), `timeoutSeconds` (int, default `30`).
+- **`notebook_run_all`** — `timeoutSeconds` (int per cell, default `30`), `stopOnError` (bool, default `true`).
+- **`notebook_get_vars`** — `filter` (string?, regex pattern to filter variable names).
+- **`notebook_export`** — `path` (string, output file path), `format` (string, `"ipynb"` or `"html"`, default `"ipynb"`).
+
+### Example
+
+```text
+> open the analysis notebook and run all cells
+⚡ Tool: notebook_open(path: "analysis/explore.ipynb")
+⚡ Tool: notebook_run_all(stopOnError: false)
+```
+
+## Capability introspection tools
+
+Query model and runtime capabilities such as context window size, vision support, and tool-calling availability.
+
+| Function | Description |
+|----------|-------------|
+| `get_capabilities` | Return the capabilities of the currently active model. |
+| `check_vision_support` | Check whether the active model supports image/vision input. |
+| `get_context_window` | Return the maximum context window size (tokens) for the active model. |
+
+### Parameters
+
+- **`get_capabilities`** — no parameters. Returns a capability map: `contextWindow`, `vision`, `toolCalling`, `streaming`, `json_mode`.
+- **`check_vision_support`** — no parameters. Returns `true` / `false`.
+- **`get_context_window`** — no parameters. Returns token count as an integer.
+
+### Example
+
+```text
+> what can the current model do?
+⚡ Tool: get_capabilities()
+→ { contextWindow: 200000, vision: true, toolCalling: true, streaming: true }
+```
+
+## Policy and governance tools
+
+Check governance policies, validate tool permissions, and enforce budget constraints before executing operations.
+
+| Function | Description |
+|----------|-------------|
+| `check_policy` | Evaluate whether a proposed action is permitted under the active governance policy. |
+| `validate_permission` | Check whether the current session has permission to invoke a specific tool. |
+| `check_budget` | Compare estimated operation cost against the configured session budget. |
+
+### Parameters
+
+- **`check_policy`** — `action` (string, description of the proposed action), `context` (string?, optional extra context).
+- **`validate_permission`** — `tool` (string, tool function name), `args` (object?, the intended arguments).
+- **`check_budget`** — `estimatedTokens` (int), `model` (string?, defaults to active model).
+
+### Example
+
+```text
+> check if I'm allowed to push to main
+⚡ Tool: check_policy(action: "git push to main branch")
+
+> verify budget before a large summarization run
+⚡ Tool: check_budget(estimatedTokens: 50000)
+```
 
 ## OpenClaw compatibility aliases
 

@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4)
 
-AI-powered terminal assistant and multi-channel platform built on [Semantic Kernel](https://github.com/microsoft/semantic-kernel). 15 AI providers, 17 tool categories, 33+ slash commands, MCP server integration, workflow engine, subagent orchestration, team strategies, and six channel adapters — across 18 projects with 772+ tests.
+AI-powered terminal assistant and multi-channel platform built on [Semantic Kernel](https://github.com/microsoft/semantic-kernel). 15 AI providers, 27 tool categories, 33+ slash commands, MCP server integration, workflow engine, subagent orchestration, team strategies, and six channel adapters — across 18 projects with 772+ tests.
 
 ![JD.AI terminal startup](docs/images/demo-startup.png)
 ![JD.AI dashboard overview](docs/images/dashboard/dashboard-overview.png)
@@ -45,7 +45,7 @@ AI-powered terminal assistant and multi-channel platform built on [Semantic Kern
 └─────────────┘   └───────────────────┘
        │
 ┌──────▼──────────────────────────────────────┐
-│   15 AI Providers · 17 Tool Categories      │
+│   15 AI Providers · 27 Tool Categories      │
 │   Plugin SDK · Credential Store · Sessions  │
 └─────────────────────────────────────────────┘
 ```
@@ -55,10 +55,10 @@ AI-powered terminal assistant and multi-channel platform built on [Semantic Kern
 | Area | Details |
 |------|---------|
 | **AI Providers** | 15 providers — OAuth, API key, local, and AWS SDK auth (see [table below](#providers)) |
-| **Tools** | 17 categories: File, Search, Shell, Git, Web, Web Search, Memory, Subagent, Think, Environment, Tasks, Code Execution, Clipboard, Questions, Diff & Patch, Batch Edit, Usage Tracking |
+| **Tools** | 27 categories: File, Search, Shell, Git, Web, Web Search, Memory, Subagent, Think, Environment, Tasks, Code Execution, Clipboard, Questions, Diff & Patch, Batch Edit, Usage Tracking, Multimodal, Code Execution (Sandboxed), Task Management, Scheduling, Notebook, Structured Q&A, Encoding/Crypto, Capability Introspection, Policy/Governance, Session Usage |
 | **Slash Commands** | 33+ commands for model management, sessions, providers, workflows, MCP, diagnostics, and more |
 | **Subagents** | 5 types: Explore, Task, Plan, Review, General-purpose |
-| **Team Orchestration** | 4 strategies: Sequential, Fan-Out, Supervisor, Debate |
+| **Team Orchestration** | 9 strategies: Sequential, Fan-Out, Supervisor, Debate, Voting, Pipeline, MapReduce, Relay, Blackboard |
 | **MCP Integration** | `/mcp add`, `/mcp list`, `/mcp remove` — connect external tool servers |
 | **Workflows** | `/workflow run`, `/workflow list`, `/workflow refine` — composable multi-step automation |
 | **Dynamic Switching** | 5-mode ConversationTransformer (Preserve, Compact, Transform, Fresh, Cancel) with fork points |
@@ -69,7 +69,7 @@ AI-powered terminal assistant and multi-channel platform built on [Semantic Kern
 | **Global Defaults** | `~/.jdai/config.json` with per-project overrides via AtomicConfigStore |
 | **Observability** | OpenTelemetry tracing, metrics, and health checks (JD.AI.Telemetry) |
 | **Dashboard** | Blazor WebAssembly dashboard with MudBlazor UI (JD.AI.Dashboard.Wasm) |
-| **Interactive TUI** | Spectre.Console rendering with streaming, thinking display, and tab-completion |
+| **Interactive TUI** | Rich TUI Rendering: Spectre.Console rendering with Markdig markdown, syntax highlighting for 10 languages, diff view, slash-command colorization; plus streaming, thinking display, and tab-completion |
 
 ## Quick Start
 
@@ -79,6 +79,16 @@ jdai                            # Launch the TUI
 /provider add                   # Add an AI provider
 /help                           # List all commands
 ```
+
+## Screenshots
+
+**Markdown rendering with syntax highlighting, tables, and slash-command colorization:**
+
+![TUI markdown rendering](docs/images/demo-rendering.png)
+
+**Unified diff view with red/green line coloring:**
+
+![TUI diff view](docs/images/demo-diff-view.png)
 
 ## Providers
 

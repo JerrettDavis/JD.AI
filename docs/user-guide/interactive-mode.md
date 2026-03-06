@@ -158,6 +158,22 @@ fix the issues and run tests
 /output-style compact
 ```
 
+## Markdown rendering
+
+In Rich mode, JD.AI automatically renders AI responses as formatted markdown in the terminal using Markdig.
+
+Supported elements:
+- **Headings** — rendered with bold formatting and visual hierarchy
+- **Tables** — formatted as Spectre.Console ASCII tables
+- **Code blocks** — syntax highlighted for 10 languages (C#, Python, JavaScript, TypeScript, Bash, PowerShell, JSON, YAML, XML, SQL)
+- **Diffs** — unified diff format auto-detected and rendered with red/green line coloring
+
+Additional features:
+- **Diff detection** — responses containing unified diff output (`--- a/`, `+++ b/`, `@@ ... @@`) are automatically rendered with `-` lines in red and `+` lines in green.
+- **Slash-command colorization** — `/commands` referenced in prose are highlighted in cyan.
+
+See [TUI Rendering](tui-rendering.md) for complete documentation.
+
 ## Related docs
 
 - [Commands Reference](../reference/commands.md)
