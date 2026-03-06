@@ -39,6 +39,22 @@ public sealed class SettingsPage : BasePage
     // ── Error state ──
     public ILocator ErrorAlert => Page.Locator("[data-testid='settings-error']");
 
+    // ── Skeleton loading ──
+    public ILocator SettingsSkeleton => Page.Locator(".mud-skeleton");
+
+    // ── Tab icon locators ──
+    public ILocator TabIcon(string tabText) =>
+        Page.Locator($".mud-tab:has-text('{tabText}') .mud-icon-root");
+
+    // ── Tab tooltip helpers ──
+    public ILocator Tab(string tabText) =>
+        Page.Locator($".mud-tab:has-text('{tabText}')");
+
+    // ── Settings panel locators ──
+    public ILocator ServerPanel => Page.Locator(".mud-tabpanel:visible");
+    public ILocator RoutingSettingsPanel => Page.Locator(".mud-tabpanel:visible");
+    public ILocator OpenClawPanel => Page.Locator(".mud-tabpanel:visible");
+
     /// <summary>Click a settings tab by its visible text.</summary>
     public async Task ClickTabAsync(string tabText)
     {

@@ -30,12 +30,26 @@ public sealed class HomePage : BasePage
     public ILocator ActivityItems => Page.Locator("[data-testid='activity-item']");
     public ILocator ActivityEmptyState => Page.Locator("[data-testid='activity-empty']");
 
+    // ── Activity event details ──
+    public ILocator ActivityEventTypeChips => Page.Locator("[data-testid='activity-event-type']");
+    public ILocator ActivityEventMessages => Page.Locator("[data-testid='activity-event-message']");
+    public ILocator ActivityEventTimestamps => Page.Locator("[data-testid='activity-event-timestamp']");
+
     // ── OpenClaw Bridge ──
     public ILocator OpenClawBridgeSection => Page.Locator("[data-testid='openclaw-bridge']");
 
     // ── Skeleton loaders ──
+    public ILocator SkeletonStatCards => Page.Locator("[data-testid='skeleton-stat-card']");
+    public ILocator SkeletonActivity => Page.Locator("[data-testid='skeleton-activity']");
     public ILocator SkeletonCards => Page.Locator(".jd-stat-card .mud-skeleton");
 
+    // ── Connection status ──
+    public ILocator ConnectionIndicator => Page.Locator("[data-testid='connection-status']");
+
+    // ── App bar logo ──
+    public ILocator AppBarLogoText => Page.Locator("[data-testid='app-bar'] .jd-logo-text");
+    public ILocator AppBarLogoSub => Page.Locator("[data-testid='app-bar'] .jd-logo-sub");
+
     // ── Nav links for navigation tests ──
-    public ILocator AgentsNavLink => Page.Locator("a[href='/agents']");
+    public ILocator AgentsNavLink => Page.Locator("[data-testid='nav-agents']");
 }

@@ -30,6 +30,24 @@ public sealed class ProvidersPage : BasePage
     // ── Detect / refresh button ──
     public ILocator DetectButton => Page.Locator("[data-testid='refresh-button']");
 
+    // ── Skeleton loading ──
+    public ILocator SkeletonCards => Page.Locator(".jd-skeleton-card");
+
+    // ── Provider subtitle (caption text under name) ──
+    public ILocator ProviderSubtitles => Page.Locator("[data-testid='provider-card'] .mud-card-header-content .mud-typography-caption");
+
+    // ── Provider avatars ──
+    public ILocator ProviderAvatars => Page.Locator("[data-testid='provider-card'] .mud-avatar");
+
+    /// <summary>Check if a provider avatar has the success (green) color class.</summary>
+    public ILocator SuccessAvatars => Page.Locator("[data-testid='provider-card'] .mud-avatar.mud-success-text");
+
+    /// <summary>Check if a provider avatar has the error (red) color class.</summary>
+    public ILocator ErrorAvatars => Page.Locator("[data-testid='provider-card'] .mud-avatar.mud-error-text");
+
+    // ── Model ID cells with monospace font ──
+    public ILocator ModelIdCells => Page.Locator("[data-testid='provider-models'] tbody td:first-child .mud-typography");
+
     // ── Empty state ──
     public ILocator EmptyState => Page.Locator("[data-testid='providers-empty']");
     public ILocator EmptyStateText =>
