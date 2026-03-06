@@ -24,6 +24,80 @@ internal sealed record ProviderSetup(
 /// </summary>
 internal static class ProviderOrchestrator
 {
+    private sealed record ProviderDetectorRegistration(
+        string Name,
+        Func<ProviderConfigurationManager, IProviderDetector> Factory);
+
+    private sealed record ModelSelectionContext(
+        CliOptions Options,
+        IReadOnlyList<ProviderModelInfo> Models,
+        string? DefaultProvider,
+        string? DefaultModel,
+        Func<IReadOnlyList<ProviderModelInfo>, ProviderModelInfo> PromptSelector);
+
+    private sealed record ProviderModelSpecification(
+        string? ModelQuery = null,
+        string? ProviderQuery = null)
+    {
+        public bool IsSatisfiedBy(ProviderModelInfo model)
+        {
+            if (!string.IsNullOrWhiteSpace(ModelQuery) &&
+                !ContainsIgnoreCase(model.DisplayName, ModelQuery) &&
+                !ContainsIgnoreCase(model.Id, ModelQuery))
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(ProviderQuery) &&
+                !ContainsIgnoreCase(model.ProviderName, ProviderQuery))
+            {
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+    internal sealed record ModelSelectionDecision(
+        bool Handled,
+        ProviderModelInfo? SelectedModel = null,
+        string? ErrorMessage = null)
+    {
+        public static ModelSelectionDecision Continue => new(false);
+        public static ModelSelectionDecision Select(ProviderModelInfo model) => new(true, model);
+        public static ModelSelectionDecision Error(string message) => new(true, null, message);
+    }
+
+    private delegate ModelSelectionDecision SelectionPolicy(ModelSelectionContext context);
+
+    private static readonly IReadOnlyList<ProviderDetectorRegistration> DetectorManifest =
+    [
+        new(nameof(ClaudeCodeDetector), _ => new ClaudeCodeDetector()),
+        new(nameof(CopilotDetector), _ => new CopilotDetector()),
+        new(nameof(OpenAICodexDetector), _ => new OpenAICodexDetector()),
+        new(nameof(OllamaDetector), _ => new OllamaDetector()),
+        new(nameof(FoundryLocalDetector), _ => new FoundryLocalDetector()),
+        new(nameof(LocalModelDetector), _ => new LocalModelDetector()),
+        new(nameof(OpenAIDetector), config => new OpenAIDetector(config)),
+        new(nameof(AzureOpenAIDetector), config => new AzureOpenAIDetector(config)),
+        new(nameof(AnthropicDetector), config => new AnthropicDetector(config)),
+        new(nameof(GoogleGeminiDetector), config => new GoogleGeminiDetector(config)),
+        new(nameof(MistralDetector), config => new MistralDetector(config)),
+        new(nameof(AmazonBedrockDetector), config => new AmazonBedrockDetector(config)),
+        new(nameof(HuggingFaceDetector), config => new HuggingFaceDetector(config)),
+        new(nameof(OpenRouterDetector), config => new OpenRouterDetector(config)),
+        new(nameof(OpenAICompatibleDetector), config => new OpenAICompatibleDetector(config)),
+    ];
+
+    private static readonly IReadOnlyList<SelectionPolicy> SelectionPolicies =
+    [
+        EvaluateCliModelPolicy,
+        EvaluateCliProviderPolicy,
+        EvaluatePersistedDefaultPolicy,
+        EvaluateNonInteractivePolicy,
+        EvaluateInteractivePolicy,
+    ];
+
     internal static (ProviderRegistry Registry, ProviderConfigurationManager ProviderConfig, ModelMetadataProvider
         MetadataProvider)
         CreateRegistry()
@@ -32,15 +106,9 @@ internal static class ProviderOrchestrator
         var providerConfig = new ProviderConfigurationManager(credentialStore);
         var metadataProvider = new ModelMetadataProvider();
 
-        var detectors = new IProviderDetector[]
-        {
-            new ClaudeCodeDetector(), new CopilotDetector(), new OpenAICodexDetector(), new OllamaDetector(),
-            new FoundryLocalDetector(), new LocalModelDetector(), new OpenAIDetector(providerConfig),
-            new AzureOpenAIDetector(providerConfig), new AnthropicDetector(providerConfig),
-            new GoogleGeminiDetector(providerConfig), new MistralDetector(providerConfig),
-            new AmazonBedrockDetector(providerConfig), new HuggingFaceDetector(providerConfig),
-            new OpenRouterDetector(providerConfig), new OpenAICompatibleDetector(providerConfig)
-        };
+        var detectors = DetectorManifest
+            .Select(registration => registration.Factory(providerConfig))
+            .ToArray();
 
         var registry = new ProviderRegistry(detectors, metadataProvider);
         return (registry, providerConfig, metadataProvider);
@@ -65,27 +133,33 @@ internal static class ProviderOrchestrator
 
             if (preferred is { IsAvailable: true } && preferred.Models.Count > 0)
             {
-                var selected = SelectModel(
+                var fastSelection = EvaluateSelection(
                     opts,
                     preferred.Models,
                     defaultProvider,
                     defaultModel);
 
-                if (selected is not null)
+                if (fastSelection.ErrorMessage is not null)
+                {
+                    RenderSelectionError(opts, fastSelection.ErrorMessage);
+                    return null;
+                }
+
+                if (fastSelection.SelectedModel is not null)
                 {
                     if (!opts.PrintMode)
                         AnsiConsole.MarkupLine(
                             $"  [green]✓[/] [bold]{Markup.Escape(preferred.Name)}[/]: " +
                             $"{Markup.Escape(preferred.StatusMessage ?? "Using saved default")}");
 
-                    await PersistSelectionAsync(configStore, projectPath, selected).ConfigureAwait(false);
-                    var kernelFast = registry.BuildKernel(selected);
+                    await PersistSelectionAsync(configStore, projectPath, fastSelection.SelectedModel).ConfigureAwait(false);
+                    var kernelFast = registry.BuildKernel(fastSelection.SelectedModel);
                     return new ProviderSetup(
                         registry,
                         providerConfig,
                         metadataProvider,
                         preferred.Models,
-                        selected,
+                        fastSelection.SelectedModel,
                         kernelFast);
                 }
             }
@@ -107,83 +181,135 @@ internal static class ProviderOrchestrator
             return null;
         }
 
-        var selectedModel = SelectModel(opts, allModels, defaultProvider, defaultModel);
-        if (selectedModel is null) return null;
+        var selection = EvaluateSelection(opts, allModels, defaultProvider, defaultModel);
+        if (selection.ErrorMessage is not null)
+        {
+            RenderSelectionError(opts, selection.ErrorMessage);
+            return null;
+        }
 
-        await PersistSelectionAsync(configStore, projectPath, selectedModel).ConfigureAwait(false);
-        var kernel = registry.BuildKernel(selectedModel);
+        if (selection.SelectedModel is null)
+            return null;
 
-        return new ProviderSetup(registry, providerConfig, metadataProvider, allModels, selectedModel, kernel);
+        await PersistSelectionAsync(configStore, projectPath, selection.SelectedModel).ConfigureAwait(false);
+        var kernel = registry.BuildKernel(selection.SelectedModel);
+
+        return new ProviderSetup(registry, providerConfig, metadataProvider, allModels, selection.SelectedModel, kernel);
     }
 
-    private static ProviderModelInfo? SelectModel(
+    internal static ModelSelectionDecision EvaluateSelection(
         CliOptions opts,
         IReadOnlyList<ProviderModelInfo> allModels,
         string? defaultProvider,
-        string? defaultModel)
+        string? defaultModel,
+        Func<IReadOnlyList<ProviderModelInfo>, ProviderModelInfo>? promptSelector = null)
     {
-        if (opts.CliModel != null)
+        var context = new ModelSelectionContext(
+            opts,
+            allModels,
+            defaultProvider,
+            defaultModel,
+            promptSelector ?? PromptForModel);
+
+        foreach (var policy in SelectionPolicies)
         {
-            var candidates = allModels.Where(m =>
-                    m.DisplayName.Contains(opts.CliModel, StringComparison.OrdinalIgnoreCase) ||
-                    m.Id.Contains(opts.CliModel, StringComparison.OrdinalIgnoreCase)).
-                ToList();
-
-            if (opts.CliProvider != null)
-                candidates = candidates.Where(m =>
-                        m.ProviderName.Contains(opts.CliProvider, StringComparison.OrdinalIgnoreCase)).
-                    ToList();
-
-            if (candidates.Count == 0)
-            {
-                AnsiConsole.MarkupLine($"[red]No model matching '{Markup.Escape(opts.CliModel)}' found.[/]");
-                return null;
-            }
-
-            return candidates[0];
+            var decision = policy(context);
+            if (decision.Handled)
+                return decision;
         }
 
-        if (opts.CliProvider != null)
+        return ModelSelectionDecision.Error("Unable to select a model.");
+    }
+
+    private static ModelSelectionDecision EvaluateCliModelPolicy(ModelSelectionContext context)
+    {
+        if (string.IsNullOrWhiteSpace(context.Options.CliModel))
+            return ModelSelectionDecision.Continue;
+
+        var candidates = FilterCandidates(
+            context.Models,
+            new ProviderModelSpecification(
+                ModelQuery: context.Options.CliModel,
+                ProviderQuery: context.Options.CliProvider));
+
+        if (candidates.Count == 0)
+            return ModelSelectionDecision.Error($"No model matching '{context.Options.CliModel}' found.");
+
+        return ModelSelectionDecision.Select(candidates[0]);
+    }
+
+    private static ModelSelectionDecision EvaluateCliProviderPolicy(ModelSelectionContext context)
+    {
+        if (!string.IsNullOrWhiteSpace(context.Options.CliModel) ||
+            string.IsNullOrWhiteSpace(context.Options.CliProvider))
         {
-            var candidates = allModels.Where(m =>
-                    m.ProviderName.Contains(opts.CliProvider, StringComparison.OrdinalIgnoreCase)).
-                ToList();
-
-            if (candidates.Count == 0)
-            {
-                AnsiConsole.MarkupLine($"[red]No models from provider '{Markup.Escape(opts.CliProvider)}' found.[/]");
-                return null;
-            }
-
-            return candidates.Count == 1 || opts.PrintMode
-                ? candidates[0]
-                : PromptForModel(candidates);
+            return ModelSelectionDecision.Continue;
         }
 
-        List<ProviderModelInfo>? defaultCandidates = null;
-
-        if (defaultModel is not null)
+        var candidates = FilterCandidates(
+            context.Models,
+            new ProviderModelSpecification(ProviderQuery: context.Options.CliProvider));
+        if (candidates.Count == 0)
         {
-            defaultCandidates = allModels.Where(m =>
-                    m.DisplayName.Contains(defaultModel, StringComparison.OrdinalIgnoreCase) ||
-                    m.Id.Contains(defaultModel, StringComparison.OrdinalIgnoreCase)).
-                ToList();
-
-            if (defaultProvider is not null)
-                defaultCandidates = defaultCandidates.Where(m =>
-                        m.ProviderName.Contains(defaultProvider, StringComparison.OrdinalIgnoreCase)).
-                    ToList();
+            return ModelSelectionDecision.Error(
+                $"No models from provider '{context.Options.CliProvider}' found.");
         }
-        else if (defaultProvider is not null)
-            defaultCandidates = allModels.Where(m =>
-                    m.ProviderName.Contains(defaultProvider, StringComparison.OrdinalIgnoreCase)).
-                ToList();
 
-        if (defaultCandidates is { Count: > 0 }) return defaultCandidates[0];
+        if (candidates.Count == 1 || context.Options.PrintMode)
+            return ModelSelectionDecision.Select(candidates[0]);
 
-        if (allModels.Count == 1 || opts.PrintMode) return allModels[0];
+        return ModelSelectionDecision.Select(context.PromptSelector(candidates));
+    }
 
-        return PromptForModel(allModels);
+    private static ModelSelectionDecision EvaluatePersistedDefaultPolicy(ModelSelectionContext context)
+    {
+        if (string.IsNullOrWhiteSpace(context.DefaultModel) &&
+            string.IsNullOrWhiteSpace(context.DefaultProvider))
+        {
+            return ModelSelectionDecision.Continue;
+        }
+
+        var defaultCandidates = FilterCandidates(
+            context.Models,
+            new ProviderModelSpecification(
+                ModelQuery: context.DefaultModel,
+                ProviderQuery: context.DefaultProvider));
+
+        return defaultCandidates.Count > 0
+            ? ModelSelectionDecision.Select(defaultCandidates[0])
+            : ModelSelectionDecision.Continue;
+    }
+
+    private static ModelSelectionDecision EvaluateNonInteractivePolicy(ModelSelectionContext context)
+    {
+        if (context.Models.Count == 1 || context.Options.PrintMode)
+            return ModelSelectionDecision.Select(context.Models[0]);
+
+        return ModelSelectionDecision.Continue;
+    }
+
+    private static ModelSelectionDecision EvaluateInteractivePolicy(ModelSelectionContext context)
+    {
+        if (context.Models.Count == 0)
+            return ModelSelectionDecision.Error("No models available.");
+
+        return ModelSelectionDecision.Select(context.PromptSelector(context.Models));
+    }
+
+    private static List<ProviderModelInfo> FilterCandidates(
+        IReadOnlyList<ProviderModelInfo> models,
+        ProviderModelSpecification specification) =>
+        models.Where(specification.IsSatisfiedBy).ToList();
+
+    private static bool ContainsIgnoreCase(string source, string value) =>
+        source.Contains(value, StringComparison.OrdinalIgnoreCase);
+
+    private static void RenderSelectionError(CliOptions opts, string message)
+    {
+        if (opts.PrintMode)
+            Console.Error.WriteLine(message);
+        else
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(message)}[/]");
     }
 
     private static async Task PersistSelectionAsync(
