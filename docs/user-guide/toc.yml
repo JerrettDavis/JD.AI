@@ -34,5 +34,9 @@
   href: org-instructions.md
 - name: Shared Workflow Store
   href: workflow-store.md
+- name: TUI Rendering
+  href: tui-rendering.md
+- name: Output Styles and Themes
+  href: output-styles.md
 - name: Troubleshooting
   href: troubleshooting.md
