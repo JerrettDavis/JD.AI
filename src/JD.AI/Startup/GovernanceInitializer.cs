@@ -127,14 +127,15 @@ internal static class GovernanceInitializer
         kernel.Plugins.AddFromObject(
             new ToolDiscoveryTools(kernel, loadoutRegistry, allPlugins), "toolDiscovery");
 
-        // Agent definition registry — scan user and project-level agent directories
-        var agentRegistry = new AgentDefinitionRegistry();
+        // Agent definition registry — file-backed versioned registry + memory cache
+        var agentRootPath = Path.Combine(DataDirectories.Root, "agents");
+        var agentRegistry = new FileAgentDefinitionRegistry(agentRootPath);
         var agentLoader = new FileAgentDefinitionLoader(
             agentRegistry,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<FileAgentDefinitionLoader>.Instance);
         var agentSearchPaths = new[]
         {
-            Path.Combine(DataDirectories.Root, "agents"),
+            Path.Combine(agentRootPath, AgentEnvironments.Dev),
             Path.Combine(projectPath, "agents"),
             Path.Combine(projectPath, ".agents"),
         };
