@@ -232,7 +232,7 @@ public static class SlashCommandCatalog
 
     public static IReadOnlyList<SlashCommandDescriptor> CompletionEntries { get; } = BuildCompletionEntries();
 
-    private static readonly IReadOnlyDictionary<string, SlashCommandId> DispatchMap = BuildDispatchMap();
+    private static readonly Dictionary<string, SlashCommandId> DispatchMap = BuildDispatchMap();
 
     public static string BuildHelpText()
     {
@@ -261,7 +261,7 @@ public static class SlashCommandCatalog
         return normalized.ToUpperInvariant();
     }
 
-    private static IReadOnlyList<SlashCommandDescriptor> BuildCompletionEntries()
+    private static List<SlashCommandDescriptor> BuildCompletionEntries()
     {
         var entries = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -287,7 +287,7 @@ public static class SlashCommandCatalog
             .ToList();
     }
 
-    private static IReadOnlyDictionary<string, SlashCommandId> BuildDispatchMap()
+    private static Dictionary<string, SlashCommandId> BuildDispatchMap()
     {
         var dispatch = new Dictionary<string, SlashCommandId>(StringComparer.Ordinal);
         foreach (var definition in Definitions)
