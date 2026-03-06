@@ -138,6 +138,12 @@ public sealed class AgentSession
     public IAgentDefinitionRegistry? AgentDefinitionRegistry { get; set; }
 
     /// <summary>
+    /// Approval service for human-in-the-loop or policy-based operation gates.
+    /// When <c>null</c>, approval is not enforced.
+    /// </summary>
+    public JD.AI.Core.Governance.IApprovalService? ApprovalService { get; set; }
+
+    /// <summary>
     /// When true, supported providers can automatically enable prompt caching.
     /// </summary>
     public bool PromptCachingEnabled { get; set; } = true;
