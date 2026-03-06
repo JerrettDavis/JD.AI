@@ -95,6 +95,39 @@ public sealed class ProviderOrchestratorSelectionTests
         Assert.Equal("claude-sonnet", decision.SelectedModel?.Id);
     }
 
+
+    [Fact]
+    public void EvaluateSelection_UsesCapabilityRegistryWhenNoOverrides()
+    {
+        var models = new List<ProviderModelInfo>
+        {
+            new(
+                "chat-only",
+                "Chat Only",
+                "Basic",
+                ContextWindowTokens: 16_384,
+                Capabilities: ModelCapabilities.Chat),
+            new(
+                "tool-capable",
+                "Tool Capable",
+                "Advanced",
+                ContextWindowTokens: 128_000,
+                Capabilities: ModelCapabilities.Chat | ModelCapabilities.ToolCalling),
+        };
+
+        var registry = new ModelCapabilityRegistry();
+        registry.RegisterRange(models);
+
+        var decision = ProviderOrchestrator.EvaluateSelection(
+            new CliOptions { PrintMode = true },
+            models,
+            defaultProvider: null,
+            defaultModel: null,
+            capabilityRegistry: registry);
+
+        Assert.Equal("tool-capable", decision.SelectedModel?.Id);
+        Assert.Equal("Advanced", decision.SelectedModel?.ProviderName);
+    }
     [Fact]
     public void EvaluateSelection_CliModelNotFoundReturnsError()
     {

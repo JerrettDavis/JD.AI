@@ -151,4 +151,27 @@ public sealed class ProviderRegistryTests
         await _detector1.Received(2).DetectAsync(Arg.Any<CancellationToken>());
         await _detector2.Received(2).DetectAsync(Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task DetectProvidersAsync_PopulatesCapabilityRegistry()
+    {
+        _detector1.DetectAsync(Arg.Any<CancellationToken>())
+            .Returns(new ProviderInfo("Provider1", true, "OK", [
+                new ProviderModelInfo(
+                    "tool-model",
+                    "Tool Model",
+                    "Provider1",
+                    Capabilities: ModelCapabilities.Chat | ModelCapabilities.ToolCalling),
+            ]));
+
+        var registry = new ProviderRegistry([_detector1]);
+        await registry.DetectProvidersAsync();
+
+        var matches = registry.CapabilityRegistry.FindModels(
+            ModelCapability.ChatCompletion | ModelCapability.ToolCalling);
+
+        Assert.Single(matches);
+        Assert.Equal("tool-model", matches[0].ModelId);
+        Assert.Equal("Provider1", matches[0].ProviderName);
+    }
 }
