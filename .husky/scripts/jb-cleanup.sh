@@ -5,8 +5,7 @@ set -euo pipefail
 # Wraps jb cleanupcode to handle exit code 3 (no items found)
 # as success, since that's expected when no .cs files are staged.
 #
-# Uses the custom "Pre-commit" profile (defined in .DotSettings)
-# which only applies formatting + using optimization.
+# Uses "Built-in: Reformat Code" which only applies formatting.
 # Does NOT apply code transformations (var style, brace removal,
 # naming conventions, etc.) to prevent silently reverting semantic
 # changes during git hooks.
@@ -19,7 +18,7 @@ if [ -z "$FILES" ]; then
 fi
 
 dotnet jb cleanupcode JD.AI.slnx \
-  --profile="Pre-commit" \
+  --profile="Built-in: Reformat Code" \
   --include="$FILES" \
   --no-build \
   || rc=$?

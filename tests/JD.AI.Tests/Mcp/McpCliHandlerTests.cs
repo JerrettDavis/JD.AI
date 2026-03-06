@@ -1,18 +1,19 @@
 using System.Text.Json;
 using JD.AI.Commands;
+using JD.AI.Core.Config;
 
 namespace JD.AI.Tests.Mcp;
 
 /// <summary>
-/// Tests for <see cref="McpCliHandler"/> covering argument parsing and output.
-/// Uses a temporary JD.AI config file via the JDAI_DATA_DIR environment variable
-/// so tests are isolated from real user config.
+///     Tests for <see cref="McpCliHandler" /> covering argument parsing and output.
+///     Uses a temporary JD.AI config file via the JDAI_DATA_DIR environment variable
+///     so tests are isolated from real user config.
 /// </summary>
-[Collection("Console")]
+[Collection("DataDirectories")]
 public sealed class McpCliHandlerTests : IDisposable
 {
-    private readonly string _tempDir;
     private readonly string _origDataDir;
+    private readonly string _tempDir;
 
     public McpCliHandlerTests()
     {
@@ -23,17 +24,23 @@ public sealed class McpCliHandlerTests : IDisposable
         Environment.SetEnvironmentVariable("JDAI_DATA_DIR", _tempDir);
 
         // Reset DataDirectories so it picks up the new env var
-        JD.AI.Core.Config.DataDirectories.Reset();
+        DataDirectories.Reset();
     }
 
     public void Dispose()
     {
         Environment.SetEnvironmentVariable("JDAI_DATA_DIR",
             string.IsNullOrEmpty(_origDataDir) ? null : _origDataDir);
-        JD.AI.Core.Config.DataDirectories.Reset();
+        DataDirectories.Reset();
 
-        try { Directory.Delete(_tempDir, recursive: true); }
-        catch { /* best effort */ }
+        try
+        {
+            Directory.Delete(_tempDir, true);
+        }
+        catch
+        {
+            /* best effort */
+        }
     }
 
     [Fact]
@@ -51,15 +58,9 @@ public sealed class McpCliHandlerTests : IDisposable
         var jdAiCount = 0;
         foreach (var entry in doc.RootElement.EnumerateArray())
         {
-            if (!entry.TryGetProperty("sourceProvider", out var sourceProvider))
-            {
-                continue;
-            }
+            if (!entry.TryGetProperty("sourceProvider", out var sourceProvider)) continue;
 
-            if (string.Equals(sourceProvider.GetString(), "JD.AI", StringComparison.OrdinalIgnoreCase))
-            {
-                jdAiCount++;
-            }
+            if (string.Equals(sourceProvider.GetString(), "JD.AI", StringComparison.OrdinalIgnoreCase)) jdAiCount++;
         }
 
         Assert.Equal(0, jdAiCount);
@@ -68,9 +69,8 @@ public sealed class McpCliHandlerTests : IDisposable
     [Fact]
     public async Task Add_Http_WritesServerAndReturnsZero()
     {
-        var result = await CaptureStdoutAsync(
-            () => McpCliHandler.RunAsync(
-                ["add", "notion", "--transport", "http", "https://mcp.notion.com/mcp"]));
+        var result = await CaptureStdoutAsync(() => McpCliHandler.RunAsync(
+            ["add", "notion", "--transport", "http", "https://mcp.notion.com/mcp"]));
 
         Assert.Equal(0, result.ExitCode);
         Assert.Contains("notion", result.Output);
@@ -82,10 +82,11 @@ public sealed class McpCliHandlerTests : IDisposable
     [Fact]
     public async Task Add_Stdio_WritesServerAndReturnsZero()
     {
-        var result = await CaptureStdoutAsync(
-            () => McpCliHandler.RunAsync(
-                ["add", "azure", "--transport", "stdio",
-                 "--command", "npx", "--args", "-y", "@azure-devops/mcp", "Quiktrip"]));
+        var result = await CaptureStdoutAsync(() => McpCliHandler.RunAsync(
+        [
+            "add", "azure", "--transport", "stdio",
+            "--command", "npx", "--args", "-y", "@azure-devops/mcp", "Quiktrip"
+        ]));
 
         Assert.Equal(0, result.ExitCode);
         Assert.Contains("azure", result.Output);
@@ -94,8 +95,7 @@ public sealed class McpCliHandlerTests : IDisposable
     [Fact]
     public async Task Add_MissingName_ReturnsOne()
     {
-        var result = await CaptureStderrAsync(
-            () => McpCliHandler.RunAsync(["add"]));
+        var result = await CaptureStderrAsync(() => McpCliHandler.RunAsync(["add"]));
 
         Assert.Equal(1, result.ExitCode);
     }
@@ -103,8 +103,7 @@ public sealed class McpCliHandlerTests : IDisposable
     [Fact]
     public async Task Add_MissingTransport_ReturnsOne()
     {
-        var result = await CaptureStderrAsync(
-            () => McpCliHandler.RunAsync(["add", "myserver"]));
+        var result = await CaptureStderrAsync(() => McpCliHandler.RunAsync(["add", "myserver"]));
 
         Assert.Equal(1, result.ExitCode);
     }
@@ -112,8 +111,8 @@ public sealed class McpCliHandlerTests : IDisposable
     [Fact]
     public async Task Add_UnknownTransport_ReturnsOne()
     {
-        var result = await CaptureStderrAsync(
-            () => McpCliHandler.RunAsync(["add", "srv", "--transport", "ftp", "server.example.com"]));
+        var result = await CaptureStderrAsync(() =>
+            McpCliHandler.RunAsync(["add", "srv", "--transport", "ftp", "server.example.com"]));
 
         Assert.Equal(1, result.ExitCode);
     }
@@ -124,8 +123,7 @@ public sealed class McpCliHandlerTests : IDisposable
         await McpCliHandler.RunAsync(
             ["add", "to-remove", "--transport", "http", "https://example.com"]);
 
-        var result = await CaptureStdoutAsync(
-            () => McpCliHandler.RunAsync(["remove", "to-remove"]));
+        var result = await CaptureStdoutAsync(() => McpCliHandler.RunAsync(["remove", "to-remove"]));
 
         Assert.Equal(0, result.ExitCode);
 
@@ -146,8 +144,7 @@ public sealed class McpCliHandlerTests : IDisposable
         await McpCliHandler.RunAsync(
             ["add", "svc", "--transport", "http", "https://example.com"]);
 
-        var result = await CaptureStdoutAsync(
-            () => McpCliHandler.RunAsync(["disable", "svc"]));
+        var result = await CaptureStdoutAsync(() => McpCliHandler.RunAsync(["disable", "svc"]));
 
         Assert.Equal(0, result.ExitCode);
         Assert.Contains("disabled", result.Output);
@@ -160,8 +157,7 @@ public sealed class McpCliHandlerTests : IDisposable
             ["add", "svc", "--transport", "http", "https://example.com"]);
         await McpCliHandler.RunAsync(["disable", "svc"]);
 
-        var result = await CaptureStdoutAsync(
-            () => McpCliHandler.RunAsync(["enable", "svc"]));
+        var result = await CaptureStdoutAsync(() => McpCliHandler.RunAsync(["enable", "svc"]));
 
         Assert.Equal(0, result.ExitCode);
         Assert.Contains("enabled", result.Output);
@@ -173,11 +169,12 @@ public sealed class McpCliHandlerTests : IDisposable
         await McpCliHandler.RunAsync(
             ["add", "notion", "--transport", "http", "https://mcp.notion.com/mcp"]);
         await McpCliHandler.RunAsync(
-            ["add", "azure", "--transport", "stdio",
-             "--command", "npx", "--args", "-y", "@azure/mcp"]);
+        [
+            "add", "azure", "--transport", "stdio",
+            "--command", "npx", "--args", "-y", "@azure/mcp"
+        ]);
 
-        var result = await CaptureStdoutAsync(
-            () => McpCliHandler.RunAsync(["list", "--json"]));
+        var result = await CaptureStdoutAsync(() => McpCliHandler.RunAsync(["list", "--json"]));
 
         Assert.Equal(0, result.ExitCode);
 
@@ -191,19 +188,14 @@ public sealed class McpCliHandlerTests : IDisposable
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var entry in doc.RootElement.EnumerateArray())
         {
-            if (!entry.TryGetProperty("name", out var nameProp))
-            {
-                continue;
-            }
+            if (!entry.TryGetProperty("name", out var nameProp)) continue;
 
             var name = nameProp.GetString();
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                continue;
-            }
+            if (string.IsNullOrWhiteSpace(name)) continue;
 
             names.Add(name);
         }
+
         Assert.Contains("notion", names);
         Assert.Contains("azure", names);
     }
@@ -211,8 +203,7 @@ public sealed class McpCliHandlerTests : IDisposable
     [Fact]
     public async Task Help_ReturnsZero()
     {
-        var result = await CaptureStdoutAsync(
-            () => McpCliHandler.RunAsync(["--help"]));
+        var result = await CaptureStdoutAsync(() => McpCliHandler.RunAsync(["--help"]));
 
         Assert.Equal(0, result.ExitCode);
         Assert.Contains("jdai mcp", result.Output);
@@ -242,8 +233,7 @@ public sealed class McpCliHandlerTests : IDisposable
     [Fact]
     public async Task UnknownSubcommand_ReturnsOne()
     {
-        var result = await CaptureStderrAsync(
-            () => McpCliHandler.RunAsync(["boguscommand"]));
+        var result = await CaptureStderrAsync(() => McpCliHandler.RunAsync(["boguscommand"]));
 
         Assert.Equal(1, result.ExitCode);
     }

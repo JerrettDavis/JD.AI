@@ -3,7 +3,7 @@ using JD.AI.Rendering;
 namespace JD.AI.Commands;
 
 /// <summary>
-/// Single source of truth for slash-command routing/help/completion metadata.
+///     Single source of truth for slash-command routing/help/completion metadata.
 /// </summary>
 public static class SlashCommandCatalog
 {
@@ -29,8 +29,8 @@ public static class SlashCommandCatalog
             "Switch to a model",
             AdditionalCompletions:
             [
-                new("/model search", "Search for models across all providers"),
-                new("/model url", "Pull a model by URL or identifier"),
+                new SlashCommandDescriptor("/model search", "Search for models across all providers"),
+                new SlashCommandDescriptor("/model url", "Pull a model by URL or identifier")
             ]),
         new(
             SlashCommandId.Providers,
@@ -45,10 +45,10 @@ public static class SlashCommandCatalog
             "Manage provider (add|remove|test|list)",
             AdditionalCompletions:
             [
-                new("/provider add", "Configure an API-key provider"),
-                new("/provider remove", "Remove provider credentials"),
-                new("/provider test", "Test provider connectivity"),
-                new("/provider list", "List all providers with status"),
+                new SlashCommandDescriptor("/provider add", "Configure an API-key provider"),
+                new SlashCommandDescriptor("/provider remove", "Remove provider credentials"),
+                new SlashCommandDescriptor("/provider test", "Test provider connectivity"),
+                new SlashCommandDescriptor("/provider list", "List all providers with status")
             ]),
         new(SlashCommandId.Clear, "/clear", "/clear", "Clear chat history"),
         new(SlashCommandId.Compact, "/compact", "/compact", "Force context compaction"),
@@ -77,12 +77,12 @@ public static class SlashCommandCatalog
             "Manage plugins (list/install/enable/disable/update/uninstall/info)",
             AdditionalCompletions:
             [
-                new("/plugins install", "Install plugin from path or URL"),
-                new("/plugins enable", "Enable an installed plugin"),
-                new("/plugins disable", "Disable an installed plugin"),
-                new("/plugins update", "Update an installed plugin (or all plugins)"),
-                new("/plugins uninstall", "Uninstall a plugin"),
-                new("/plugins info", "Show plugin details"),
+                new SlashCommandDescriptor("/plugins install", "Install plugin from path or URL"),
+                new SlashCommandDescriptor("/plugins enable", "Enable an installed plugin"),
+                new SlashCommandDescriptor("/plugins disable", "Disable an installed plugin"),
+                new SlashCommandDescriptor("/plugins update", "Update an installed plugin (or all plugins)"),
+                new SlashCommandDescriptor("/plugins uninstall", "Uninstall a plugin"),
+                new SlashCommandDescriptor("/plugins info", "Show plugin details")
             ]),
         new(
             SlashCommandId.Checkpoint,
@@ -97,20 +97,20 @@ public static class SlashCommandCatalog
             "Manage workflows (list|show|create|compose|dry-run|export|replay|refine|from-history|catalog|publish|install|search|versions)",
             AdditionalCompletions:
             [
-                new("/workflow list", "List local workflows"),
-                new("/workflow show", "Show a workflow"),
-                new("/workflow create", "Generate a workflow from text"),
-                new("/workflow compose", "Compose multiple workflows"),
-                new("/workflow dry-run", "Preview workflow execution"),
-                new("/workflow export", "Export a workflow"),
-                new("/workflow replay", "Replay workflow steps"),
-                new("/workflow refine", "Refine a workflow using model feedback"),
-                new("/workflow from-history", "Extract a workflow from session history"),
-                new("/workflow catalog", "List shared workflow catalog"),
-                new("/workflow publish", "Publish workflow to shared store"),
-                new("/workflow install", "Install workflow from shared store"),
-                new("/workflow search", "Search shared workflows"),
-                new("/workflow versions", "List shared workflow versions"),
+                new SlashCommandDescriptor("/workflow list", "List local workflows"),
+                new SlashCommandDescriptor("/workflow show", "Show a workflow"),
+                new SlashCommandDescriptor("/workflow create", "Generate a workflow from text"),
+                new SlashCommandDescriptor("/workflow compose", "Compose multiple workflows"),
+                new SlashCommandDescriptor("/workflow dry-run", "Preview workflow execution"),
+                new SlashCommandDescriptor("/workflow export", "Export a workflow"),
+                new SlashCommandDescriptor("/workflow replay", "Replay workflow steps"),
+                new SlashCommandDescriptor("/workflow refine", "Refine a workflow using model feedback"),
+                new SlashCommandDescriptor("/workflow from-history", "Extract a workflow from session history"),
+                new SlashCommandDescriptor("/workflow catalog", "List shared workflow catalog"),
+                new SlashCommandDescriptor("/workflow publish", "Publish workflow to shared store"),
+                new SlashCommandDescriptor("/workflow install", "Install workflow from shared store"),
+                new SlashCommandDescriptor("/workflow search", "Search shared workflows"),
+                new SlashCommandDescriptor("/workflow versions", "List shared workflow versions")
             ]),
         new(
             SlashCommandId.Spinner,
@@ -195,10 +195,10 @@ public static class SlashCommandCatalog
             "Manage default provider/model (global & per-project)",
             AdditionalCompletions:
             [
-                new("/default provider", "Set global default provider"),
-                new("/default model", "Set global default model"),
-                new("/default project provider", "Set project default provider"),
-                new("/default project model", "Set project default model"),
+                new SlashCommandDescriptor("/default provider", "Set global default provider"),
+                new SlashCommandDescriptor("/default model", "Set global default model"),
+                new SlashCommandDescriptor("/default project provider", "Set project default provider"),
+                new SlashCommandDescriptor("/default project model", "Set project default model")
             ]),
         new(
             SlashCommandId.ModelInfo,
@@ -207,7 +207,7 @@ public static class SlashCommandCatalog
             "Show model metadata (context, cost, capabilities)",
             AdditionalCompletions:
             [
-                new("/model-info refresh", "Force-refresh model metadata from LiteLLM"),
+                new SlashCommandDescriptor("/model-info refresh", "Force-refresh model metadata from LiteLLM")
             ]),
         new(
             SlashCommandId.Trace,
@@ -224,23 +224,23 @@ public static class SlashCommandCatalog
             "/quit",
             "/quit",
             "Exit jdai",
-            Aliases: ["/exit"]),
+            Aliases: ["/exit"])
     ];
+
+    // DispatchMap must be declared after Definitions (C# initializes static fields in declaration order)
+    private static readonly Dictionary<string, SlashCommandId> DispatchMap = BuildDispatchMap();
 
     public static IReadOnlyList<SlashCommandHelpEntry> HelpEntries { get; } =
         Definitions.Select(static d => new SlashCommandHelpEntry(d.HelpSignature, d.HelpDescription)).ToList();
 
     public static IReadOnlyList<SlashCommandDescriptor> CompletionEntries { get; } = BuildCompletionEntries();
 
-    private static readonly Dictionary<string, SlashCommandId> DispatchMap = BuildDispatchMap();
-
     public static string BuildHelpText()
     {
         var maxUsageLength = HelpEntries.Max(static h => h.Usage.Length);
-        var lines = HelpEntries
-            .Select(h => $"  {h.Usage.PadRight(maxUsageLength)} — {h.Description}");
+        var lines = HelpEntries.Select(h => $"  {h.Usage.PadRight(maxUsageLength)} — {h.Description}");
         return "Available commands (all accept /jdai- prefix, e.g. /jdai-config):\n" +
-            string.Join('\n', lines);
+               string.Join('\n', lines);
     }
 
     public static bool TryResolveDispatch(string commandToken, out SlashCommandId id) =>
@@ -271,20 +271,13 @@ public static class SlashCommandCatalog
                 continue;
 
             entries[definition.Command] = definition.CompletionDescription;
-            foreach (var alias in definition.Aliases)
-            {
-                entries[alias] = definition.CompletionDescription;
-            }
+            foreach (var alias in definition.Aliases) entries[alias] = definition.CompletionDescription;
 
             foreach (var additional in definition.AdditionalCompletions)
-            {
                 entries[additional.Command] = additional.Description;
-            }
         }
 
-        return entries
-            .Select(static kvp => new SlashCommandDescriptor(kvp.Key, kvp.Value))
-            .ToList();
+        return entries.Select(static kvp => new SlashCommandDescriptor(kvp.Key, kvp.Value)).ToList();
     }
 
     private static Dictionary<string, SlashCommandId> BuildDispatchMap()
@@ -293,10 +286,7 @@ public static class SlashCommandCatalog
         foreach (var definition in Definitions)
         {
             RegisterDispatchToken(dispatch, definition.Command, definition.Id);
-            foreach (var alias in definition.Aliases)
-            {
-                RegisterDispatchToken(dispatch, alias, definition.Id);
-            }
+            foreach (var alias in definition.Aliases) RegisterDispatchToken(dispatch, alias, definition.Id);
         }
 
         return dispatch;
@@ -314,10 +304,7 @@ public static class SlashCommandCatalog
 
     public static void RegisterCompletions(CompletionProvider completionProvider)
     {
-        foreach (var entry in CompletionEntries)
-        {
-            completionProvider.Register(entry.Command, entry.Description);
-        }
+        foreach (var entry in CompletionEntries) completionProvider.Register(entry.Command, entry.Description);
     }
 }
 
@@ -406,5 +393,5 @@ public enum SlashCommandId
     ModelInfo,
     Trace,
     Shortcuts,
-    Quit,
+    Quit
 }
