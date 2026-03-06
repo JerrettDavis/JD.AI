@@ -48,6 +48,12 @@ public sealed class ToolPolicy
 {
     public IList<string> Allowed { get; set; } = [];
     public IList<string> Denied { get; set; } = [];
+
+    /// <summary>
+    /// Tool names that require explicit approval via <see cref="IApprovalService"/>
+    /// before invocation, regardless of safety tier.
+    /// </summary>
+    public IList<string> RequireApprovalFor { get; set; } = [];
 }
 
 public sealed class ProviderPolicy
@@ -118,6 +124,12 @@ public sealed class WorkflowPolicy
     /// Deny takes precedence over allow.
     /// </summary>
     public IList<string> PublishDenied { get; set; } = [];
+
+    /// <summary>
+    /// When <c>true</c>, workflow execution requires explicit approval from
+    /// <see cref="IApprovalService"/> before any workflow step runs.
+    /// </summary>
+    public bool RequireApprovalGate { get; set; }
 
 #pragma warning restore CA2227
 }

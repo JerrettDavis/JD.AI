@@ -70,11 +70,13 @@ public static class PolicyResolver
         var allAllowed = specs.Where(s => s.Allowed.Count > 0).Select(s => s.Allowed).ToList();
         var mergedAllowed = IntersectAllowedLists(allAllowed);
         var mergedDenied = UnionDeniedLists(specs.Select(s => s.Denied).ToList());
+        var requireApproval = UnionDeniedLists(specs.Select(s => s.RequireApprovalFor).ToList());
 
         return new ToolPolicy
         {
             Allowed = mergedAllowed,
             Denied = mergedDenied,
+            RequireApprovalFor = requireApproval,
         };
     }
 
@@ -200,7 +202,12 @@ public static class PolicyResolver
         var mergedAllowed = IntersectAllowedLists(allAllowed);
         var mergedDenied = UnionDeniedLists(specs.Select(s => s.PublishDenied).ToList());
 
-        return new WorkflowPolicy { PublishAllowed = mergedAllowed, PublishDenied = mergedDenied };
+        return new WorkflowPolicy
+        {
+            PublishAllowed = mergedAllowed,
+            PublishDenied = mergedDenied,
+            RequireApprovalGate = specs.Any(s => s.RequireApprovalGate),
+        };
     }
 
     private static CircuitBreakerPolicy? MergeCircuitBreakerPolicy(List<CircuitBreakerPolicy> specs)
