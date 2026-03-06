@@ -37,6 +37,9 @@ public sealed record TuiSettings
     /// <summary>Prompt cache TTL (5m default, optional 1h where supported).</summary>
     public PromptCacheTtl PromptCacheTtl { get; init; } = PromptCacheTtl.FiveMinutes;
 
+    /// <summary>Welcome panel visibility and MoTD settings.</summary>
+    public WelcomePanelSettings Welcome { get; init; } = new();
+
     /// <summary>Load settings from the data directory, returning defaults if not found.</summary>
     public static TuiSettings Load()
     {
@@ -79,6 +82,7 @@ public sealed record TuiSettings
             OutputStyle = settings.OutputStyle == OutputStyle.Json
                 ? OutputStyle.Rich
                 : settings.OutputStyle,
+            Welcome = WelcomePanelSettings.Normalize(settings.Welcome),
         };
     }
 }
