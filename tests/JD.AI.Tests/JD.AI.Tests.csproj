@@ -13,6 +13,8 @@
     <ProjectReference Include="..\..\src\JD.AI.Credentials.Aws\JD.AI.Credentials.Aws.csproj" />
     <ProjectReference Include="..\..\src\JD.AI.Workflows\JD.AI.Workflows.csproj" />
     <ProjectReference Include="..\..\src\JD.AI.Workflows.Distributed\JD.AI.Workflows.Distributed.csproj" />
+    <ProjectReference Include="..\..\src\JD.AI.Connectors.Sdk\JD.AI.Connectors.Sdk.csproj" />
+    <ProjectReference Include="..\..\src\JD.AI.Connectors.Jira\JD.AI.Connectors.Jira.csproj" />
   </ItemGroup>
 
   <ItemGroup>
