@@ -33,11 +33,11 @@ public sealed class CommandAndConfigDriftGuardTests
                 .Select(static e => $"{e.Command}|{e.Description}"));
 
         var actualHash = ComputeSha256(payload);
-        const string expectedHash = "B181B3033EBC1BF4B97CAFD2EDBAE796C0776180AD95239716162F36410641C5";
+        const string ExpectedHash = "B181B3033EBC1BF4B97CAFD2EDBAE796C0776180AD95239716162F36410641C5";
 
         Assert.True(
-            string.Equals(actualHash, expectedHash, StringComparison.Ordinal),
-            $"Slash command snapshot drifted. Expected={expectedHash}, Actual={actualHash}.");
+            string.Equals(actualHash, ExpectedHash, StringComparison.Ordinal),
+            $"Slash command snapshot drifted. Expected={ExpectedHash}, Actual={actualHash}.");
     }
 
     [Fact]
@@ -123,11 +123,11 @@ public sealed class CommandAndConfigDriftGuardTests
 
             var keyPayload = string.Join('\n', keys);
             var actualHash = ComputeSha256(keyPayload);
-            const string expectedHash = "B8C443F292273C333367143F1277BEC1AF74BC85EF8B83E067AFC3B40734378D";
+            const string ExpectedHash = "B8C443F292273C333367143F1277BEC1AF74BC85EF8B83E067AFC3B40734378D";
 
             Assert.True(
-                string.Equals(actualHash, expectedHash, StringComparison.Ordinal),
-                $"Config key snapshot drifted. Expected={expectedHash}, Actual={actualHash}.");
+                string.Equals(actualHash, ExpectedHash, StringComparison.Ordinal),
+                $"Config key snapshot drifted. Expected={ExpectedHash}, Actual={actualHash}.");
 
             foreach (var key in keys)
             {
