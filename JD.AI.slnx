@@ -14,6 +14,7 @@
     <Project Path="src/JD.AI.Channels.Telegram/JD.AI.Channels.Telegram.csproj" />
     <Project Path="src/JD.AI.Channels.Web/JD.AI.Channels.Web.csproj" />
     <Project Path="src/JD.AI.Channels.OpenClaw/JD.AI.Channels.OpenClaw.csproj" />
+    <Project Path="src/JD.AI.Workflows.Distributed/JD.AI.Workflows.Distributed.csproj" />
     <Project Path="src/JD.AI.Workflows/JD.AI.Workflows.csproj" />
     <Project Path="src/JD.AI/JD.AI.csproj" />
   </Folder>
