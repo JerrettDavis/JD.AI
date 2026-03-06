@@ -99,5 +99,5 @@ public static class Meters
             description: "Duration of Gen AI client operations.");
 
     /// <summary>All meter names — pass to <c>.AddMeter()</c> when configuring OTel.</summary>
-    public static string[] AllMeterNames => [AgentMeterName, GenAiMeterName];
+    public static readonly string[] AllMeterNames = [AgentMeterName, GenAiMeterName];
 }
