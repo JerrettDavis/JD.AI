@@ -9,10 +9,6 @@ namespace JD.AI.Daemon.Services;
 [SupportedOSPlatform("windows")]
 public sealed class WindowsServiceManager : IServiceManager
 {
-    private const string ServiceName = "JDAIDaemon";
-    private const string DisplayName = "JD.AI Gateway Daemon";
-    private const string Description = "JD.AI AI Gateway - manages AI agents, channels, and routing.";
-
     private const string OpenClawTaskName = "\\OpenClaw Gateway";
     private const string OpenClawWatchdogTaskName = "\\OpenClaw Gateway Watchdog";
     private const string OpenClawStateDirName = ".openclaw";
@@ -24,14 +20,14 @@ public sealed class WindowsServiceManager : IServiceManager
     {
         var toolPath = GetToolPath();
         if (toolPath is null)
-            return new ServiceResult(false, "Cannot locate jdai-daemon executable. Is it installed as a dotnet tool?");
+            return new ServiceResult(false, $"Cannot locate {DaemonServiceIdentity.ToolCommand} executable. Is it installed as a dotnet tool?");
 
         var serviceBinPath = BuildServiceBinPath(toolPath);
         var serviceExists = await ServiceExistsAsync(ct);
 
         var (exitCode, output) = serviceExists
-            ? await RunScAsync($"config {ServiceName} binPath= {serviceBinPath} start= auto DisplayName= \"{DisplayName}\"", ct)
-            : await RunScAsync($"create {ServiceName} binPath= {serviceBinPath} start= auto DisplayName= \"{DisplayName}\"", ct);
+            ? await RunScAsync($"config {DaemonServiceIdentity.WindowsServiceName} binPath= {serviceBinPath} start= auto DisplayName= \"{DaemonServiceIdentity.WindowsDisplayName}\"", ct)
+            : await RunScAsync($"create {DaemonServiceIdentity.WindowsServiceName} binPath= {serviceBinPath} start= auto DisplayName= \"{DaemonServiceIdentity.WindowsDisplayName}\"", ct);
 
         if (exitCode != 0)
         {
@@ -40,8 +36,8 @@ public sealed class WindowsServiceManager : IServiceManager
         }
 
         // Best effort metadata configuration
-        await RunScAsync($"description {ServiceName} \"{Description}\"", ct);
-        await RunScAsync($"failure {ServiceName} reset=86400 actions=restart/5000/restart/10000/restart/30000", ct);
+        await RunScAsync($"description {DaemonServiceIdentity.WindowsServiceName} \"{DaemonServiceIdentity.WindowsDescription}\"", ct);
+        await RunScAsync($"failure {DaemonServiceIdentity.WindowsServiceName} reset=86400 actions=restart/5000/restart/10000/restart/30000", ct);
 
         var taskProvisioning = await EnsureOpenClawGatewayTasksAsync(ct);
         if (!taskProvisioning.Success)
@@ -49,7 +45,7 @@ public sealed class WindowsServiceManager : IServiceManager
 
         var action = serviceExists ? "updated" : "installed";
         return new ServiceResult(true,
-            $"Service '{ServiceName}' {action}. OpenClaw gateway tasks are configured. Run 'jdai-daemon start' to begin.");
+            $"Service '{DaemonServiceIdentity.WindowsServiceName}' {action}. OpenClaw gateway tasks are configured. Run '{DaemonServiceIdentity.ToolCommand} start' to begin.");
     }
 
     public async Task<ServiceResult> UninstallAsync(CancellationToken ct = default)
@@ -60,7 +56,7 @@ public sealed class WindowsServiceManager : IServiceManager
 
         if (status.State != ServiceState.NotInstalled)
         {
-            var (exitCode, output) = await RunScAsync($"delete {ServiceName}", ct);
+            var (exitCode, output) = await RunScAsync($"delete {DaemonServiceIdentity.WindowsServiceName}", ct);
             if (exitCode != 0)
                 return new ServiceResult(false, $"sc delete failed: {output}");
         }
@@ -69,28 +65,28 @@ public sealed class WindowsServiceManager : IServiceManager
         if (!cleanupResult.Success)
             return cleanupResult;
 
-        return new ServiceResult(true, $"Service '{ServiceName}' uninstalled and OpenClaw gateway tasks removed.");
+        return new ServiceResult(true, $"Service '{DaemonServiceIdentity.WindowsServiceName}' uninstalled and OpenClaw gateway tasks removed.");
     }
 
     public async Task<ServiceResult> StartAsync(CancellationToken ct = default)
     {
-        var (exitCode, output) = await RunScAsync($"start {ServiceName}", ct);
+        var (exitCode, output) = await RunScAsync($"start {DaemonServiceIdentity.WindowsServiceName}", ct);
         return exitCode == 0
-            ? new ServiceResult(true, $"Service '{ServiceName}' started.")
+            ? new ServiceResult(true, $"Service '{DaemonServiceIdentity.WindowsServiceName}' started.")
             : new ServiceResult(false, $"sc start failed: {output}");
     }
 
     public async Task<ServiceResult> StopAsync(CancellationToken ct = default)
     {
-        var (exitCode, output) = await RunScAsync($"stop {ServiceName}", ct);
+        var (exitCode, output) = await RunScAsync($"stop {DaemonServiceIdentity.WindowsServiceName}", ct);
         return exitCode == 0
-            ? new ServiceResult(true, $"Service '{ServiceName}' stopped.")
+            ? new ServiceResult(true, $"Service '{DaemonServiceIdentity.WindowsServiceName}' stopped.")
             : new ServiceResult(false, $"sc stop failed: {output}");
     }
 
     public async Task<ServiceStatus> GetStatusAsync(CancellationToken ct = default)
     {
-        var (exitCode, output) = await RunScAsync($"query {ServiceName}", ct);
+        var (exitCode, output) = await RunScAsync($"query {DaemonServiceIdentity.WindowsServiceName}", ct);
 
         if (exitCode != 0 || output.Contains("FAILED 1060", StringComparison.Ordinal))
             return new ServiceStatus(ServiceState.NotInstalled, null, null, "Service is not installed.");
@@ -113,7 +109,7 @@ public sealed class WindowsServiceManager : IServiceManager
         // Read from Windows Event Log
         var (exitCode, output) = await RunProcessAsync(
             "powershell",
-            $"-NoProfile -Command \"Get-EventLog -LogName Application -Source '{ServiceName}' -Newest {lines} | Format-Table -AutoSize\"",
+            $"-NoProfile -Command \"Get-EventLog -LogName Application -Source '{DaemonServiceIdentity.WindowsServiceName}' -Newest {lines} | Format-Table -AutoSize\"",
             ct);
 
         return exitCode == 0
@@ -168,7 +164,7 @@ public sealed class WindowsServiceManager : IServiceManager
     private static string? GetToolPath()
     {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var toolPath = Path.Combine(home, ".dotnet", "tools", "jdai-daemon.exe");
+        var toolPath = Path.Combine(home, ".dotnet", "tools", $"{DaemonServiceIdentity.ToolCommand}.exe");
         return File.Exists(toolPath) ? toolPath : null;
     }
 
@@ -177,7 +173,7 @@ public sealed class WindowsServiceManager : IServiceManager
 
     private static async Task<bool> ServiceExistsAsync(CancellationToken ct)
     {
-        var (exitCode, output) = await RunScAsync($"query {ServiceName}", ct);
+        var (exitCode, output) = await RunScAsync($"query {DaemonServiceIdentity.WindowsServiceName}", ct);
         return exitCode == 0 && !output.Contains("FAILED 1060", StringComparison.Ordinal);
     }
 

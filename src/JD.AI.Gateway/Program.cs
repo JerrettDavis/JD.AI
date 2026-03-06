@@ -5,6 +5,7 @@ using JD.AI.Core.Commands;
 using JD.AI.Core.Config;
 using JD.AI.Core.Events;
 using JD.AI.Core.Governance.Audit;
+using JD.AI.Core.Infrastructure;
 using JD.AI.Core.LocalModels;
 using JD.AI.Core.Memory;
 using JD.AI.Core.Plugins;
@@ -277,8 +278,8 @@ if (gatewayConfig.RateLimit.Enabled)
 app.MapOpenApi();
 
 // --- Health ---
-app.MapHealthChecks("/health");
-app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+app.MapHealthChecks(GatewayRuntimeDefaults.HealthPath);
+app.MapHealthChecks(GatewayRuntimeDefaults.HealthReadyPath, new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
     Predicate = _ => true,
     ResultStatusCodes =
@@ -288,9 +289,9 @@ app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.Health
         [HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable,
     },
 });
-app.MapGet("/health/live", () => Results.Ok(new { Status = "Live" }));
-app.MapGet("/health/startup", () => Results.Ok(new { Status = "Started" }));
-app.MapGet("/ready", () => Results.Ok(new { Status = "Ready" }));
+app.MapGet(GatewayRuntimeDefaults.HealthLivePath, () => Results.Ok(new { Status = "Live" }));
+app.MapGet(GatewayRuntimeDefaults.HealthStartupPath, () => Results.Ok(new { Status = "Started" }));
+app.MapGet(GatewayRuntimeDefaults.ReadyPath, () => Results.Ok(new { Status = "Ready" }));
 
 // --- REST API endpoints ---
 app.MapSessionEndpoints();

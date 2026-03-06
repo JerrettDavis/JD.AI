@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
+using JD.AI.Core.Infrastructure;
 using JD.AI.Core.Security;
 using JD.AI.Gateway.Config;
 using JD.AI.Gateway.Middleware;
@@ -77,8 +78,8 @@ public sealed class ApiKeyAuthMiddlewareUnitTests
     }
 
     [Theory]
-    [InlineData("/health")]
-    [InlineData("/ready")]
+    [InlineData(GatewayRuntimeDefaults.HealthPath)]
+    [InlineData(GatewayRuntimeDefaults.ReadyPath)]
     [InlineData("/hubs/agent")]
     [InlineData("/hubs/events")]
     public async Task SkipPaths_BypassAuth(string path)
@@ -163,14 +164,14 @@ public sealed class ApiKeyAuthMiddlewareIntegrationTests
     [Fact]
     public async Task HealthEndpoint_BypassesAuth()
     {
-        var response = await _client.GetAsync("/health");
+        var response = await _client.GetAsync(GatewayRuntimeDefaults.HealthPath);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
     public async Task ReadyEndpoint_BypassesAuth()
     {
-        var response = await _client.GetAsync("/ready");
+        var response = await _client.GetAsync(GatewayRuntimeDefaults.ReadyPath);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
