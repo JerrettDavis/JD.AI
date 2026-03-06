@@ -7,6 +7,8 @@ description: "Bridge JD.AI and OpenClaw gateways for cross-platform multi-AI orc
 
 OpenClaw is an open-source multi-AI gateway that orchestrates conversations across different AI providers and messaging platforms. The JD.AI ↔ OpenClaw integration connects the two gateways via the `OpenClawBridgeChannel`, enabling agents on either platform to communicate, share context, and route messages across boundaries.
 
+![OpenClaw routing visibility in the JD.AI dashboard](../images/dashboard/dashboard-routing.png)
+
 ## Why integrate with OpenClaw
 
 | Scenario | Without integration | With integration |

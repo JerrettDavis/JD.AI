@@ -6,6 +6,8 @@ description: "Interactive mode guide for JD.AI: prompt behavior, keyboard shortc
 
 JD.AI interactive mode is the default `jdai` terminal experience: live prompt editing, slash commands, tool use, streaming responses, and session persistence.
 
+![Interactive chat response with streamed output](../images/demo-chat.png)
+
 ## Start interactive mode
 
 ```bash

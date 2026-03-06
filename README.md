@@ -8,6 +8,9 @@
 
 AI-powered terminal assistant and multi-channel platform built on [Semantic Kernel](https://github.com/microsoft/semantic-kernel). 14 AI providers, 17 tool categories, 33+ slash commands, MCP server integration, workflow engine, subagent orchestration, team strategies, and six channel adapters — across 18 projects with 772+ tests.
 
+![JD.AI terminal startup](docs/images/demo-startup.png)
+![JD.AI dashboard overview](docs/images/dashboard/dashboard-overview.png)
+
 ## Architecture
 
 ```

@@ -7,6 +7,8 @@ description: Configure any of JD.AI's 14 supported AI providers — cloud APIs, 
 
 JD.AI supports 14 AI providers. This guide walks through setting up each one — from quick environment variable configuration to the interactive `/provider add` wizard.
 
+![Provider detection and availability view](../images/demo-providers.png)
+
 ## Provider overview
 
 JD.AI detects providers automatically on startup. Providers fall into three authentication categories:

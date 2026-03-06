@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "screenshots": "node generate-screenshots.mjs",
+    "og": "node generate-og-image.mjs",
+    "media": "npm run screenshots && npm run og"
   },
   "keywords": [],
   "author": "",
