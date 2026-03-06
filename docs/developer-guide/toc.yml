@@ -14,6 +14,8 @@
   href: subagents.md
 - name: Team Orchestration
   href: orchestration.md
+- name: Credential Management
+  href: credentials.md
 - name: Workflows
   href: workflows.md
 - name: MCP Integration
