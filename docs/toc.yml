@@ -2,6 +2,8 @@
   href: user-guide/
 - name: Developer Guide
   href: developer-guide/
+- name: Architecture
+  href: architecture/
 - name: Operations
   href: operations/
 - name: Reference
