@@ -199,4 +199,51 @@ public sealed class DebugLoggerTests
         // Clean up
         DebugLogger.Enable(DebugCategory.None);
     }
+
+    [Fact]
+    public void ParseCategories_Whitespace_ReturnsAll()
+    {
+        var result = DebugLogger.ParseCategories("   ");
+        Assert.Equal(DebugCategory.All, result);
+    }
+
+    [Fact]
+    public void ParseCategories_TrimsWhitespace()
+    {
+        var result = DebugLogger.ParseCategories(" tools , agents ");
+        Assert.True(result.HasFlag(DebugCategory.Tools));
+        Assert.True(result.HasFlag(DebugCategory.Agents));
+    }
+
+    [Fact]
+    public void ParseCategories_AllInvalidNames_ReturnsAll()
+    {
+        var result = DebugLogger.ParseCategories("nonexistent,bogus");
+        Assert.Equal(DebugCategory.All, result);
+    }
+
+    [Fact]
+    public void ParseCategories_MixedValidAndInvalid_ReturnsOnlyValid()
+    {
+        var result = DebugLogger.ParseCategories("tools,bogus,sessions");
+        Assert.Equal(DebugCategory.Tools | DebugCategory.Sessions, result);
+    }
+
+    [Theory]
+    [InlineData(DebugCategory.None, 0)]
+    [InlineData(DebugCategory.Tools, 1)]
+    [InlineData(DebugCategory.Providers, 2)]
+    [InlineData(DebugCategory.Sessions, 4)]
+    [InlineData(DebugCategory.Agents, 8)]
+    [InlineData(DebugCategory.Policies, 16)]
+    public void DebugCategory_FlagValues(DebugCategory category, int expected) =>
+        Assert.Equal(expected, (int)category);
+
+    [Fact]
+    public void DebugCategory_All_CombinesAllFlags()
+    {
+        var combined = DebugCategory.Tools | DebugCategory.Providers |
+                       DebugCategory.Sessions | DebugCategory.Agents | DebugCategory.Policies;
+        Assert.Equal(DebugCategory.All, combined);
+    }
 }
