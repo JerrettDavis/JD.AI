@@ -1,5 +1,6 @@
 using JD.AI.Core.Config;
 using JD.AI.Core.LocalModels;
+using JD.AI.Core.Providers;
 using JD.AI.Core.Providers.Credentials;
 using JD.AI.Core.Providers.Metadata;
 using Microsoft.SemanticKernel;
@@ -33,6 +34,7 @@ internal static class ProviderOrchestrator
         IReadOnlyList<ProviderModelInfo> Models,
         string? DefaultProvider,
         string? DefaultModel,
+        IModelCapabilityRegistry? CapabilityRegistry,
         Func<IReadOnlyList<ProviderModelInfo>, ProviderModelInfo> PromptSelector);
 
     private sealed record ProviderModelSpecification(
@@ -94,6 +96,7 @@ internal static class ProviderOrchestrator
         EvaluateCliModelPolicy,
         EvaluateCliProviderPolicy,
         EvaluatePersistedDefaultPolicy,
+        EvaluateCapabilityPolicy,
         EvaluateNonInteractivePolicy,
         EvaluateInteractivePolicy,
     ];
@@ -137,7 +140,8 @@ internal static class ProviderOrchestrator
                     opts,
                     preferred.Models,
                     defaultProvider,
-                    defaultModel);
+                    defaultModel,
+                    capabilityRegistry: registry.CapabilityRegistry);
 
                 if (fastSelection.ErrorMessage is not null)
                 {
@@ -181,7 +185,12 @@ internal static class ProviderOrchestrator
             return null;
         }
 
-        var selection = EvaluateSelection(opts, allModels, defaultProvider, defaultModel);
+        var selection = EvaluateSelection(
+            opts,
+            allModels,
+            defaultProvider,
+            defaultModel,
+            capabilityRegistry: registry.CapabilityRegistry);
         if (selection.ErrorMessage is not null)
         {
             RenderSelectionError(opts, selection.ErrorMessage);
@@ -202,6 +211,7 @@ internal static class ProviderOrchestrator
         IReadOnlyList<ProviderModelInfo> allModels,
         string? defaultProvider,
         string? defaultModel,
+        IModelCapabilityRegistry? capabilityRegistry = null,
         Func<IReadOnlyList<ProviderModelInfo>, ProviderModelInfo>? promptSelector = null)
     {
         var context = new ModelSelectionContext(
@@ -209,6 +219,7 @@ internal static class ProviderOrchestrator
             allModels,
             defaultProvider,
             defaultModel,
+            capabilityRegistry,
             promptSelector ?? PromptForModel);
 
         foreach (var policy in SelectionPolicies)
@@ -280,6 +291,32 @@ internal static class ProviderOrchestrator
             : ModelSelectionDecision.Continue;
     }
 
+
+    private static ModelSelectionDecision EvaluateCapabilityPolicy(ModelSelectionContext context)
+    {
+        if (context.CapabilityRegistry is null)
+            return ModelSelectionDecision.Continue;
+
+        var compatible = context.CapabilityRegistry.FindModels(
+            ModelCapability.ChatCompletion | ModelCapability.ToolCalling);
+        if (compatible.Count == 0)
+            return ModelSelectionDecision.Continue;
+
+        var byKey = context.Models.ToDictionary(BuildModelKey, StringComparer.OrdinalIgnoreCase);
+        var candidates = compatible
+            .Select(entry => byKey.GetValueOrDefault(BuildModelKey(entry.ProviderName, entry.ModelId)))
+            .Where(static model => model is not null)
+            .Cast<ProviderModelInfo>()
+            .ToList();
+
+        if (candidates.Count == 0)
+            return ModelSelectionDecision.Continue;
+
+        if (candidates.Count == 1 || context.Options.PrintMode)
+            return ModelSelectionDecision.Select(candidates[0]);
+
+        return ModelSelectionDecision.Select(context.PromptSelector(candidates));
+    }
     private static ModelSelectionDecision EvaluateNonInteractivePolicy(ModelSelectionContext context)
     {
         if (context.Models.Count == 1 || context.Options.PrintMode)
@@ -304,6 +341,12 @@ internal static class ProviderOrchestrator
     private static bool ContainsIgnoreCase(string source, string value) =>
         source.Contains(value, StringComparison.OrdinalIgnoreCase);
 
+
+    private static string BuildModelKey(ProviderModelInfo model) =>
+        BuildModelKey(model.ProviderName, model.Id);
+
+    private static string BuildModelKey(string providerName, string modelId) =>
+        $"{providerName}:{modelId}";
     private static void RenderSelectionError(CliOptions opts, string message)
     {
         if (opts.PrintMode)
