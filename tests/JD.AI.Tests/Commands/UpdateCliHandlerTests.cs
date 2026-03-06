@@ -3,11 +3,24 @@ using JD.AI.Core.Installation;
 
 namespace JD.AI.Tests.Commands;
 
+[Collection("Console")]
 public sealed class UpdateCliHandlerTests : IDisposable
 {
-    private readonly Func<CancellationToken, Task<InstallationInfo>> _originalDetect = UpdateCliHandler.DetectInstallationAsync;
-    private readonly Func<InstallationInfo, IInstallStrategy> _originalUpdateFactory = UpdateCliHandler.UpdateStrategyFactory;
-    private readonly Func<InstallationInfo, IInstallStrategy> _originalInstallFactory = UpdateCliHandler.InstallStrategyFactory;
+    private readonly Func<CancellationToken, Task<InstallationInfo>> _originalDetect =
+        UpdateCliHandler.DetectInstallationAsync;
+
+    private readonly Func<InstallationInfo, IInstallStrategy> _originalInstallFactory =
+        UpdateCliHandler.InstallStrategyFactory;
+
+    private readonly Func<InstallationInfo, IInstallStrategy> _originalUpdateFactory =
+        UpdateCliHandler.UpdateStrategyFactory;
+
+    public void Dispose()
+    {
+        UpdateCliHandler.DetectInstallationAsync = _originalDetect;
+        UpdateCliHandler.UpdateStrategyFactory = _originalUpdateFactory;
+        UpdateCliHandler.InstallStrategyFactory = _originalInstallFactory;
+    }
 
     [Fact]
     public async Task RunAsync_WithUnknownSubcommand_ReturnsZero()
@@ -33,8 +46,8 @@ public sealed class UpdateCliHandlerTests : IDisposable
     [Fact]
     public async Task Update_CheckOnly_WithNewerVersion_ReturnsZeroWithoutApplying()
     {
-        var strategy = CreateStrategy(latest: "1.1.0", applySuccess: true);
-        ConfigureHandlers(currentVersion: "1.0.0", updateStrategy: strategy);
+        var strategy = CreateStrategy("1.1.0", true);
+        ConfigureHandlers("1.0.0", strategy);
 
         var code = await UpdateCliHandler.RunAsync("update", ["--check"]);
 
@@ -46,8 +59,8 @@ public sealed class UpdateCliHandlerTests : IDisposable
     public async Task Update_WhenLatestVersionUnknown_ReturnsOneUnlessForced()
     {
         ConfigureHandlers(
-            currentVersion: "1.0.0",
-            updateStrategy: CreateStrategy(latest: null, applySuccess: true));
+            "1.0.0",
+            CreateStrategy(null, true));
 
         var code = await UpdateCliHandler.RunAsync("update", []);
 
@@ -58,8 +71,8 @@ public sealed class UpdateCliHandlerTests : IDisposable
     public async Task Update_WhenAlreadyOnLatest_ReturnsZero()
     {
         ConfigureHandlers(
-            currentVersion: "1.0.0",
-            updateStrategy: CreateStrategy(latest: "1.0.0", applySuccess: true));
+            "1.0.0",
+            CreateStrategy("1.0.0", true));
 
         var code = await UpdateCliHandler.RunAsync("update", []);
 
@@ -69,12 +82,12 @@ public sealed class UpdateCliHandlerTests : IDisposable
     [Fact]
     public async Task Update_ApplyPath_ReturnsZeroOnSuccess_AndOneOnFailure()
     {
-        var ok = CreateStrategy(latest: "1.2.0", applySuccess: true);
-        ConfigureHandlers(currentVersion: "1.0.0", updateStrategy: ok);
+        var ok = CreateStrategy("1.2.0", true);
+        ConfigureHandlers("1.0.0", ok);
         var successCode = await UpdateCliHandler.RunAsync("update", []);
 
-        var fail = CreateStrategy(latest: "1.3.0", applySuccess: false);
-        ConfigureHandlers(currentVersion: "1.0.0", updateStrategy: fail);
+        var fail = CreateStrategy("1.3.0", false);
+        ConfigureHandlers("1.0.0", fail);
         var failureCode = await UpdateCliHandler.RunAsync("update", []);
 
         Assert.Equal(0, successCode);
@@ -87,8 +100,8 @@ public sealed class UpdateCliHandlerTests : IDisposable
     public async Task Install_WhenLatestCannotBeResolved_ReturnsOne()
     {
         ConfigureHandlers(
-            currentVersion: "1.0.0",
-            installStrategy: CreateStrategy(latest: null, applySuccess: true));
+            "1.0.0",
+            installStrategy: CreateStrategy(null, true));
 
         var code = await UpdateCliHandler.RunAsync("install", []);
 
@@ -98,8 +111,8 @@ public sealed class UpdateCliHandlerTests : IDisposable
     [Fact]
     public async Task Install_WhenAlreadyLatest_ReturnsZeroWithoutApplying()
     {
-        var strategy = CreateStrategy(latest: "1.0.0", applySuccess: true);
-        ConfigureHandlers(currentVersion: "1.0.0", installStrategy: strategy);
+        var strategy = CreateStrategy("1.0.0", true);
+        ConfigureHandlers("1.0.0", installStrategy: strategy);
 
         var code = await UpdateCliHandler.RunAsync("install", []);
 
@@ -110,12 +123,12 @@ public sealed class UpdateCliHandlerTests : IDisposable
     [Fact]
     public async Task Install_WithExplicitVersion_UsesApplyResult()
     {
-        var success = CreateStrategy(latest: "9.9.9", applySuccess: true);
-        ConfigureHandlers(currentVersion: "1.0.0", installStrategy: success);
+        var success = CreateStrategy("9.9.9", true);
+        ConfigureHandlers("1.0.0", installStrategy: success);
         var successCode = await UpdateCliHandler.RunAsync("install", ["2.0.0", "--force"]);
 
-        var failure = CreateStrategy(latest: "9.9.9", applySuccess: false);
-        ConfigureHandlers(currentVersion: "1.0.0", installStrategy: failure);
+        var failure = CreateStrategy("9.9.9", false);
+        ConfigureHandlers("1.0.0", installStrategy: failure);
         var failureCode = await UpdateCliHandler.RunAsync("install", ["2.0.0", "--force"]);
 
         Assert.Equal(0, successCode);
@@ -124,18 +137,13 @@ public sealed class UpdateCliHandlerTests : IDisposable
         Assert.Equal("2.0.0", failure.LastTargetVersion);
     }
 
-    public void Dispose()
-    {
-        UpdateCliHandler.DetectInstallationAsync = _originalDetect;
-        UpdateCliHandler.UpdateStrategyFactory = _originalUpdateFactory;
-        UpdateCliHandler.InstallStrategyFactory = _originalInstallFactory;
-    }
-
     private static FakeInstallStrategy CreateStrategy(string? latest, bool applySuccess) =>
-        new("fake", latest, new InstallResult(
-            Success: applySuccess,
-            Output: applySuccess ? "ok" : "failed",
-            RequiresRestart: applySuccess));
+        new("fake",
+            latest,
+            new InstallResult(
+                applySuccess,
+                applySuccess ? "ok" : "failed",
+                applySuccess));
 
     private static void ConfigureHandlers(
         string currentVersion,
@@ -144,9 +152,9 @@ public sealed class UpdateCliHandlerTests : IDisposable
     {
         var info = new InstallationInfo(
             InstallKind.Unknown,
-            ExecutablePath: "/tmp/jdai",
-            CurrentVersion: currentVersion,
-            RuntimeId: "linux-x64");
+            "/tmp/jdai",
+            currentVersion,
+            "linux-x64");
 
         UpdateCliHandler.DetectInstallationAsync = _ => Task.FromResult(info);
         UpdateCliHandler.UpdateStrategyFactory = _ => updateStrategy ?? CreateStrategy("1.0.0", true);
@@ -158,14 +166,14 @@ public sealed class UpdateCliHandlerTests : IDisposable
         string? latestVersion,
         InstallResult applyResult) : IInstallStrategy
     {
-        private readonly string? _latestVersion = latestVersion;
         private readonly InstallResult _applyResult = applyResult;
-
-        public string Name { get; } = name;
+        private readonly string? _latestVersion = latestVersion;
 
         public int ApplyCalls { get; private set; }
 
         public string? LastTargetVersion { get; private set; }
+
+        public string Name { get; } = name;
 
         public Task<string?> GetLatestVersionAsync(CancellationToken ct = default) =>
             Task.FromResult(_latestVersion);
