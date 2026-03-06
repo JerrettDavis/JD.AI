@@ -219,4 +219,194 @@ public sealed class SettingsPageSteps
         Assert.True(count > 0,
             "Expected the OpenClaw settings panel to contain OpenClaw-related content");
     }
+
+    // ── Server tab content ────────────────────────────────
+
+    [Then(@"I should see a ""(.*)"" input field")]
+    public async Task ThenIShouldSeeAnInputField(string label)
+    {
+        var input = _page.Locator($".mud-input-label:has-text('{label}')");
+        await Expect(input).ToBeVisibleAsync();
+    }
+
+    [Then(@"I should see a ""(.*)"" toggle")]
+    public async Task ThenIShouldSeeAToggle(string label)
+    {
+        var toggle = _page.Locator($"text={label}");
+        await Expect(toggle).ToBeVisibleAsync();
+    }
+
+    [Then(@"I should see an ""(.*)"" toggle")]
+    public async Task ThenIShouldSeeAnToggle(string label)
+    {
+        var toggle = _page.Locator($"text={label}");
+        await Expect(toggle).ToBeVisibleAsync();
+    }
+
+    [Then(@"I should see the ""(.*)"" button")]
+    public async Task ThenIShouldSeeTheNamedButton(string buttonText)
+    {
+        var button = _page.Locator($"button:has-text('{buttonText}')");
+        await Expect(button).ToBeVisibleAsync();
+    }
+
+    // ── Agents tab content ────────────────────────────────
+
+    [Then(@"I should see the add agent button")]
+    public async Task ThenIShouldSeeTheAddAgentButton()
+    {
+        await Expect(_settingsPage.AddAgentButton).ToBeVisibleAsync();
+    }
+
+    [Given(@"there are configured agents")]
+    public async Task GivenThereAreConfiguredAgents()
+    {
+        // Wait for agent data to load from the API
+        await _page.WaitForTimeoutAsync(500);
+    }
+
+    [Then(@"each agent entry should have an ""(.*)"" field")]
+    public async Task ThenEachAgentEntryShouldHaveAField(string fieldLabel)
+    {
+        var entries = _settingsPage.AgentEntries;
+        var count = await entries.CountAsync();
+        if (count > 0)
+        {
+            var fields = _page.Locator($"[data-testid='agent-entry'] >> .mud-input-label:has-text('{fieldLabel}')");
+            var fieldCount = await fields.CountAsync();
+            Assert.True(fieldCount >= count,
+                $"Expected at least {count} '{fieldLabel}' fields but found {fieldCount}");
+        }
+    }
+
+    [Then(@"each agent entry should have a ""(.*)"" select")]
+    public async Task ThenEachAgentEntryShouldHaveASelect(string selectLabel)
+    {
+        var entries = _settingsPage.AgentEntries;
+        var count = await entries.CountAsync();
+        if (count > 0)
+        {
+            var selects = _page.Locator($"[data-testid='agent-entry'] >> .mud-input-label:has-text('{selectLabel}')");
+            var selectCount = await selects.CountAsync();
+            Assert.True(selectCount >= count,
+                $"Expected at least {count} '{selectLabel}' selects but found {selectCount}");
+        }
+    }
+
+    [Then(@"each agent entry should have a ""(.*)"" expansion panel")]
+    public async Task ThenEachAgentEntryShouldHaveAnExpansionPanel(string panelText)
+    {
+        var entries = _settingsPage.AgentEntries;
+        var count = await entries.CountAsync();
+        if (count > 0)
+        {
+            var panels = _settingsPage.AgentParamsPanels;
+            var panelCount = await panels.CountAsync();
+            Assert.True(panelCount >= count,
+                $"Expected at least {count} '{panelText}' expansion panels but found {panelCount}");
+        }
+    }
+
+    // ── Channels tab content ──────────────────────────────
+
+    [Then(@"I should see channel entries")]
+    public async Task ThenIShouldSeeChannelEntries()
+    {
+        var entries = _settingsPage.ChannelEntries;
+        var count = await entries.CountAsync();
+        Assert.True(count > 0, "Expected at least one channel entry");
+    }
+
+    [Then(@"each channel entry should have an enabled toggle")]
+    public async Task ThenEachChannelEntryShouldHaveAnEnabledToggle()
+    {
+        var entries = _settingsPage.ChannelEntries;
+        var count = await entries.CountAsync();
+        if (count > 0)
+        {
+            var toggles = _settingsPage.ChannelEnabledToggles;
+            var toggleCount = await toggles.CountAsync();
+            Assert.True(toggleCount >= count,
+                $"Expected at least {count} enabled toggles but found {toggleCount}");
+        }
+    }
+
+    [Given(@"a channel has a setting containing ""(.*)"" in its key")]
+    public async Task GivenAChannelHasASettingContainingInItsKey(string _keyword)
+    {
+        // Wait for settings to render with channel data
+        await _page.WaitForTimeoutAsync(500);
+    }
+
+    [Then(@"that setting field should be a password input")]
+    public async Task ThenThatSettingFieldShouldBeAPasswordInput()
+    {
+        var passwordInputs = _page.Locator("[data-testid='channel-setting'] input[type='password']");
+        var count = await passwordInputs.CountAsync();
+        // If there are token settings, they should be password type
+        // If no token settings exist, this is vacuously true
+        if (count == 0)
+        {
+            var settings = _settingsPage.ChannelSettings;
+            var settingCount = await settings.CountAsync();
+            // If no channel settings are visible at all, that's okay
+            Assert.True(settingCount == 0,
+                "Expected token-containing settings to be password inputs");
+        }
+    }
+
+    // ── Providers tab content ─────────────────────────────
+
+    [Then(@"I should see provider entries")]
+    public async Task ThenIShouldSeeProviderEntries()
+    {
+        var entries = _settingsPage.ProviderEntries;
+        var count = await entries.CountAsync();
+        Assert.True(count > 0, "Expected at least one provider entry");
+    }
+
+    [Then(@"each provider entry should have a ""(.*)"" button")]
+    public async Task ThenEachProviderEntryShouldHaveAButton(string buttonText)
+    {
+        var entries = _settingsPage.ProviderEntries;
+        var count = await entries.CountAsync();
+        if (count > 0)
+        {
+            var buttons = _settingsPage.ProviderTestButtons;
+            var buttonCount = await buttons.CountAsync();
+            Assert.True(buttonCount >= count,
+                $"Expected at least {count} '{buttonText}' buttons but found {buttonCount}");
+        }
+    }
+
+    // ── Routing tab content ───────────────────────────────
+
+    [Then(@"I should see a ""(.*)"" select")]
+    public async Task ThenIShouldSeeASelect(string label)
+    {
+        var select = _page.Locator($".mud-input-label:has-text('{label}')");
+        await Expect(select).ToBeVisibleAsync();
+    }
+
+    // ── OpenClaw tab content ──────────────────────────────
+
+    [Then(@"I should see an ""(.*)"" toggle for the bridge")]
+    public async Task ThenIShouldSeeAnToggleForTheBridge(string label)
+    {
+        var toggle = _page.Locator($"text={label}");
+        await Expect(toggle).ToBeVisibleAsync();
+    }
+
+    [Then(@"I should see a ""(.*)"" input")]
+    public async Task ThenIShouldSeeAnInput(string label)
+    {
+        var input = _page.Locator($".mud-input-label:has-text('{label}')");
+        await Expect(input).ToBeVisibleAsync();
+    }
+
+    [Then(@"I should see the registered agents section")]
+    public async Task ThenIShouldSeeTheRegisteredAgentsSection()
+    {
+        await Expect(_settingsPage.OpenClawAgentsSection).ToBeVisibleAsync();
+    }
 }

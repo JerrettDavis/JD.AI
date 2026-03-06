@@ -9,7 +9,7 @@
     {
         var idx = i;
         var agent = Agents[idx];
-        <MudPaper Class="pa-4" Elevation="0">
+        <MudPaper Class="pa-4" Elevation="0" data-testid="agent-entry">
             <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
                 <MudText Typo="Typo.subtitle2" Style="font-weight:600;">
                     @(string.IsNullOrEmpty(agent.Id) ? "New Agent" : agent.Id)
@@ -20,11 +20,13 @@
             <MudGrid>
                 <MudItem xs="12" md="6">
                     <MudTextField @bind-Value="agent.Id" Label="Agent ID" Variant="Variant.Outlined" Required="true"
+                                  data-testid="agent-id-field"
                                   HelperText="Unique identifier for this agent (e.g. 'default', 'code-reviewer')."
                                   Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Badge" />
                 </MudItem>
                 <MudItem xs="12" md="6">
                     <MudSelect @bind-Value="agent.Provider" Label="Provider" Variant="Variant.Outlined"
+                               data-testid="agent-provider-select"
                                HelperText="The AI provider to use for this agent."
                                Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Hub">
                         @foreach (var p in AvailableProviders.Where(p => p.Enabled))
@@ -37,6 +39,7 @@
                     @if (_providerModels.TryGetValue(agent.Provider, out var models) && models.Length > 0)
                     {
                         <MudSelect @bind-Value="agent.Model" Label="Model" Variant="Variant.Outlined"
+                                   data-testid="agent-model-select"
                                    HelperText="Select the AI model. List filtered by chosen provider."
                                    Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Memory">
                             @foreach (var m in models)
@@ -77,6 +80,7 @@
                 <MudItem xs="12">
                     <MudExpansionPanels Elevation="0" Class="mt-n2">
                         <MudExpansionPanel Text="Model Parameters" MaxHeight="600"
+                                           data-testid="agent-params-panel"
                                            Style="background: transparent;">
                             <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
                                 Fine-tune inference behavior. Leave blank to use provider defaults.
@@ -156,12 +160,14 @@
     }
 
     <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               data-testid="add-agent-button"
                OnClick="AddAgent" FullWidth="true">
         Add Agent Definition
     </MudButton>
 
     <MudStack Row="true" Justify="Justify.FlexEnd">
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save"
+                   data-testid="save-agents-button"
                    OnClick="SaveAsync" Disabled="_saving">
             @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
             Save Agents

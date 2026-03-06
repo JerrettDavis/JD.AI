@@ -84,3 +84,88 @@ Feature: Settings Page
     # ── Page title ────────────────────────────────────────
     Scenario: Page title is correct
         Then the browser page title should be "Settings — JD.AI"
+
+    # ── Server Tab Content ────────────────────────────────
+    @smoke
+    Scenario: Server tab shows network configuration
+        When I click the "Server" tab
+        Then the server settings panel should be visible
+        And I should see a "Host" input field
+        And I should see a "Port" input field
+
+    Scenario: Server tab shows behavior toggles
+        When I click the "Server" tab
+        Then I should see a "Verbose Logging" toggle
+        And I should see an "API Key Authentication" toggle
+        And I should see a "Rate Limiting" toggle
+
+    Scenario: Server tab has save button
+        When I click the "Server" tab
+        Then I should see the "Save Server Settings" button
+
+    # ── Agents Tab Content ────────────────────────────────
+    @smoke
+    Scenario: Agents tab shows agent definitions
+        When I click the "Agents" tab
+        Then the agents settings panel should be visible
+        And I should see the add agent button
+
+    Scenario: Agents tab shows agent configuration fields
+        When I click the "Agents" tab
+        And there are configured agents
+        Then each agent entry should have an "Agent ID" field
+        And each agent entry should have a "Provider" select
+        And each agent entry should have a "Model Parameters" expansion panel
+
+    # ── Channels Tab Content ──────────────────────────────
+    @smoke
+    Scenario: Channels tab shows channel configuration list
+        When I click the "Channels" tab
+        Then the channels settings panel should be visible
+        And I should see channel entries
+
+    Scenario: Channels tab has enabled toggles per channel
+        When I click the "Channels" tab
+        Then each channel entry should have an enabled toggle
+
+    Scenario: Channels tab masks secret settings
+        When I click the "Channels" tab
+        And a channel has a setting containing "token" in its key
+        Then that setting field should be a password input
+
+    # ── Providers Tab Content ─────────────────────────────
+    @smoke
+    Scenario: Providers tab shows provider list
+        When I click the "Providers" tab
+        Then the providers settings panel should be visible
+        And I should see provider entries
+
+    Scenario: Providers tab has test buttons
+        When I click the "Providers" tab
+        Then each provider entry should have a "Test" button
+
+    # ── Routing Tab Content ───────────────────────────────
+    @smoke
+    Scenario: Routing tab shows default agent selector
+        When I click the "Routing" tab
+        Then the routing settings panel should be visible
+        And I should see a "Default Agent" select
+
+    Scenario: Routing tab has add rule button
+        When I click the "Routing" tab
+        Then I should see the "Add Rule" button
+
+    # ── OpenClaw Tab Content ──────────────────────────────
+    @smoke
+    Scenario: OpenClaw tab shows bridge configuration
+        When I click the "OpenClaw" tab
+        Then the OpenClaw settings panel should be visible
+        And I should see an "Enable OpenClaw" toggle
+
+    Scenario: OpenClaw tab shows WebSocket URL field
+        When I click the "OpenClaw" tab
+        Then I should see a "WebSocket URL" input
+
+    Scenario: OpenClaw tab shows registered agents section
+        When I click the "OpenClaw" tab
+        Then I should see the registered agents section

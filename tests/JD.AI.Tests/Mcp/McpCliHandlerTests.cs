@@ -8,7 +8,7 @@ namespace JD.AI.Tests.Mcp;
 /// Uses a temporary JD.AI config file via the JDAI_DATA_DIR environment variable
 /// so tests are isolated from real user config.
 /// </summary>
-[Collection("DataDirectories")]
+[Collection("Console")]
 public sealed class McpCliHandlerTests : IDisposable
 {
     private readonly string _tempDir;

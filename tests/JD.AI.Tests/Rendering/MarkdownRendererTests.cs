@@ -4,6 +4,7 @@ using Xunit;
 namespace JD.AI.Tests.Rendering;
 
 /// <summary>Unit tests for DiffRenderer and MarkdownRenderer (pure logic, no console I/O).</summary>
+[Collection("Console")]
 public sealed class DiffRendererTests
 {
     // ── DiffRenderer.IsDiff ────────────────────────────────
@@ -45,6 +46,7 @@ public sealed class DiffRendererTests
     }
 }
 
+[Collection("Console")]
 public sealed class MarkdownRendererSlashCommandTests
 {
     // ── Slash-command colorization (private helper exposed via internal for tests) ──
@@ -176,6 +178,7 @@ public sealed class MarkdownRendererSlashCommandTests
 }
 
 /// <summary>Tests for regressions found in code review (critical/high issues).</summary>
+[Collection("Console")]
 public sealed class MarkdownRendererRegressionTests
 {
     private static void WithNullConsole(Action action)

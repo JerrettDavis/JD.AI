@@ -7,7 +7,7 @@
 
     @foreach (var provider in Providers)
     {
-        <MudPaper Class="pa-4" Elevation="0">
+        <MudPaper Class="pa-4" Elevation="0" data-testid="provider-entry">
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-3">
                 <MudAvatar Color="@(provider.Enabled ? Color.Success : Color.Default)"
                            Variant="Variant.Outlined" Size="Size.Small">
@@ -19,8 +19,10 @@
                         @GetProviderDescription(provider.Name)
                     </MudText>
                 </MudStack>
-                <MudSwitch @bind-Value="provider.Enabled" Color="Color.Primary" UncheckedColor="Color.Default" />
+                <MudSwitch @bind-Value="provider.Enabled" Color="Color.Primary" UncheckedColor="Color.Default"
+                           data-testid="provider-enabled-toggle" />
                 <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info"
+                           data-testid="provider-test-button"
                            StartIcon="@Icons.Material.Filled.NetworkCheck"
                            OnClick="@(() => TestProviderAsync(provider.Name))"
                            Disabled="!provider.Enabled">
@@ -50,7 +52,8 @@
             }
             else if (provider.Enabled && _testResults.TryGetValue(provider.Name, out var result))
             {
-                <MudAlert Severity="@(result.Success ? Severity.Success : Severity.Error)" Variant="Variant.Outlined" Dense="true" Class="mt-2">
+                <MudAlert Severity="@(result.Success ? Severity.Success : Severity.Error)" Variant="Variant.Outlined" Dense="true" Class="mt-2"
+                          data-testid="provider-test-result">
                     @result.Message
                 </MudAlert>
             }
@@ -59,6 +62,7 @@
 
     <MudStack Row="true" Justify="Justify.FlexEnd">
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save"
+                   data-testid="save-providers-button"
                    OnClick="SaveAsync" Disabled="_saving">
             @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
             Save Providers
