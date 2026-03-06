@@ -162,7 +162,18 @@ public sealed class CopilotDetector : IProviderDetector
             using var proc = System.Diagnostics.Process.Start(psi);
             if (proc is null) return false;
 
-            await proc.WaitForExitAsync(ct).ConfigureAwait(false);
+            // Drain stdout/stderr to prevent pipe buffer deadlocks, then
+            // wait for exit with a timeout so detection never hangs.
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(15));
+            var token = cts.Token;
+
+            var stdoutTask = proc.StandardOutput.ReadToEndAsync(token);
+            var stderrTask = proc.StandardError.ReadToEndAsync(token);
+
+            await proc.WaitForExitAsync(token).ConfigureAwait(false);
+            await Task.WhenAll(stdoutTask, stderrTask).ConfigureAwait(false);
+
             return proc.ExitCode == 0;
         }
 #pragma warning disable CA1031 // best-effort refresh
