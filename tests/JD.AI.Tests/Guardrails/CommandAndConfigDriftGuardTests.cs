@@ -33,7 +33,7 @@ public sealed class CommandAndConfigDriftGuardTests
                 .Select(static e => $"{e.Command}|{e.Description}"));
 
         var actualHash = ComputeSha256(payload);
-        const string ExpectedHash = "B181B3033EBC1BF4B97CAFD2EDBAE796C0776180AD95239716162F36410641C5";
+        const string ExpectedHash = "83FD82B92C82EB9839D961AB2598AB998564885A08116525007DDAB147858B3E";
 
         Assert.True(
             string.Equals(actualHash, ExpectedHash, StringComparison.Ordinal),
@@ -65,13 +65,12 @@ public sealed class CommandAndConfigDriftGuardTests
     }
 
     [Fact]
-    public async Task HelpCommands_AreDispatchable_AndMappedInRouterSwitch()
+    public async Task HelpCommands_AreDispatchable_AndMappedInCatalogDispatch()
     {
         var router = CreateRouter();
         var helpText = await router.ExecuteAsync("/help");
         Assert.NotNull(helpText);
 
-        var dispatchRoots = ExtractDispatchRootsFromRouterSource();
         var helpCommands = HelpCommandRegex
             .Matches(helpText)
             .Select(static m => m.Groups["cmd"].Value.ToUpperInvariant())
@@ -82,7 +81,9 @@ public sealed class CommandAndConfigDriftGuardTests
 
         foreach (var command in helpCommands)
         {
-            Assert.Contains(command, dispatchRoots);
+            Assert.True(
+                SlashCommandCatalog.TryResolveDispatch(command, out _),
+                $"Help command '{command}' is not resolvable via SlashCommandCatalog dispatch map.");
 
             var result = await router.ExecuteAsync(command);
             if (string.Equals(command, "/quit", StringComparison.OrdinalIgnoreCase) ||
@@ -123,7 +124,7 @@ public sealed class CommandAndConfigDriftGuardTests
 
             var keyPayload = string.Join('\n', keys);
             var actualHash = ComputeSha256(keyPayload);
-            const string ExpectedHash = "B8C443F292273C333367143F1277BEC1AF74BC85EF8B83E067AFC3B40734378D";
+            const string ExpectedHash = "9603FFF74723C9FD87B830E51E5C5AFC974A0974D316E8096AEAE91A84EB8E24";
 
             Assert.True(
                 string.Equals(actualHash, ExpectedHash, StringComparison.Ordinal),
@@ -180,47 +181,6 @@ public sealed class CommandAndConfigDriftGuardTests
         var model = new ProviderModelInfo("test-model", "Test Model", "TestProvider");
         var session = new AgentSession(registry, kernel, model);
         return new SlashCommandRouter(session, registry);
-    }
-
-    private static HashSet<string> ExtractDispatchRootsFromRouterSource()
-    {
-        var routerPath = Path.Combine(GetRepoRoot(), "src", "JD.AI", "Commands", "SlashCommandRouter.cs");
-        var source = File.ReadAllText(routerPath);
-
-        var switchStart = source.IndexOf("return cmd switch", StringComparison.Ordinal);
-        Assert.True(switchStart >= 0, "Could not locate command switch in SlashCommandRouter.");
-
-        var switchEnd = source.IndexOf("};", switchStart, StringComparison.Ordinal);
-        Assert.True(switchEnd > switchStart, "Could not locate end of command switch in SlashCommandRouter.");
-
-        var switchBody = source[switchStart..switchEnd];
-        var matches = Regex.Matches(
-            switchBody,
-            "\"(?<cmd>/[A-Z0-9-]+)\"",
-            RegexOptions.Compiled | RegexOptions.CultureInvariant,
-            TimeSpan.FromMilliseconds(500));
-
-        var roots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (Match match in matches)
-        {
-            var cmd = match.Groups["cmd"].Value.ToUpperInvariant();
-            if (cmd.StartsWith("/JDAI-", StringComparison.Ordinal))
-                cmd = "/" + cmd[6..];
-
-            roots.Add(cmd);
-        }
-
-        return roots;
-    }
-
-    private static string GetRepoRoot()
-    {
-        var current = new DirectoryInfo(AppContext.BaseDirectory);
-        while (current is not null && !File.Exists(Path.Combine(current.FullName, "JD.AI.slnx")))
-            current = current.Parent;
-
-        Assert.NotNull(current);
-        return current!.FullName;
     }
 
     private static string ComputeSha256(string payload)
