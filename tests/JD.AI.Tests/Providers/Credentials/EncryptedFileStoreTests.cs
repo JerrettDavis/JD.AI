@@ -5,32 +5,21 @@ using System.Text;
 using System.Text.Json;
 using FluentAssertions;
 using JD.AI.Core.Providers.Credentials;
+using JD.AI.Tests.Fixtures;
 
 namespace JD.AI.Tests.Providers.Credentials;
 
 public sealed class EncryptedFileStoreTests : IDisposable
 {
-    private readonly string _tempDir;
+    private readonly TempDirectoryFixture _fixture = new();
     private readonly EncryptedFileStore _store;
 
     public EncryptedFileStoreTests()
     {
-        _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-efstore-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(_tempDir);
-        _store = new EncryptedFileStore(_tempDir);
+        _store = new EncryptedFileStore(_fixture.DirectoryPath);
     }
 
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(_tempDir, recursive: true);
-        }
-        catch
-        {
-            // Best-effort cleanup.
-        }
-    }
+    public void Dispose() => _fixture.Dispose();
 
     [Fact]
     public async Task GetAsync_NonExistentKey_ReturnsNull()
@@ -101,12 +90,12 @@ public sealed class EncryptedFileStoreTests : IDisposable
     [Fact]
     public async Task GetAsync_MountedSecretFallback_ReturnsValue()
     {
-        var mountDir = Path.Combine(_tempDir, "mounted");
+        var mountDir = Path.Combine(_fixture.DirectoryPath, "mounted");
         Directory.CreateDirectory(mountDir);
         await File.WriteAllTextAsync(Path.Combine(mountDir, "provider__token"), "mounted-token-value");
 
         var store = new EncryptedFileStore(
-            basePath: _tempDir,
+            basePath: _fixture.DirectoryPath,
             options: new EncryptedFileStoreOptions
             {
                 MountedSecretsPath = mountDir,
@@ -129,8 +118,8 @@ public sealed class EncryptedFileStoreTests : IDisposable
         const string Plaintext = "legacy-value";
 
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Key)))[..16];
-        var mapPath = Path.Combine(_tempDir, "keymap.json");
-        var payloadPath = Path.Combine(_tempDir, $"{hash}.enc");
+        var mapPath = Path.Combine(_fixture.DirectoryPath, "keymap.json");
+        var payloadPath = Path.Combine(_fixture.DirectoryPath, $"{hash}.enc");
         await File.WriteAllTextAsync(mapPath, JsonSerializer.Serialize(new Dictionary<string, string>(StringComparer.Ordinal)
         {
             [Key] = hash,
@@ -149,7 +138,7 @@ public sealed class EncryptedFileStoreTests : IDisposable
         var httpClient = new HttpClient(handler);
 
         var store = new EncryptedFileStore(
-            basePath: _tempDir,
+            basePath: _fixture.DirectoryPath,
             httpClient: httpClient,
             options: new EncryptedFileStoreOptions
             {

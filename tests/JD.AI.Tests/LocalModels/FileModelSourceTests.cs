@@ -1,28 +1,19 @@
 using FluentAssertions;
 using JD.AI.Core.LocalModels.Sources;
+using JD.AI.Tests.Fixtures;
 
 namespace JD.AI.Tests.LocalModels;
 
 public class FileModelSourceTests : IDisposable
 {
-    private readonly string _tempDir;
+    private readonly TempDirectoryFixture _fixture = new();
 
-    public FileModelSourceTests()
-    {
-        _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-file-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(_tempDir);
-    }
-
-    public void Dispose()
-    {
-        if (Directory.Exists(_tempDir))
-            Directory.Delete(_tempDir, recursive: true);
-    }
+    public void Dispose() => _fixture.Dispose();
 
     [Fact]
     public async Task ScanAsync_ValidGguf_ReturnsSingleModel()
     {
-        var path = Path.Combine(_tempDir, "test-model-Q5_K_M.gguf");
+        var path = Path.Combine(_fixture.DirectoryPath, "test-model-Q5_K_M.gguf");
         await File.WriteAllBytesAsync(path, new byte[512]);
 
         var source = new FileModelSource(path);
@@ -45,7 +36,7 @@ public class FileModelSourceTests : IDisposable
     [Fact]
     public async Task ScanAsync_NonGgufFile_ReturnsEmpty()
     {
-        var path = Path.Combine(_tempDir, "readme.txt");
+        var path = Path.Combine(_fixture.DirectoryPath, "readme.txt");
         await File.WriteAllTextAsync(path, "hello");
 
         var source = new FileModelSource(path);

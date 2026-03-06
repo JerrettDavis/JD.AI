@@ -1,20 +1,20 @@
 using JD.AI.Core.Agents;
 using JD.AI.Core.Config;
+using JD.AI.Tests.Fixtures;
 
 namespace JD.AI.Tests.Governance;
 
 [Collection("DataDirectories")]
 public sealed class OrgInstructionsTests : IDisposable
 {
-    private readonly string _tempDir;
+    private readonly TempDirectoryFixture _fixture = new();
     private readonly string _orgDir;
     private readonly string _projectDir;
 
     public OrgInstructionsTests()
     {
-        _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-org-test-{Guid.NewGuid():N}");
-        _orgDir = Path.Combine(_tempDir, "org-config");
-        _projectDir = Path.Combine(_tempDir, "project");
+        _orgDir = Path.Combine(_fixture.DirectoryPath, "org-config");
+        _projectDir = Path.Combine(_fixture.DirectoryPath, "project");
 
         Directory.CreateDirectory(_orgDir);
         Directory.CreateDirectory(_projectDir);
@@ -26,8 +26,7 @@ public sealed class OrgInstructionsTests : IDisposable
     {
         Environment.SetEnvironmentVariable("JDAI_ORG_CONFIG", null);
         DataDirectories.Reset();
-        try { Directory.Delete(_tempDir, recursive: true); }
-        catch { /* best effort cleanup */ }
+        _fixture.Dispose();
     }
 
     [Fact]
@@ -80,7 +79,7 @@ public sealed class OrgInstructionsTests : IDisposable
     public void Load_OrgConfigFromFile_UsedWhenEnvVarNotSet()
     {
         // Set up the DataDirectories root to our temp dir
-        var jdaiRootDir = Path.Combine(_tempDir, "jdai-root");
+        var jdaiRootDir = Path.Combine(_fixture.DirectoryPath, "jdai-root");
         Directory.CreateDirectory(jdaiRootDir);
         DataDirectories.SetRoot(jdaiRootDir);
 
@@ -124,7 +123,7 @@ public sealed class OrgInstructionsTests : IDisposable
     [Fact]
     public void Load_OrgConfigEnvVarPointsToNonExistentDir_OrgInstructionsSkipped()
     {
-        Environment.SetEnvironmentVariable("JDAI_ORG_CONFIG", Path.Combine(_tempDir, "nonexistent"));
+        Environment.SetEnvironmentVariable("JDAI_ORG_CONFIG", Path.Combine(_fixture.DirectoryPath, "nonexistent"));
         File.WriteAllText(Path.Combine(_projectDir, "JDAI.md"), "# Project rules");
 
         var result = InstructionsLoader.Load(_projectDir);

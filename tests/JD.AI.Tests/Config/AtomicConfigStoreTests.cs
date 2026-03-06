@@ -1,27 +1,20 @@
 using FluentAssertions;
 using JD.AI.Core.Config;
+using JD.AI.Tests.Fixtures;
 
 namespace JD.AI.Tests.Config;
 
 public class AtomicConfigStoreTests : IDisposable
 {
-    private readonly string _tempDir;
+    private readonly TempDirectoryFixture _fixture = new();
     private readonly string _configPath;
 
     public AtomicConfigStoreTests()
     {
-        _tempDir = Path.Combine(Path.GetTempPath(), "jdai-tests-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(_tempDir);
-        _configPath = Path.Combine(_tempDir, "config.json");
+        _configPath = Path.Combine(_fixture.DirectoryPath, "config.json");
     }
 
-    public void Dispose()
-    {
-        if (Directory.Exists(_tempDir))
-            Directory.Delete(_tempDir, recursive: true);
-
-        GC.SuppressFinalize(this);
-    }
+    public void Dispose() => _fixture.Dispose();
 
     [Fact]
     public async Task ReadAsync_ReturnsEmptyConfig_WhenFileDoesNotExist()
@@ -39,7 +32,7 @@ public class AtomicConfigStoreTests : IDisposable
     [Fact]
     public async Task WriteAsync_CreatesFileAndDirectories()
     {
-        var nested = Path.Combine(_tempDir, "sub", "dir", "config.json");
+        var nested = Path.Combine(_fixture.DirectoryPath, "sub", "dir", "config.json");
         var store = new AtomicConfigStore(nested);
 
         await store.WriteAsync(cfg => cfg.Defaults.Provider = "openai");

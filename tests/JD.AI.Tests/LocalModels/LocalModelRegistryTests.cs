@@ -1,28 +1,19 @@
 using FluentAssertions;
 using JD.AI.Core.LocalModels;
+using JD.AI.Tests.Fixtures;
 
 namespace JD.AI.Tests.LocalModels;
 
 public class LocalModelRegistryTests : IDisposable
 {
-    private readonly string _tempDir;
+    private readonly TempDirectoryFixture _fixture = new();
 
-    public LocalModelRegistryTests()
-    {
-        _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-test-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(_tempDir);
-    }
-
-    public void Dispose()
-    {
-        if (Directory.Exists(_tempDir))
-            Directory.Delete(_tempDir, recursive: true);
-    }
+    public void Dispose() => _fixture.Dispose();
 
     [Fact]
     public async Task LoadAsync_EmptyDir_CreatesEmptyRegistry()
     {
-        var registry = new LocalModelRegistry(_tempDir);
+        var registry = new LocalModelRegistry(_fixture.DirectoryPath);
         await registry.LoadAsync();
 
         registry.Models.Should().BeEmpty();
@@ -31,7 +22,7 @@ public class LocalModelRegistryTests : IDisposable
     [Fact]
     public async Task SaveAndLoad_RoundTrips()
     {
-        var registry = new LocalModelRegistry(_tempDir);
+        var registry = new LocalModelRegistry(_fixture.DirectoryPath);
 
         var ggufPath = CreateDummyGguf("test-model.gguf");
 
@@ -46,7 +37,7 @@ public class LocalModelRegistryTests : IDisposable
         await registry.SaveAsync();
 
         // Load in a new instance
-        var registry2 = new LocalModelRegistry(_tempDir);
+        var registry2 = new LocalModelRegistry(_fixture.DirectoryPath);
         await registry2.LoadAsync();
 
         registry2.Models.Should().HaveCount(1);
@@ -61,8 +52,8 @@ public class LocalModelRegistryTests : IDisposable
         CreateDummyGguf("model-b.gguf");
         CreateDummyGguf("not-a-model.txt");
 
-        var registry = new LocalModelRegistry(_tempDir);
-        await registry.ScanDirectoryAsync(_tempDir);
+        var registry = new LocalModelRegistry(_fixture.DirectoryPath);
+        await registry.ScanDirectoryAsync(_fixture.DirectoryPath);
 
         registry.Models.Should().HaveCount(2);
     }
@@ -72,7 +63,7 @@ public class LocalModelRegistryTests : IDisposable
     {
         var path = CreateDummyGguf("single.gguf");
 
-        var registry = new LocalModelRegistry(_tempDir);
+        var registry = new LocalModelRegistry(_fixture.DirectoryPath);
         await registry.AddFileAsync(path);
 
         registry.Models.Should().HaveCount(1);
@@ -82,7 +73,7 @@ public class LocalModelRegistryTests : IDisposable
     [Fact]
     public void Find_ByExactId()
     {
-        var registry = new LocalModelRegistry(_tempDir);
+        var registry = new LocalModelRegistry(_fixture.DirectoryPath);
         registry.Add(new ModelMetadata
         {
             Id = "llama-7b-q4",
@@ -96,7 +87,7 @@ public class LocalModelRegistryTests : IDisposable
     [Fact]
     public void Find_BySubstring()
     {
-        var registry = new LocalModelRegistry(_tempDir);
+        var registry = new LocalModelRegistry(_fixture.DirectoryPath);
         registry.Add(new ModelMetadata
         {
             Id = "meta-llama-3-8b-instruct-q4_k_m",
@@ -110,14 +101,14 @@ public class LocalModelRegistryTests : IDisposable
     [Fact]
     public void Find_NoMatch_ReturnsNull()
     {
-        var registry = new LocalModelRegistry(_tempDir);
+        var registry = new LocalModelRegistry(_fixture.DirectoryPath);
         registry.Find("nonexistent").Should().BeNull();
     }
 
     [Fact]
     public void Remove_ById_Succeeds()
     {
-        var registry = new LocalModelRegistry(_tempDir);
+        var registry = new LocalModelRegistry(_fixture.DirectoryPath);
         registry.Add(new ModelMetadata
         {
             Id = "to-remove",
@@ -132,14 +123,14 @@ public class LocalModelRegistryTests : IDisposable
     [Fact]
     public void Remove_NotFound_ReturnsFalse()
     {
-        var registry = new LocalModelRegistry(_tempDir);
+        var registry = new LocalModelRegistry(_fixture.DirectoryPath);
         registry.Remove("nope").Should().BeFalse();
     }
 
     [Fact]
     public void Add_Deduplicates_BySamePath()
     {
-        var registry = new LocalModelRegistry(_tempDir);
+        var registry = new LocalModelRegistry(_fixture.DirectoryPath);
         var model = new ModelMetadata
         {
             Id = "model1",
@@ -157,17 +148,17 @@ public class LocalModelRegistryTests : IDisposable
     [Fact]
     public async Task Load_RemovesMissingFiles()
     {
-        var registry = new LocalModelRegistry(_tempDir);
+        var registry = new LocalModelRegistry(_fixture.DirectoryPath);
         registry.Add(new ModelMetadata
         {
             Id = "ghost",
             DisplayName = "Ghost Model",
-            FilePath = Path.Combine(_tempDir, "ghost.gguf"),
+            FilePath = Path.Combine(_fixture.DirectoryPath, "ghost.gguf"),
         });
         await registry.SaveAsync();
 
         // Reload — file doesn't exist, should be pruned
-        var registry2 = new LocalModelRegistry(_tempDir);
+        var registry2 = new LocalModelRegistry(_fixture.DirectoryPath);
         await registry2.LoadAsync();
 
         registry2.Models.Should().BeEmpty();
@@ -175,7 +166,7 @@ public class LocalModelRegistryTests : IDisposable
 
     private string CreateDummyGguf(string filename)
     {
-        var path = Path.Combine(_tempDir, filename);
+        var path = Path.Combine(_fixture.DirectoryPath, filename);
         File.WriteAllBytes(path, new byte[256]);
         return path;
     }

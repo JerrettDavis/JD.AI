@@ -1,32 +1,21 @@
 using FluentAssertions;
 using JD.AI.Core.Providers;
+using JD.AI.Tests.Fixtures;
 using JD.SemanticKernel.Connectors.OpenAICodex;
 
 namespace JD.AI.Tests.Providers;
 
 public sealed class OpenAICodexDetectorTests : IDisposable
 {
-    private readonly string _tempDir;
+    private readonly TempDirectoryFixture _fixture = new();
     private readonly string _cachePath;
 
     public OpenAICodexDetectorTests()
     {
-        _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-codex-cache-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(_tempDir);
-        _cachePath = Path.Combine(_tempDir, "models_cache.json");
+        _cachePath = Path.Combine(_fixture.DirectoryPath, "models_cache.json");
     }
 
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(_tempDir, recursive: true);
-        }
-        catch
-        {
-            // Best-effort cleanup for temp directory.
-        }
-    }
+    public void Dispose() => _fixture.Dispose();
 
     [Fact]
     public void ReadModelsFromCache_FiltersAndSortsVisibleApiModels()
@@ -70,7 +59,7 @@ public sealed class OpenAICodexDetectorTests : IDisposable
     [Fact]
     public void ApplyCredentialOverridesFromAuthFile_UsesApiKeyWhenPresent()
     {
-        var authPath = Path.Combine(_tempDir, "auth.json");
+        var authPath = Path.Combine(_fixture.DirectoryPath, "auth.json");
         File.WriteAllText(authPath, """
                                     {
                                       "OPENAI_API_KEY": "sk-codex-from-file",
@@ -91,7 +80,7 @@ public sealed class OpenAICodexDetectorTests : IDisposable
     [Fact]
     public void ApplyCredentialOverridesFromAuthFile_UsesNestedIdTokenWhenApiKeyMissing()
     {
-        var authPath = Path.Combine(_tempDir, "auth.json");
+        var authPath = Path.Combine(_fixture.DirectoryPath, "auth.json");
         File.WriteAllText(authPath, """
                                     {
                                       "tokens": {
@@ -112,7 +101,7 @@ public sealed class OpenAICodexDetectorTests : IDisposable
     [Fact]
     public void ApplyCredentialOverridesFromAuthFile_IgnoresMalformedJson()
     {
-        var authPath = Path.Combine(_tempDir, "auth.json");
+        var authPath = Path.Combine(_fixture.DirectoryPath, "auth.json");
         File.WriteAllText(authPath, "{not-json");
 
         var options = new CodexSessionOptions { CredentialsPath = authPath };
