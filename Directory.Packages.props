@@ -4,6 +4,7 @@
   </PropertyGroup>
   <!-- Build infrastructure -->
   <ItemGroup>
+    <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
     <PackageVersion Include="Meziantou.Analyzer" Version="3.0.18" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.103" />
     <PackageVersion Include="Nerdbank.GitVersioning" Version="3.9.50" />
