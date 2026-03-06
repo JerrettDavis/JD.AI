@@ -406,6 +406,19 @@ static void RunDaemon(string[] args)
 
 static async Task RunUpdateCommandAsync(bool checkOnly)
 {
+    IServiceManager? serviceManager = null;
+    var shouldReconcileService = false;
+    try
+    {
+        serviceManager = CreateServiceManager();
+        var status = await serviceManager.GetStatusAsync();
+        shouldReconcileService = status.State != ServiceState.NotInstalled;
+    }
+    catch (PlatformNotSupportedException)
+    {
+        // Update checks are supported on all platforms, but service reconciliation is Windows/Linux only.
+    }
+
     // Build a minimal host just for the update checker
     var builder = Host.CreateApplicationBuilder([]);
     builder.Services.Configure<UpdateConfig>(
@@ -448,7 +461,20 @@ static async Task RunUpdateCommandAsync(bool checkOnly)
     process.Start();
     await process.WaitForExitAsync();
 
-    Console.WriteLine(process.ExitCode == 0
-        ? $"✓ Updated to {update.LatestVersion}. Restart the service to apply."
-        : "✗ Update failed. Check the output above.");
+    if (process.ExitCode != 0)
+    {
+        Console.WriteLine("✗ Update failed. Check the output above.");
+        return;
+    }
+
+    if (shouldReconcileService && serviceManager is not null)
+    {
+        var reconcileResult = await serviceManager.InstallAsync();
+        if (reconcileResult.Success)
+            Console.WriteLine("Service configuration refreshed.");
+        else
+            Console.WriteLine($"Warning: package updated, but failed to refresh service/task config: {reconcileResult.Message}");
+    }
+
+    Console.WriteLine($"✓ Updated to {update.LatestVersion}. Restart the service to apply.");
 }
