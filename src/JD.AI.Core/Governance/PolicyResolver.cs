@@ -30,6 +30,17 @@ public static class PolicyResolver
             .ThenBy(p => p.Metadata.Priority)
             .ToList();
 
+        // Expand any preset extensions: insert preset as lowest-priority base document
+        var expanded = new List<PolicyDocument>();
+        foreach (var doc in ordered)
+        {
+            var preset = CompliancePresetLoader.ResolveExtension(doc.Spec);
+            if (preset is not null)
+                expanded.Add(preset); // inserted before the user doc
+            expanded.Add(doc);
+        }
+        ordered = expanded;
+
         if (ordered.Count == 0)
             return new PolicySpec();
 
@@ -150,10 +161,18 @@ public static class PolicyResolver
         var noExternal = specs.SelectMany(s => s.NoExternalProviders).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         var redactPatterns = specs.SelectMany(s => s.RedactPatterns).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
+        // Classifications: union by name; later/higher-priority policy wins for duplicate names
+        var classifications = specs
+            .SelectMany(s => s.Classifications ?? [])
+            .GroupBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.Last()) // last (highest priority) wins
+            .ToList();
+
         return new DataPolicy
         {
             NoExternalProviders = noExternal,
             RedactPatterns = redactPatterns,
+            Classifications = classifications,
         };
     }
 
