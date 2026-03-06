@@ -14,12 +14,14 @@ public sealed class InstallationDetectorTests
         rid.Should().MatchRegex(@"^(win|osx|linux)-(x64|arm64|x86)$");
     }
 
+    private static readonly string[] KnownOsPrefixes = ["win", "osx", "linux"];
+
     [Fact]
     public void GetCurrentRid_StartsWithKnownOs()
     {
         var rid = InstallationDetector.GetCurrentRid();
         var os = rid.Split('-')[0];
-        new[] { "win", "osx", "linux" }.Should().Contain(os);
+        KnownOsPrefixes.Should().Contain(os);
     }
 
     [Fact]
