@@ -58,8 +58,8 @@ public sealed class AgentDefinitionRegistryTests : IDisposable
 
         var results = registry.GetByTag("code-review");
         Assert.Equal(2, results.Count);
-        Assert.Contains(results, d => d.Name == "a");
-        Assert.Contains(results, d => d.Name == "c");
+        Assert.Contains(results, d => string.Equals(d.Name, "a", StringComparison.Ordinal));
+        Assert.Contains(results, d => string.Equals(d.Name, "c", StringComparison.Ordinal));
     }
 
     [Fact]

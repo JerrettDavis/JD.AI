@@ -156,10 +156,9 @@ public sealed class AgentLoopTracingTests
     {
         // When no listener is registered for the source, StartActivity returns null.
         // AgentLoop uses null-conditional ?. so this must not throw.
-        Activity? activity = null;
-        var nullableActivity = activity;
-        nullableActivity?.SetStatus(ActivityStatusCode.Ok);
-        nullableActivity?.SetGenAiRequestAttributes("sys", "model");
+        using var activity = ActivitySources.Agent.StartActivity("agent.turn", ActivityKind.Internal);
+        activity?.SetStatus(ActivityStatusCode.Ok);
+        activity?.SetGenAiRequestAttributes("sys", "model");
         // No exception means the null-conditional guards are correct.
     }
 }
