@@ -538,4 +538,4 @@ JD.AI reads `$JDAI_ORG_CONFIG/policies/*.yaml` at startup and merges them with p
 
 - [Audit Logging](audit-logging.md) — Configuring and querying the audit trail.
 - [Configuration](configuration.md) — Project instructions, data directories, and environment variables.
-- [Tools Reference](tools-reference.md) — Complete tool documentation including safety tiers.
+- [Tools Reference](../reference/tools.md) — Complete tool documentation including safety tiers.

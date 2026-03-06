@@ -404,4 +404,4 @@ This directory is managed automatically. Do not edit files in this directory by 
 
 - [Configuration](configuration.md) — environment variables and data directory layout
 - [Common Workflows](common-workflows.md) — practical guides for everyday development tasks
-- [Commands Reference](commands-reference.md) — complete slash command reference
+- [Commands Reference](../reference/commands.md) — complete slash command reference

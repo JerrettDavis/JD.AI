@@ -129,4 +129,4 @@ For each `JdAiAgent`:
 - [controller-runtime](https://github.com/kubernetes-sigs/controller-runtime) — standard Go operator framework
 - [KubeOps](https://buehler.github.io/dotnet-operator-sdk/) — .NET operator SDK
 - [Operator Pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/) — Kubernetes documentation
-- [JD.AI Architecture — Kubernetes Integration](../README.md#kubernetes-integration)
+- [JD.AI Architecture — Kubernetes Integration](index.md#kubernetes-integration)
