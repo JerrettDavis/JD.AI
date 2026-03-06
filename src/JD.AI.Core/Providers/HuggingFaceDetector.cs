@@ -13,7 +13,7 @@ namespace JD.AI.Core.Providers;
 /// the HuggingFace Hub, falling back to a curated catalog when offline.
 ///
 /// HuggingFace deprecated the old api-inference.huggingface.co endpoint (returns 410 Gone).
-/// All requests now use the OpenAI-compatible router: https://router.huggingface.co/hf-inference/v1/
+/// All requests now use the OpenAI-compatible router: https://router.huggingface.co/v1/
 /// </summary>
 public sealed class HuggingFaceDetector : ApiKeyProviderDetectorBase
 {
