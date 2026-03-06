@@ -33,9 +33,8 @@ public static class PolicyResolver
         if (ordered.Count == 0)
             return new PolicySpec();
 
-        if (ordered.Count == 1)
-            return ordered[0].Spec;
-
+        // Always build a fresh spec — returning the original object (Count == 1 fast-path)
+        // would let callers mutate the source document and corrupt subsequent Resolve() calls.
         var result = new PolicySpec();
 
         var toolSpecs = ordered.Select(p => p.Spec.Tools).Where(t => t is not null).ToList();
@@ -46,6 +45,8 @@ public static class PolicyResolver
         var sessionSpecs = ordered.Select(p => p.Spec.Sessions).Where(s => s is not null).ToList();
         var auditSpecs = ordered.Select(p => p.Spec.Audit).Where(a => a is not null).ToList();
         var roleSpecs = ordered.Select(p => p.Spec.Roles).Where(r => r is not null).Select(r => r!).ToList();
+        var workflowSpecs = ordered.Select(p => p.Spec.Workflows).Where(w => w is not null).ToList();
+        var cbSpecs = ordered.Select(p => p.Spec.CircuitBreaker).Where(c => c is not null).ToList();
 
         result.Tools = MergeToolPolicy(toolSpecs!);
         result.Providers = MergeProviderPolicy(providerSpecs!);
@@ -55,6 +56,8 @@ public static class PolicyResolver
         result.Sessions = MergeSessionPolicy(sessionSpecs!);
         result.Audit = MergeAuditPolicy(auditSpecs!);
         result.Roles = MergeRolePolicy(roleSpecs);
+        result.Workflows = MergeWorkflowPolicy(workflowSpecs!);
+        result.CircuitBreaker = MergeCircuitBreakerPolicy(cbSpecs!);
 
         return result;
     }
@@ -122,12 +125,17 @@ public static class PolicyResolver
                                  .Select(s => s.MaxMonthlyUsd!.Value)
                                  .ToList();
 
+        var sessionLimits = specs.Where(s => s.MaxSessionUsd.HasValue)
+                                 .Select(s => s.MaxSessionUsd!.Value)
+                                 .ToList();
+
         var alertThresholds = specs.Select(s => s.AlertThresholdPercent).ToList();
 
         return new BudgetPolicy
         {
             MaxDailyUsd = dailyLimits.Count > 0 ? dailyLimits.Min() : null,
             MaxMonthlyUsd = monthlyLimits.Count > 0 ? monthlyLimits.Min() : null,
+            MaxSessionUsd = sessionLimits.Count > 0 ? sessionLimits.Min() : null,
             AlertThresholdPercent = alertThresholds.Count > 0 ? alertThresholds.Min() : 80,
         };
     }
@@ -181,6 +189,33 @@ public static class PolicyResolver
             Url = last.Url,
             ConnectionString = last.ConnectionString,
             Server = last.Server,
+        };
+    }
+
+    private static WorkflowPolicy? MergeWorkflowPolicy(List<WorkflowPolicy> specs)
+    {
+        if (specs.Count == 0) return null;
+
+        var allAllowed = specs.Where(s => s.PublishAllowed.Count > 0).Select(s => s.PublishAllowed).ToList();
+        var mergedAllowed = IntersectAllowedLists(allAllowed);
+        var mergedDenied = UnionDeniedLists(specs.Select(s => s.PublishDenied).ToList());
+
+        return new WorkflowPolicy { PublishAllowed = mergedAllowed, PublishDenied = mergedDenied };
+    }
+
+    private static CircuitBreakerPolicy? MergeCircuitBreakerPolicy(List<CircuitBreakerPolicy> specs)
+    {
+        if (specs.Count == 0) return null;
+
+        // Most-restrictive: lowest thresholds, largest window, hardened if any require it
+        return new CircuitBreakerPolicy
+        {
+            RepetitionWarningThreshold = specs.Min(s => s.RepetitionWarningThreshold),
+            RepetitionHardStopThreshold = specs.Min(s => s.RepetitionHardStopThreshold),
+            PingPongThreshold = specs.Min(s => s.PingPongThreshold),
+            WindowSize = specs.Max(s => s.WindowSize),
+            CooldownSeconds = specs.Max(s => s.CooldownSeconds),
+            Hardened = specs.Any(s => s.Hardened),
         };
     }
 

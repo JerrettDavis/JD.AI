@@ -138,7 +138,12 @@ public sealed class PolicyEvaluator : IPolicyEvaluator
         if (workflows is null)
             return Allow();
 
-        var userId = context.UserId ?? Environment.UserName;
+        // Fail-closed: require explicit user identity — never fall back to the OS process owner
+        // (which is the service account in hosted/daemon scenarios).
+        if (string.IsNullOrWhiteSpace(context.UserId))
+            return Deny("No authenticated user identity available for workflow publish check.");
+
+        var userId = context.UserId;
 
         // Deny takes precedence
         if (workflows.PublishDenied.Any(d =>

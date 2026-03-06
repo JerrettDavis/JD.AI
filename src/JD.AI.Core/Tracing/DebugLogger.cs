@@ -20,7 +20,7 @@ public enum DebugCategory
 /// </summary>
 public static class DebugLogger
 {
-    private static DebugCategory _enabledCategories = DebugCategory.None;
+    private static volatile DebugCategory _enabledCategories = DebugCategory.None;
 
     /// <summary>Whether any debug categories are enabled.</summary>
     public static bool IsEnabled => _enabledCategories != DebugCategory.None;
