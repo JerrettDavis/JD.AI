@@ -58,21 +58,94 @@ public static class ChatRenderer
 
     /// <summary>Render the startup banner with detected providers.</summary>
     public static void RenderBanner(
-        string modelName, string providerName, int totalModels)
+        string modelName,
+        string providerName,
+        int totalModels,
+        IReadOnlyList<WelcomeIndicator>? indicators = null,
+        WelcomeBannerDetails? details = null,
+        WelcomePanelSettings? welcomeSettings = null)
     {
+        var settings = WelcomePanelSettings.Normalize(welcomeSettings);
+        var body = BuildWelcomeBody(modelName, providerName, totalModels, indicators, details, settings);
+
         var panel = new Panel(
-            new Markup(
-                $"[bold]jdai[/] — Semantic Kernel TUI Agent\n" +
-                $"Provider: [#{_palette.PromptColor.TrimStart('#')}]{Markup.Escape(providerName)}[/] | " +
-                $"Model: [green]{Markup.Escape(modelName)}[/] | " +
-                $"Total models: {totalModels}\n" +
-                $"Type [dim]/help[/] for commands, [dim]/quit[/] to exit."))
+            new Markup(body))
             .Border(BoxBorder.Rounded)
             .Header($"[bold {_palette.HeaderColor}]Welcome[/]")
             .Padding(1, 0);
 
         AnsiConsole.Write(panel);
         AnsiConsole.WriteLine();
+    }
+
+    internal static string BuildWelcomeBody(
+        string modelName,
+        string providerName,
+        int totalModels,
+        IReadOnlyList<WelcomeIndicator>? indicators,
+        WelcomeBannerDetails? details,
+        WelcomePanelSettings settings)
+    {
+        var lines = new List<string>
+        {
+            "[bold]jdai[/] — Semantic Kernel TUI Agent",
+        };
+
+        if (settings.ShowModelSummary)
+        {
+            lines.Add(
+                $"Provider: [#{_palette.PromptColor.TrimStart('#')}]{Markup.Escape(providerName)}[/] | " +
+                $"Model: [green]{Markup.Escape(modelName)}[/] | " +
+                $"Total models: {totalModels}");
+        }
+
+        if (settings.ShowServices)
+        {
+            var services = BuildIndicatorsLine(indicators);
+            if (!string.IsNullOrWhiteSpace(services))
+                lines.Add(services);
+        }
+
+        if (settings.ShowWorkingDirectory && !string.IsNullOrWhiteSpace(details?.WorkingDirectory))
+            lines.Add($"CWD: [dim]{Markup.Escape(details.WorkingDirectory)}[/]");
+
+        if (settings.ShowVersion && !string.IsNullOrWhiteSpace(details?.Version))
+            lines.Add($"Version: [dim]{Markup.Escape(details.Version)}[/]");
+
+        if (settings.ShowMotd && !string.IsNullOrWhiteSpace(details?.Motd))
+            lines.Add($"MoTD: [dim]{Markup.Escape(details.Motd)}[/]");
+
+        lines.Add("Type [dim]/help[/] for commands, [dim]/quit[/] to exit.");
+        return string.Join('\n', lines);
+    }
+
+    internal static string BuildIndicatorsLine(IReadOnlyList<WelcomeIndicator>? indicators)
+    {
+        if (indicators is null || indicators.Count == 0)
+            return string.Empty;
+
+        var segments = indicators
+            .Where(i => !string.IsNullOrWhiteSpace(i.Name) && !string.IsNullOrWhiteSpace(i.Value))
+            .Select(i => $"{Markup.Escape(i.Name)}: {FormatIndicatorValue(i)}")
+            .ToArray();
+
+        if (segments.Length == 0)
+            return string.Empty;
+
+        return $"Services: {string.Join(" | ", segments)}";
+    }
+
+    private static string FormatIndicatorValue(WelcomeIndicator indicator)
+    {
+        var color = indicator.State switch
+        {
+            IndicatorState.Healthy => "green",
+            IndicatorState.Warning => _palette.WarningColor,
+            IndicatorState.Error => _palette.ErrorColor,
+            _ => _palette.InfoColor,
+        };
+
+        return $"[{color}]{Markup.Escape(indicator.Value)}[/]";
     }
 
     /// <summary>Render a user message.</summary>
