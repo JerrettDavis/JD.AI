@@ -13,7 +13,8 @@ public sealed class AgentLoopTracingTests
     [Fact]
     public void AgentActivitySource_CanCreateTurnActivity()
     {
-        var captured = new List<Activity>();
+        // Use ConcurrentBag to avoid collection-modified exceptions from parallel test threads
+        var captured = new System.Collections.Concurrent.ConcurrentBag<Activity>();
 
         using var listener = new ActivityListener
         {
@@ -21,15 +22,15 @@ public sealed class AgentLoopTracingTests
                 string.Equals(source.Name, ActivitySources.AgentSourceName, StringComparison.Ordinal),
             Sample = (ref ActivityCreationOptions<ActivityContext> _) =>
                 ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStarted = captured.Add,
+            ActivityStarted = a => captured.Add(a),
         };
         ActivitySource.AddActivityListener(listener);
 
         using var activity = ActivitySources.Agent.StartActivity("agent.turn", ActivityKind.Internal);
 
         Assert.NotNull(activity);
-        Assert.Single(captured);
-        Assert.Equal("agent.turn", captured[0].OperationName);
+        // Use Contains rather than Single — parallel tests may also start activities on the same source
+        Assert.Contains(captured, a => string.Equals(a.OperationName, "agent.turn", StringComparison.Ordinal));
     }
 
     [Fact]
