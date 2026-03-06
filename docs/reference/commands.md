@@ -453,6 +453,7 @@ Gateway adapters expose command variants natively per platform:
 - Discord: slash commands (example: `/jdai-help`)
 - Slack: slash commands (example: `/jdai-help`)
 - Signal: command prefix form (example: `!jdai-help`)
+- OpenClaw bridge: message commands (example: `/jdai-help`)
 
 ### `jdai-help`
 
@@ -481,6 +482,44 @@ Clears one agent conversation or all if omitted.
 ### `jdai-agents`
 
 Lists active gateway agents and route mappings.
+
+### `jdai-route [agent]`
+
+Shows the current channel route or remaps the current channel to a matching agent/provider/model.
+
+```text
+jdai-route
+jdai-route ollama
+jdai-route gpt-5.3-codex
+```
+
+### `jdai-routes`
+
+Lists all channel-to-agent mappings.
+
+### `jdai-provider [name]`
+
+Shows current mapped agent provider or switches the mapped channel to a newly spawned agent on the selected provider.
+
+```text
+jdai-provider
+jdai-provider openai
+jdai-provider ollama
+```
+
+### `jdai-providers`
+
+Lists detected provider availability and models from the gateway runtime.
+
+### OpenClaw bridge invocation
+
+When issuing gateway commands from an OpenClaw conversation, always use `/jdai-` prefix messages:
+
+```text
+/jdai-routes
+/jdai-route ollama
+/jdai-provider openai
+```
 
 ## Quick reference
 
