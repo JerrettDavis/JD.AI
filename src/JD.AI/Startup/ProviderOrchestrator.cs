@@ -385,7 +385,7 @@ internal static class ProviderOrchestrator
             opts.RoutingFallbackProviders);
     }
 
-    private static RoutingStrategy ParseRoutingStrategy(string? raw) =>
+    internal static RoutingStrategy ParseRoutingStrategy(string? raw) =>
         raw?.Trim().ToLowerInvariant() switch
         {
             "local-first" or "local" => RoutingStrategy.LocalFirst,
@@ -395,7 +395,7 @@ internal static class ProviderOrchestrator
             _ => RoutingStrategy.LocalFirst,
         };
 
-    private static ModelCapabilities ParseRoutingCapabilities(string[] rawCapabilities)
+    internal static ModelCapabilities ParseRoutingCapabilities(string[] rawCapabilities)
     {
         if (rawCapabilities.Length == 0)
             return ModelCapabilities.Chat | ModelCapabilities.ToolCalling;
