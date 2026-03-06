@@ -1,5 +1,7 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/JD.AI.Connectors.Jira/JD.AI.Connectors.Jira.csproj" />
+    <Project Path="src/JD.AI.Connectors.Sdk/JD.AI.Connectors.Sdk.csproj" />
     <Project Path="src/JD.AI.Core/JD.AI.Core.csproj" />
     <Project Path="src/JD.AI.Telemetry/JD.AI.Telemetry.csproj" />
     <Project Path="src/JD.AI.Dashboard.Wasm/JD.AI.Dashboard.Wasm.csproj" />
