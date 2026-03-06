@@ -1,0 +1,104 @@
+name: Version Bump
+
+# Runs after every push to main and auto-bumps version.json based on
+# conventional commit types:
+#
+#   feat:             → minor bump  (1.1.x → 1.2.0)
+#   BREAKING CHANGE / feat!: / fix!: etc.  → major bump  (1.x → 2.0)
+#   fix:, perf:       → patch (NBGV commit height handles automatically)
+#   docs:, ci:, chore:, style:, test:, refactor:, build: → no bump
+#
+# The workflow skips its own version-bump commits to prevent loops.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    name: Conventional Commits → version.json
+    runs-on: ubuntu-latest
+    # Skip commits made by this workflow to avoid infinite loops
+    if: "!contains(github.event.head_commit.message, 'chore(version): bump')"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install NBGV
+        run: dotnet tool install -g nbgv
+
+      - name: Determine bump from conventional commits
+        id: semver
+        shell: bash
+        run: |
+          # Find the commit that last touched version.json
+          LAST_VERSION_COMMIT=$(git log --follow -1 --format="%H" -- version.json)
+
+          if [ -z "$LAST_VERSION_COMMIT" ]; then
+            # No prior version.json change — analyze all commits
+            COMMITS=$(git log --format="%s%n%b" HEAD)
+          else
+            # Analyze commits since version.json was last changed
+            COMMITS=$(git log --format="%s%n%b" "${LAST_VERSION_COMMIT}..HEAD")
+          fi
+
+          echo "Commits since last version change:"
+          echo "$COMMITS"
+
+          # Detect breaking changes (BREAKING CHANGE in body OR ! after type)
+          if echo "$COMMITS" | grep -qE "(BREAKING[[:space:]]CHANGE|^[a-z]+(\([^)]*\))?!:)"; then
+            echo "bump=major" >> "$GITHUB_OUTPUT"
+          # Detect features
+          elif echo "$COMMITS" | grep -qE "^feat(\([^)]*\))?:"; then
+            echo "bump=minor" >> "$GITHUB_OUTPUT"
+          else
+            echo "bump=none" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply version bump
+        if: steps.semver.outputs.bump != 'none'
+        shell: bash
+        run: |
+          BUMP="${{ steps.semver.outputs.bump }}"
+          CURRENT=$(nbgv get-version -f "{MajorMinorVersion}")
+          MAJOR=$(echo "$CURRENT" | cut -d. -f1)
+          MINOR=$(echo "$CURRENT" | cut -d. -f2)
+
+          if [ "$BUMP" = "major" ]; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+          elif [ "$BUMP" = "minor" ]; then
+            MINOR=$((MINOR + 1))
+          fi
+
+          NEW_VERSION="${MAJOR}.${MINOR}"
+          echo "Bumping $CURRENT → $NEW_VERSION ($BUMP)"
+          nbgv set-version "$NEW_VERSION"
+
+      - name: Commit version bump
+        if: steps.semver.outputs.bump != 'none'
+        shell: bash
+        run: |
+          BUMP="${{ steps.semver.outputs.bump }}"
+          NEW_VERSION=$(nbgv get-version -f "{MajorMinorVersion}")
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add version.json
+          git commit -m "chore(version): bump to ${NEW_VERSION} [${BUMP}]
+
+          Auto-bumped by conventional commits analysis.
+          [skip ci]"
+          git push
