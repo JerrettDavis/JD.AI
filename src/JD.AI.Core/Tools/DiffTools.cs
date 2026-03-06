@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text;
 using JD.AI.Core.Attributes;
+using JD.AI.Core.Infrastructure;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -83,18 +84,18 @@ public sealed class DiffTools
         {
             if (string.IsNullOrEmpty(edit.Path))
             {
-                return "Error: edit missing 'path' field.";
+                return OutputFormatter.Error("edit missing 'path' field.");
             }
 
             if (!File.Exists(edit.Path))
             {
-                return $"Error: file not found — {edit.Path}";
+                return OutputFormatter.Error($"file not found — {edit.Path}");
             }
 
             var content = File.ReadAllText(edit.Path);
             if (edit.OldText is not null && !content.Contains(edit.OldText, StringComparison.Ordinal))
             {
-                return $"Error: old text not found in {edit.Path}. Patch aborted (no files modified).";
+                return OutputFormatter.Error($"old text not found in {edit.Path}. Patch aborted (no files modified).");
             }
 
             var modified = edit.OldText is not null

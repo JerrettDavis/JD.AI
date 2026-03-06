@@ -60,7 +60,7 @@ public sealed class PolicyTools
         catch (Exception ex)
 #pragma warning restore CA1031
         {
-            return $"Error evaluating policy: {ex.Message}";
+            return OutputFormatter.Error("evaluating policy", ex);
         }
 
         var sb = new StringBuilder();
@@ -106,7 +106,7 @@ public sealed class PolicyTools
         catch (Exception ex)
 #pragma warning restore CA1031
         {
-            return $"Error loading policies: {ex.Message}";
+            return OutputFormatter.Error("loading policies", ex);
         }
 
         var sb = new StringBuilder();
@@ -448,7 +448,7 @@ public sealed class PolicyTools
         catch (Exception ex)
 #pragma warning restore CA1031
         {
-            return $"Error exporting policy: {ex.Message}";
+            return OutputFormatter.Error("exporting policy", ex);
         }
     }
 }

@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Text;
 using JD.AI.Core.Attributes;
+using JD.AI.Core.Infrastructure;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -151,7 +152,7 @@ public sealed class ToolDiscoveryTools
 
         if (plugin is null)
         {
-            return $"Error: Plugin '{pluginName}' not found. Use discover_tools to see available plugins.";
+            return OutputFormatter.Error($"Plugin '{pluginName}' not found. Use discover_tools to see available plugins.");
         }
 
         // Add to the kernel

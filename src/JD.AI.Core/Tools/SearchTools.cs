@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Text;
 using System.Text.RegularExpressions;
 using JD.AI.Core.Attributes;
+using JD.AI.Core.Infrastructure;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -26,7 +27,7 @@ public sealed class SearchTools
         var dir = path ?? Directory.GetCurrentDirectory();
         if (!Directory.Exists(dir))
         {
-            return $"Error: Directory not found: {dir}";
+            return OutputFormatter.Error($"Directory not found: {dir}");
         }
 
         var options = ignoreCase ? RegexOptions.IgnoreCase : RegexOptions.None;
@@ -37,7 +38,7 @@ public sealed class SearchTools
         }
         catch (RegexParseException ex)
         {
-            return $"Error: Invalid regex: {ex.Message}";
+            return OutputFormatter.Error("Invalid regex", ex);
         }
 
         var searchPattern = glob ?? "*.*";
@@ -108,10 +109,10 @@ public sealed class SearchTools
         var dir = path ?? Directory.GetCurrentDirectory();
         if (!Directory.Exists(dir))
         {
-            return $"Error: Directory not found: {dir}";
+            return OutputFormatter.Error($"Directory not found: {dir}");
         }
 
-        // Simple glob implementation — convert ** and * to search patterns
+        // Simple glob implementation— convert ** and * to search patterns
         var files = Directory.GetFiles(dir, "*", SearchOption.AllDirectories)
             .Select(f => Path.GetRelativePath(dir, f))
             .Where(f => MatchGlob(f, pattern))

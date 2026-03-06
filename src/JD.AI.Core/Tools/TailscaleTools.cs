@@ -176,14 +176,14 @@ public sealed class TailscaleTools
         if (!string.Equals(authMethod, "oauth", StringComparison.OrdinalIgnoreCase) &&
             !string.Equals(authMethod, "api-key", StringComparison.OrdinalIgnoreCase))
         {
-            sb.AppendLine("❌ Invalid auth method. Use `oauth` or `api-key`.");
+            sb.AppendLine(OutputFormatter.Error("Invalid auth method. Use `oauth` or `api-key`."));
             return sb.ToString();
         }
 
         if (string.Equals(authMethod, "oauth", StringComparison.OrdinalIgnoreCase) &&
             string.IsNullOrWhiteSpace(clientSecret))
         {
-            sb.AppendLine("❌ OAuth auth method requires `clientSecret` parameter.");
+            sb.AppendLine(OutputFormatter.Error("OAuth auth method requires `clientSecret` parameter."));
             return sb.ToString();
         }
 
@@ -219,7 +219,7 @@ public sealed class TailscaleTools
         }
         catch (Exception ex)
         {
-            sb.AppendLine($"❌ Failed to save config: {ex.Message}");
+            sb.AppendLine(OutputFormatter.Error("saving config", ex));
         }
 
         return sb.ToString();

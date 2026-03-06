@@ -151,7 +151,7 @@ public sealed class McpTransportTools
             string.Equals(s.Name, serverName, StringComparison.OrdinalIgnoreCase));
 
         if (server is null)
-            return $"Server `{serverName}` not found. Use `mcp_list_servers` to see configured servers.";
+            return OutputFormatter.Error($"Server `{serverName}` not found. Use `mcp_list_servers` to see configured servers.");
 
         var sb = new StringBuilder();
         sb.AppendLine($"## MCP Diagnostics: {server.Name}");

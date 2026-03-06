@@ -342,7 +342,7 @@ public sealed class BenchmarkTools
         }
         catch (JsonException ex)
         {
-            return $"Error: Invalid JSON baseline — {ex.Message}";
+            return OutputFormatter.Error($"Invalid JSON baseline — {ex.Message}");
         }
     }
 
