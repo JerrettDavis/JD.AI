@@ -11,7 +11,9 @@ public static class DiffRenderer
 {
     /// <summary>
     /// Returns true when <paramref name="text"/> looks like a unified diff.
-    /// Matches when the first two non-empty lines start with "---" and "+++".
+    /// Accepts optional preamble lines (e.g. <c>diff --git</c>, <c>index …</c>)
+    /// before the <c>---</c> / <c>+++</c> markers so that full <c>git diff</c>
+    /// output is detected correctly.
     /// </summary>
     public static bool IsDiff(string text)
     {
@@ -20,12 +22,15 @@ public static class DiffRenderer
         var minusFound = false;
         foreach (var rawLine in lines)
         {
-            var line = rawLine.TrimStart().TrimEnd('\r');
+            // TrimEnd only — preserve leading characters so "---"/"+++" must be at column 0
+            var line = rawLine.TrimEnd('\r');
             if (line.Length == 0) continue;
             if (!minusFound)
             {
-                if (line.StartsWith("---", StringComparison.Ordinal)) { minusFound = true; continue; }
-                return false;
+                if (line.StartsWith("---", StringComparison.Ordinal))
+                    minusFound = true;
+                // else: skip preamble lines (diff --git, index …) and keep looking
+                continue;
             }
             return line.StartsWith("+++", StringComparison.Ordinal);
         }

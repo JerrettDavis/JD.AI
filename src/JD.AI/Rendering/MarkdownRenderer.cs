@@ -176,9 +176,25 @@ public static class MarkdownRenderer
 
     private static void RenderQuote(QuoteBlock qb)
     {
-        AnsiConsole.Markup("[dim grey]│[/] ");
-        foreach (var block in qb)
-            RenderBlock(block, 0);
+        // Capture each block's text output so we can prefix every line with the gutter
+        var sw = new StringWriter();
+        var saved = Console.Out;
+        Console.SetOut(sw);
+        try
+        {
+            foreach (var block in qb)
+                RenderBlock(block, 0);
+        }
+        finally
+        {
+            Console.SetOut(saved);
+        }
+
+        foreach (var line in sw.ToString().Split('\n'))
+        {
+            var trimmed = line.TrimEnd('\r');
+            AnsiConsole.MarkupLine($"[dim grey]│[/] [italic]{Markup.Escape(trimmed)}[/]");
+        }
     }
 
     private static void RenderTable(Markdig.Extensions.Tables.Table table)
@@ -196,16 +212,23 @@ public static class MarkdownRenderer
                 new Markup(RenderInlines(cell.OfType<ParagraphBlock>()
                     .SelectMany(p => p.Inline ?? Enumerable.Empty<Inline>())))));
 
-        // Body rows
+        // Body rows — clamp to column count to prevent Spectre from throwing,
+        // and pad short rows so every row has the same width.
+        var columnCount = spectreTable.Columns.Count;
         foreach (var row in rows.Skip(1))
         {
             var cells = row.OfType<Markdig.Extensions.Tables.TableCell>()
+                .Take(columnCount)
                 .Select(c => new Markup(RenderInlines(
                     c.OfType<ParagraphBlock>().SelectMany(p => p.Inline ?? Enumerable.Empty<Inline>()))))
                 .Cast<Spectre.Console.Rendering.IRenderable>()
-                .ToArray();
-            if (cells.Length > 0)
-                spectreTable.AddRow(cells);
+                .ToList();
+
+            // Pad missing cells so the row width always matches the header
+            while (cells.Count < columnCount)
+                cells.Add(new Markup(string.Empty));
+
+            spectreTable.AddRow(cells.ToArray());
         }
 
         AnsiConsole.Write(spectreTable);
@@ -384,13 +407,18 @@ public static class MarkdownRenderer
         var i = 0;
         while (i < line.Length)
         {
-            // String literals
+            // String literals — handle escape sequences so \"  \' \` don't end the literal early
             if (line[i] is '"' or '\'' or '`')
             {
                 var quote = line[i];
                 var end = i + 1;
-                while (end < line.Length && line[end] != quote) end++;
-                if (end < line.Length) end++;
+                while (end < line.Length && line[end] != quote)
+                {
+                    if (line[end] == '\\' && end + 1 < line.Length)
+                        end++; // skip the escaped character
+                    end++;
+                }
+                if (end < line.Length) end++; // consume closing quote
                 result.Append($"[yellow]{Markup.Escape(line[i..end])}[/]");
                 i = end;
                 continue;

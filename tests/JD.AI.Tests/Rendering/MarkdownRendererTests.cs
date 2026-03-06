@@ -174,3 +174,166 @@ public sealed class MarkdownRendererSlashCommandTests
         }
     }
 }
+
+/// <summary>Tests for regressions found in code review (critical/high issues).</summary>
+public sealed class MarkdownRendererRegressionTests
+{
+    private static void WithNullConsole(Action action)
+    {
+        var saved = Console.Out;
+        try { Console.SetOut(TextWriter.Null); action(); }
+        finally { Console.SetOut(saved); }
+    }
+
+    // ── CRITICAL-3: ragged/short table rows must not throw ────────────────────────
+
+    [Fact]
+    public void Render_DoesNotThrow_ForTableWithRaggedRows()
+    {
+        // Row has more cells than the header — Spectre throws without the clamp fix
+        var table = "| A | B |\n|---|---|\n| 1 | 2 | 3 |";
+        WithNullConsole(() =>
+        {
+            var ex = Record.Exception(() => MarkdownRenderer.Render(table));
+            Assert.Null(ex);
+        });
+    }
+
+    [Fact]
+    public void Render_DoesNotThrow_ForTableWithShortRows()
+    {
+        // Row has fewer cells than the header — must be padded
+        var table = "| A | B | C |\n|---|---|---|\n| 1 |";
+        WithNullConsole(() =>
+        {
+            var ex = Record.Exception(() => MarkdownRenderer.Render(table));
+            Assert.Null(ex);
+        });
+    }
+
+    // ── HIGH-1: git diff preamble ─────────────────────────────────────────────────
+
+    [Fact]
+    public void IsDiff_ReturnsTrue_ForFullGitDiffWithPreamble()
+    {
+        var gitDiff = "diff --git a/Foo.cs b/Foo.cs\nindex abc123..def456 100644\n--- a/Foo.cs\n+++ b/Foo.cs\n@@ -1 +1 @@\n+new line";
+        Assert.True(DiffRenderer.IsDiff(gitDiff));
+    }
+
+    [Fact]
+    public void IsDiff_ReturnsFalse_ForIndentedDashesInMarkdown()
+    {
+        // Indented --- / +++ should NOT be detected as a diff (HIGH-3 fix: no TrimStart)
+        var markdown = "   --- deprecated API\n   +++ new API\nsome context";
+        Assert.False(DiffRenderer.IsDiff(markdown));
+    }
+
+    // ── HIGH-2: string escape sequences in code highlighting ─────────────────────
+
+    [Theory]
+    [InlineData("csharp", """var s = "say \"hello\"";""")]
+    [InlineData("csharp", """var q = "\"";""")]
+    [InlineData("javascript", "const x = `template ${v}`;")]
+    [InlineData("python", "s = 'it\\'s fine'")]
+    public void Render_DoesNotThrow_ForCodeWithEscapedStringLiterals(string lang, string code)
+    {
+        WithNullConsole(() =>
+        {
+            var ex = Record.Exception(() => MarkdownRenderer.Render($"```{lang}\n{code}\n```"));
+            Assert.Null(ex);
+        });
+    }
+
+    // ── HIGH-4: multi-paragraph blockquote gutter ─────────────────────────────────
+
+    [Fact]
+    public void Render_DoesNotThrow_ForMultiParagraphBlockquote()
+    {
+        var md = "> First paragraph\n>\n> Second paragraph\n>\n> Third paragraph";
+        WithNullConsole(() =>
+        {
+            var ex = Record.Exception(() => MarkdownRenderer.Render(md));
+            Assert.Null(ex);
+        });
+    }
+
+    // ── T-1: streaming state machine ─────────────────────────────────────────────
+
+    [Fact]
+    public void EndStreaming_WithoutBeginStreaming_DoesNotThrow()
+    {
+        WithNullConsole(() =>
+        {
+            JD.AI.Rendering.ChatRenderer.SetOutputStyle(JD.AI.Core.Config.OutputStyle.Rich);
+            // EndStreaming without a preceding BeginStreaming must be a no-op
+            var ex = Record.Exception(JD.AI.Rendering.ChatRenderer.EndStreaming);
+            Assert.Null(ex);
+        });
+    }
+
+    [Fact]
+    public void EndStreaming_CalledTwice_IsIdempotent()
+    {
+        WithNullConsole(() =>
+        {
+            JD.AI.Rendering.ChatRenderer.SetOutputStyle(JD.AI.Core.Config.OutputStyle.Rich);
+            JD.AI.Rendering.ChatRenderer.BeginStreaming();
+            JD.AI.Rendering.ChatRenderer.WriteStreamingChunk("# Hello");
+            JD.AI.Rendering.ChatRenderer.EndStreaming();
+            // Second call must not throw
+            var ex = Record.Exception(JD.AI.Rendering.ChatRenderer.EndStreaming);
+            Assert.Null(ex);
+        });
+    }
+
+    [Fact]
+    public void BeginWriteEnd_Rich_AccumulatesAndFlushesWithoutThrowing()
+    {
+        WithNullConsole(() =>
+        {
+            JD.AI.Rendering.ChatRenderer.SetOutputStyle(JD.AI.Core.Config.OutputStyle.Rich);
+            JD.AI.Rendering.ChatRenderer.BeginStreaming();
+            JD.AI.Rendering.ChatRenderer.WriteStreamingChunk("## Title\n\nHello **world**.");
+            JD.AI.Rendering.ChatRenderer.WriteStreamingChunk("\n\n- item 1\n- item 2");
+            var ex = Record.Exception(JD.AI.Rendering.ChatRenderer.EndStreaming);
+            Assert.Null(ex);
+        });
+    }
+
+    // ── T-4: slash-command colorization ──────────────────────────────────────────
+
+    [Theory]
+    [InlineData("/help")]
+    [InlineData("/model")]
+    [InlineData("/plan")]
+    [InlineData("/diff")]
+    [InlineData("/skills")]
+    public void Render_DoesNotThrow_ForProseWithKnownSlashCommands(string cmd)
+    {
+        WithNullConsole(() =>
+        {
+            var ex = Record.Exception(() => MarkdownRenderer.Render($"Use {cmd} to get started."));
+            Assert.Null(ex);
+        });
+    }
+
+    [Fact]
+    public void Render_DoesNotThrow_ForSlashAtEndOfString()
+    {
+        WithNullConsole(() =>
+        {
+            var ex = Record.Exception(() => MarkdownRenderer.Render("trailing /"));
+            Assert.Null(ex);
+        });
+    }
+
+    [Fact]
+    public void Render_DoesNotThrow_ForUnknownSlashToken()
+    {
+        WithNullConsole(() =>
+        {
+            var ex = Record.Exception(() => MarkdownRenderer.Render("Use /notacommand freely."));
+            Assert.Null(ex);
+        });
+    }
+}

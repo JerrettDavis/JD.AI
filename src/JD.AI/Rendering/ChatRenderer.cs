@@ -38,7 +38,9 @@ public static class ChatRenderer
     private static ThemePalette _palette = ThemePalettes[TuiTheme.DefaultDark];
     private static bool _jsonStreamingActive;
 
-    // Streaming buffer — accumulates chunks so we can render full markdown at end
+    // Streaming buffer — accumulates chunks so we can render full markdown at end.
+    // All mutable streaming fields are guarded by _streamLock for thread safety.
+    private static readonly System.Threading.Lock _streamLock = new();
     private static readonly System.Text.StringBuilder _streamBuffer = new();
     private static bool _bufferedStreamActive;
 
@@ -365,8 +367,11 @@ public static class ChatRenderer
 
         // Rich: buffer the full response so we can render markdown when done.
         // Show a live byte-counter on one line while receiving chunks.
-        _streamBuffer.Clear();
-        _bufferedStreamActive = true;
+        lock (_streamLock)
+        {
+            _streamBuffer.Clear();
+            _bufferedStreamActive = true;
+        }
         Console.Write($"\x1b[2K\r\x1b[36m◆\x1b[0m \x1b[2mstreaming…\x1b[0m");
     }
 
@@ -381,10 +386,13 @@ public static class ChatRenderer
 
         if (_bufferedStreamActive)
         {
-            _streamBuffer.Append(text);
-            // Update live byte counter on the current line
-            var kb = _streamBuffer.Length / 1024.0;
-            var label = _streamBuffer.Length >= 1024 ? $"{kb:F1} KB" : $"{_streamBuffer.Length} B";
+            string label;
+            lock (_streamLock)
+            {
+                _streamBuffer.Append(text);
+                var kb = _streamBuffer.Length / 1024.0;
+                label = _streamBuffer.Length >= 1024 ? $"{kb:F1} KB" : $"{_streamBuffer.Length} B";
+            }
             Console.Write($"\x1b[2K\r\x1b[36m◆\x1b[0m \x1b[2m{label}…\x1b[0m");
             return;
         }
@@ -392,7 +400,10 @@ public static class ChatRenderer
         Console.Write(text);
     }
 
-    /// <summary>End the streaming block.</summary>
+    /// <summary>
+    /// End the streaming block.  Safe to call multiple times — subsequent calls
+    /// are no-ops once the state has already been reset.
+    /// </summary>
     public static void EndStreaming()
     {
         if (_jsonStreamingActive)
@@ -403,11 +414,19 @@ public static class ChatRenderer
             return;
         }
 
-        if (_bufferedStreamActive)
+        string? content = null;
+        lock (_streamLock)
         {
-            _bufferedStreamActive = false;
-            var content = _streamBuffer.ToString();
-            _streamBuffer.Clear();
+            if (_bufferedStreamActive)
+            {
+                _bufferedStreamActive = false;
+                content = _streamBuffer.ToString();
+                _streamBuffer.Clear();
+            }
+        }
+
+        if (content is not null)
+        {
             // Clear the streaming indicator line
             Console.Write("\x1b[2K\r");
             // Render the full response as markdown
@@ -415,8 +434,8 @@ public static class ChatRenderer
             return;
         }
 
+        // Already ended or never started — emit one blank line to preserve spacing
         Console.WriteLine();
-        AnsiConsole.WriteLine();
     }
 
     // ── Thinking/reasoning rendering ─────────────────────
