@@ -1,0 +1,36 @@
+# JD.AI built-in compliance preset: HIPAA
+# Suitable for organizations handling Protected Health Information (PHI).
+apiVersion: jdai/v1
+kind: Policy
+metadata:
+  name: jdai/compliance/hipaa
+  scope: Organization
+  priority: 1
+spec:
+  audit:
+    enabled: true
+    sink: file
+  data:
+    noExternalProviders:
+      - '*'
+    classifications:
+      - name: PHI-SSN
+        patterns:
+          - '\b\d{3}-\d{2}-\d{4}\b'
+        action: DenyAndAudit
+        denyProviders:
+          - '*'
+      - name: PHI-DOB
+        patterns:
+          - '\b\d{1,2}/\d{1,2}/\d{4}\b'
+          - '\b(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])-\d{4}\b'
+        action: RedactAndAudit
+      - name: PHI-MRN
+        patterns:
+          - '\bMRN\s*[:# ]?\s*\d{6,10}\b'
+        action: DenyAndAudit
+        denyProviders:
+          - '*'
+  sessions:
+    retentionDays: 2555  # 7 years per HIPAA minimum retention
+    requireProjectTag: true

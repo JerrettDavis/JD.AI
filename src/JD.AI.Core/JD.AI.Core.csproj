@@ -43,6 +43,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Governance\CompliancePresets\*.yaml" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\JD.AI.Plugins.SDK\JD.AI.Plugins.SDK.csproj" />
   </ItemGroup>
 
