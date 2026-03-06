@@ -1,4 +1,5 @@
 using JD.AI.Core.Config;
+using JD.AI.Core.Mcp;
 using JD.AI.Core.Providers;
 using JD.AI.Rendering;
 using Spectre.Console;
@@ -11,6 +12,8 @@ internal static class OnboardingCliHandler
     {
         var useGlobalDefaults = args.Any(a =>
             string.Equals(a, "--global", StringComparison.OrdinalIgnoreCase));
+        var skipMcp = args.Any(a =>
+            string.Equals(a, "--skip-mcp", StringComparison.OrdinalIgnoreCase));
         var providerArg = GetFlagValue(args, "--provider");
         var modelArg = GetFlagValue(args, "--model");
 
@@ -65,7 +68,52 @@ internal static class OnboardingCliHandler
         AnsiConsole.MarkupLine(
             $"[dim]Scope: {(useGlobalDefaults ? "project + global" : "project")} ({Markup.Escape(projectPath)})[/]");
         AnsiConsole.MarkupLine("[dim]Tip: run `jdai wizard` (alias) anytime to switch quickly.[/]");
+
+        // ── MCP catalog step ──────────────────────────────────────────────────
+        if (!skipMcp)
+            await RunMcpStepAsync().ConfigureAwait(false);
+
         return 0;
+    }
+
+    // ── MCP catalog step ──────────────────────────────────────────────────────
+
+    internal static async Task RunMcpStepAsync(CancellationToken ct = default)
+    {
+        AnsiConsole.WriteLine();
+        AnsiConsole.Write(new Rule("[dim]MCP Servers[/]").LeftJustified());
+
+        if (!McpCatalogPicker.ConfirmCatalogStep())
+        {
+            AnsiConsole.MarkupLine("[dim]MCP setup skipped. Run `jdai mcp browse` anytime to add servers.[/]");
+            return;
+        }
+
+        var manager = new McpManager();
+        var installed = await manager.GetAllServersAsync(ct).ConfigureAwait(false);
+        var installedIds = installed
+            .Select(s => s.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var selected = McpCatalogPicker.Pick(CuratedMcpCatalog.All, installedIds);
+
+        // Filter out already-installed servers (don't reinstall unless changed)
+        var toInstall = selected
+            .Where(e => !installedIds.Contains(e.Id))
+            .ToList();
+
+        if (toInstall.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[dim]No new MCP servers selected.[/]");
+            return;
+        }
+
+        var count = await McpInstaller.InstallAsync(toInstall, manager, ct).ConfigureAwait(false);
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine(
+            count > 0
+                ? $"[green]✓ {count} MCP server(s) installed.[/] Run `jdai mcp list` to verify."
+                : "[yellow]No servers were installed. Check errors above.[/]");
     }
 
     private static ProviderInfo? ResolveProvider(
@@ -111,11 +159,8 @@ internal static class OnboardingCliHandler
 
     private static string? GetFlagValue(string[] args, string flag)
     {
-        return args
-            .Select((value, index) => (value, index))
-            .FirstOrDefault(t => string.Equals(t.value, flag, StringComparison.OrdinalIgnoreCase))
-            .index is var idx && idx >= 0 && idx + 1 < args.Length
-            ? args[idx + 1]
-            : null;
+        var idx = Array.FindIndex(args, a =>
+            string.Equals(a, flag, StringComparison.OrdinalIgnoreCase));
+        return idx >= 0 && idx + 1 < args.Length ? args[idx + 1] : null;
     }
 }
