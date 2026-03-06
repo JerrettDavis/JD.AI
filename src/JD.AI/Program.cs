@@ -54,6 +54,7 @@ if (opts.Subcommand != null)
     {
         "mcp" => await McpCliHandler.RunAsync(opts.SubcommandArgs).ConfigureAwait(false),
         "plugin" => await PluginCliHandler.RunAsync(opts.SubcommandArgs).ConfigureAwait(false),
+        "agents" or "agent" => await AgentsCliHandler.RunAsync(opts.SubcommandArgs).ConfigureAwait(false),
         "onboard" or "wizard" => await OnboardingCliHandler.RunAsync(opts.SubcommandArgs).ConfigureAwait(false),
         "update" or "install" => await UpdateCliHandler.RunAsync(opts.Subcommand, opts.SubcommandArgs).ConfigureAwait(false),
         _ => 1,
