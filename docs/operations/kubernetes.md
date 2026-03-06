@@ -119,6 +119,69 @@ docker build -f deploy/docker/Dockerfile.daemon -t jdai-daemon:local .
 docker build -f deploy/docker/Dockerfile.tui -t jdai-tui:local .
 ```
 
+## Observability / OTLP
+
+Enable OTLP export by setting `telemetry.enabled = true`:
+
+```yaml
+telemetry:
+  enabled: true
+  otlpEndpoint: http://otel-collector:4317
+  otlpProtocol: grpc
+  serviceName: jdai
+```
+
+The chart injects `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_PROTOCOL`, and `OTEL_SERVICE_NAME` as environment variables into all pods.
+
+## Distributed workflow workers
+
+Enable the distributed workflow worker pool:
+
+```yaml
+distributedWorker:
+  enabled: true
+  replicaCount: 3
+  transport: redis
+  redis:
+    connectionString: redis-master:6379
+    streamKey: jdai:workflows
+    consumerGroup: jdai-workers
+```
+
+Workers are stateless — replicas compete for messages via the consumer group. Scale horizontally by increasing `replicaCount`.
+
+## Batch/job mode
+
+Run a single agent workflow as a Kubernetes Job (exits 0/1 for CI/CD integration):
+
+```yaml
+batchJob:
+  enabled: true
+  agent: code-reviewer
+  workflow: pr-review
+```
+
+Or via `kubectl`:
+
+```bash
+kubectl create job pr-review \
+  --image=ghcr.io/jerrettdavis/jd.ai-daemon:latest \
+  -- dotnet JD.AI.Daemon.dll run --agent code-reviewer --workflow pr-review
+```
+
+## Kubernetes Operator (v2 — planned)
+
+A CRD-based operator for managing `JdAiAgent` custom resources is planned for v2.
+See [Kubernetes Operator Design](../architecture/kubernetes-operator-design.md) for the full design.
+
+## Root Dockerfile
+
+The repo root includes a `Dockerfile` that builds `JD.AI.Daemon` and is compatible with standard `docker build .` usage:
+
+```bash
+docker build -t jdai:local .
+```
+
 ## See also
 
 - [Service Deployment](deployment.md)
