@@ -36,7 +36,8 @@ public sealed class AzureKeyVaultCredentialStore : ICredentialStore
         var secretName = ToSecretName(key);
         try
         {
-            var response = await _client.GetSecretAsync(secretName, cancellationToken: ct).ConfigureAwait(false);
+            // Use explicit version argument to keep behavior/mocking stable across SDK overload changes.
+            var response = await _client.GetSecretAsync(secretName, null, ct).ConfigureAwait(false);
             return response.Value.Value;
         }
         catch (RequestFailedException ex) when (ex.Status == 404)
