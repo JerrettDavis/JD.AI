@@ -126,4 +126,60 @@ public sealed class ProviderDetectionTests
         Assert.NotEmpty(models);
         Assert.All(models, m => Assert.Equal("Ollama", m.ProviderName));
     }
+
+    [SkippableFact]
+    public async Task HuggingFaceDetector_WithRealKey_DiscoversModels()
+    {
+        TuiIntegrationGuard.EnsureEnabled();
+        TuiIntegrationGuard.EnsureHuggingFaceKey();
+
+        var store = new JD.AI.Core.Providers.Credentials.EncryptedFileStore(
+            Path.Combine(Path.GetTempPath(), $"jdai-hf-test-{Guid.NewGuid()}"));
+        await store.SetAsync("jdai:provider:huggingface:apikey", TuiIntegrationGuard.HuggingFaceApiKey!);
+        var config = new JD.AI.Core.Providers.Credentials.ProviderConfigurationManager(store);
+
+        var detector = new HuggingFaceDetector(config);
+        var result = await detector.DetectAsync();
+
+        Assert.True(result.IsAvailable, "HuggingFace detector should be available with a valid API key");
+        Assert.NotEmpty(result.Models);
+        Assert.All(result.Models, m =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(m.Id));
+            Assert.Equal("HuggingFace", m.ProviderName);
+        });
+    }
+
+    [SkippableFact]
+    public async Task HuggingFaceDetector_WithRealKey_ChatCompletionSucceeds()
+    {
+        TuiIntegrationGuard.EnsureEnabled();
+        TuiIntegrationGuard.EnsureHuggingFaceKey();
+
+        var store = new JD.AI.Core.Providers.Credentials.EncryptedFileStore(
+            Path.Combine(Path.GetTempPath(), $"jdai-hf-test-{Guid.NewGuid()}"));
+        await store.SetAsync("jdai:provider:huggingface:apikey", TuiIntegrationGuard.HuggingFaceApiKey!);
+        var config = new JD.AI.Core.Providers.Credentials.ProviderConfigurationManager(store);
+
+        var detector = new HuggingFaceDetector(config);
+        var result = await detector.DetectAsync();
+        Skip.If(!result.IsAvailable || result.Models.Count == 0, "No HuggingFace models available");
+
+        // Use the smallest/fastest model available for the smoke test
+        var model = result.Models
+            .FirstOrDefault(m => m.Id.Contains("7B", StringComparison.OrdinalIgnoreCase)
+                               || m.Id.Contains("8B", StringComparison.OrdinalIgnoreCase))
+            ?? result.Models[0];
+
+        var kernel = detector.BuildKernel(model);
+        var chatSvc = kernel.GetRequiredService<Microsoft.SemanticKernel.ChatCompletion.IChatCompletionService>();
+
+        var history = new Microsoft.SemanticKernel.ChatCompletion.ChatHistory();
+        history.AddUserMessage("Reply with exactly: OK");
+
+        var response = await chatSvc.GetChatMessageContentsAsync(history);
+
+        Assert.NotEmpty(response);
+        Assert.NotEmpty(response[0].Content ?? "");
+    }
 }
