@@ -1,5 +1,6 @@
 using System.Text;
 using JD.AI.Core.Commands;
+using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Gateway.Commands;
 
@@ -16,7 +17,7 @@ public sealed class DocsCommand : IChannelCommand
     private static readonly (string Key, string Slug, string Title, string Summary)[] Topics =
     [
         ("observability", "observability",  "Observability",       "OpenTelemetry tracing, metrics, health checks, and /doctor"),
-        ("health",        "observability",  "Health Checks",       "Health endpoints (/health/ready, /health/live) and check configuration"),
+        ("health",        "observability",  "Health Checks",       $"Health endpoints ({GatewayRuntimeDefaults.HealthReadyPath}, {GatewayRuntimeDefaults.HealthLivePath}) and check configuration"),
         ("telemetry",     "observability",  "Telemetry",           "ActivitySource traces, metrics instruments, and OTel exporters"),
         ("gateway",       "gateway-api",    "Gateway API",         "REST endpoints, SignalR hubs, authentication, and rate limiting"),
         ("config",        "configuration",  "Configuration",       "appsettings.json, environment variables, and instruction files"),

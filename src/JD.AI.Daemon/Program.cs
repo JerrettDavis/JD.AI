@@ -5,6 +5,7 @@ using JD.AI.Core.Channels;
 using JD.AI.Core.Commands;
 using JD.AI.Core.Config;
 using JD.AI.Core.Events;
+using JD.AI.Core.Infrastructure;
 using JD.AI.Core.Memory;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
@@ -146,7 +147,7 @@ static void RunDaemon(string[] args)
     // Platform-specific service hosting
     builder.Services.AddWindowsService(options =>
     {
-        options.ServiceName = "JD.AI Gateway";
+        options.ServiceName = DaemonServiceIdentity.HostedServiceDisplayName;
     });
     builder.Services.AddSystemd();
 
@@ -380,9 +381,9 @@ static void RunDaemon(string[] args)
     app.MapOpenApi();
 
     // --- Health ---
-    app.MapHealthChecks("/health");
-    app.MapGet("/health/startup", () => Results.Ok(new { Status = "Started" }));
-    app.MapGet("/ready", () => Results.Ok(new { Status = "Ready" }));
+    app.MapHealthChecks(GatewayRuntimeDefaults.HealthPath);
+    app.MapGet(GatewayRuntimeDefaults.HealthStartupPath, () => Results.Ok(new { Status = "Started" }));
+    app.MapGet(GatewayRuntimeDefaults.ReadyPath, () => Results.Ok(new { Status = "Ready" }));
 
     // --- REST API endpoints ---
     app.MapSessionEndpoints();
@@ -443,7 +444,7 @@ static async Task RunUpdateCommandAsync(bool checkOnly)
 
     if (checkOnly)
     {
-        Console.WriteLine("Run 'jdai-daemon update' (without --check-only) to apply.");
+        Console.WriteLine($"Run '{DaemonServiceIdentity.ToolCommand} update' (without --check-only) to apply.");
         return;
     }
 

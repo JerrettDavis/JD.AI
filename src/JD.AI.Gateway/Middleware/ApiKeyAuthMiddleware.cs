@@ -1,3 +1,4 @@
+using JD.AI.Core.Infrastructure;
 using JD.AI.Core.Security;
 
 namespace JD.AI.Gateway.Middleware;
@@ -7,7 +8,12 @@ namespace JD.AI.Gateway.Middleware;
 /// </summary>
 public sealed class ApiKeyAuthMiddleware(RequestDelegate next, IAuthProvider authProvider)
 {
-    private static readonly string[] SkipPrefixes = ["/health", "/ready", "/hubs/"];
+    private static readonly string[] SkipPrefixes =
+    [
+        GatewayRuntimeDefaults.HealthPath,
+        GatewayRuntimeDefaults.ReadyPath,
+        "/hubs/",
+    ];
 
     public async Task InvokeAsync(HttpContext context)
     {
