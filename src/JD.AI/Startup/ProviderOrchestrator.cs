@@ -1,16 +1,14 @@
 using JD.AI.Core.Config;
 using JD.AI.Core.LocalModels;
-using JD.AI.Core.Providers;
 using JD.AI.Core.Providers.Credentials;
 using JD.AI.Core.Providers.Metadata;
-using JD.AI.Rendering;
 using Microsoft.SemanticKernel;
 using Spectre.Console;
 
 namespace JD.AI.Startup;
 
 /// <summary>
-/// Result of provider detection and model selection.
+///     Result of provider detection and model selection.
 /// </summary>
 internal sealed record ProviderSetup(
     ProviderRegistry Registry,
@@ -21,12 +19,13 @@ internal sealed record ProviderSetup(
     Kernel Kernel);
 
 /// <summary>
-/// Detects available AI providers, lists models, and handles model selection.
-/// Extracted from Program.cs lines 202-339.
+///     Detects available AI providers, lists models, and handles model selection.
+///     Extracted from Program.cs lines 202-339.
 /// </summary>
 internal static class ProviderOrchestrator
 {
-    internal static (ProviderRegistry Registry, ProviderConfigurationManager ProviderConfig, ModelMetadataProvider MetadataProvider)
+    internal static (ProviderRegistry Registry, ProviderConfigurationManager ProviderConfig, ModelMetadataProvider
+        MetadataProvider)
         CreateRegistry()
     {
         var credentialStore = new EncryptedFileStore();
@@ -35,20 +34,12 @@ internal static class ProviderOrchestrator
 
         var detectors = new IProviderDetector[]
         {
-            new ClaudeCodeDetector(),
-            new CopilotDetector(),
-            new OpenAICodexDetector(),
-            new OllamaDetector(),
-            new FoundryLocalDetector(),
-            new LocalModelDetector(),
-            new OpenAIDetector(providerConfig),
-            new AzureOpenAIDetector(providerConfig),
-            new AnthropicDetector(providerConfig),
-            new GoogleGeminiDetector(providerConfig),
-            new MistralDetector(providerConfig),
-            new AmazonBedrockDetector(providerConfig),
-            new HuggingFaceDetector(providerConfig),
-            new OpenAICompatibleDetector(providerConfig),
+            new ClaudeCodeDetector(), new CopilotDetector(), new OpenAICodexDetector(), new OllamaDetector(),
+            new FoundryLocalDetector(), new LocalModelDetector(), new OpenAIDetector(providerConfig),
+            new AzureOpenAIDetector(providerConfig), new AnthropicDetector(providerConfig),
+            new GoogleGeminiDetector(providerConfig), new MistralDetector(providerConfig),
+            new AmazonBedrockDetector(providerConfig), new HuggingFaceDetector(providerConfig),
+            new OpenRouterDetector(providerConfig), new OpenAICompatibleDetector(providerConfig)
         };
 
         var registry = new ProviderRegistry(detectors, metadataProvider);
@@ -61,10 +52,7 @@ internal static class ProviderOrchestrator
         var defaultProvider = await configStore.GetDefaultProviderAsync(projectPath).ConfigureAwait(false);
         var defaultModel = await configStore.GetDefaultModelAsync(projectPath).ConfigureAwait(false);
 
-        if (!opts.PrintMode)
-        {
-            AnsiConsole.MarkupLine("[dim]Detecting providers...[/]");
-        }
+        if (!opts.PrintMode) AnsiConsole.MarkupLine("[dim]Detecting providers...[/]");
 
         var (registry, providerConfig, metadataProvider) = CreateRegistry();
 
@@ -73,9 +61,7 @@ internal static class ProviderOrchestrator
             && opts.CliProvider is null
             && !string.IsNullOrWhiteSpace(defaultProvider))
         {
-            var preferred = await registry
-                .DetectProviderAsync(defaultProvider, forceRefresh: true)
-                .ConfigureAwait(false);
+            var preferred = await registry.DetectProviderAsync(defaultProvider, true).ConfigureAwait(false);
 
             if (preferred is { IsAvailable: true } && preferred.Models.Count > 0)
             {
@@ -88,11 +74,9 @@ internal static class ProviderOrchestrator
                 if (selected is not null)
                 {
                     if (!opts.PrintMode)
-                    {
                         AnsiConsole.MarkupLine(
                             $"  [green]✓[/] [bold]{Markup.Escape(preferred.Name)}[/]: " +
                             $"{Markup.Escape(preferred.StatusMessage ?? "Using saved default")}");
-                    }
 
                     await PersistSelectionAsync(configStore, projectPath, selected).ConfigureAwait(false);
                     var kernelFast = registry.BuildKernel(selected);
@@ -107,17 +91,16 @@ internal static class ProviderOrchestrator
             }
         }
 
-        var providers = await registry.DetectProvidersAsync(forceRefresh: true).ConfigureAwait(false);
+        var providers = await registry.DetectProvidersAsync(true).ConfigureAwait(false);
         if (!opts.PrintMode)
-        {
             foreach (var p in providers)
             {
                 var icon = p.IsAvailable ? "[green]✓[/]" : "[red]✗[/]";
-                AnsiConsole.MarkupLine($"  {icon} [bold]{Markup.Escape(p.Name)}[/]: {Markup.Escape(p.StatusMessage ?? "Unknown")}");
+                AnsiConsole.MarkupLine(
+                    $"  {icon} [bold]{Markup.Escape(p.Name)}[/]: {Markup.Escape(p.StatusMessage ?? "Unknown")}");
             }
-        }
 
-        var allModels = await registry.GetModelsAsync(forceRefresh: true).ConfigureAwait(false);
+        var allModels = await registry.GetModelsAsync(true).ConfigureAwait(false);
         if (allModels.Count == 0)
         {
             Console.Error.WriteLine("No AI providers available.");
@@ -125,10 +108,7 @@ internal static class ProviderOrchestrator
         }
 
         var selectedModel = SelectModel(opts, allModels, defaultProvider, defaultModel);
-        if (selectedModel is null)
-        {
-            return null;
-        }
+        if (selectedModel is null) return null;
 
         await PersistSelectionAsync(configStore, projectPath, selectedModel).ConfigureAwait(false);
         var kernel = registry.BuildKernel(selectedModel);
@@ -145,14 +125,14 @@ internal static class ProviderOrchestrator
         if (opts.CliModel != null)
         {
             var candidates = allModels.Where(m =>
-                m.DisplayName.Contains(opts.CliModel, StringComparison.OrdinalIgnoreCase) ||
-                m.Id.Contains(opts.CliModel, StringComparison.OrdinalIgnoreCase)).ToList();
+                    m.DisplayName.Contains(opts.CliModel, StringComparison.OrdinalIgnoreCase) ||
+                    m.Id.Contains(opts.CliModel, StringComparison.OrdinalIgnoreCase)).
+                ToList();
 
             if (opts.CliProvider != null)
-            {
                 candidates = candidates.Where(m =>
-                    m.ProviderName.Contains(opts.CliProvider, StringComparison.OrdinalIgnoreCase)).ToList();
-            }
+                        m.ProviderName.Contains(opts.CliProvider, StringComparison.OrdinalIgnoreCase)).
+                    ToList();
 
             if (candidates.Count == 0)
             {
@@ -166,7 +146,8 @@ internal static class ProviderOrchestrator
         if (opts.CliProvider != null)
         {
             var candidates = allModels.Where(m =>
-                m.ProviderName.Contains(opts.CliProvider, StringComparison.OrdinalIgnoreCase)).ToList();
+                    m.ProviderName.Contains(opts.CliProvider, StringComparison.OrdinalIgnoreCase)).
+                ToList();
 
             if (candidates.Count == 0)
             {
@@ -184,30 +165,23 @@ internal static class ProviderOrchestrator
         if (defaultModel is not null)
         {
             defaultCandidates = allModels.Where(m =>
-                m.DisplayName.Contains(defaultModel, StringComparison.OrdinalIgnoreCase) ||
-                m.Id.Contains(defaultModel, StringComparison.OrdinalIgnoreCase)).ToList();
+                    m.DisplayName.Contains(defaultModel, StringComparison.OrdinalIgnoreCase) ||
+                    m.Id.Contains(defaultModel, StringComparison.OrdinalIgnoreCase)).
+                ToList();
 
             if (defaultProvider is not null)
-            {
                 defaultCandidates = defaultCandidates.Where(m =>
-                    m.ProviderName.Contains(defaultProvider, StringComparison.OrdinalIgnoreCase)).ToList();
-            }
+                        m.ProviderName.Contains(defaultProvider, StringComparison.OrdinalIgnoreCase)).
+                    ToList();
         }
         else if (defaultProvider is not null)
-        {
             defaultCandidates = allModels.Where(m =>
-                m.ProviderName.Contains(defaultProvider, StringComparison.OrdinalIgnoreCase)).ToList();
-        }
+                    m.ProviderName.Contains(defaultProvider, StringComparison.OrdinalIgnoreCase)).
+                ToList();
 
-        if (defaultCandidates is { Count: > 0 })
-        {
-            return defaultCandidates[0];
-        }
+        if (defaultCandidates is { Count: > 0 }) return defaultCandidates[0];
 
-        if (allModels.Count == 1 || opts.PrintMode)
-        {
-            return allModels[0];
-        }
+        if (allModels.Count == 1 || opts.PrintMode) return allModels[0];
 
         return PromptForModel(allModels);
     }
@@ -219,12 +193,8 @@ internal static class ProviderOrchestrator
     {
         try
         {
-            await configStore
-                .SetDefaultProviderAsync(selectedModel.ProviderName, projectPath)
-                .ConfigureAwait(false);
-            await configStore
-                .SetDefaultModelAsync(selectedModel.Id, projectPath)
-                .ConfigureAwait(false);
+            await configStore.SetDefaultProviderAsync(selectedModel.ProviderName, projectPath).ConfigureAwait(false);
+            await configStore.SetDefaultModelAsync(selectedModel.Id, projectPath).ConfigureAwait(false);
         }
 #pragma warning disable CA1031 // selection persistence should never block startup
         catch
@@ -237,14 +207,14 @@ internal static class ProviderOrchestrator
     private static ProviderModelInfo PromptForModel(IReadOnlyList<ProviderModelInfo> models)
     {
         return AnsiConsole.Prompt(
-            new SelectionPrompt<ProviderModelInfo>()
-                .Title("[bold]Select a model[/] [dim](💬=Chat 🔧=Tools 👁=Vision 📐=Embed)[/]")
-                .PageSize(15)
-                .UseConverter(m =>
+            new SelectionPrompt<ProviderModelInfo>().
+                Title("[bold]Select a model[/] [dim](💬=Chat 🔧=Tools 👁=Vision 📐=Embed)[/]").
+                PageSize(15).
+                UseConverter(m =>
                 {
                     var badge = m.Capabilities.ToBadge();
                     return $"{badge} [dim][[{Markup.Escape(m.ProviderName)}]][/] {Markup.Escape(m.DisplayName)}";
-                })
-                .AddChoices(models));
+                }).
+                AddChoices(models));
     }
 }

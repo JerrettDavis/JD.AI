@@ -1,11 +1,11 @@
 ---
 _layout: landing
-description: "AI-powered terminal assistant built on Microsoft Semantic Kernel. 14 AI providers, 17 tool categories, 35+ slash commands, subagent swarms, team orchestration, and 6 channel adapters."
+description: "AI-powered terminal assistant built on Microsoft Semantic Kernel. 15 AI providers, 17 tool categories, 35+ slash commands, subagent swarms, team orchestration, and 6 channel adapters."
 ---
 
 # JD.AI
 
-An AI-powered terminal assistant and multi-channel platform built on Microsoft Semantic Kernel. Connect to 14 AI providers — from cloud APIs to fully local models — and get a complete coding agent in your terminal.
+An AI-powered terminal assistant and multi-channel platform built on Microsoft Semantic Kernel. Connect to 15 AI providers — from cloud APIs to fully local models — and get a complete coding agent in your terminal.
 
 [Get started](user-guide/installation.md) ·
 [View on GitHub](https://github.com/JerrettDavis/JD.AI) ·
@@ -41,7 +41,7 @@ JD.AI auto-detects available providers. No manual configuration needed.
 
 | Feature | Description |
 |---------|-------------|
-| **Multi-provider** | [14 AI providers](user-guide/provider-setup.md) including Claude Code, Copilot, Ollama, OpenAI, Anthropic, Azure, Gemini, Bedrock, Foundry Local, and more |
+| **Multi-provider** | [15 AI providers](user-guide/provider-setup.md) including Claude Code, Copilot, Ollama, OpenAI, Anthropic, Azure, Gemini, Bedrock, Foundry Local, and more |
 | **35+ slash commands** | [Model switching, sessions, context, workflows, defaults](user-guide/commands.md) |
 | **17 tool categories** | [Files, search, shell, git, web, memory, subagents, think, tasks, code execution, clipboard, questions, diff/patch, batch edit, usage tracking](user-guide/tools.md) |
 | **Tool loadouts** | [Curated tool bundles](developer-guide/tool-loadouts.md) — expose only the tools each agent needs; 5 built-ins (minimal, developer, research, devops, full) |
@@ -66,7 +66,7 @@ For anyone using `jdai` as a tool. Installation, provider setup, commands, workf
 
 - [Installation](user-guide/installation.md) — Get JD.AI running in minutes
 - [Quickstart](user-guide/quickstart.md) — Your first task, step by step
-- [Provider Setup](user-guide/provider-setup.md) — Configure any of the 14 providers
+- [Provider Setup](user-guide/provider-setup.md) — Configure any of the 15 providers
 - [Commands](user-guide/commands.md) — All 35+ slash commands at a glance
 - [Common Workflows](user-guide/common-workflows.md) — Bug fixing, refactoring, testing, PRs
 - [Best Practices](user-guide/best-practices.md) — Effective prompting and context management

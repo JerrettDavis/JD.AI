@@ -23,6 +23,7 @@ All environment variables recognized by JD.AI, grouped by category.
 | `AWS_REGION` | AWS region for Bedrock | `us-east-1` | `us-west-2` |
 | `CODEX_TOKEN` | Codex CLI access token override | — | `tok-abc123...` |
 | `HF_TOKEN` | HuggingFace API token (legacy, also used for gated repos) | — | `hf_abc123...` |
+| `OPENROUTER_API_KEY` | OpenRouter API key | — | `sk-or-abc123...` |
 
 ## OpenAI-Compatible provider keys
 
@@ -31,7 +32,6 @@ All environment variables recognized by JD.AI, grouped by category.
 | `GROQ_API_KEY` | Groq API key | — | `gsk_abc123...` |
 | `TOGETHER_API_KEY` | Together AI API key | — | `tog-abc123...` |
 | `DEEPSEEK_API_KEY` | DeepSeek API key | — | `sk-abc123...` |
-| `OPENROUTER_API_KEY` | OpenRouter API key | — | `sk-or-abc123...` |
 | `FIREWORKS_API_KEY` | Fireworks AI API key | — | `fw-abc123...` |
 | `PERPLEXITY_API_KEY` | Perplexity API key | — | `pplx-abc123...` |
 

@@ -1,11 +1,11 @@
 ---
 title: Providers Reference
-description: "Provider comparison table, capabilities matrix, credential resolution chain, environment variables, and OpenAI-compatible sub-providers."
+description: "Provider comparison table, capabilities matrix, credential resolution chain, environment variables, and OpenAI-compatible sub-providers. 15 providers total."
 ---
 
 # Providers Reference
 
-JD.AI supports 14 AI providers. This reference covers capabilities, authentication, environment variables, and comparison tables. For setup guides, see [AI Providers](../user-guide/provider-setup.md).
+JD.AI supports 15 AI providers. This reference covers capabilities, authentication, environment variables, and comparison tables. For setup guides, see [AI Providers](../user-guide/provider-setup.md).
 
 ## Provider summary
 
@@ -23,7 +23,8 @@ JD.AI supports 14 AI providers. This reference covers capabilities, authenticati
 | 10 | Mistral | `Microsoft.SemanticKernel.Connectors.MistralAI` | API Key | Yes |
 | 11 | AWS Bedrock | `Microsoft.SemanticKernel.Connectors.Amazon` | AWS IAM | Yes |
 | 12 | HuggingFace | `Microsoft.SemanticKernel.Connectors.HuggingFace` | API Key | Yes |
-| 13 | OpenAI-Compatible | OpenAI connector + custom base URL | API Key | Yes |
+| 13 | OpenRouter | OpenAI connector + custom base URL | API Key | Yes |
+| 14 | OpenAI-Compatible | OpenAI connector + custom base URL | API Key | Yes |
 
 ## Provider capabilities matrix
 
@@ -41,6 +42,7 @@ JD.AI supports 14 AI providers. This reference covers capabilities, authenticati
 | Mistral | ✅ | ✅ | ❌ | ❌ | Pay-per-use |
 | AWS Bedrock | ✅ | ✅ | ✅ | ❌ | Pay-per-use |
 | HuggingFace | ✅ | ❌ | ❌ | ❌ | Free/Pay |
+| OpenRouter | ✅ | ✅ | ❌ | ✅ | Pay-per-use |
 | OpenAI-Compatible | ✅ | Varies | Varies | ✅ | Varies |
 
 ## Claude prompt caching (API key + OAuth)
@@ -86,7 +88,8 @@ On startup, JD.AI checks providers in this order. The first with a valid connect
 10. **Mistral** — `MISTRAL_API_KEY` or secure store
 11. **AWS Bedrock** — `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` + `AWS_REGION`
 12. **HuggingFace** — `HUGGINGFACE_API_KEY` or secure store
-13. **OpenAI-Compatible** — custom endpoints via env vars or secure store
+13. **OpenRouter** — `OPENROUTER_API_KEY` or secure store
+14. **OpenAI-Compatible** — custom endpoints via env vars or secure store
 
 ## Credential resolution chain
 
@@ -115,6 +118,7 @@ The `/provider add` wizard stores keys in the secure credential store. Environme
 | `AWS_REGION` | AWS Bedrock | AWS region (default: `us-east-1`) |
 | `HUGGINGFACE_API_KEY` | HuggingFace | HuggingFace Inference API key |
 | `HF_TOKEN` | HuggingFace | HuggingFace API token (legacy) |
+| `OPENROUTER_API_KEY` | OpenRouter | OpenRouter API key |
 | `CODEX_TOKEN` | OpenAI Codex | Codex CLI access token override |
 | `OLLAMA_ENDPOINT` | Ollama | Ollama API URL (default: `http://localhost:11434`) |
 | `JDAI_MODELS_DIR` | Local Models | Model storage directory (default: `~/.jdai/models/`) |
@@ -129,7 +133,6 @@ These providers are auto-detected via environment variables and use the OpenAI c
 | Groq | `GROQ_API_KEY` | `https://api.groq.com/openai/v1` | Llama 3, Mixtral |
 | Together AI | `TOGETHER_API_KEY` | `https://api.together.xyz/v1` | Open-source models |
 | DeepSeek | `DEEPSEEK_API_KEY` | `https://api.deepseek.com/v1` | DeepSeek Coder, Chat |
-| OpenRouter | `OPENROUTER_API_KEY` | `https://openrouter.ai/api/v1` | Multi-provider routing |
 | Fireworks AI | `FIREWORKS_API_KEY` | `https://api.fireworks.ai/inference/v1` | Fast inference |
 | Perplexity | `PERPLEXITY_API_KEY` | `https://api.perplexity.ai` | Search-augmented models |
 
@@ -154,12 +157,12 @@ The OpenAI Codex provider has its own extended credential chain:
 
 ## Provider comparison: privacy and cost
 
-| Feature | Claude Code | Copilot | Codex | Ollama | Local | OpenAI | Azure | Anthropic | Gemini | Mistral | Bedrock | HuggingFace | OAI-Compat |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| **Auth** | OAuth | OAuth | OAuth | None | File | Key | Key | Key | Key | Key | AWS | Key | Key |
-| **Internet** | Yes | Yes | Yes | No | No | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
-| **Cost** | Sub | Sub | Sub | Free | Free | PPU | PPU | PPU | PPU | PPU | PPU | Free/Pay | Varies |
-| **Privacy** | Cloud | Cloud | Cloud | Local | Local | Cloud | Cloud | Cloud | Cloud | Cloud | Cloud | Cloud | Varies |
+| Feature | Claude Code | Copilot | Codex | Ollama | Local | OpenAI | Azure | Anthropic | Gemini | Mistral | Bedrock | HuggingFace | OpenRouter | OAI-Compat |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| **Auth** | OAuth | OAuth | OAuth | None | File | Key | Key | Key | Key | Key | AWS | Key | Key | Key |
+| **Internet** | Yes | Yes | Yes | No | No | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| **Cost** | Sub | Sub | Sub | Free | Free | PPU | PPU | PPU | PPU | PPU | PPU | Free/Pay | PPU | Varies |
+| **Privacy** | Cloud | Cloud | Cloud | Local | Local | Cloud | Cloud | Cloud | Cloud | Cloud | Cloud | Cloud | Cloud | Varies |
 
 *Sub = Subscription, PPU = Pay-per-use*
 

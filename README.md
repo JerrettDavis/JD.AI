@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4)
 
-AI-powered terminal assistant and multi-channel platform built on [Semantic Kernel](https://github.com/microsoft/semantic-kernel). 14 AI providers, 17 tool categories, 33+ slash commands, MCP server integration, workflow engine, subagent orchestration, team strategies, and six channel adapters — across 18 projects with 772+ tests.
+AI-powered terminal assistant and multi-channel platform built on [Semantic Kernel](https://github.com/microsoft/semantic-kernel). 15 AI providers, 17 tool categories, 33+ slash commands, MCP server integration, workflow engine, subagent orchestration, team strategies, and six channel adapters — across 18 projects with 772+ tests.
 
 ![JD.AI terminal startup](docs/images/demo-startup.png)
 ![JD.AI dashboard overview](docs/images/dashboard/dashboard-overview.png)
@@ -45,7 +45,7 @@ AI-powered terminal assistant and multi-channel platform built on [Semantic Kern
 └─────────────┘   └───────────────────┘
        │
 ┌──────▼──────────────────────────────────────┐
-│   14 AI Providers · 17 Tool Categories      │
+│   15 AI Providers · 17 Tool Categories      │
 │   Plugin SDK · Credential Store · Sessions  │
 └─────────────────────────────────────────────┘
 ```
@@ -54,7 +54,7 @@ AI-powered terminal assistant and multi-channel platform built on [Semantic Kern
 
 | Area | Details |
 |------|---------|
-| **AI Providers** | 14 providers — OAuth, API key, local, and AWS SDK auth (see [table below](#providers)) |
+| **AI Providers** | 15 providers — OAuth, API key, local, and AWS SDK auth (see [table below](#providers)) |
 | **Tools** | 17 categories: File, Search, Shell, Git, Web, Web Search, Memory, Subagent, Think, Environment, Tasks, Code Execution, Clipboard, Questions, Diff & Patch, Batch Edit, Usage Tracking |
 | **Slash Commands** | 33+ commands for model management, sessions, providers, workflows, MCP, diagnostics, and more |
 | **Subagents** | 5 types: Explore, Task, Plan, Review, General-purpose |
@@ -103,7 +103,8 @@ jdai                            # Launch the TUI
 | Google Gemini | API key | Gemini 2.x models |
 | Mistral | API key | Mistral / Mixtral models |
 | HuggingFace | API key | Inference API models |
-| OpenAI-Compatible | API key | Groq, Together, DeepSeek, OpenRouter, Fireworks, Perplexity |
+| OpenRouter | API key | Multi-vendor routing — Claude, GPT-4, Gemini, Llama, Mistral |
+| OpenAI-Compatible | API key | Groq, Together, DeepSeek, Fireworks, Perplexity |
 
 ### AWS SDK
 
