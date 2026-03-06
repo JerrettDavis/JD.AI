@@ -96,7 +96,7 @@ public sealed class FileAgentDefinitionRegistryTests : IDisposable
         Assert.Equal(2, devList.Count);
 
         var stagingList = await _registry.ListAsync(AgentEnvironments.Staging);
-        Assert.Equal(1, stagingList.Count);
+        Assert.Single(stagingList);
     }
 
     [Fact]
@@ -229,9 +229,9 @@ public sealed class FileAgentDefinitionRegistryTests : IDisposable
 
     private static AgentDefinition MakeDef(string name, string version) => new()
     {
-        Name        = name,
-        Version     = version,
+        Name = name,
+        Version = version,
         Description = $"Test agent: {name}",
-        Model       = new AgentModelSpec { Provider = "ClaudeCode", Id = "claude-opus-4" },
+        Model = new AgentModelSpec { Provider = "ClaudeCode", Id = "claude-opus-4" },
     };
 }
