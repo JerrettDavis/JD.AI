@@ -30,9 +30,13 @@
     {
       "name": "restage-fixed-files",
       "group": "pre-commit",
-      "command": "git",
-      "args": ["add", "${staged}"],
-      "include": ["**/*.cs"]
+      "command": "bash",
+      "args": [".husky/scripts/restage-fixed-files.sh"],
+      "include": ["**/*.cs"],
+      "windows": {
+        "command": "bash",
+        "args": [".husky/scripts/restage-fixed-files.sh"]
+      }
     },
     {
       "name": "dotnet-build",
