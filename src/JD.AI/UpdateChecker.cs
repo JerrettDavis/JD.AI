@@ -87,25 +87,15 @@ public static class UpdateChecker
     /// </summary>
     public static async Task<(bool Success, string Output)> ApplyUpdateAsync(CancellationToken ct = default)
     {
-        var psi = new System.Diagnostics.ProcessStartInfo
-        {
-            FileName = "dotnet",
-            Arguments = $"tool update -g {PackageId}",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
+        var result = await ProcessExecutor.RunAsync(
+            "dotnet", $"tool update -g {PackageId}",
+            timeout: TimeSpan.FromSeconds(120),
+            cancellationToken: ct).ConfigureAwait(false);
 
-        using var proc = System.Diagnostics.Process.Start(psi);
-        if (proc is null) return (false, "Failed to start dotnet process.");
-
-        var stdout = await proc.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
-        var stderr = await proc.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
-        await proc.WaitForExitAsync(ct).ConfigureAwait(false);
-
-        var output = string.IsNullOrWhiteSpace(stderr) ? stdout : $"{stdout}\n{stderr}";
-        return (proc.ExitCode == 0, output.Trim());
+        var output = string.IsNullOrWhiteSpace(result.StandardError)
+            ? result.StandardOutput
+            : $"{result.StandardOutput}\n{result.StandardError}";
+        return (result.Success, output.Trim());
     }
 
     /// <summary>Compares two semver-ish version strings. Returns true if latest > current.</summary>

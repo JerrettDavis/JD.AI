@@ -1,6 +1,7 @@
 # JD.AI
 
 [![CI](https://github.com/JerrettDavis/JD.AI/actions/workflows/ci.yml/badge.svg)](https://github.com/JerrettDavis/JD.AI/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/JerrettDavis/JD.AI/graph/badge.svg)](https://codecov.io/gh/JerrettDavis/JD.AI)
 [![NuGet](https://img.shields.io/nuget/v/JD.AI.svg)](https://www.nuget.org/packages/JD.AI)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4)
