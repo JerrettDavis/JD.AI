@@ -40,7 +40,7 @@ public sealed class OpenRouterDetector : ApiKeyProviderDetectorBase
     protected override async Task<IReadOnlyList<ProviderModelInfo>> DiscoverModelsAsync(
         string apiKey, CancellationToken ct)
     {
-        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
         var response = await http
@@ -52,6 +52,8 @@ public sealed class OpenRouterDetector : ApiKeyProviderDetectorBase
 
         return response.Data
             .Where(m => !string.IsNullOrEmpty(m.Id)
+                        // Include models with no architecture info; exclude only those that
+                        // explicitly declare output modalities without "text" (e.g. image-only).
                         && m.Architecture?.OutputModalities?.Contains("text") != false)
             .Select(m =>
             {

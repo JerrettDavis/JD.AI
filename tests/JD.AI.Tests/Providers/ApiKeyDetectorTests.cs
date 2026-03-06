@@ -138,10 +138,12 @@ public sealed class ApiKeyDetectorTests : IDisposable
         var result = await detector.DetectAsync();
 
         result.IsAvailable.Should().BeTrue();
-        result.Models.Should().NotBeEmpty();
+        result.Models.Should().HaveCountGreaterThanOrEqualTo(5);
         result.Models.Should().
             Contain(m =>
                 m.ProviderName.Equals("OpenRouter", StringComparison.OrdinalIgnoreCase));
+        result.Models.Should().Contain(m => m.Id == "anthropic/claude-sonnet-4");
+        result.Models.Should().Contain(m => m.Id == "openai/gpt-4.1");
     }
 
     [Fact]

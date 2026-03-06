@@ -8,7 +8,7 @@ namespace JD.AI.Core.Providers;
 
 /// <summary>
 ///     Generic detector for OpenAI-compatible API endpoints.
-///     Supports multiple named instances (Groq, Together, DeepSeek, OpenRouter, etc.).
+///     Supports multiple named instances (Groq, Together, DeepSeek, etc.).
 ///     Each instance is stored as openai-compat:{alias} in the credential store.
 /// </summary>
 public sealed class OpenAICompatibleDetector : IProviderDetector
