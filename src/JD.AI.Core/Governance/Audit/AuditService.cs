@@ -1,4 +1,5 @@
 using System.Threading.Channels;
+using JD.AI.Core.MultiTenancy;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -14,13 +15,15 @@ public sealed class AuditService
     private readonly IReadOnlyList<IAuditSink> _sinks;
     private readonly ILogger<AuditService> _logger;
     private readonly Channel<DeadLetterEntry> _deadLetterQueue;
+    private readonly TenantContext? _tenantContext;
     private long _deadLetterCount;
 
-    public AuditService(IEnumerable<IAuditSink> sinks, ILogger<AuditService>? logger = null)
+    public AuditService(IEnumerable<IAuditSink> sinks, ILogger<AuditService>? logger = null, TenantContext? tenantContext = null)
     {
         ArgumentNullException.ThrowIfNull(sinks);
         _sinks = [.. sinks];
         _logger = logger ?? NullLogger<AuditService>.Instance;
+        _tenantContext = tenantContext;
         _deadLetterQueue = Channel.CreateBounded<DeadLetterEntry>(
             new BoundedChannelOptions(1000)
             {
@@ -40,6 +43,30 @@ public sealed class AuditService
     public async Task EmitAsync(AuditEvent evt, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(evt);
+
+        // Stamp TenantId from current scope if not already set
+        if (_tenantContext?.IsResolved == true && evt.TenantId is null)
+        {
+            evt = new AuditEvent
+            {
+                EventId = evt.EventId,
+                Timestamp = evt.Timestamp,
+                UserId = evt.UserId,
+                SessionId = evt.SessionId,
+                TraceId = evt.TraceId,
+                Action = evt.Action,
+                Resource = evt.Resource,
+                Detail = evt.Detail,
+                Severity = evt.Severity,
+                PolicyResult = evt.PolicyResult,
+                ToolName = evt.ToolName,
+                ToolArguments = evt.ToolArguments,
+                ToolResult = evt.ToolResult,
+                DurationMs = evt.DurationMs,
+                PreviousHash = evt.PreviousHash,
+                TenantId = _tenantContext.TenantId,
+            };
+        }
 
         foreach (var sink in _sinks)
         {

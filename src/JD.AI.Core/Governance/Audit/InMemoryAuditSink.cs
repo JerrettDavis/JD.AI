@@ -90,6 +90,9 @@ public sealed class InMemoryAuditSink : IQueryableAuditSink
         if (query.Until is { } until)
             filtered = filtered.Where(e => e.Timestamp < until);
 
+        if (query.TenantId is not null)
+            filtered = filtered.Where(e => string.Equals(e.TenantId, query.TenantId, StringComparison.OrdinalIgnoreCase));
+
         var matchedList = filtered.ToList();
         var totalCount = matchedList.Count;
 

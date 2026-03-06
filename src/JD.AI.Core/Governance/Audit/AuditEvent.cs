@@ -27,6 +27,9 @@ public sealed class AuditEvent
 
     /// <summary>Hash of the previous audit event for tamper-evident chaining. Null for the first event.</summary>
     public string? PreviousHash { get; init; }
+
+    /// <summary>Tenant identifier when running in a multi-tenant deployment.</summary>
+    public string? TenantId { get; init; }
 }
 
 public enum AuditSeverity { Debug, Info, Warning, Error, Critical }
