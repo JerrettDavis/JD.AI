@@ -1,5 +1,7 @@
 #pragma warning disable CA2227 // Collection properties should be read only — needed for IOptions binding
 
+using JD.AI.Core.Infrastructure;
+
 namespace JD.AI.Gateway.Config;
 
 public sealed class GatewayConfig
@@ -28,8 +30,8 @@ public sealed class EventBusConfig
 
 public sealed class ServerConfig
 {
-    public int Port { get; set; } = 18789;
-    public string Host { get; set; } = "localhost";
+    public int Port { get; set; } = GatewayRuntimeDefaults.DefaultPort;
+    public string Host { get; set; } = GatewayRuntimeDefaults.DefaultHost;
     public bool Verbose { get; set; }
 }
 
