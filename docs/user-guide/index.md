@@ -7,6 +7,8 @@ description: Introduction to the JD.AI user guide — an AI-powered terminal ass
 
 JD.AI is an AI-powered terminal assistant that brings intelligent code understanding, generation, and project management directly to your command line. Built on [Microsoft Semantic Kernel](https://learn.microsoft.com/semantic-kernel/), it connects to 15 AI providers — from cloud APIs to fully offline local models — and ships with a rich set of built-in developer tools.
 
+![JD.AI startup flow in the terminal](../images/demo-startup.png)
+
 This guide covers everything you need to use JD.AI day-to-day.
 
 ## What you'll find here

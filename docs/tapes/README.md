@@ -2,6 +2,11 @@
 
 These `.tape` files generate terminal screenshots and GIFs for JD.AI documentation using [Charmbracelet VHS](https://github.com/charmbracelet/vhs).
 
+JD.AI docs use two media pipelines:
+
+- **VHS** for realistic terminal recordings and frame captures (`docs/tapes/*.tape`)
+- **Playwright** for styled static screenshots and social assets (`docs/scripts/*.mjs`)
+
 ## Prerequisites
 
 Install VHS and its dependencies:
@@ -31,6 +36,19 @@ Or run individual tapes:
 
 ```bash
 vhs docs/tapes/demo-startup.tape
+```
+
+Generate Playwright-based docs images:
+
+```bash
+npm --prefix docs/scripts install
+npm --prefix docs/scripts run screenshots
+```
+
+Generate Open Graph image:
+
+```bash
+npm --prefix docs/scripts run og
 ```
 
 ## Output

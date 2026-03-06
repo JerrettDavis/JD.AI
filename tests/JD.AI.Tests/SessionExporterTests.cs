@@ -1,22 +1,13 @@
 using JD.AI.Core.Sessions;
+using JD.AI.Tests.Fixtures;
 
 namespace JD.AI.Tests;
 
 public sealed class SessionExporterTests : IDisposable
 {
-    private readonly string _basePath;
+    private readonly TempDirectoryFixture _fixture = new();
 
-    public SessionExporterTests()
-    {
-        _basePath = Path.Combine(Path.GetTempPath(), $"jdai_export_test_{Guid.NewGuid():N}");
-        Directory.CreateDirectory(_basePath);
-    }
-
-    public void Dispose()
-    {
-        if (Directory.Exists(_basePath))
-            Directory.Delete(_basePath, recursive: true);
-    }
+    public void Dispose() => _fixture.Dispose();
 
     [Fact]
     public async Task ExportAndImport_RoundTrips()
@@ -55,10 +46,10 @@ public sealed class SessionExporterTests : IDisposable
             TokensOut = 10,
         });
 
-        await SessionExporter.ExportAsync(session, _basePath);
+        await SessionExporter.ExportAsync(session, _fixture.DirectoryPath);
 
         // Verify file exists
-        var files = SessionExporter.ListExportedFiles("exphash1", _basePath).ToList();
+        var files = SessionExporter.ListExportedFiles("exphash1", _fixture.DirectoryPath).ToList();
         Assert.Single(files);
 
         // Import and verify
@@ -82,7 +73,7 @@ public sealed class SessionExporterTests : IDisposable
     [Fact]
     public void ListExportedFiles_EmptyDir_ReturnsEmpty()
     {
-        var files = SessionExporter.ListExportedFiles("nohash", _basePath);
+        var files = SessionExporter.ListExportedFiles("nohash", _fixture.DirectoryPath);
         Assert.Empty(files);
     }
 }

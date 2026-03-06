@@ -7,6 +7,8 @@ description: "Technical architecture of JD.AI — project structure, layering, S
 
 JD.AI is an AI-powered terminal assistant built on [Microsoft Semantic Kernel](https://learn.microsoft.com/semantic-kernel/). This guide explains the internal architecture for developers who want to understand, extend, or contribute to JD.AI.
 
+![Gateway dashboard architecture surface](../images/dashboard/dashboard-overview.png)
+
 ## Project structure
 
 The solution is organized into **18 projects** across four layers:
