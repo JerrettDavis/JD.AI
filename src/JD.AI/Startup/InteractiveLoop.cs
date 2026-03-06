@@ -42,6 +42,7 @@ internal sealed class InteractiveLoop
     private readonly string _systemPrompt;
     private readonly PluginLoader _pluginLoader;
     private readonly IPluginLifecycleManager? _pluginManager;
+    private readonly ICostEstimator _costEstimator;
 
     public InteractiveLoop(
         AgentSession session,
@@ -58,7 +59,8 @@ internal sealed class InteractiveLoop
         Action<bool> refreshSkills,
         string systemPrompt,
         PluginLoader pluginLoader,
-        IPluginLifecycleManager? pluginManager)
+        IPluginLifecycleManager? pluginManager,
+        ICostEstimator? costEstimator = null)
     {
         _session = session;
         _opts = opts;
@@ -75,6 +77,7 @@ internal sealed class InteractiveLoop
         _systemPrompt = systemPrompt;
         _pluginLoader = pluginLoader;
         _pluginManager = pluginManager;
+        _costEstimator = costEstimator ?? new DefaultCostEstimator();
     }
 
     public async Task<int> RunAsync()
@@ -420,20 +423,23 @@ internal sealed class InteractiveLoop
             // Cost estimation
             if (budgetPolicy is not null && _session.CurrentModel is not null)
             {
-                var provider = _session.CurrentModel.ProviderName;
-                var isLocal = string.Equals(provider, "Ollama", StringComparison.OrdinalIgnoreCase) ||
-                              string.Equals(provider, "Foundry Local", StringComparison.OrdinalIgnoreCase) ||
-                              string.Equals(provider, "Local", StringComparison.OrdinalIgnoreCase) ||
-                              string.Equals(provider, "LlamaSharp", StringComparison.OrdinalIgnoreCase);
-
-                if (!isLocal)
+                var lastTurn = _session.SessionInfo?.Turns.LastOrDefault();
+                if (lastTurn is not null)
                 {
-                    var lastTurn = _session.SessionInfo?.Turns.LastOrDefault();
-                    var tokensOut = lastTurn?.TokensOut ?? 0;
-                    var estimatedCost = tokensOut * 0.015m / 1000m;
-                    _session.SessionSpendUsd += estimatedCost;
-                    await _governance.BudgetTracker.RecordSpendAsync(estimatedCost, provider, appCts.Token)
-                        .ConfigureAwait(false);
+                    var estimatedCost = _costEstimator.EstimateTurnCostUsd(
+                        _session.CurrentModel,
+                        lastTurn.TokensIn,
+                        lastTurn.TokensOut);
+
+                    if (estimatedCost > 0m)
+                    {
+                        _session.SessionSpendUsd += estimatedCost;
+                        await _governance.BudgetTracker.RecordSpendAsync(
+                                estimatedCost,
+                                _session.CurrentModel.ProviderName,
+                                appCts.Token)
+                            .ConfigureAwait(false);
+                    }
                 }
             }
 

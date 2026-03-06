@@ -1,4 +1,5 @@
 using JD.AI.Core.Tools;
+using JD.AI.Core.Providers;
 
 namespace JD.AI.Tests;
 
@@ -47,16 +48,26 @@ public sealed class UsageToolsTests
     }
 
     [Fact]
-    public void GetUsage_ShowsEstimatedCosts()
+    public void GetUsage_WithoutCurrentModel_ShowsModelRequiredMessage()
     {
         var tools = new UsageTools();
         tools.RecordUsage(1000, 500, 5);
 
         var result = tools.GetUsage();
 
-        Assert.Contains("Estimated Cost", result);
-        Assert.Contains("Claude Sonnet 4", result);
-        Assert.Contains("Local (Ollama/LLamaSharp)", result);
-        Assert.Contains("$0.0000", result); // Local should be free
+        Assert.Contains("Current model not set", result);
+    }
+
+    [Fact]
+    public void GetUsage_WithCurrentModel_UsesCentralCostEstimator()
+    {
+        var tools = new UsageTools();
+        tools.SetModel(new ProviderModelInfo("gpt-4.1", "gpt-4.1", "OpenAI"));
+        tools.RecordUsage(1000, 500, 5);
+
+        var result = tools.GetUsage();
+
+        Assert.Contains("Rate source: cost-rate-provider", result);
+        Assert.Contains("Total:  $0.006000", result);
     }
 }
