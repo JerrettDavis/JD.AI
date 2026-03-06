@@ -31,6 +31,12 @@ public static class TuiIntegrationGuard
             ? ep.TrimEnd('/') : "http://localhost:11434";
 
     /// <summary>
+    /// HuggingFace API key from <c>HF_API_KEY</c> env var. Returns null if not set.
+    /// </summary>
+    public static string? HuggingFaceApiKey =>
+        Environment.GetEnvironmentVariable("HF_API_KEY") is { Length: > 0 } k ? k : null;
+
+    /// <summary>
     /// Checks if Ollama is reachable.
     /// </summary>
     public static async Task<bool> IsOllamaAvailableAsync()
@@ -53,4 +59,7 @@ public static class TuiIntegrationGuard
         var available = await IsOllamaAvailableAsync().ConfigureAwait(false);
         Xunit.Skip.IfNot(available, "Ollama is not running on localhost:11434.");
     }
+
+    public static void EnsureHuggingFaceKey() =>
+        Xunit.Skip.IfNot(HuggingFaceApiKey is not null, "Set HF_API_KEY to run HuggingFace integration tests.");
 }
