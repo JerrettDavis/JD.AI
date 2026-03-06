@@ -263,13 +263,13 @@ public sealed class ChatRendererBddTests : TinyBddXunitBase, IDisposable
         string? result = null;
 
         await Given("welcome settings with all details enabled", () => new WelcomePanelSettings
-            {
-                ShowModelSummary = true,
-                ShowServices = true,
-                ShowWorkingDirectory = true,
-                ShowVersion = true,
-                ShowMotd = true,
-            })
+        {
+            ShowModelSummary = true,
+            ShowServices = true,
+            ShowWorkingDirectory = true,
+            ShowVersion = true,
+            ShowMotd = true,
+        })
             .When("building the welcome body", settings =>
             {
                 result = ChatRenderer.BuildWelcomeBody(
@@ -304,13 +304,13 @@ public sealed class ChatRendererBddTests : TinyBddXunitBase, IDisposable
         string? result = null;
 
         await Given("welcome settings with optional lines disabled", () => new WelcomePanelSettings
-            {
-                ShowModelSummary = false,
-                ShowServices = false,
-                ShowWorkingDirectory = false,
-                ShowVersion = false,
-                ShowMotd = false,
-            })
+        {
+            ShowModelSummary = false,
+            ShowServices = false,
+            ShowWorkingDirectory = false,
+            ShowVersion = false,
+            ShowMotd = false,
+        })
             .When("building the welcome body", settings =>
             {
                 result = ChatRenderer.BuildWelcomeBody(
