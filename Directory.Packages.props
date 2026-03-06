@@ -10,6 +10,7 @@
   </ItemGroup>
   <!-- Application -->
   <ItemGroup>
+    <PackageVersion Include="Markdig" Version="0.40.0" />
     <PackageVersion Include="YamlDotNet" Version="16.3.0" />
     <PackageVersion Include="JD.SemanticKernel.Extensions" Version="0.1.41" />
     <PackageVersion Include="JD.SemanticKernel.Extensions.Mcp" Version="0.1.41" />

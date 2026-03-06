@@ -38,6 +38,12 @@ public static class ChatRenderer
     private static ThemePalette _palette = ThemePalettes[TuiTheme.DefaultDark];
     private static bool _jsonStreamingActive;
 
+    // Streaming buffer — accumulates chunks so we can render full markdown at end.
+    // All mutable streaming fields are guarded by _streamLock for thread safety.
+    private static readonly System.Threading.Lock _streamLock = new();
+    private static readonly System.Text.StringBuilder _streamBuffer = new();
+    private static bool _bufferedStreamActive;
+
     public static TuiTheme CurrentTheme { get; private set; } = TuiTheme.DefaultDark;
     public static OutputStyle CurrentOutputStyle { get; private set; } = OutputStyle.Rich;
 
@@ -135,25 +141,8 @@ public static class ChatRenderer
                 break;
         }
 
-        // Rich markdown-like rendering
-        var lines = text.Split('\n');
-        foreach (var line in lines)
-        {
-            if (line.StartsWith("```", StringComparison.Ordinal))
-            {
-                AnsiConsole.MarkupLine("[dim]" + Markup.Escape(line) + "[/]");
-            }
-            else if (line.StartsWith('#'))
-            {
-                AnsiConsole.MarkupLine("[bold yellow]" + Markup.Escape(line) + "[/]");
-            }
-            else
-            {
-                AnsiConsole.WriteLine(line);
-            }
-        }
-
-        AnsiConsole.WriteLine();
+        // Rich: delegate to MarkdownRenderer for full markdown pretty-printing
+        MarkdownRenderer.Render(text);
     }
 
     /// <summary>Render a tool invocation and its result.</summary>
@@ -372,8 +361,18 @@ public static class ChatRenderer
             return;
         }
 
-        if (CurrentOutputStyle == OutputStyle.Rich)
-            AnsiConsole.Markup($"[bold {_palette.PromptColor}]◆[/] ");
+        // Plain/Compact: write raw streaming text as it arrives
+        if (CurrentOutputStyle != OutputStyle.Rich)
+            return;
+
+        // Rich: buffer the full response so we can render markdown when done.
+        // Show a live byte-counter on one line while receiving chunks.
+        lock (_streamLock)
+        {
+            _streamBuffer.Clear();
+            _bufferedStreamActive = true;
+        }
+        Console.Write($"\x1b[2K\r\x1b[36m◆\x1b[0m \x1b[2mstreaming…\x1b[0m");
     }
 
     /// <summary>Write a streaming text chunk (raw, inline).</summary>
@@ -385,10 +384,26 @@ public static class ChatRenderer
             return;
         }
 
+        if (_bufferedStreamActive)
+        {
+            string label;
+            lock (_streamLock)
+            {
+                _streamBuffer.Append(text);
+                var kb = _streamBuffer.Length / 1024.0;
+                label = _streamBuffer.Length >= 1024 ? $"{kb:F1} KB" : $"{_streamBuffer.Length} B";
+            }
+            Console.Write($"\x1b[2K\r\x1b[36m◆\x1b[0m \x1b[2m{label}…\x1b[0m");
+            return;
+        }
+
         Console.Write(text);
     }
 
-    /// <summary>End the streaming block.</summary>
+    /// <summary>
+    /// End the streaming block.  Safe to call multiple times — subsequent calls
+    /// are no-ops once the state has already been reset.
+    /// </summary>
     public static void EndStreaming()
     {
         if (_jsonStreamingActive)
@@ -399,8 +414,28 @@ public static class ChatRenderer
             return;
         }
 
+        string? content = null;
+        lock (_streamLock)
+        {
+            if (_bufferedStreamActive)
+            {
+                _bufferedStreamActive = false;
+                content = _streamBuffer.ToString();
+                _streamBuffer.Clear();
+            }
+        }
+
+        if (content is not null)
+        {
+            // Clear the streaming indicator line
+            Console.Write("\x1b[2K\r");
+            // Render the full response as markdown
+            MarkdownRenderer.Render(content);
+            return;
+        }
+
+        // Already ended or never started — emit one blank line to preserve spacing
         Console.WriteLine();
-        AnsiConsole.WriteLine();
     }
 
     // ── Thinking/reasoning rendering ─────────────────────

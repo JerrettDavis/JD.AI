@@ -31,6 +31,7 @@
 
   <!-- TUI rendering + persistence -->
   <ItemGroup>
+    <PackageReference Include="Markdig" />
     <PackageReference Include="Spectre.Console" />
     <PackageReference Include="HtmlAgilityPack" />
     <PackageReference Include="Microsoft.Data.Sqlite" />
