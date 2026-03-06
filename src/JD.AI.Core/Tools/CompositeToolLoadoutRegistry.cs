@@ -19,7 +19,7 @@ namespace JD.AI.Core.Tools;
 /// </remarks>
 public sealed class CompositeToolLoadoutRegistry : IToolLoadoutRegistry
 {
-    private readonly IReadOnlyList<IToolLoadoutRegistry> _registries;
+    private readonly IToolLoadoutRegistry[] _registries;
 
     /// <summary>Initialises the composite with the supplied ordered registries.</summary>
     /// <param name="registries">Ordered list — index 0 is checked first.</param>
@@ -94,7 +94,7 @@ public sealed class CompositeToolLoadoutRegistry : IToolLoadoutRegistry
         // Iterate in reverse so that primary registry values overwrite fallback values.
         var dict = new Dictionary<string, ToolLoadout>(StringComparer.OrdinalIgnoreCase);
 
-        for (var i = _registries.Count - 1; i >= 0; i--)
+        for (var i = _registries.Length - 1; i >= 0; i--)
         {
             foreach (var loadout in _registries[i].GetAll())
                 dict[loadout.Name] = loadout;
