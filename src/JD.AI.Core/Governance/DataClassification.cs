@@ -21,6 +21,7 @@ public enum ClassificationAction
 /// <summary>
 /// A named data classification with matching patterns and an enforcement action.
 /// </summary>
+#pragma warning disable CA2227 // Policy/config DTOs require mutable collections for YAML binding.
 public sealed class DataClassification
 {
     /// <summary>Classification label (e.g. "PCI-DSS", "PHI", "PII").</summary>
@@ -42,6 +43,7 @@ public sealed class DataClassification
     /// </summary>
     public IList<string> DenyProviders { get; set; } = [];
 }
+#pragma warning restore CA2227
 
 /// <summary>
 /// Describes content detected by a <see cref="DataClassification"/> rule during redaction.

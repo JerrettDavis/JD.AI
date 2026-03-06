@@ -232,7 +232,8 @@ public sealed class CompliancePresetTests
         };
 
         var resolved = PolicyResolver.Resolve([doc1, doc2]);
-        var ssn = resolved.Data?.Classifications.Single(c => c.Name == "SSN");
+        var ssn = resolved.Data?.Classifications.Single(c =>
+            string.Equals(c.Name, "SSN", StringComparison.Ordinal));
         Assert.Equal(ClassificationAction.DenyAndAudit, ssn?.Action);
     }
 
@@ -242,7 +243,7 @@ public sealed class CompliancePresetTests
     public void Check_Soc2_FailsWithEmptyPolicy()
     {
         var controls = CompliancePresetLoader.Check("jdai/compliance/soc2", new PolicySpec());
-        Assert.True(controls.Any(c => !c.Pass));
+        Assert.Contains(controls, c => !c.Pass);
     }
 
     [Fact]
