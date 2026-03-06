@@ -82,7 +82,7 @@ public sealed class BrowserTools
         }
         catch (Exception ex)
         {
-            return $"Error opening URL: {ex.Message}";
+            return OutputFormatter.Error("opening URL", ex);
         }
     }
 
