@@ -115,8 +115,9 @@ public sealed class SettingsPageSteps
     // ── Tab icons ───────────────────────────────────────────
 
     [Then(@"the ""(.*)"" tab should have (?:a|an) (.*) icon")]
-    public async Task ThenTheTabShouldHaveAnIcon(string tabName, string _iconType)
+    public async Task ThenTheTabShouldHaveAnIcon(string tabName, string iconType)
     {
+        _ = iconType;
         var icon = _settingsPage.TabIcon(tabName);
         await Expect(icon).ToBeVisibleAsync();
     }
