@@ -31,6 +31,12 @@ public enum PolicyScope { Global, Organization, Team, Project, User }
 
 public sealed class PolicySpec
 {
+    /// <summary>
+    /// Name of a built-in compliance preset to extend (e.g. "jdai/compliance/soc2").
+    /// The preset's policy is merged as a low-priority base before this spec's overrides.
+    /// </summary>
+    public string? Extends { get; set; }
+
     public ToolPolicy? Tools { get; set; }
     public ProviderPolicy? Providers { get; set; }
     public ModelPolicy? Models { get; set; }
@@ -83,6 +89,12 @@ public sealed class DataPolicy
 {
     public IList<string> NoExternalProviders { get; set; } = [];
     public IList<string> RedactPatterns { get; set; } = [];
+
+    /// <summary>
+    /// Structured data classifications with per-label actions.
+    /// Applied after flat <see cref="RedactPatterns"/>.
+    /// </summary>
+    public IList<DataClassification> Classifications { get; set; } = [];
 }
 #pragma warning restore CA2227
 
