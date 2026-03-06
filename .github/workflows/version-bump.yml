@@ -71,7 +71,7 @@ jobs:
         shell: bash
         run: |
           BUMP="${{ steps.semver.outputs.bump }}"
-          CURRENT=$(nbgv get-version -f "{MajorMinorVersion}")
+          CURRENT=$(nbgv get-version -v MajorMinorVersion)
           MAJOR=$(echo "$CURRENT" | cut -d. -f1)
           MINOR=$(echo "$CURRENT" | cut -d. -f2)
 
@@ -91,10 +91,15 @@ jobs:
         shell: bash
         run: |
           BUMP="${{ steps.semver.outputs.bump }}"
-          NEW_VERSION=$(nbgv get-version -f "{MajorMinorVersion}")
+          NEW_VERSION=$(nbgv get-version -v MajorMinorVersion)
 
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet -- version.json; then
+            echo "No version.json changes detected; skipping commit."
+            exit 0
+          fi
 
           git add version.json
           git commit -m "chore(version): bump to ${NEW_VERSION} [${BUMP}]
