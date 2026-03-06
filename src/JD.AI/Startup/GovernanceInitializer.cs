@@ -154,6 +154,17 @@ internal static class GovernanceInitializer
         var orchestrator = new TeamOrchestrator(session);
         kernel.ImportPluginFromObject(new SubagentTools(orchestrator), "SubagentTools");
 
+        // Approval service — policy-based or auto-approve in print/non-interactive mode
+        var approvalInner = opts.PrintMode
+            ? (JD.AI.Core.Governance.IApprovalService)new JD.AI.Core.Governance.AutoApproveService()
+            : new JD.AI.Core.Governance.AutoApproveService(); // default: auto-approve; replace for human-in-loop
+
+        session.ApprovalService = policies.Count > 0
+            ? new JD.AI.Core.Governance.PolicyBasedApprovalService(
+                PolicyResolver.Resolve(policies),
+                approvalInner)
+            : approvalInner;
+
         // Checkpoint strategy
         ICheckpointStrategy checkpointStrategy = Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), ".git"))
             ? new StashCheckpointStrategy()

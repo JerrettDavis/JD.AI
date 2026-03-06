@@ -837,8 +837,8 @@ public sealed class AgentLoop
 
     /// <summary>
     /// Enters workflow planning mode — generates a workflow plan from the user's
-    /// request, presents a dry-run for approval, and (if approved) queues it for
-    /// execution. Returns a user-facing summary.
+    /// request, presents it for approval via <see cref="IApprovalService"/>,
+    /// and activates it if approved. Returns a user-facing summary.
     /// </summary>
     private async Task<string> RunWorkflowPlanningAsync(
         string userMessage, CancellationToken ct)
@@ -868,6 +868,27 @@ public sealed class AgentLoop
                       "_Use `/workflow` to refine or execute this plan._";
 
         output.RenderInfo(summary);
+
+        // Request approval via IApprovalService if one is configured
+        if (_session.ApprovalService is { } approvalService)
+        {
+            var approvalRequest = new JD.AI.Core.Governance.ApprovalRequest(
+                Id: Guid.NewGuid().ToString("N")[..12],
+                Description: "Execute workflow plan",
+                Details: planText,
+                Kind: JD.AI.Core.Governance.ApprovalKind.Workflow);
+
+            var result = await approvalService.RequestApprovalAsync(approvalRequest, ct)
+                .ConfigureAwait(false);
+
+            if (!result.IsApproved)
+            {
+                var reason = result.Reason ?? "Workflow approval was not granted.";
+                output.RenderWarning($"⛔ Workflow not started: {reason}");
+                return $"Workflow plan generated but not activated: {reason}";
+            }
+        }
+
         _session.ActiveWorkflowName = "pending-plan";
 
         return summary;
