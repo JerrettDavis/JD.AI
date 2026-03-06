@@ -9,8 +9,8 @@
         <MudText Typo="Typo.h4">Channel → Agent Routing</MudText>
         <MudStack Row="true" Spacing="2">
             <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
-                       StartIcon="@Icons.Material.Filled.Sync" OnClick="SyncAsync">Sync OpenClaw</MudButton>
-            <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small" />
+                       StartIcon="@Icons.Material.Filled.Sync" OnClick="SyncAsync" data-testid="sync-openclaw-button">Sync OpenClaw</MudButton>
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small" data-testid="refresh-button" />
         </MudStack>
     </MudStack>
 </div>
@@ -34,11 +34,12 @@ else
 {
     <MudPaper Elevation="0">
         <MudDataGrid Items="@_mappings" Dense="true" Hover="true" EditMode="DataGridEditMode.Cell"
-                     CommittedItemChanges="@(async (RoutingMapping m) => await OnMappingChanged(m))">
+                     CommittedItemChanges="@(async (RoutingMapping m) => await OnMappingChanged(m))"
+                     data-testid="routing-grid">
             <Columns>
                 <PropertyColumn Property="x => x.ChannelType" Title="Channel" Editable="false">
                     <CellTemplate>
-                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" data-testid="routing-channel">
                             <MudIcon Icon="@GetChannelIcon(context.Item.ChannelType)" Size="Size.Small" />
                             <MudText>@context.Item.ChannelType</MudText>
                         </MudStack>
@@ -48,7 +49,8 @@ else
                 <TemplateColumn Title="Status" CellClass="d-flex justify-end">
                     <CellTemplate>
                         <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
-                                 Color="@(string.IsNullOrEmpty(context.Item.AgentId) ? Color.Default : Color.Primary)">
+                                 Color="@(string.IsNullOrEmpty(context.Item.AgentId) ? Color.Default : Color.Primary)"
+                                 data-testid="routing-status">
                             @(string.IsNullOrEmpty(context.Item.AgentId) ? "Default" : "Override")
                         </MudChip>
                     </CellTemplate>
@@ -57,7 +59,7 @@ else
         </MudDataGrid>
     </MudPaper>
 
-    <MudPaper Class="pa-4 mt-4" Elevation="0">
+    <MudPaper Class="pa-4 mt-4" Elevation="0" data-testid="routing-diagram">
         <MudText Typo="Typo.h6" Class="mb-3">Routing Diagram</MudText>
         <MudTimeline TimelinePosition="TimelinePosition.Start">
             @if (_mappings is not null)

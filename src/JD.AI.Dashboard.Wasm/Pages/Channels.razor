@@ -10,8 +10,10 @@
         <MudText Typo="Typo.h4">Channels</MudText>
         <MudStack Row="true" Spacing="2">
             <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
-                       StartIcon="@Icons.Material.Filled.Sync" OnClick="SyncOpenClawAsync">Sync OpenClaw</MudButton>
-            <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small" />
+                       StartIcon="@Icons.Material.Filled.Sync" OnClick="SyncOpenClawAsync"
+                       data-testid="sync-openclaw-button">Sync OpenClaw</MudButton>
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small"
+                           data-testid="refresh-button" />
         </MudStack>
     </MudStack>
 </div>
@@ -45,7 +47,7 @@
 }
 else if (_channels is null || _channels.Length == 0)
 {
-    <MudPaper Class="pa-6" Elevation="0">
+    <MudPaper Class="pa-6" Elevation="0" data-testid="channels-empty">
         <MudStack AlignItems="AlignItems.Center" Spacing="2">
             <MudIcon Icon="@Icons.Material.Filled.Cable" Size="Size.Large" Color="Color.Default" Style="opacity:0.3" />
             <MudText Color="Color.Secondary">No channels configured. Check your Gateway configuration.</MudText>
@@ -58,7 +60,7 @@ else
         @foreach (var channel in _channels)
         {
             <MudItem xs="12" md="6" lg="4">
-                <MudCard Elevation="0" Class="jd-stat-card">
+                <MudCard Elevation="0" Class="jd-stat-card" data-testid="channel-card">
                     <MudCardHeader>
                         <CardHeaderAvatar>
                             <MudAvatar Color="@(channel.IsConnected ? Color.Success : Color.Default)"
@@ -67,13 +69,14 @@ else
                             </MudAvatar>
                         </CardHeaderAvatar>
                         <CardHeaderContent>
-                            <MudText Typo="Typo.body1" Style="font-weight:600;">@channel.DisplayName</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">@channel.ChannelType</MudText>
+                            <MudText Typo="Typo.body1" Style="font-weight:600;" data-testid="channel-name">@channel.DisplayName</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" data-testid="channel-type">@channel.ChannelType</MudText>
                         </CardHeaderContent>
                         <CardHeaderActions>
                             <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
                                      Color="@(channel.IsConnected ? Color.Success : Color.Default)"
-                                     Icon="@(channel.IsConnected ? Icons.Material.Filled.FiberManualRecord : Icons.Material.Filled.RadioButtonUnchecked)">
+                                     Icon="@(channel.IsConnected ? Icons.Material.Filled.FiberManualRecord : Icons.Material.Filled.RadioButtonUnchecked)"
+                                     data-testid="channel-status">
                                 @(channel.IsConnected ? "Online" : "Offline")
                             </MudChip>
                         </CardHeaderActions>
@@ -82,17 +85,20 @@ else
                         @if (channel.IsConnected)
                         {
                             <MudButton Size="Size.Small" Color="Color.Warning" Variant="Variant.Text"
-                                       OnClick="@(() => DisconnectAsync(channel.ChannelType))">Disconnect</MudButton>
+                                       OnClick="@(() => DisconnectAsync(channel.ChannelType))"
+                                       data-testid="channel-disconnect-button">Disconnect</MudButton>
                         }
                         else
                         {
                             <MudButton Size="Size.Small" Color="Color.Success" Variant="Variant.Text"
-                                       OnClick="@(() => ConnectAsync(channel.ChannelType))">Connect</MudButton>
+                                       OnClick="@(() => ConnectAsync(channel.ChannelType))"
+                                       data-testid="channel-connect-button">Connect</MudButton>
                         }
                         <MudSpacer />
                         <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
                                    StartIcon="@Icons.Material.Filled.Edit"
-                                   OnClick="@(() => EditOverrideAsync(channel))">Override</MudButton>
+                                   OnClick="@(() => EditOverrideAsync(channel))"
+                                   data-testid="channel-override-button">Override</MudButton>
                     </MudCardActions>
                 </MudCard>
             </MudItem>

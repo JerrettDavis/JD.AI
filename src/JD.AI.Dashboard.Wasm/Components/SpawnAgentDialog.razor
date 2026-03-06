@@ -9,14 +9,14 @@
     </TitleContent>
     <DialogContent>
         <MudStack Spacing="3">
-            <MudTextField @bind-Value="_definition.Id" Label="Agent ID" Variant="Variant.Outlined" Required="true" />
-            <MudTextField @bind-Value="_definition.Provider" Label="Provider" Variant="Variant.Outlined"
+            <MudTextField data-testid="agent-id-input" @bind-Value="_definition.Id" Label="Agent ID" Variant="Variant.Outlined" Required="true" />
+            <MudTextField data-testid="agent-provider-input" @bind-Value="_definition.Provider" Label="Provider" Variant="Variant.Outlined"
                           HelperText="e.g. ollama, claude-code, copilot" />
-            <MudTextField @bind-Value="_definition.Model" Label="Model" Variant="Variant.Outlined"
+            <MudTextField data-testid="agent-model-input" @bind-Value="_definition.Model" Label="Model" Variant="Variant.Outlined"
                           HelperText="e.g. ollama/qwen3:30b-instruct" />
-            <MudTextField @bind-Value="_definition.SystemPrompt" Label="System Prompt" Variant="Variant.Outlined"
+            <MudTextField data-testid="agent-systemprompt-input" @bind-Value="_definition.SystemPrompt" Label="System Prompt" Variant="Variant.Outlined"
                           Lines="4" />
-            <MudNumericField @bind-Value="_definition.MaxTurns" Label="Max Turns" Variant="Variant.Outlined" Min="1" Max="100" />
+            <MudNumericField data-testid="agent-maxturns-input" @bind-Value="_definition.MaxTurns" Label="Max Turns" Variant="Variant.Outlined" Min="1" Max="100" />
         </MudStack>
     </DialogContent>
     <DialogActions>
