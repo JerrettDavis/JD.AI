@@ -122,59 +122,64 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     public async Task<string?> ExecuteAsync(string input, CancellationToken ct = default)
     {
         var parts = input.TrimStart().Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
-        var cmd = parts[0].ToUpperInvariant();
+        if (parts.Length == 0)
+            return "No command provided. Type /help for available commands.";
+
+        if (!SlashCommandCatalog.TryResolveDispatch(parts[0], out var commandId))
+            return $"Unknown command: {parts[0]}. Type /help for available commands.";
+
         var arg = parts.Length > 1 ? parts[1] : null;
 
-        return cmd switch
+        return commandId switch
         {
-            "/HELP" or "/JDAI-HELP" => GetHelp(),
-            "/MODELS" or "/JDAI-MODELS" => await ListModelsAsync(ct).ConfigureAwait(false),
-            "/MODEL" or "/JDAI-MODEL" => await SwitchModelAsync(arg, ct).ConfigureAwait(false),
-            "/PROVIDERS" or "/JDAI-PROVIDERS" => await ListProvidersAsync(ct).ConfigureAwait(false),
-            "/PROVIDER" or "/JDAI-PROVIDER" => await HandleProviderCommandAsync(arg, ct).ConfigureAwait(false),
-            "/CLEAR" or "/JDAI-CLEAR" => ClearHistory(),
-            "/COMPACT" or "/JDAI-COMPACT" => await CompactAsync(ct).ConfigureAwait(false),
-            "/COST" or "/JDAI-COST" => await GetCostAsync(arg, ct).ConfigureAwait(false),
-            "/AUTORUN" or "/JDAI-AUTORUN" => ToggleAutoRun(arg),
-            "/PERMISSIONS" or "/JDAI-PERMISSIONS" => TogglePermissions(arg),
-            "/SESSIONS" or "/JDAI-SESSIONS" => await ListSessionsAsync(ct).ConfigureAwait(false),
-            "/RESUME" or "/JDAI-RESUME" => await ResumeSessionAsync(arg, ct).ConfigureAwait(false),
-            "/NAME" or "/JDAI-NAME" => NameSession(arg),
-            "/HISTORY" or "/JDAI-HISTORY" => ShowHistory(),
-            "/EXPORT" or "/JDAI-EXPORT" => await ExportSessionAsync(ct).ConfigureAwait(false),
-            "/UPDATE" or "/JDAI-UPDATE" => await CheckUpdateAsync(ct).ConfigureAwait(false),
-            "/INSTRUCTIONS" or "/JDAI-INSTRUCTIONS" => ShowInstructions(),
-            "/PLUGINS" or "/JDAI-PLUGINS" => await HandlePluginsAsync(arg, ct).ConfigureAwait(false),
-            "/CHECKPOINT" or "/JDAI-CHECKPOINT" => await HandleCheckpointAsync(arg, ct).ConfigureAwait(false),
-            "/SANDBOX" or "/JDAI-SANDBOX" => ShowSandboxInfo(),
-            "/WORKFLOW" or "/JDAI-WORKFLOW" => await HandleWorkflowAsync(arg, ct).ConfigureAwait(false),
-            "/SPINNER" or "/JDAI-SPINNER" => HandleSpinner(arg),
-            "/LOCAL" or "/JDAI-LOCAL" => await HandleLocalModelAsync(arg, ct).ConfigureAwait(false),
-            "/MCP" or "/JDAI-MCP" => await HandleMcpAsync(arg, ct).ConfigureAwait(false),
-            "/CONTEXT" or "/JDAI-CONTEXT" => GetContextUsage(),
-            "/COMPACT-SYSTEM-PROMPT" or "/JDAI-COMPACT-SYSTEM-PROMPT" => await CompactSystemPromptAsync(arg, ct).ConfigureAwait(false),
-            "/COPY" or "/JDAI-COPY" => await CopyLastResponseInstanceAsync().ConfigureAwait(false),
-            "/DIFF" or "/JDAI-DIFF" => await ShowDiffAsync(ct).ConfigureAwait(false),
-            "/INIT" or "/JDAI-INIT" => await InitProjectFileAsync(ct).ConfigureAwait(false),
-            "/PLAN" or "/JDAI-PLAN" => TogglePlanMode(),
-            "/DOCTOR" or "/JDAI-DOCTOR" => await RunDoctorAsync(ct).ConfigureAwait(false),
-            "/FORK" or "/JDAI-FORK" => await ForkSessionAsync(parts, ct).ConfigureAwait(false),
-            "/REVIEW" or "/JDAI-REVIEW" => await RunReviewAsync(arg, securityMode: false, ct).ConfigureAwait(false),
-            "/SECURITY-REVIEW" or "/JDAI-SECURITY-REVIEW" => await RunReviewAsync(arg, securityMode: true, ct).ConfigureAwait(false),
-            "/THEME" or "/JDAI-THEME" => HandleTheme(arg),
-            "/VIM" or "/JDAI-VIM" => ToggleVimMode(arg),
-            "/STATS" or "/JDAI-STATS" => await ShowStatsAsync(arg, ct).ConfigureAwait(false),
-            "/CONFIG" or "/JDAI-CONFIG" => HandleConfig(arg),
-            "/SKILLS" or "/JDAI-SKILLS" => HandleSkills(arg),
-            "/AGENTS" or "/JDAI-AGENTS" => await HandleAgentsAsync(arg, ct).ConfigureAwait(false),
-            "/HOOKS" or "/JDAI-HOOKS" => await HandleHooksAsync(arg, ct).ConfigureAwait(false),
-            "/MEMORY" or "/JDAI-MEMORY" => await HandleMemoryAsync(arg, ct).ConfigureAwait(false),
-            "/OUTPUT" or "/OUTPUT-STYLE" or "/JDAI-OUTPUT-STYLE" => HandleOutputStyle(arg),
-            "/DEFAULT" or "/JDAI-DEFAULT" => await HandleDefaultAsync(arg, ct).ConfigureAwait(false),
-            "/MODEL-INFO" or "/JDAI-MODEL-INFO" => await HandleModelInfoAsync(arg, ct).ConfigureAwait(false),
-            "/TRACE" or "/JDAI-TRACE" => ShowTrace(arg),
-            "/SHORTCUTS" or "/JDAI-SHORTCUTS" => GetShortcuts(),
-            "/QUIT" or "/EXIT" or "/JDAI-QUIT" or "/JDAI-EXIT" => null, // Signal exit
+            SlashCommandId.Help => SlashCommandCatalog.BuildHelpText(),
+            SlashCommandId.Models => await ListModelsAsync(ct).ConfigureAwait(false),
+            SlashCommandId.Model => await SwitchModelAsync(arg, ct).ConfigureAwait(false),
+            SlashCommandId.Providers => await ListProvidersAsync(ct).ConfigureAwait(false),
+            SlashCommandId.Provider => await HandleProviderCommandAsync(arg, ct).ConfigureAwait(false),
+            SlashCommandId.Clear => ClearHistory(),
+            SlashCommandId.Compact => await CompactAsync(ct).ConfigureAwait(false),
+            SlashCommandId.Cost => await GetCostAsync(arg, ct).ConfigureAwait(false),
+            SlashCommandId.Autorun => ToggleAutoRun(arg),
+            SlashCommandId.Permissions => TogglePermissions(arg),
+            SlashCommandId.Sessions => await ListSessionsAsync(ct).ConfigureAwait(false),
+            SlashCommandId.Resume => await ResumeSessionAsync(arg, ct).ConfigureAwait(false),
+            SlashCommandId.Name => NameSession(arg),
+            SlashCommandId.History => ShowHistory(),
+            SlashCommandId.Export => await ExportSessionAsync(ct).ConfigureAwait(false),
+            SlashCommandId.Update => await CheckUpdateAsync(ct).ConfigureAwait(false),
+            SlashCommandId.Instructions => ShowInstructions(),
+            SlashCommandId.Plugins => await HandlePluginsAsync(arg, ct).ConfigureAwait(false),
+            SlashCommandId.Checkpoint => await HandleCheckpointAsync(arg, ct).ConfigureAwait(false),
+            SlashCommandId.Sandbox => ShowSandboxInfo(),
+            SlashCommandId.Workflow => await HandleWorkflowAsync(arg, ct).ConfigureAwait(false),
+            SlashCommandId.Spinner => HandleSpinner(arg),
+            SlashCommandId.Local => await HandleLocalModelAsync(arg, ct).ConfigureAwait(false),
+            SlashCommandId.Mcp => await HandleMcpAsync(arg, ct).ConfigureAwait(false),
+            SlashCommandId.Context => GetContextUsage(),
+            SlashCommandId.CompactSystemPrompt => await CompactSystemPromptAsync(arg, ct).ConfigureAwait(false),
+            SlashCommandId.Copy => await CopyLastResponseInstanceAsync().ConfigureAwait(false),
+            SlashCommandId.Diff => await ShowDiffAsync(ct).ConfigureAwait(false),
+            SlashCommandId.Init => await InitProjectFileAsync(ct).ConfigureAwait(false),
+            SlashCommandId.Plan => TogglePlanMode(),
+            SlashCommandId.Doctor => await RunDoctorAsync(ct).ConfigureAwait(false),
+            SlashCommandId.Fork => await ForkSessionAsync(arg, ct).ConfigureAwait(false),
+            SlashCommandId.Review => await RunReviewAsync(arg, securityMode: false, ct).ConfigureAwait(false),
+            SlashCommandId.SecurityReview => await RunReviewAsync(arg, securityMode: true, ct).ConfigureAwait(false),
+            SlashCommandId.Theme => HandleTheme(arg),
+            SlashCommandId.Vim => ToggleVimMode(arg),
+            SlashCommandId.Stats => await ShowStatsAsync(arg, ct).ConfigureAwait(false),
+            SlashCommandId.Config => HandleConfig(arg),
+            SlashCommandId.Skills => HandleSkills(arg),
+            SlashCommandId.Agents => await HandleAgentsAsync(arg, ct).ConfigureAwait(false),
+            SlashCommandId.Hooks => await HandleHooksAsync(arg, ct).ConfigureAwait(false),
+            SlashCommandId.Memory => await HandleMemoryAsync(arg, ct).ConfigureAwait(false),
+            SlashCommandId.OutputStyle => HandleOutputStyle(arg),
+            SlashCommandId.Default => await HandleDefaultAsync(arg, ct).ConfigureAwait(false),
+            SlashCommandId.ModelInfo => await HandleModelInfoAsync(arg, ct).ConfigureAwait(false),
+            SlashCommandId.Trace => ShowTrace(arg),
+            SlashCommandId.Shortcuts => GetShortcuts(),
+            SlashCommandId.Quit => null, // Signal exit
             _ => $"Unknown command: {parts[0]}. Type /help for available commands.",
         };
     }
@@ -226,60 +231,6 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             // Ignore persistence failures during model switches.
         }
     }
-
-    private static string GetHelp() => """
-        Available commands (all accept /jdai- prefix, e.g. /jdai-config):
-          /help           — Show this help
-          /models         — Browse and switch models interactively
-          /model [id]     — Switch model (interactive picker or by name)
-          /model search   — Search for models across all providers
-          /model url      — Pull a model by URL or identifier
-          /providers      — List detected providers
-          /provider       — Show current provider (subcommands: add, remove, test, list)
-          /clear          — Clear chat history
-          /compact        — Force context compaction
-          /cost           — Show token usage
-          /autorun        — Toggle auto-approve for tools
-          /permissions    — Toggle permission checks (off = skip all)
-          /sessions       — List recent sessions
-          /resume [id]    — Resume a previous session
-          /name <name>    — Name the current session
-          /history        — Show session turn history
-          /export         — Export current session to JSON
-          /update         — Check for and apply updates
-          /instructions   — Show loaded project instructions
-          /plugins        — Manage plugins (list/install/enable/disable/update/uninstall/info)
-          /checkpoint     — List, restore, or clear checkpoints
-          /sandbox        — Show sandbox mode info
-          /workflow       — Manage workflows (list|show|export|replay|refine|catalog|publish|install|search|versions)
-          /spinner [style] — Set progress style (none|minimal|normal|rich|nerdy)
-          /local <cmd>    — Manage local models (list|add|scan|remove|search|download)
-          /mcp [cmd]      — Manage MCP servers (list|add|remove|enable|disable)
-          /context        — Show context window usage
-          /compact-system-prompt [off|auto|always] — Compact system prompt or set mode
-          /copy           — Copy last response to clipboard
-          /diff           — Show uncommitted changes
-          /init           — Initialize JDAI.md project file
-          /plan           — Toggle plan mode (explore only)
-          /doctor         — Run self-diagnostics
-          /fork [name]    — Fork conversation to new session
-          /review         — Review current changes (or branch diff)
-          /security-review — OWASP/CWE-focused security analysis
-          /theme [name]   — Set/list terminal themes
-          /vim [on|off]   — Toggle vim editing mode
-          /stats [--history|--daily] — Session and historical usage stats
-          /config [list|get|set] — Manage persisted command settings
-          /skills [status|reload] — Show managed skill eligibility and refresh
-          /agents         — Manage local agent profiles
-          /hooks          — Manage local hook profiles
-          /memory         — View/edit project memory (JDAI.md)
-          /output-style [style] — Set output format (rich|plain|compact|json)
-          /default        — Manage default provider/model (global & per-project)
-          /model-info [refresh] — Show model metadata (context, cost, capabilities)
-          /trace [N]      — Show execution timeline for the last turn (or turn N)
-          /shortcuts      — List keyboard shortcuts
-          /quit           — Exit jdai
-        """;
 
     private static string GetShortcuts() => """
         Keyboard Shortcuts:
@@ -2409,7 +2360,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         return sb.ToString();
     }
 
-    private async Task<string> ForkSessionAsync(string[] cmdParts, CancellationToken ct)
+    private async Task<string> ForkSessionAsync(string? arg, CancellationToken ct)
     {
         _ = ct;
         if (_session.Store == null || _session.SessionInfo == null)
@@ -2417,7 +2368,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             return "No active session to fork.";
         }
 
-        var forkName = cmdParts.Length > 1 ? string.Join(' ', cmdParts.Skip(1)) : null;
+        var forkName = string.IsNullOrWhiteSpace(arg) ? null : arg;
         var forkedSession = await _session.ForkSessionAsync(forkName).ConfigureAwait(false);
         return $"Forked to new session: {forkedSession?.Id ?? "failed"}";
     }
