@@ -41,6 +41,7 @@ internal static class ToolRegistrar
 
         var usageTools = new UsageTools();
         usageTools.SetModel(selectedModel);
+        session.ModelChanged += (_, model) => usageTools.SetModel(model);
         kernel.Plugins.AddFromObject(usageTools, "usage");
 
         var capabilityTools = new CapabilityTools(kernel);

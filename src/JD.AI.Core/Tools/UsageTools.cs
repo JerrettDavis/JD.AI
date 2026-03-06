@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Text;
 using JD.AI.Core.Attributes;
 using JD.AI.Core.Providers;
+using JD.AI.Core.Usage;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -17,6 +18,12 @@ public sealed class UsageTools
     private int _toolCalls;
     private int _turns;
     private ProviderModelInfo? _currentModel;
+    private readonly ICostEstimator _costEstimator;
+
+    public UsageTools(ICostEstimator? costEstimator = null)
+    {
+        _costEstimator = costEstimator ?? new DefaultCostEstimator();
+    }
 
     /// <summary>
     /// Sets the current model for accurate cost calculation when metadata is available.
@@ -57,34 +64,21 @@ public sealed class UsageTools
         sb.AppendLine($"Tool calls: {tools}");
         sb.AppendLine();
 
-        if (_currentModel?.HasMetadata == true)
+        if (_currentModel is not null)
         {
+            var (inputRate, outputRate, source) = _costEstimator.ResolveRates(_currentModel);
+            var cost = _costEstimator.EstimateTurnCostUsd(_currentModel, prompt, completion);
+
             sb.AppendLine($"=== Cost ({_currentModel.DisplayName}) ===");
-            var cost = (prompt * _currentModel.InputCostPerToken)
-                     + (completion * _currentModel.OutputCostPerToken);
-            sb.AppendLine($"  Input:  ${prompt * _currentModel.InputCostPerToken:F6}");
-            sb.AppendLine($"  Output: ${completion * _currentModel.OutputCostPerToken:F6}");
+            sb.AppendLine($"  Rate source: {source}");
+            sb.AppendLine($"  Input:  ${prompt * inputRate:F6}");
+            sb.AppendLine($"  Output: ${completion * outputRate:F6}");
             sb.AppendLine($"  Total:  ${cost:F6}");
         }
         else
         {
-            sb.AppendLine("=== Estimated Cost ===");
-
-            // Common pricing tiers (approximate, may be outdated)
-            var costs = new (string Model, decimal PromptPer1K, decimal CompletionPer1K)[]
-            {
-                ("Claude Sonnet 4", 0.003m, 0.015m),
-                ("Claude Haiku 4", 0.0008m, 0.004m),
-                ("GPT-4.1", 0.002m, 0.008m),
-                ("GPT-5-mini", 0.00015m, 0.0006m),
-                ("Local (Ollama/LLamaSharp)", 0m, 0m),
-            };
-
-            foreach (var (model, promptRate, completionRate) in costs)
-            {
-                var cost = (prompt / 1000m * promptRate) + (completion / 1000m * completionRate);
-                sb.AppendLine($"  {model}: ${cost:F4}");
-            }
+            sb.AppendLine("=== Cost ===");
+            sb.AppendLine("  Current model not set. Switch/select a model for cost estimation.");
         }
 
         return sb.ToString();
