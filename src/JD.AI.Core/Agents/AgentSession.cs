@@ -133,6 +133,11 @@ public sealed class AgentSession
     public IReadOnlyList<KernelPlugin>? AllPlugins { get; set; }
 
     /// <summary>
+    /// Registry of agent definitions loaded from <c>*.agent.yaml</c> files.
+    /// </summary>
+    public IAgentDefinitionRegistry? AgentDefinitionRegistry { get; set; }
+
+    /// <summary>
     /// When true, supported providers can automatically enable prompt caching.
     /// </summary>
     public bool PromptCachingEnabled { get; set; } = true;
