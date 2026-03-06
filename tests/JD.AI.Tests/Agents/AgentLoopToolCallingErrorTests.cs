@@ -231,6 +231,124 @@ public sealed class AgentLoopToolCallingErrorTests : TinyBddXunitBase
             .AssertPassed();
     }
 
+    [Scenario("IsToolsRejectedError detects 400 via HttpRequestException.StatusCode when tools were enabled"), Fact]
+    public async Task IsToolsRejectedError_Detects400ViaStatusCode()
+    {
+        bool? result = null;
+
+        await Given("an HttpRequestException with StatusCode=BadRequest and tools were enabled", () =>
+            {
+                // Simulate SK's OpenAI connector which sets StatusCode on HttpRequestException
+                return new HttpRequestException(
+                    "Service request failed.", inner: null,
+                    statusCode: System.Net.HttpStatusCode.BadRequest);
+            })
+            .When("IsToolsRejectedError is called with toolsWereEnabled=true", ex =>
+            {
+                result = AgentLoop.IsToolsRejectedError(ex, toolsWereEnabled: true);
+                return true;
+            })
+            .Then("it returns true", _ =>
+            {
+                result.Should().BeTrue();
+                return true;
+            })
+            .AssertPassed();
+    }
+
+    [Scenario("IsToolsRejectedError detects 400 via anchored message pattern when tools were enabled"), Fact]
+    public async Task IsToolsRejectedError_Detects400ViaAnchoredMessage()
+    {
+        bool? result = null;
+
+        await Given("an HttpRequestException with '400 (Bad Request)' in its message and tools were enabled", () =>
+            {
+                return new HttpRequestException("Status: 400 (Bad Request)");
+            })
+            .When("IsToolsRejectedError is called with toolsWereEnabled=true", ex =>
+            {
+                result = AgentLoop.IsToolsRejectedError(ex, toolsWereEnabled: true);
+                return true;
+            })
+            .Then("it returns true", _ =>
+            {
+                result.Should().BeTrue();
+                return true;
+            })
+            .AssertPassed();
+    }
+
+    [Scenario("IsToolsRejectedError does not fire on bare '400' appearing in unrelated message text"), Fact]
+    public async Task IsToolsRejectedError_DoesNotFire_On400InUnrelatedMessage()
+    {
+        bool? result = null;
+
+        await Given("an exception whose message contains '400' but not as an HTTP status", () =>
+            {
+                // e.g. rate-limit or payload-size message — should NOT be treated as BadRequest
+                return new HttpRequestException("Rate limit reached. Retry after 400 seconds.");
+            })
+            .When("IsToolsRejectedError is called with toolsWereEnabled=true", ex =>
+            {
+                result = AgentLoop.IsToolsRejectedError(ex, toolsWereEnabled: true);
+                return true;
+            })
+            .Then("it returns false to avoid silently swallowing non-HTTP-status 400 text", _ =>
+            {
+                result.Should().BeFalse();
+                return true;
+            })
+            .AssertPassed();
+    }
+
+    [Scenario("IsToolsRejectedError returns false when tools were not enabled"), Fact]
+    public async Task IsToolsRejectedError_ReturnsFalseWhenToolsNotEnabled()
+    {
+        bool? result = null;
+
+        await Given("a 400 Bad Request exception but tools were NOT enabled", () =>
+            {
+                return new HttpRequestException(
+                    "Service request failed.", inner: null,
+                    statusCode: System.Net.HttpStatusCode.BadRequest);
+            })
+            .When("IsToolsRejectedError is called with toolsWereEnabled=false", ex =>
+            {
+                result = AgentLoop.IsToolsRejectedError(ex, toolsWereEnabled: false);
+                return true;
+            })
+            .Then("it returns false to avoid swallowing unrelated 400 errors", _ =>
+            {
+                result.Should().BeFalse();
+                return true;
+            })
+            .AssertPassed();
+    }
+
+    [Scenario("IsToolsRejectedError returns false for non-400 errors even with tools enabled"), Fact]
+    public async Task IsToolsRejectedError_ReturnsFalseForNon400Errors()
+    {
+        bool? result = null;
+
+        await Given("a 500 Internal Server Error with tools enabled", () =>
+            {
+                return new HttpRequestException(
+                    "Service request failed.", inner: null,
+                    statusCode: System.Net.HttpStatusCode.InternalServerError);
+            })
+            .When("IsToolsRejectedError is called with toolsWereEnabled=true", ex =>
+            {
+                result = AgentLoop.IsToolsRejectedError(ex, toolsWereEnabled: true);
+                return true;
+            })
+            .Then("it returns false because it's not a Bad Request", _ =>
+            {
+                result.Should().BeFalse();
+                return true;
+            })
+            .AssertPassed();
+    }
+
     private sealed class SpyAgentOutput : IAgentOutput
     {
         public bool BeginStreamingCalled { get; private set; }

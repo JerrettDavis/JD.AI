@@ -82,15 +82,21 @@ public sealed class OpenRouterDetector : ApiKeyProviderDetectorBase
     protected override void ConfigureKernel(
         IKernelBuilder builder, ProviderModelInfo model, string apiKey)
     {
+        // OpenRouter requires standard Bearer auth and recommends these headers
+        // for routing attribution and rate-limit handling on free models.
+        var http = new HttpClient
+        {
+            BaseAddress = new Uri($"{BaseUrl}/"),
+            Timeout = TimeSpan.FromMinutes(10),
+        };
+        http.DefaultRequestHeaders.TryAddWithoutValidation("HTTP-Referer", "https://github.com/JerrettDavis/JD.AI");
+        http.DefaultRequestHeaders.TryAddWithoutValidation("X-Title", "JD.AI");
+
 #pragma warning disable SKEXP0010
         builder.AddOpenAIChatCompletion(
             modelId: model.Id,
             apiKey: apiKey,
-            httpClient: new HttpClient
-            {
-                BaseAddress = new Uri($"{BaseUrl}/"),
-                Timeout = TimeSpan.FromMinutes(10),
-            });
+            httpClient: http);
 #pragma warning restore SKEXP0010
     }
 
