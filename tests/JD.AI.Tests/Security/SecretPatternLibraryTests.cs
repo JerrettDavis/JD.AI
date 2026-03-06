@@ -9,7 +9,7 @@ public sealed class SecretPatternLibraryTests
     [InlineData("ghp_" + "aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrR", nameof(SecretPatternLibrary.GitHubClassicPat))]
     [InlineData("sk-" + "aBcDeFgHiJkLmNoPqRsTuVwXyZ01234567890123456789012", nameof(SecretPatternLibrary.OpenAiKey))]
     [InlineData("hf_" + "aBcDeFgHiJkLmNoPqRsTuVwXyZaBcDeFgHi0a", nameof(SecretPatternLibrary.HuggingFaceToken))]
-    [InlineData("sk_test_xFaKeStRiPeKe" + "y12345678", nameof(SecretPatternLibrary.StripeSecretKey))]
+    [InlineData("sk_test_" + "xFaKeStRiPeKey123456789012", nameof(SecretPatternLibrary.StripeSecretKey))]
     public void All_ContainsPatternForWellKnownSecretTypes(string secret, string patternName)
     {
         _ = patternName; // used as test display name
@@ -29,7 +29,7 @@ public sealed class SecretPatternLibraryTests
     public void PlainText_IsNotRedacted()
     {
         var redactor = new Core.Governance.DataRedactor(SecretPatternLibrary.All);
-        const string text = "Hello, this is plain text with no secrets.";
-        Assert.Equal(text, redactor.Redact(text));
+        const string Text = "Hello, this is plain text with no secrets.";
+        Assert.Equal(Text, redactor.Redact(Text));
     }
 }
