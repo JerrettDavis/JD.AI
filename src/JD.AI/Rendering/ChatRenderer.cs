@@ -38,6 +38,10 @@ public static class ChatRenderer
     private static ThemePalette _palette = ThemePalettes[TuiTheme.DefaultDark];
     private static bool _jsonStreamingActive;
 
+    // Streaming buffer — accumulates chunks so we can render full markdown at end
+    private static readonly System.Text.StringBuilder _streamBuffer = new();
+    private static bool _bufferedStreamActive;
+
     public static TuiTheme CurrentTheme { get; private set; } = TuiTheme.DefaultDark;
     public static OutputStyle CurrentOutputStyle { get; private set; } = OutputStyle.Rich;
 
@@ -135,25 +139,8 @@ public static class ChatRenderer
                 break;
         }
 
-        // Rich markdown-like rendering
-        var lines = text.Split('\n');
-        foreach (var line in lines)
-        {
-            if (line.StartsWith("```", StringComparison.Ordinal))
-            {
-                AnsiConsole.MarkupLine("[dim]" + Markup.Escape(line) + "[/]");
-            }
-            else if (line.StartsWith('#'))
-            {
-                AnsiConsole.MarkupLine("[bold yellow]" + Markup.Escape(line) + "[/]");
-            }
-            else
-            {
-                AnsiConsole.WriteLine(line);
-            }
-        }
-
-        AnsiConsole.WriteLine();
+        // Rich: delegate to MarkdownRenderer for full markdown pretty-printing
+        MarkdownRenderer.Render(text);
     }
 
     /// <summary>Render a tool invocation and its result.</summary>
@@ -372,8 +359,15 @@ public static class ChatRenderer
             return;
         }
 
-        if (CurrentOutputStyle == OutputStyle.Rich)
-            AnsiConsole.Markup($"[bold {_palette.PromptColor}]◆[/] ");
+        // Plain/Compact: write raw streaming text as it arrives
+        if (CurrentOutputStyle != OutputStyle.Rich)
+            return;
+
+        // Rich: buffer the full response so we can render markdown when done.
+        // Show a live byte-counter on one line while receiving chunks.
+        _streamBuffer.Clear();
+        _bufferedStreamActive = true;
+        Console.Write($"\x1b[2K\r\x1b[36m◆\x1b[0m \x1b[2mstreaming…\x1b[0m");
     }
 
     /// <summary>Write a streaming text chunk (raw, inline).</summary>
@@ -382,6 +376,16 @@ public static class ChatRenderer
         if (_jsonStreamingActive)
         {
             Console.Write(EscapeJsonString(text));
+            return;
+        }
+
+        if (_bufferedStreamActive)
+        {
+            _streamBuffer.Append(text);
+            // Update live byte counter on the current line
+            var kb = _streamBuffer.Length / 1024.0;
+            var label = _streamBuffer.Length >= 1024 ? $"{kb:F1} KB" : $"{_streamBuffer.Length} B";
+            Console.Write($"\x1b[2K\r\x1b[36m◆\x1b[0m \x1b[2m{label}…\x1b[0m");
             return;
         }
 
@@ -396,6 +400,18 @@ public static class ChatRenderer
             Console.WriteLine("\"}");
             Console.WriteLine();
             _jsonStreamingActive = false;
+            return;
+        }
+
+        if (_bufferedStreamActive)
+        {
+            _bufferedStreamActive = false;
+            var content = _streamBuffer.ToString();
+            _streamBuffer.Clear();
+            // Clear the streaming indicator line
+            Console.Write("\x1b[2K\r");
+            // Render the full response as markdown
+            MarkdownRenderer.Render(content);
             return;
         }
 
