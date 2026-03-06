@@ -26,9 +26,9 @@ public static class CompliancePresetLoader
     // Map from preset name to embedded resource manifest name (suffix of resource)
     private static readonly Dictionary<string, string> _presetMap = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["jdai/compliance/soc2"]    = "soc2.yaml",
-        ["jdai/compliance/gdpr"]    = "gdpr.yaml",
-        ["jdai/compliance/hipaa"]   = "hipaa.yaml",
+        ["jdai/compliance/soc2"] = "soc2.yaml",
+        ["jdai/compliance/gdpr"] = "gdpr.yaml",
+        ["jdai/compliance/hipaa"] = "hipaa.yaml",
         ["jdai/compliance/pci-dss"] = "pci-dss.yaml",
     };
 
@@ -79,9 +79,9 @@ public static class CompliancePresetLoader
     {
         return presetName.ToLowerInvariant() switch
         {
-            "jdai/compliance/soc2"    => CheckSoc2(resolvedSpec),
-            "jdai/compliance/gdpr"    => CheckGdpr(resolvedSpec),
-            "jdai/compliance/hipaa"   => CheckHipaa(resolvedSpec),
+            "jdai/compliance/soc2" => CheckSoc2(resolvedSpec),
+            "jdai/compliance/gdpr" => CheckGdpr(resolvedSpec),
+            "jdai/compliance/hipaa" => CheckHipaa(resolvedSpec),
             "jdai/compliance/pci-dss" => CheckPciDss(resolvedSpec),
             _ => [],
         };
