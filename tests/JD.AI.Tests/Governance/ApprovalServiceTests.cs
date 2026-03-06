@@ -92,6 +92,22 @@ public sealed class ApprovalServiceTests
     }
 
     [Fact]
+    public async Task PolicyBased_RequireApprovalGate_DoesNotAffectToolCalls()
+    {
+        var policy = new PolicySpec
+        {
+            Workflows = new WorkflowPolicy { RequireApprovalGate = true }
+        };
+        var inner = new AutoRejectService("should not be called");
+        var service = new PolicyBasedApprovalService(policy, inner);
+
+        // WorkflowPolicy gate must not affect tool-call approval requests
+        var result = await service.RequestApprovalAsync(
+            new ApprovalRequest("abc", "safe tool", Kind: ApprovalKind.ToolCall, ToolName: "safe_tool"));
+        Assert.True(result.IsApproved);
+    }
+
+    [Fact]
     public async Task PolicyBased_ToolInRequireApprovalFor_DelegatesToInner()
     {
         var policy = new PolicySpec

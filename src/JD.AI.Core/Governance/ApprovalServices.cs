@@ -49,8 +49,9 @@ public sealed class PolicyBasedApprovalService : IApprovalService
     /// <inheritdoc />
     public async Task<ApprovalResult> RequestApprovalAsync(ApprovalRequest request, CancellationToken ct = default)
     {
-        // If the policy requires workflow approval gates, delegate to the inner service
-        if (_policy.Workflows is { } wf && wf.RequireApprovalGate)
+        // Workflow approval gate — only applies to workflow requests
+        if (request.Kind == ApprovalKind.Workflow &&
+            _policy.Workflows is { } wf && wf.RequireApprovalGate)
             return await _inner.RequestApprovalAsync(request, ct).ConfigureAwait(false);
 
         // Tools: check if tool requires approval based on policy denied/allowed lists
