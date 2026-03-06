@@ -198,12 +198,12 @@ public sealed class PolicyEvaluator : IPolicyEvaluator
 
         var merged = new RoleDefinition
         {
-            AllowTools = [..def.AllowTools],
-            DenyTools = [..def.DenyTools],
-            AllowProviders = [..def.AllowProviders],
-            DenyProviders = [..def.DenyProviders],
-            AllowModels = [..def.AllowModels],
-            DenyModels = [..def.DenyModels],
+            AllowTools = [.. def.AllowTools],
+            DenyTools = [.. def.DenyTools],
+            AllowProviders = [.. def.AllowProviders],
+            DenyProviders = [.. def.DenyProviders],
+            AllowModels = [.. def.AllowModels],
+            DenyModels = [.. def.DenyModels],
         };
 
         foreach (var parentName in def.Inherits)

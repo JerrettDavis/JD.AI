@@ -134,8 +134,8 @@ public sealed class LoadoutYamlTests : IDisposable
     [Fact]
     public void Deserialize_MinimalYaml_LoadsNameOnly()
     {
-        const string yaml = "name: minimal-yaml\n";
-        var result = ToolLoadoutYamlSerializer.Deserialize(yaml);
+        const string YamlText = "name: minimal-yaml\n";
+        var result = ToolLoadoutYamlSerializer.Deserialize(YamlText);
 
         Assert.Equal("minimal-yaml", result.Name);
         Assert.Null(result.ParentLoadoutName);
@@ -147,14 +147,14 @@ public sealed class LoadoutYamlTests : IDisposable
     [Fact]
     public void Deserialize_CategoryIsCaseInsensitive()
     {
-        const string yaml = """
+        const string YamlText = """
             name: case-test
             includeCategories:
               - git
               - SEARCH
             """;
 
-        var result = ToolLoadoutYamlSerializer.Deserialize(yaml);
+        var result = ToolLoadoutYamlSerializer.Deserialize(YamlText);
 
         Assert.Contains(ToolCategory.Git, result.IncludedCategories);
         Assert.Contains(ToolCategory.Search, result.IncludedCategories);
@@ -163,13 +163,13 @@ public sealed class LoadoutYamlTests : IDisposable
     [Fact]
     public void DeserializeFile_ReadsFromDisk()
     {
-        const string yaml = """
+        const string YamlText = """
             name: from-file
             includeCategories:
               - Filesystem
             """;
 
-        var path = WriteTempLoadout("test.loadout.yaml", yaml);
+        var path = WriteTempLoadout("test.loadout.yaml", YamlText);
         var result = ToolLoadoutYamlSerializer.DeserializeFile(path);
 
         Assert.Equal("from-file", result.Name);

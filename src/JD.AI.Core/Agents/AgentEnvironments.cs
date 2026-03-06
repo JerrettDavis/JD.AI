@@ -6,15 +6,15 @@ namespace JD.AI.Core.Agents;
 /// </summary>
 public static class AgentEnvironments
 {
-    public const string Dev     = "dev";
+    public const string Dev = "dev";
     public const string Staging = "staging";
-    public const string Prod    = "prod";
+    public const string Prod = "prod";
 
     /// <summary>Ordered environments from lowest to highest.</summary>
     public static readonly IReadOnlyList<string> All = [Dev, Staging, Prod];
 
     /// <summary>Returns the next environment in the promotion chain, or null.</summary>
     public static string? NextAfter(string env) =>
-        env.Equals(Dev, StringComparison.OrdinalIgnoreCase)     ? Staging :
-        env.Equals(Staging, StringComparison.OrdinalIgnoreCase) ? Prod    : null;
+        env.Equals(Dev, StringComparison.OrdinalIgnoreCase) ? Staging :
+        env.Equals(Staging, StringComparison.OrdinalIgnoreCase) ? Prod : null;
 }
