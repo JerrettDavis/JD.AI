@@ -44,6 +44,9 @@ public sealed class AuditQuery
 
     /// <summary>Number of events to skip for pagination.</summary>
     public int Offset { get; init; }
+
+    /// <summary>Filter by tenant ID. When set, only events from this tenant are returned.</summary>
+    public string? TenantId { get; init; }
 }
 
 /// <summary>Result of an audit event query.</summary>

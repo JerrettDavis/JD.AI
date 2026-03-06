@@ -6,48 +6,48 @@ namespace JD.AI.Tests.MultiTenancy;
 public sealed class TenantQuotaTests
 {
     [Fact]
-    public void IsOverQuota_NoRequests_ReturnsFalse()
+    public void IsOverRequestQuota_NoRequests_ReturnsFalse()
     {
         var quota = new TenantQuota(new TenantQuotaConfig { MaxRequestsPerWindow = 10 });
 
-        quota.IsOverQuota("tenant-a").Should().BeFalse();
+        quota.IsOverRequestQuota("tenant-a").Should().BeFalse();
     }
 
     [Fact]
-    public void IsOverQuota_UnderLimit_ReturnsFalse()
+    public void IsOverRequestQuota_UnderLimit_ReturnsFalse()
     {
         var quota = new TenantQuota(new TenantQuotaConfig { MaxRequestsPerWindow = 5 });
 
         for (var i = 0; i < 3; i++)
             quota.RecordRequest("tenant-a");
 
-        quota.IsOverQuota("tenant-a").Should().BeFalse();
+        quota.IsOverRequestQuota("tenant-a").Should().BeFalse();
     }
 
     [Fact]
-    public void IsOverQuota_AtLimit_ReturnsTrue()
+    public void IsOverRequestQuota_AtLimit_ReturnsTrue()
     {
         var quota = new TenantQuota(new TenantQuotaConfig { MaxRequestsPerWindow = 3 });
 
         for (var i = 0; i < 3; i++)
             quota.RecordRequest("tenant-a");
 
-        quota.IsOverQuota("tenant-a").Should().BeTrue();
+        quota.IsOverRequestQuota("tenant-a").Should().BeTrue();
     }
 
     [Fact]
-    public void IsOverQuota_Unlimited_NeverTrue()
+    public void IsOverRequestQuota_Unlimited_NeverTrue()
     {
         var quota = new TenantQuota(new TenantQuotaConfig { MaxRequestsPerWindow = 0 });
 
         for (var i = 0; i < 100; i++)
             quota.RecordRequest("tenant-a");
 
-        quota.IsOverQuota("tenant-a").Should().BeFalse();
+        quota.IsOverRequestQuota("tenant-a").Should().BeFalse();
     }
 
     [Fact]
-    public void IsOverQuota_IsolatedPerTenant()
+    public void IsOverRequestQuota_IsolatedPerTenant()
     {
         var quota = new TenantQuota(new TenantQuotaConfig { MaxRequestsPerWindow = 2 });
 
@@ -55,8 +55,8 @@ public sealed class TenantQuotaTests
         quota.RecordRequest("tenant-a");
         quota.RecordRequest("tenant-b");
 
-        quota.IsOverQuota("tenant-a").Should().BeTrue();
-        quota.IsOverQuota("tenant-b").Should().BeFalse();
+        quota.IsOverRequestQuota("tenant-a").Should().BeTrue();
+        quota.IsOverRequestQuota("tenant-b").Should().BeFalse();
     }
 
     [Fact]
