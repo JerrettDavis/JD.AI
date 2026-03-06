@@ -5,7 +5,7 @@ description: "How to write a custom AI provider for JD.AI — implementing IProv
 
 # Custom Providers
 
-JD.AI supports 14 AI providers out of the box. You can add your own by implementing the `IProviderDetector` interface — a three-method contract that handles detection, model listing, and kernel construction.
+JD.AI supports 15 AI providers out of the box. You can add your own by implementing the `IProviderDetector` interface — a three-method contract that handles detection, model listing, and kernel construction.
 
 ## IProviderDetector interface
 

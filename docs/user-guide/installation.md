@@ -83,7 +83,7 @@ export OPENAI_API_KEY=sk-...
 jdai --provider openai
 ```
 
-See [Provider Setup](provider-setup.md) for all 14 providers.
+See [Provider Setup](provider-setup.md) for all 15 providers.
 
 ## Common CLI options
 
