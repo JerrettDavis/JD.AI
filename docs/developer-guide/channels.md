@@ -7,6 +7,8 @@ description: "IChannel interface, message types, writing a custom channel adapte
 
 Channel adapters connect the JD.AI Gateway to external messaging platforms. Each adapter implements the `IChannel` interface and translates platform-specific messaging into a unified `ChannelMessage` format.
 
+![Channel connectivity dashboard view](../images/dashboard/dashboard-channels.png)
+
 JD.AI ships with six adapters:
 
 | Channel | Package | Transport |

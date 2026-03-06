@@ -7,6 +7,8 @@ description: "Manage the JD.AI Gateway through the Blazor WebAssembly dashboard 
 
 The JD.AI Admin Dashboard is a Blazor WebAssembly application that provides a real-time management interface for the JD.AI Gateway. It connects to the Gateway via REST API and SignalR for live updates.
 
+![Dashboard overview page](../images/dashboard/dashboard-overview.png)
+
 ## Getting Started
 
 1. Start the Gateway:
@@ -46,6 +48,8 @@ Connection status is shown in the top-right corner with a green "LIVE" indicator
 
 The Agents page lists all currently running agent instances with full lifecycle controls.
 
+![Agents management page](../images/dashboard/dashboard-agents.png)
+
 | Column | Description |
 |--------|-------------|
 | ID | Unique agent instance identifier |
@@ -79,6 +83,8 @@ From the Agents page, monitor each agent's:
 
 The Channels page shows all configured communication channels and their connection status.
 
+![Channel status and connectivity controls](../images/dashboard/dashboard-channels.png)
+
 Each channel card displays:
 
 - Channel name and type (web, discord, signal, slack, telegram)
@@ -92,6 +98,8 @@ The **Sync OpenClaw** button synchronizes channel configuration with the OpenCla
 
 The Chat page provides a built-in web interface for communicating with agents:
 
+![Web chat with streaming responses](../images/dashboard/dashboard-chat.png)
+
 - **Agent selector** — choose which agent to chat with from the dropdown
 - **Streaming responses** — tokens stream in real-time via SignalR
 - **Message history** — full conversation displayed with user/assistant bubbles
@@ -103,6 +111,8 @@ Messages are sent to the Gateway's `AgentHub` and streamed back as chunked respo
 ## Configuration UI
 
 The Settings page provides a WYSIWYG editor for all Gateway configuration. Changes are applied in real-time and persisted to the configuration file.
+
+![Settings editor](../images/dashboard/dashboard-settings.png)
 
 > [!TIP]
 > Changes made through the Settings UI are validated before applying. Invalid values are rejected with a descriptive error message.
@@ -147,6 +157,8 @@ Each channel configuration includes:
 
 The Providers page shows all configured AI providers, their connection status, and available models. Each provider card shows:
 
+![Provider catalog and status page](../images/dashboard/dashboard-providers.png)
+
 - Provider name and status (Online / Offline)
 - Number of available models
 - Model catalog with ID and display name
@@ -156,6 +168,8 @@ Supported providers include Claude Code, GitHub Copilot, OpenAI Codex, Ollama, l
 ## Routing Configuration
 
 The Routing tab in Settings defines how messages are routed to agents:
+
+![Routing configuration page](../images/dashboard/dashboard-routing.png)
 
 - **Default agent** — which agent handles messages when no specific route matches
 - **Channel-to-agent mappings** — assign specific agents to specific channels
