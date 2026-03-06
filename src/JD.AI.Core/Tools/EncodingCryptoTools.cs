@@ -65,7 +65,7 @@ public sealed class EncodingCryptoTools
         }
         catch (FormatException)
         {
-            return "❌ Invalid Base64 input. Ensure the string is properly Base64-encoded.";
+            return OutputFormatter.Error("Invalid Base64 input. Ensure the string is properly Base64-encoded.");
         }
     }
 
@@ -96,7 +96,7 @@ public sealed class EncodingCryptoTools
         }
         catch (Exception ex)
         {
-            return $"❌ Failed to decode URL string: {ex.Message}";
+            return OutputFormatter.Error("Failed to decode URL string", ex);
         }
     }
 
@@ -110,7 +110,7 @@ public sealed class EncodingCryptoTools
     {
         var parts = token.Split('.');
         if (parts.Length < 2)
-            return "❌ Invalid JWT format. Expected at least 2 dot-separated parts (header.payload).";
+            return OutputFormatter.Error("Invalid JWT format. Expected at least 2 dot-separated parts (header.payload).");
 
         var sb = new StringBuilder();
         sb.AppendLine("## JWT Decode");
@@ -223,7 +223,7 @@ public sealed class EncodingCryptoTools
 #pragma warning restore CA5351
                 break;
             default:
-                return $"❌ Unknown algorithm `{algorithm}`. Supported: sha256, sha512, sha384, sha1, md5";
+                return OutputFormatter.Error($"Unknown algorithm `{algorithm}`. Supported: sha256, sha512, sha384, sha1, md5");
         }
 
         var hex = Convert.ToHexStringLower(hashBytes);

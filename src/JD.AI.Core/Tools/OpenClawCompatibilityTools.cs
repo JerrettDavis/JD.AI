@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using JD.AI.Core.Attributes;
+using JD.AI.Core.Infrastructure;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -144,7 +145,7 @@ public sealed class OpenClawCompatibilityTools
         }
         catch (OperationCanceledException) when (timeoutCts is not null && !ct.IsCancellationRequested)
         {
-            result = $"Error: websearch timed out after {timeoutMs}ms.";
+            result = OutputFormatter.Error($"websearch timed out after {timeoutMs}ms.");
         }
 
         return ApplyEnvelope(result, summary, maxResultChars, noContext, noStream);

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text;
 using JD.AI.Core.Attributes;
+using JD.AI.Core.Infrastructure;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -36,12 +37,12 @@ public sealed class BatchEditTools
         {
             if (string.IsNullOrEmpty(edit.Path))
             {
-                return "Error: edit missing 'path' field.";
+                return OutputFormatter.Error("edit missing 'path' field.");
             }
 
             if (!File.Exists(edit.Path))
             {
-                return $"Error: file not found — {edit.Path}";
+                return OutputFormatter.Error($"file not found — {edit.Path}");
             }
 
             if (!byFile.TryGetValue(edit.Path, out var list))
@@ -62,7 +63,7 @@ public sealed class BatchEditTools
             {
                 if (edit.OldText is null)
                 {
-                    return $"Error: edit for {path} missing 'oldText'.";
+                    return OutputFormatter.Error($"edit for {path} missing 'oldText'.");
                 }
 
                 if (!content.Contains(edit.OldText, StringComparison.Ordinal))
@@ -71,7 +72,7 @@ public sealed class BatchEditTools
                     var preview = edit.OldText.Length > 60
                         ? string.Concat(edit.OldText.AsSpan(0, 57), "...")
                         : edit.OldText;
-                    return $"Error: old text not found in {path}: \"{preview}\". No files modified.";
+                    return OutputFormatter.Error($"old text not found in {path}: \"{preview}\". No files modified.");
                 }
 
                 content = content.Replace(edit.OldText, edit.NewText ?? "", StringComparison.Ordinal);
