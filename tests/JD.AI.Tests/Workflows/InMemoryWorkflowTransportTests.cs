@@ -93,12 +93,12 @@ public sealed class InMemoryWorkflowTransportTests
     }
 
     [Fact]
-    public void InMemoryDeadLetterSink_RecordsItems()
+    public async Task InMemoryDeadLetterSink_RecordsItems()
     {
         var sink = new InMemoryDeadLetterSink();
         var item = new WorkflowWorkItem { WorkflowName = "wf" };
 
-        sink.DeadLetterAsync(item, "test reason");
+        await sink.DeadLetterAsync(item, "test reason");
 
         Assert.Single(sink.Items);
         Assert.Equal("test reason", sink.Items[0].Reason);
