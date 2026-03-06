@@ -122,3 +122,44 @@ tui:
   image:
     repository: ghcr.io/jerrettdavis/jd.ai-tui
     tag: latest
+
+# OpenTelemetry / observability configuration
+telemetry:
+  enabled: false
+  otlpEndpoint: ""          # e.g. http://otel-collector:4317
+  otlpProtocol: grpc        # grpc | http/protobuf
+  serviceName: jdai
+  # Additional OTEL resource attributes
+  attributes: {}
+
+# Distributed workflow workers (JD.AI.Workflows.Distributed)
+distributedWorker:
+  enabled: false
+  replicaCount: 2
+  image:
+    repository: ghcr.io/jerrettdavis/jd.ai-daemon
+    tag: latest
+    pullPolicy: IfNotPresent
+  transport: inmemory        # inmemory | redis | azure-service-bus
+  redis:
+    connectionString: ""     # e.g. redis-master:6379
+    streamKey: jdai:workflows
+    consumerGroup: jdai-workers
+  azureServiceBus:
+    connectionStringSecretKey: azure-service-bus-connection-string
+    queueName: jdai-workflows
+  resources: {}
+  env: []
+
+# Batch/job mode: run a single agent workflow and exit
+batchJob:
+  enabled: false
+  agent: ""
+  workflow: ""
+  image:
+    repository: ghcr.io/jerrettdavis/jd.ai-daemon
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources: {}
+  env: []
+
