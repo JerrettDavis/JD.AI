@@ -448,22 +448,14 @@ static async Task RunUpdateCommandAsync(bool checkOnly)
     }
 
     Console.WriteLine("Applying update via 'dotnet tool update'...");
-    var process = new System.Diagnostics.Process
-    {
-        StartInfo = new System.Diagnostics.ProcessStartInfo
-        {
-            FileName = "dotnet",
-            Arguments = $"tool update -g {host.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<UpdateConfig>>().Value.PackageId}",
-            UseShellExecute = false,
-        },
-    };
+    var packageId = host.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<UpdateConfig>>().Value.PackageId;
+    var updateResult = await JD.AI.Core.Infrastructure.ProcessExecutor.RunAsync(
+        "dotnet", $"tool update -g {packageId}",
+        timeout: TimeSpan.FromSeconds(120)).ConfigureAwait(false);
 
-    process.Start();
-    await process.WaitForExitAsync();
-
-    if (process.ExitCode != 0)
+    if (!updateResult.Success)
     {
-        Console.WriteLine("✗ Update failed. Check the output above.");
+        Console.WriteLine($"✗ Update failed: {updateResult.StandardError}");
         return;
     }
 

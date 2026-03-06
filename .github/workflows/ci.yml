@@ -78,6 +78,12 @@ jobs:
           name: coverage-report
           path: coverage-report
 
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage-report/Cobertura.xml
+          fail_ci_if_error: false
+
       - name: Add coverage summary to PR
         uses: marocchino/sticky-pull-request-comment@v2
         with:
