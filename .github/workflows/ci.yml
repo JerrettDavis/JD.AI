@@ -215,3 +215,71 @@ jobs:
           files: |
             ./artifacts/*.nupkg
           generate_release_notes: true
+    outputs:
+      version: ${{ env.NBGV_NuGetPackageVersion }}
+
+  publish-binaries:
+    needs: release
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            os: windows-latest
+            archive: zip
+          - rid: win-arm64
+            os: windows-latest
+            archive: zip
+          - rid: linux-x64
+            os: ubuntu-latest
+            archive: tar.gz
+          - rid: linux-arm64
+            os: ubuntu-latest
+            archive: tar.gz
+          - rid: osx-x64
+            os: macos-latest
+            archive: tar.gz
+          - rid: osx-arm64
+            os: macos-latest
+            archive: tar.gz
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Publish self-contained binary
+        run: >
+          dotnet publish src/JD.AI/JD.AI.csproj
+          --configuration Release
+          --runtime ${{ matrix.rid }}
+          --self-contained
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:ContinuousIntegrationBuild=true
+          --output ./publish
+
+      - name: Archive (zip)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: Compress-Archive -Path ./publish/* -DestinationPath ./jdai-${{ matrix.rid }}.zip
+
+      - name: Archive (tar.gz)
+        if: matrix.archive == 'tar.gz'
+        run: tar -czf ./jdai-${{ matrix.rid }}.tar.gz -C ./publish .
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.release.outputs.version }}
+          files: |
+            ./jdai-${{ matrix.rid }}.${{ matrix.archive }}

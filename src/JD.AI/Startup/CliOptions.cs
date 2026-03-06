@@ -80,7 +80,9 @@ internal static class CliArgumentParser
             if (string.Equals(candidate, "mcp", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(candidate, "plugin", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(candidate, "onboard", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(candidate, "wizard", StringComparison.OrdinalIgnoreCase))
+                string.Equals(candidate, "wizard", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(candidate, "update", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(candidate, "install", StringComparison.OrdinalIgnoreCase))
             {
                 subcommand = candidate.ToLowerInvariant();
                 subcommandArgs = args.Skip(firstNonOptionIndex + 1).ToArray();
