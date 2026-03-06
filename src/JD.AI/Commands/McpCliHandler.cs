@@ -1,6 +1,8 @@
 using System.Text.Json;
 using JD.AI.Core.Infrastructure;
 using JD.AI.Core.Mcp;
+using JD.AI.Rendering;
+using JD.AI.Startup;
 using JD.SemanticKernel.Extensions.Mcp;
 
 namespace JD.AI.Commands;
@@ -28,6 +30,7 @@ internal static class McpCliHandler
             "remove" => await RemoveAsync(args[1..]).ConfigureAwait(false),
             "enable" => await SetEnabledAsync(args[1..], true).ConfigureAwait(false),
             "disable" => await SetEnabledAsync(args[1..], false).ConfigureAwait(false),
+            "browse" => await BrowseAsync(args[1..]).ConfigureAwait(false),
             "--help" or "-h" or "help" => PrintHelp(),
             _ => PrintUnknown(sub),
         };
@@ -239,6 +242,58 @@ internal static class McpCliHandler
         return 0;
     }
 
+    // ── browse ────────────────────────────────────────────────────────────────
+
+    private static async Task<int> BrowseAsync(string[] args)
+    {
+        // jdai mcp browse [--category <name>]
+        var categoryIdx = Array.FindIndex(args, a =>
+            string.Equals(a, "--category", StringComparison.OrdinalIgnoreCase));
+        var categoryFilter = categoryIdx >= 0 && categoryIdx + 1 < args.Length
+            ? args[categoryIdx + 1]
+            : null;
+
+        var manager = new McpManager();
+        var installed = await manager.GetAllServersAsync().ConfigureAwait(false);
+        var installedIds = installed
+            .Select(s => s.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var catalog = categoryFilter is null
+            ? CuratedMcpCatalog.All
+            : (IReadOnlyList<CuratedMcpEntry>)CuratedMcpCatalog.All
+                .Where(e => string.Equals(e.Category, categoryFilter, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+        if (catalog.Count == 0)
+        {
+            Console.Error.WriteLine(
+                categoryFilter is null
+                    ? "The curated MCP catalog is empty."
+                    : $"No catalog entries for category '{categoryFilter}'.");
+            return 1;
+        }
+
+        var selected = McpCatalogPicker.Pick(catalog, installedIds, categoryFilter: null);
+
+        var toInstall = selected
+            .Where(e => !installedIds.Contains(e.Id))
+            .ToList();
+
+        if (toInstall.Count == 0)
+        {
+            Console.WriteLine("No new MCP servers selected.");
+            return 0;
+        }
+
+        var count = await McpInstaller.InstallAsync(toInstall, manager).ConfigureAwait(false);
+        Console.WriteLine(count > 0
+            ? $"{count} MCP server(s) installed. Run 'jdai mcp list' to verify."
+            : "No servers were installed. Check errors above.");
+
+        return count > 0 ? 0 : 1;
+    }
+
     // ── help ──────────────────────────────────────────────────────────────────
 
     private static int PrintHelp()
@@ -250,6 +305,7 @@ internal static class McpCliHandler
 
             Subcommands:
               list [--json]                        List all configured MCP servers
+              browse [--category <name>]           Browse and install from curated catalog
               add <name> --transport stdio         Add a stdio MCP server
                          --command <cmd>
                          [--args arg1 arg2...]
@@ -261,6 +317,8 @@ internal static class McpCliHandler
             Examples:
               jdai mcp list
               jdai mcp list --json
+              jdai mcp browse
+              jdai mcp browse --category "Source Control"
               jdai mcp add notion --transport http https://mcp.notion.com/mcp
               jdai mcp add azure-devops --transport stdio --command npx --args -y @azure-devops/mcp Quiktrip
               jdai mcp disable azure-devops
