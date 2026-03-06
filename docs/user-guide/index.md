@@ -5,7 +5,7 @@ description: Introduction to the JD.AI user guide — an AI-powered terminal ass
 
 # Welcome to JD.AI
 
-JD.AI is an AI-powered terminal assistant that brings intelligent code understanding, generation, and project management directly to your command line. Built on [Microsoft Semantic Kernel](https://learn.microsoft.com/semantic-kernel/), it connects to 14 AI providers — from cloud APIs to fully offline local models — and ships with a rich set of built-in developer tools.
+JD.AI is an AI-powered terminal assistant that brings intelligent code understanding, generation, and project management directly to your command line. Built on [Microsoft Semantic Kernel](https://learn.microsoft.com/semantic-kernel/), it connects to 15 AI providers — from cloud APIs to fully offline local models — and ships with a rich set of built-in developer tools.
 
 ![JD.AI startup flow in the terminal](../images/demo-startup.png)
 
@@ -17,7 +17,7 @@ This guide covers everything you need to use JD.AI day-to-day.
 |---------|---------------|
 | [Installation](installation.md) | Prerequisites, installation methods, and your first run |
 | [Quickstart](quickstart.md) | A step-by-step walkthrough of a typical workflow |
-| [Provider Setup](provider-setup.md) | Configuring each of the 14 supported AI providers |
+| [Provider Setup](provider-setup.md) | Configuring each of the 15 supported AI providers |
 | [Local Models](local-models.md) | Running GGUF models offline with LLamaSharp |
 | [Commands](commands.md) | Slash commands grouped by task with examples |
 | [Tools](tools.md) | Overview of the 17 built-in tool categories |
@@ -53,7 +53,7 @@ For the full walkthrough, see [Quickstart](quickstart.md).
 
 ## Key capabilities
 
-- **14 AI providers** — Claude Code, GitHub Copilot, OpenAI Codex, Ollama, local GGUF models, and more
+- **15 AI providers** — Claude Code, GitHub Copilot, OpenAI Codex, Ollama, local GGUF models, OpenRouter, and more
 - **17 tool categories** — file I/O, search, shell, git, web, memory, subagents, and others
 - **33+ slash commands** — model switching, session management, workflows, diagnostics
 - **Session persistence** — save and resume conversations across terminal sessions
