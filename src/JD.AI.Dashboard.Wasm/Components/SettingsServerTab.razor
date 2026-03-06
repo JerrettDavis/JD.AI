@@ -10,11 +10,13 @@
         <MudGrid>
             <MudItem xs="12" md="6">
                 <MudTextField @bind-Value="Config.Host" Label="Host" Variant="Variant.Outlined"
+                              data-testid="server-host-input"
                               HelperText="The hostname or IP to bind to. Use 0.0.0.0 for all interfaces."
                               Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Dns" />
             </MudItem>
             <MudItem xs="12" md="6">
                 <MudNumericField @bind-Value="Config.Port" Label="Port" Variant="Variant.Outlined"
+                                 data-testid="server-port-input"
                                  Min="1" Max="65535"
                                  HelperText="TCP port for the Gateway API (1–65535). Default: 15790."
                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Router" />
@@ -26,6 +28,7 @@
         <MudText Typo="Typo.subtitle2" Class="mb-3" Style="font-weight:600;">Behavior</MudText>
         <MudStack Spacing="3">
             <MudSwitch @bind-Value="Config.Verbose" Label="Verbose Logging" Color="Color.Primary"
+                       data-testid="server-verbose-toggle"
                        UncheckedColor="Color.Default">
                 <ChildContent>
                     <MudStack Spacing="0">
@@ -40,6 +43,7 @@
     <MudPaper Class="pa-4" Elevation="0">
         <MudText Typo="Typo.subtitle2" Class="mb-3" Style="font-weight:600;">Authentication</MudText>
         <MudSwitch @bind-Value="Auth.Enabled" Label="Enable API Key Authentication" Color="Color.Primary"
+                   data-testid="server-auth-toggle"
                    UncheckedColor="Color.Default">
             <ChildContent>
                 <MudStack Spacing="0">
@@ -53,6 +57,7 @@
     <MudPaper Class="pa-4" Elevation="0">
         <MudText Typo="Typo.subtitle2" Class="mb-3" Style="font-weight:600;">Rate Limiting</MudText>
         <MudSwitch @bind-Value="RateLimit.Enabled" Label="Enable Rate Limiting" Color="Color.Primary" Class="mb-3"
+                   data-testid="server-ratelimit-toggle"
                    UncheckedColor="Color.Default">
             <ChildContent>
                 <MudStack Spacing="0">
@@ -76,6 +81,7 @@
 
     <MudStack Row="true" Justify="Justify.FlexEnd">
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save"
+                   data-testid="save-server-button"
                    OnClick="SaveAsync" Disabled="_saving">
             @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
             Save Server Settings

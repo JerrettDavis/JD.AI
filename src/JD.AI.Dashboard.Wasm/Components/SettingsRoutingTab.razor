@@ -8,6 +8,7 @@
     <MudPaper Class="pa-4" Elevation="0">
         <MudText Typo="Typo.subtitle2" Class="mb-3" Style="font-weight:600;">Default Agent</MudText>
         <MudSelect @bind-Value="Routing.DefaultAgentId" Label="Default Agent" Variant="Variant.Outlined"
+                   data-testid="default-agent-select"
                    HelperText="The agent that handles messages when no specific routing rule matches."
                    Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.SmartToy">
             @foreach (var agent in AvailableAgents)
@@ -21,6 +22,7 @@
         <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
             <MudText Typo="Typo.subtitle2" Style="font-weight:600;">Routing Rules</MudText>
             <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary"
+                       data-testid="add-rule-button"
                        StartIcon="@Icons.Material.Filled.Add" OnClick="AddRule">Add Rule</MudButton>
         </MudStack>
 
@@ -37,7 +39,7 @@
             {
                 var idx = i;
                 var rule = Routing.Rules[idx];
-                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2" data-testid="routing-rule">
                     <MudSelect @bind-Value="rule.ChannelType" Label="Channel" Variant="Variant.Outlined"
                                Style="flex:1;"
                                Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Cable">
@@ -64,6 +66,7 @@
 
     <MudStack Row="true" Justify="Justify.FlexEnd">
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save"
+                   data-testid="save-routing-button"
                    OnClick="SaveAsync" Disabled="_saving">
             @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
             Save Routing

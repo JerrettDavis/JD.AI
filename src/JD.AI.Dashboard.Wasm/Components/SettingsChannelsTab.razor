@@ -9,7 +9,7 @@
     {
         var idx = i;
         var channel = Channels[idx];
-        <MudPaper Class="pa-4" Elevation="0">
+        <MudPaper Class="pa-4" Elevation="0" data-testid="channel-entry">
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-3">
                 <MudAvatar Color="@(channel.Enabled ? Color.Primary : Color.Default)"
                            Variant="Variant.Outlined" Size="Size.Small">
@@ -21,7 +21,8 @@
                     </MudText>
                     <MudText Typo="Typo.caption" Color="Color.Secondary">@GetChannelDescription(channel.Type)</MudText>
                 </MudStack>
-                <MudSwitch @bind-Value="channel.Enabled" Color="Color.Primary" UncheckedColor="Color.Default" />
+                <MudSwitch @bind-Value="channel.Enabled" Color="Color.Primary" UncheckedColor="Color.Default"
+                           data-testid="channel-enabled-toggle" />
             </MudStack>
 
             @if (channel.Enabled)
@@ -56,6 +57,7 @@
                             <MudTextField Value="@channel.Settings[k]"
                                           ValueChanged="@((string v) => channel.Settings[k] = v)"
                                           Label="@k" Variant="Variant.Outlined"
+                                          data-testid="channel-setting"
                                           InputType="@(IsSecretKey(k) ? InputType.Password : InputType.Text)"
                                           HelperText="@GetSettingHelperText(channel.Type, k)"
                                           Adornment="Adornment.Start"
@@ -83,6 +85,7 @@
 
     <MudStack Row="true" Justify="Justify.FlexEnd">
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save"
+                   data-testid="save-channels-button"
                    OnClick="SaveAsync" Disabled="_saving">
             @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
             Save Channels
