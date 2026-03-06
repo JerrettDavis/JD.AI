@@ -9,9 +9,9 @@
     <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
         <MudText Typo="Typo.h4">Agents</MudText>
         <MudStack Row="true" Spacing="2">
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+            <MudButton data-testid="spawn-agent-button" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
                        StartIcon="@Icons.Material.Filled.Add" OnClick="SpawnAgentAsync">Spawn Agent</MudButton>
-            <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small" />
+            <MudIconButton data-testid="refresh-button" Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small" />
         </MudStack>
     </MudStack>
 </div>
@@ -35,7 +35,7 @@
 }
 else if (_agents is null || _agents.Length == 0)
 {
-    <MudPaper Class="pa-6" Elevation="0">
+    <MudPaper data-testid="agents-empty" Class="pa-6" Elevation="0">
         <MudStack AlignItems="AlignItems.Center" Spacing="2">
             <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Large" Color="Color.Default" Style="opacity:0.3" />
             <MudText Color="Color.Secondary">No active agents. Spawn one to get started.</MudText>
@@ -45,7 +45,7 @@ else if (_agents is null || _agents.Length == 0)
 else
 {
     <MudPaper Elevation="0">
-        <MudDataGrid Items="@_agents" Dense="true" Hover="true">
+        <MudDataGrid data-testid="agents-grid" Items="@_agents" Dense="true" Hover="true">
             <Columns>
                 <PropertyColumn Property="x => x.Id" Title="ID" />
                 <PropertyColumn Property="x => x.Provider" Title="Provider" />
@@ -54,7 +54,7 @@ else
                 <PropertyColumn Property="x => x.CreatedAt" Title="Created" Format="g" />
                 <TemplateColumn Title="" CellClass="d-flex justify-end">
                     <CellTemplate>
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                        <MudIconButton data-testid="delete-agent-button" Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
                                        OnClick="@(() => DeleteAgentAsync(context.Item.Id))" />
                     </CellTemplate>
                 </TemplateColumn>

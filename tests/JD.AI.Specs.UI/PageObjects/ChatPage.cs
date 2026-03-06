@@ -29,17 +29,34 @@ public sealed class ChatPage : BasePage
     public ILocator ClearChatButton => Page.Locator("[data-testid='clear-chat-button']");
 
     // ── Messages area ──
-    public ILocator MessagesContainer => Page.Locator("[data-testid='messages-container']");
-    public ILocator ChatBubbles => Page.Locator("[data-testid='chat-bubble']");
+    public ILocator MessagesContainer => Page.Locator(".jd-chat-messages");
+    public ILocator ChatBubbles => Page.Locator(".jd-chat-bubble");
     public ILocator UserBubbles => Page.Locator("[data-testid='chat-bubble-user']");
     public ILocator AgentBubbles => Page.Locator("[data-testid='chat-bubble-agent']");
 
+    // ── Bubble content helpers ──
+    public ILocator UserBubbleLabel => Page.Locator("[data-testid='chat-bubble-user'] .jd-chat-bubble-header >> text=You");
+    public ILocator UserBubbleTimestamp => Page.Locator("[data-testid='chat-bubble-user'] .jd-chat-bubble-header .mud-typography-caption.ml-auto");
+    public ILocator BubbleContent(string text) => Page.Locator($".jd-chat-bubble >> text={text}");
+
     // ── Empty state ──
     public ILocator EmptyState => Page.Locator("[data-testid='chat-empty']");
-    public ILocator EmptyStateTitle => Page.Locator(".jd-chat-empty >> text=Start a conversation");
+    public ILocator EmptyStateTitle => Page.Locator("[data-testid='chat-empty'] >> text=Start a conversation");
 
     // ── Streaming indicator ──
     public ILocator StreamingCursor => Page.Locator(".jd-cursor");
+
+    // ── Disabled state detection ──
+    public ILocator MessageInputDisabled => Page.Locator("[data-testid='message-input'] input[disabled], [data-testid='message-input'].mud-disabled input");
+
+    // ── Chat icon in header ──
+    public ILocator ChatHeaderIcon => Page.Locator("[data-testid='chat-header'] .mud-icon-root");
+
+    // ── Send icon (adornment) ──
+    public ILocator SendIcon => Page.Locator("[data-testid='message-input'] .mud-input-adornment-end .mud-icon-root");
+
+    // ── Snackbar ──
+    public ILocator ErrorSnackbar => Page.Locator(".mud-snackbar-error, .mud-snackbar.mud-alert-filled-error");
 
     /// <summary>Type and send a message.</summary>
     public async Task SendMessageAsync(string text)

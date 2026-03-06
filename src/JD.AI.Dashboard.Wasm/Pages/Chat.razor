@@ -8,14 +8,14 @@
 
 <div class="jd-chat-container">
     @* ── Top bar: agent selector ── *@
-    <MudPaper Class="jd-chat-header" Elevation="0">
+    <MudPaper data-testid="chat-header" Class="jd-chat-header" Elevation="0">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
             <MudIcon Icon="@Icons.Material.Filled.Chat" Size="Size.Small" Color="Color.Primary" />
             <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Web Chat</MudText>
             <MudSpacer />
             @if (_agents.Length > 0)
             {
-                <MudSelect @bind-Value="_selectedAgentId" Label="Agent" Variant="Variant.Outlined"
+                <MudSelect data-testid="agent-selector" @bind-Value="_selectedAgentId" Label="Agent" Variant="Variant.Outlined"
                            Margin="Margin.Dense" Style="max-width:280px;"
                            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.SmartToy">
                     @foreach (var a in _agents)
@@ -28,12 +28,12 @@
             }
             else
             {
-                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text"
+                <MudChip data-testid="no-agents-warning" T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text"
                          Icon="@Icons.Material.Filled.Warning">
                     No agents running
                 </MudChip>
             }
-            <MudIconButton Icon="@Icons.Material.Filled.DeleteSweep" Color="Color.Error" Size="Size.Small"
+            <MudIconButton data-testid="clear-chat-button" Icon="@Icons.Material.Filled.DeleteSweep" Color="Color.Error" Size="Size.Small"
                            OnClick="ClearChat" Disabled="@(_messages.Count == 0)" />
         </MudStack>
     </MudPaper>
@@ -42,7 +42,7 @@
     <div class="jd-chat-messages" @ref="_messagesContainer">
         @if (_messages.Count == 0 && !_loading)
         {
-            <div class="jd-chat-empty">
+            <div data-testid="chat-empty" class="jd-chat-empty">
                 <MudIcon Icon="@Icons.Material.Filled.Forum" Size="Size.Large"
                          Style="opacity:.2;font-size:4rem;" />
                 <MudText Typo="Typo.h6" Color="Color.Secondary" Style="opacity:.4;">
@@ -56,7 +56,7 @@
 
         @foreach (var msg in _messages)
         {
-            <div class="jd-chat-bubble @(msg.IsUser ? "jd-chat-user" : "jd-chat-agent")">
+            <div data-testid="@(msg.IsUser ? "chat-bubble-user" : "chat-bubble-agent")" class="jd-chat-bubble @(msg.IsUser ? "jd-chat-user" : "jd-chat-agent")">
                 <div class="jd-chat-bubble-header">
                     <MudIcon Icon="@(msg.IsUser ? Icons.Material.Filled.Person : Icons.Material.Filled.SmartToy)"
                              Size="Size.Small" />
@@ -86,7 +86,7 @@
     @* ── Input bar ── *@
     <MudPaper Class="jd-chat-input" Elevation="0">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            <MudTextField @bind-Value="_userInput" Label="" Placeholder="Type a message…"
+            <MudTextField data-testid="message-input" @bind-Value="_userInput" Label="" Placeholder="Type a message…"
                           Variant="Variant.Outlined" Margin="Margin.Dense" FullWidth="true"
                           Adornment="Adornment.End"
                           AdornmentIcon="@Icons.Material.Filled.Send"

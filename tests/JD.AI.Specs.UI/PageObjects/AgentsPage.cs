@@ -34,15 +34,27 @@ public sealed class AgentsPage : BasePage
     public ILocator AgentIdInput => Page.Locator("[data-testid='agent-id-input'] input");
     public ILocator ProviderInput => Page.Locator("[data-testid='agent-provider-input'] input");
     public ILocator ModelInput => Page.Locator("[data-testid='agent-model-input'] input");
+    public ILocator SystemPromptInput => Page.Locator("[data-testid='agent-systemprompt-input'] textarea");
+    public ILocator MaxTurnsInput => Page.Locator("[data-testid='agent-maxturns-input'] input");
     public ILocator SpawnSubmitButton => Page.Locator(".mud-dialog >> button:has-text('Spawn')");
     public ILocator CancelButton => Page.Locator(".mud-dialog >> button:has-text('Cancel')");
 
     // ── Confirmation dialog ──
     public ILocator ConfirmStopButton => Page.Locator(".mud-dialog >> button:has-text('Stop')");
+    public ILocator CancelDeletionButton => Page.Locator(".mud-dialog >> button:has-text('Cancel')");
+    public ILocator ConfirmationDialogText => Page.Locator(".mud-dialog .mud-dialog-content");
 
     // ── Status indicators on agent cards ──
     public ILocator AgentStatusChips => Page.Locator("[data-testid='agent-status']");
 
     // ── Loading skeleton ──
     public ILocator LoadingSkeleton => Page.Locator(".jd-skeleton-row");
+
+    // ── Data grid column headers ──
+    public ILocator DataGridColumnHeader(string columnName) =>
+        Page.Locator($"[data-testid='agents-grid'] th:has-text('{columnName}')");
+
+    // ── Snackbar ──
+    public ILocator SnackbarWithText(string text) =>
+        Page.Locator($".mud-snackbar >> text={text}");
 }

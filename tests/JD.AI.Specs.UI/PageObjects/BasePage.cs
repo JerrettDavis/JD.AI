@@ -44,5 +44,27 @@ public abstract class BasePage
     public ILocator RefreshButton => Page.Locator("[data-testid='refresh-button']");
 
     /// <summary>The nav menu sidebar.</summary>
-    public ILocator NavMenu => Page.Locator("nav");
+    public ILocator NavMenu => Page.Locator("[data-testid='nav-menu']");
+
+    /// <summary>The top application bar.</summary>
+    public ILocator AppBar => Page.Locator("[data-testid='app-bar']");
+
+    /// <summary>The connection status chip in the app bar.</summary>
+    public ILocator ConnectionStatus => Page.Locator("[data-testid='connection-status']");
+
+    /// <summary>The hamburger menu button to toggle the drawer.</summary>
+    public ILocator HamburgerMenu => Page.Locator("[data-testid='hamburger-menu']");
+
+    /// <summary>The sidebar drawer.</summary>
+    public ILocator Drawer => Page.Locator("[data-testid='drawer']");
+
+    /// <summary>
+    /// Parameterized nav link locator by link name (e.g. "overview", "chat", "agents").
+    /// </summary>
+    public ILocator NavLink(string name) => Page.Locator($"[data-testid='nav-{name}']");
+
+    /// <summary>
+    /// Get the browser page title via Playwright's TitleAsync().
+    /// </summary>
+    public async Task<string> GetPageTitleTextAsync() => await Page.TitleAsync();
 }

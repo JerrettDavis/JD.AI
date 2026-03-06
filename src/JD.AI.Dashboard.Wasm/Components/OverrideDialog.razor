@@ -10,20 +10,25 @@
     <DialogContent>
         <MudStack Spacing="3">
             <MudTextField @bind-Value="_agentId" Label="Agent ID" Variant="Variant.Outlined"
-                          HelperText="The JD.AI agent to handle this channel" />
+                          HelperText="The JD.AI agent to handle this channel"
+                          data-testid="override-agent-id" />
             <MudTextField @bind-Value="_model" Label="Model" Variant="Variant.Outlined"
-                          HelperText="e.g. ollama/qwen3:30b-instruct, anthropic/claude-opus-4-6" />
-            <MudSelect @bind-Value="_routingMode" Label="Routing Mode" Variant="Variant.Outlined">
+                          HelperText="e.g. ollama/qwen3:30b-instruct, anthropic/claude-opus-4-6"
+                          data-testid="override-model" />
+            <MudSelect @bind-Value="_routingMode" Label="Routing Mode" Variant="Variant.Outlined"
+                       data-testid="override-routing-mode">
                 <MudSelectItem T="string" Value="@("Passthrough")">Passthrough — OpenClaw handles natively</MudSelectItem>
                 <MudSelectItem T="string" Value="@("Sidecar")">Sidecar — JD.AI intercepts matching messages</MudSelectItem>
                 <MudSelectItem T="string" Value="@("Intercept")">Intercept — JD.AI handles all messages</MudSelectItem>
             </MudSelect>
-            <MudSwitch @bind-Value="_enabled" Label="Override Enabled" Color="Color.Primary" />
+            <MudSwitch @bind-Value="_enabled" Label="Override Enabled" Color="Color.Primary"
+                       data-testid="override-enabled" />
         </MudStack>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="_saving">
+        <MudButton OnClick="Cancel" data-testid="override-cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="_saving"
+                   data-testid="override-save">
             @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
             Save
         </MudButton>

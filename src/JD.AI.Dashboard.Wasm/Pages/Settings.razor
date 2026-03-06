@@ -7,7 +7,7 @@
 <div class="jd-page-header">
     <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
         <MudText Typo="Typo.h4">Settings</MudText>
-        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small" />
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small" data-testid="refresh-button" />
     </MudStack>
 </div>
 
@@ -21,13 +21,13 @@
 }
 else if (_config is null)
 {
-    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" data-testid="settings-error">
         Unable to load gateway configuration. Is the gateway running?
     </MudAlert>
 }
 else
 {
-    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4" Class="jd-settings-tabs">
+    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4" Class="jd-settings-tabs" data-testid="settings-tabs">
         <MudTabPanel Text="Server" Icon="@Icons.Material.Filled.Dns" ToolTip="Network, auth, and rate-limit settings">
             <SettingsServerTab Config="_config.Server" Auth="_config.Auth" RateLimit="_config.RateLimit" Api="Api" />
         </MudTabPanel>

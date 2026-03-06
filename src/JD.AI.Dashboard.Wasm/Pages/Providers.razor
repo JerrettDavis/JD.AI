@@ -6,7 +6,7 @@
 <div class="jd-page-header">
     <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
         <MudText Typo="Typo.h4">Model Providers</MudText>
-        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small" />
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small" data-testid="refresh-button" />
     </MudStack>
 </div>
 
@@ -40,7 +40,7 @@
 }
 else if (_providers is null || _providers.Length == 0)
 {
-    <MudPaper Class="pa-6" Elevation="0">
+    <MudPaper Class="pa-6" Elevation="0" data-testid="providers-empty">
         <MudStack AlignItems="AlignItems.Center" Spacing="2">
             <MudIcon Icon="@Icons.Material.Filled.Hub" Size="Size.Large" Color="Color.Default" Style="opacity:0.3" />
             <MudText Color="Color.Secondary">No providers configured.</MudText>
@@ -53,7 +53,7 @@ else
         @foreach (var provider in _providers)
         {
             <MudItem xs="12" md="6">
-                <MudCard Elevation="0" Class="jd-stat-card">
+                <MudCard Elevation="0" Class="jd-stat-card" data-testid="provider-card">
                     <MudCardHeader>
                         <CardHeaderAvatar>
                             <MudAvatar Color="@(provider.IsAvailable ? Color.Success : Color.Error)"
@@ -62,7 +62,7 @@ else
                             </MudAvatar>
                         </CardHeaderAvatar>
                         <CardHeaderContent>
-                            <MudText Typo="Typo.body1" Style="font-weight:600;">@provider.Name</MudText>
+                            <MudText Typo="Typo.body1" Style="font-weight:600;" data-testid="provider-name">@provider.Name</MudText>
                             <MudText Typo="Typo.caption" Color="Color.Secondary">
                                 @(provider.IsAvailable ? $"{provider.Models.Length} models" : provider.StatusMessage ?? "Unavailable")
                             </MudText>
@@ -70,7 +70,8 @@ else
                         <CardHeaderActions>
                             <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
                                      Color="@(provider.IsAvailable ? Color.Success : Color.Error)"
-                                     Icon="@(provider.IsAvailable ? Icons.Material.Filled.FiberManualRecord : Icons.Material.Filled.RadioButtonUnchecked)">
+                                     Icon="@(provider.IsAvailable ? Icons.Material.Filled.FiberManualRecord : Icons.Material.Filled.RadioButtonUnchecked)"
+                                     data-testid="provider-status">
                                 @(provider.IsAvailable ? "Online" : "Offline")
                             </MudChip>
                         </CardHeaderActions>
@@ -78,7 +79,7 @@ else
                     @if (provider.Models.Length > 0)
                     {
                         <MudCardContent>
-                            <MudSimpleTable Dense="true" Hover="true">
+                            <MudSimpleTable Dense="true" Hover="true" data-testid="provider-models">
                                 <thead>
                                     <tr><th>Model ID</th><th>Display Name</th></tr>
                                 </thead>
