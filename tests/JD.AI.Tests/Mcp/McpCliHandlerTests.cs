@@ -219,6 +219,27 @@ public sealed class McpCliHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task Help_OutputIncludesBrowse()
+    {
+        var result = await CaptureStdoutAsync(
+            () => McpCliHandler.RunAsync(["--help"]));
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("browse", result.Output);
+    }
+
+    [Fact]
+    public async Task Browse_InvalidCategory_ReturnsOne()
+    {
+        // BrowseAsync filters the catalog before calling Pick; an unknown category
+        // produces an empty catalog list, so it returns 1 before any UI prompt is shown.
+        var result = await CaptureStderrAsync(
+            () => McpCliHandler.RunAsync(["browse", "--category", "NonExistentCategory99"]));
+
+        Assert.Equal(1, result.ExitCode);
+    }
+
+    [Fact]
     public async Task UnknownSubcommand_ReturnsOne()
     {
         var result = await CaptureStderrAsync(
