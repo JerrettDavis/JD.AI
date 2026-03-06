@@ -7,6 +7,8 @@ description: "Install and run JD.AI Gateway as a Windows Service, systemd unit, 
 
 JD.AI Gateway can run as a native system service on both Windows and Linux, or as a Docker container, providing always-on AI assistant capabilities with automatic updates and health monitoring.
 
+![Daemon and CLI service workflow](../images/demo-cli.png)
+
 ## Prerequisites
 
 - .NET 10.0 SDK or Runtime

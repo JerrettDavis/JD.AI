@@ -7,6 +7,8 @@ description: Overview of JD.AI's 19 built-in tool categories — what each does,
 
 JD.AI provides 19 categories of built-in tools that the AI agent invokes automatically during conversations. You don't call tools directly — describe what you want in natural language and JD.AI selects the right tool. Each tool call is confirmed before execution unless you've enabled auto-run.
 
+![Tool execution example in the terminal](../images/demo-tools.png)
+
 For full parameter documentation, see the [Tools Reference](../reference/tools.md).
 
 ## Tool categories at a glance
