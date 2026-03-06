@@ -1,5 +1,5 @@
-using System.Diagnostics;
 using Anthropic.SDK;
+using JD.AI.Core.Infrastructure;
 using JD.SemanticKernel.Connectors.ClaudeCode;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
@@ -164,32 +164,12 @@ public sealed class ClaudeCodeDetector : IProviderDetector
 
             Console.WriteLine("  ↻ Attempting Claude session refresh...");
 
-            var psi = new ProcessStartInfo
-            {
-                FileName = claudePath,
-                Arguments = "--version",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
+            var result = await ProcessExecutor.RunAsync(
+                claudePath, "--version",
+                timeout: TimeSpan.FromSeconds(15),
+                cancellationToken: ct).ConfigureAwait(false);
 
-            using var proc = Process.Start(psi);
-            if (proc is null) return false;
-
-            // Drain stdout/stderr to prevent pipe buffer deadlocks, then
-            // wait for exit with a timeout so detection never hangs.
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromSeconds(15));
-            var token = cts.Token;
-
-            var stdoutTask = proc.StandardOutput.ReadToEndAsync(token);
-            var stderrTask = proc.StandardError.ReadToEndAsync(token);
-
-            await proc.WaitForExitAsync(token).ConfigureAwait(false);
-            await Task.WhenAll(stdoutTask, stderrTask).ConfigureAwait(false);
-
-            return proc.ExitCode == 0;
+            return result.Success;
         }
 #pragma warning disable CA1031 // best-effort refresh
         catch

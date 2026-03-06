@@ -7,6 +7,8 @@ description: Slash commands grouped by task — getting help, model management, 
 
 Slash commands are typed at the `>` prompt prefixed with `/`. Type `/help` to see all available commands. This page groups commands by task with brief descriptions and examples. For full details on every parameter, see the [Commands Reference](../reference/commands.md).
 
+![Slash command help output in JD.AI](../images/demo-commands-help.png)
+
 ## Getting help
 
 | Command | Description |

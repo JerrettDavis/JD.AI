@@ -1,28 +1,19 @@
 using FluentAssertions;
 using JD.AI.Core.Config;
+using JD.AI.Tests.Fixtures;
 
 namespace JD.AI.Tests.Config;
 
 public sealed class FileRemoteConfigSourceTests : IDisposable
 {
-    private readonly string _tempDir;
+    private readonly TempDirectoryFixture _fixture = new();
 
-    public FileRemoteConfigSourceTests()
-    {
-        _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-frcs-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(_tempDir);
-    }
-
-    public void Dispose()
-    {
-        try { Directory.Delete(_tempDir, recursive: true); }
-        catch { /* best effort */ }
-    }
+    public void Dispose() => _fixture.Dispose();
 
     [Fact]
     public async Task FetchAsync_ExistingFile_ReturnsContent()
     {
-        var path = Path.Combine(_tempDir, "config.yaml");
+        var path = Path.Combine(_fixture.DirectoryPath, "config.yaml");
         await File.WriteAllTextAsync(path, "apiVersion: jdai/v1");
 
         var source = new FileRemoteConfigSource(path);
@@ -35,7 +26,7 @@ public sealed class FileRemoteConfigSourceTests : IDisposable
     [Fact]
     public async Task FetchAsync_NonExistentFile_ReturnsNull()
     {
-        var source = new FileRemoteConfigSource(Path.Combine(_tempDir, "missing.yaml"));
+        var source = new FileRemoteConfigSource(Path.Combine(_fixture.DirectoryPath, "missing.yaml"));
         var result = await source.FetchAsync();
 
         result.Should().BeNull();
@@ -44,7 +35,7 @@ public sealed class FileRemoteConfigSourceTests : IDisposable
     [Fact]
     public async Task FetchAsync_UnchangedFile_ReturnsNullOnSecondCall()
     {
-        var path = Path.Combine(_tempDir, "config.yaml");
+        var path = Path.Combine(_fixture.DirectoryPath, "config.yaml");
         await File.WriteAllTextAsync(path, "content: stable");
 
         var source = new FileRemoteConfigSource(path);
@@ -58,7 +49,7 @@ public sealed class FileRemoteConfigSourceTests : IDisposable
     [Fact]
     public async Task FetchAsync_ChangedFile_ReturnsNewContent()
     {
-        var path = Path.Combine(_tempDir, "config.yaml");
+        var path = Path.Combine(_fixture.DirectoryPath, "config.yaml");
         await File.WriteAllTextAsync(path, "version: 1");
 
         var source = new FileRemoteConfigSource(path);
@@ -74,7 +65,7 @@ public sealed class FileRemoteConfigSourceTests : IDisposable
     [Fact]
     public async Task FetchAsync_YamlExtension_SetsContentType()
     {
-        var path = Path.Combine(_tempDir, "config.yaml");
+        var path = Path.Combine(_fixture.DirectoryPath, "config.yaml");
         await File.WriteAllTextAsync(path, "key: value");
 
         var source = new FileRemoteConfigSource(path);
@@ -86,7 +77,7 @@ public sealed class FileRemoteConfigSourceTests : IDisposable
     [Fact]
     public async Task FetchAsync_JsonExtension_SetsContentType()
     {
-        var path = Path.Combine(_tempDir, "config.json");
+        var path = Path.Combine(_fixture.DirectoryPath, "config.json");
         await File.WriteAllTextAsync(path, "{}");
 
         var source = new FileRemoteConfigSource(path);
@@ -98,7 +89,7 @@ public sealed class FileRemoteConfigSourceTests : IDisposable
     [Fact]
     public async Task FetchAsync_SetsVersionAsHash()
     {
-        var path = Path.Combine(_tempDir, "config.yaml");
+        var path = Path.Combine(_fixture.DirectoryPath, "config.yaml");
         await File.WriteAllTextAsync(path, "data: test");
 
         var source = new FileRemoteConfigSource(path);

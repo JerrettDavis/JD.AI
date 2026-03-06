@@ -1,28 +1,23 @@
 using FluentAssertions;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Providers.Credentials;
+using JD.AI.Tests.Fixtures;
 
 namespace JD.AI.Tests.Providers;
 
 public sealed class ApiKeyDetectorTests : IDisposable
 {
-    private readonly string _tempDir;
+    private readonly TempDirectoryFixture _fixture = new();
     private readonly EncryptedFileStore _store;
     private readonly ProviderConfigurationManager _config;
 
     public ApiKeyDetectorTests()
     {
-        _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-det-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(_tempDir);
-        _store = new EncryptedFileStore(_tempDir);
+        _store = new EncryptedFileStore(_fixture.DirectoryPath);
         _config = new ProviderConfigurationManager(_store);
     }
 
-    public void Dispose()
-    {
-        try { Directory.Delete(_tempDir, recursive: true); }
-        catch { /* best effort cleanup */ }
-    }
+    public void Dispose() => _fixture.Dispose();
 
     [Fact]
     public async Task OpenAIDetector_NoApiKey_ReturnsUnavailable()
@@ -113,6 +108,34 @@ public sealed class ApiKeyDetectorTests : IDisposable
     }
 
     [Fact]
+    public async Task OpenRouterDetector_NoApiKey_ReturnsUnavailable()
+    {
+        var detector = new OpenRouterDetector(_config);
+
+        var result = await detector.DetectAsync();
+
+        result.IsAvailable.Should().BeFalse();
+        result.Models.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task OpenRouterDetector_WithApiKey_ReturnsKnownModels()
+    {
+        await _store.SetAsync("jdai:provider:openrouter:apikey", "sk-or-test-key");
+
+        var detector = new OpenRouterDetector(_config);
+        var result = await detector.DetectAsync();
+
+        result.IsAvailable.Should().BeTrue();
+        result.Models.Should().HaveCountGreaterThanOrEqualTo(5);
+        result.Models.Should().
+            Contain(m =>
+                m.ProviderName.Equals("OpenRouter", StringComparison.OrdinalIgnoreCase));
+        result.Models.Should().Contain(m => m.Id == "anthropic/claude-sonnet-4");
+        result.Models.Should().Contain(m => m.Id == "openai/gpt-4.1");
+    }
+
+    [Fact]
     public async Task AnthropicDetector_WithApiKey_ReturnsModels()
     {
         await _store.SetAsync("jdai:provider:anthropic:apikey", "sk-ant-test-key");
@@ -122,8 +145,9 @@ public sealed class ApiKeyDetectorTests : IDisposable
 
         result.IsAvailable.Should().BeTrue();
         result.Models.Should().NotBeEmpty();
-        result.Models.Should().Contain(m =>
-            m.ProviderName.Equals("Anthropic", StringComparison.OrdinalIgnoreCase));
+        result.Models.Should().
+            Contain(m =>
+                m.ProviderName.Equals("Anthropic", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -136,7 +160,8 @@ public sealed class ApiKeyDetectorTests : IDisposable
 
         result.IsAvailable.Should().BeTrue();
         result.Models.Should().NotBeEmpty();
-        result.Models.Should().Contain(m =>
-            m.ProviderName.Equals("Google Gemini", StringComparison.OrdinalIgnoreCase));
+        result.Models.Should().
+            Contain(m =>
+                m.ProviderName.Equals("Google Gemini", StringComparison.OrdinalIgnoreCase));
     }
 }

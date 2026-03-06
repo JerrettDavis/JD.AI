@@ -7,6 +7,8 @@ description: "Technical architecture of JD.AI — project structure, layering, S
 
 JD.AI is an AI-powered terminal assistant built on [Microsoft Semantic Kernel](https://learn.microsoft.com/semantic-kernel/). This guide explains the internal architecture for developers who want to understand, extend, or contribute to JD.AI.
 
+![Gateway dashboard architecture surface](../images/dashboard/dashboard-overview.png)
+
 ## Project structure
 
 The solution is organized into **18 projects** across four layers:
@@ -59,7 +61,7 @@ JD.AI follows a strict layering model. Higher layers depend on lower layers, nev
 
 The foundation layer containing:
 
-- **Providers** — `IProviderDetector` implementations for 14 AI providers (Claude Code, Copilot, Codex, Ollama, Local GGUF, OpenAI, Azure OpenAI, Anthropic, Gemini, Mistral, Bedrock, HuggingFace, OpenAI-compatible, Foundry Local)
+- **Providers** — `IProviderDetector` implementations for 15 AI providers (Claude Code, Copilot, Codex, Ollama, Local GGUF, OpenAI, Azure OpenAI, Anthropic, Gemini, Mistral, Bedrock, HuggingFace, OpenRouter, OpenAI-compatible, Foundry Local)
 - **Tools** — 17 tool categories registered as Semantic Kernel plugins
 - **Agents** — `SubagentRunner`, orchestration strategies, `AgentSession`
 - **Config** — `AtomicConfigStore` persisted to `~/.jdai/config.json`
@@ -99,7 +101,7 @@ This means any Semantic Kernel extension — custom connectors, filters, prompt 
 
 ## Provider abstraction
 
-All 14 providers implement `IProviderDetector`:
+All 15 providers implement `IProviderDetector`:
 
 ```csharp
 public interface IProviderDetector
