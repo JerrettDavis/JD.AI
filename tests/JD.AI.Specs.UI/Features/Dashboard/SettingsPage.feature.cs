@@ -27,8 +27,8 @@ namespace JD.AI.Specs.UI.Features.Dashboard
                 "ui"};
         
         private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Settings Page", "    As a gateway operator\r\n    I want to configure the gateway through a settings" +
-                " interface\r\n    So that I can manage server, provider, agent, channel, and routi" +
-                "ng settings", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+                " interface\r\n    So that I can manage server, provider, agent, channel, routing, " +
+                "and OpenClaw settings", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
@@ -118,7 +118,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/Dashboard/SettingsPage.feature.ndjson", 7);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/Dashboard/SettingsPage.feature.ndjson", 16);
         }
         
         async global::System.Threading.Tasks.Task global::Xunit.IAsyncLifetime.InitializeAsync()
@@ -149,15 +149,17 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         [global::Xunit.SkippableFactAttribute(DisplayName="Displays settings page heading")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Settings Page")]
         [global::Xunit.TraitAttribute("Description", "Displays settings page heading")]
+        [global::Xunit.TraitAttribute("Category", "smoke")]
         public async global::System.Threading.Tasks.Task DisplaysSettingsPageHeading()
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = new string[] {
+                    "smoke"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "0";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Displays settings page heading", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 10
+#line 12
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -170,25 +172,25 @@ namespace JD.AI.Specs.UI.Features.Dashboard
 #line 7
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 11
-        await testRunner.ThenAsync("I should see the settings page heading \"Settings\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line 13
+        await testRunner.ThenAsync("I should see the heading \"Settings\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Displays settings tabs")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Refresh button is visible")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Settings Page")]
-        [global::Xunit.TraitAttribute("Description", "Displays settings tabs")]
-        public async global::System.Threading.Tasks.Task DisplaysSettingsTabs()
+        [global::Xunit.TraitAttribute("Description", "Refresh button is visible")]
+        public async global::System.Threading.Tasks.Task RefreshButtonIsVisible()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "1";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Displays settings tabs", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Refresh button is visible", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 13
+#line 15
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -201,43 +203,147 @@ namespace JD.AI.Specs.UI.Features.Dashboard
 #line 7
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 14
-        await testRunner.ThenAsync("I should see the settings tab strip", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-#line 15
-        await testRunner.AndAsync("the tab strip should contain a \"Server\" tab", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
 #line 16
-        await testRunner.AndAsync("the tab strip should contain a \"Providers\" tab", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+        await testRunner.ThenAsync("I should see the refresh button", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 17
-        await testRunner.AndAsync("the tab strip should contain a \"Agents\" tab", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-#line 18
-        await testRunner.AndAsync("the tab strip should contain a \"Channels\" tab", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Loading skeleton shown while fetching config")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Settings Page")]
+        [global::Xunit.TraitAttribute("Description", "Loading skeleton shown while fetching config")]
+        public async global::System.Threading.Tasks.Task LoadingSkeletonShownWhileFetchingConfig()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "2";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Loading skeleton shown while fetching config", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
 #line 19
-        await testRunner.AndAsync("the tab strip should contain a \"Routing\" tab", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 7
+    await this.FeatureBackgroundAsync();
 #line hidden
 #line 20
+        await testRunner.GivenAsync("the settings are loading", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 21
+        await testRunner.ThenAsync("I should see a settings loading skeleton", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Error alert when gateway unreachable")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Settings Page")]
+        [global::Xunit.TraitAttribute("Description", "Error alert when gateway unreachable")]
+        public async global::System.Threading.Tasks.Task ErrorAlertWhenGatewayUnreachable()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "3";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Error alert when gateway unreachable", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 24
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 7
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 25
+        await testRunner.GivenAsync("the gateway configuration cannot be loaded", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 26
+        await testRunner.ThenAsync("I should see an error alert", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 27
+        await testRunner.AndAsync("the alert should display \"Unable to load gateway configuration\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Tab strip with all six tabs")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Settings Page")]
+        [global::Xunit.TraitAttribute("Description", "Tab strip with all six tabs")]
+        [global::Xunit.TraitAttribute("Category", "smoke")]
+        public async global::System.Threading.Tasks.Task TabStripWithAllSixTabs()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "smoke"};
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "4";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Tab strip with all six tabs", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 31
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 7
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 32
+        await testRunner.ThenAsync("I should see the settings tab strip", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 33
+        await testRunner.AndAsync("the tab strip should contain a \"Server\" tab", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 34
+        await testRunner.AndAsync("the tab strip should contain a \"Providers\" tab", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 35
+        await testRunner.AndAsync("the tab strip should contain a \"Agents\" tab", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 36
+        await testRunner.AndAsync("the tab strip should contain a \"Channels\" tab", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 37
+        await testRunner.AndAsync("the tab strip should contain a \"Routing\" tab", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 38
         await testRunner.AndAsync("the tab strip should contain an \"OpenClaw\" tab", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Agents tab is accessible")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Tabs have correct icons")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Settings Page")]
-        [global::Xunit.TraitAttribute("Description", "Agents tab is accessible")]
-        public async global::System.Threading.Tasks.Task AgentsTabIsAccessible()
+        [global::Xunit.TraitAttribute("Description", "Tabs have correct icons")]
+        public async global::System.Threading.Tasks.Task TabsHaveCorrectIcons()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "2";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Agents tab is accessible", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string pickleIndex = "5";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Tabs have correct icons", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 22
+#line 40
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -250,31 +356,194 @@ namespace JD.AI.Specs.UI.Features.Dashboard
 #line 7
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 23
-        await testRunner.WhenAsync("I click the \"Agents\" settings tab", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line 41
+        await testRunner.ThenAsync("the \"Server\" tab should have a server icon", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 24
+#line 42
+        await testRunner.AndAsync("the \"Providers\" tab should have a hub icon", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 43
+        await testRunner.AndAsync("the \"Agents\" tab should have a robot icon", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 44
+        await testRunner.AndAsync("the \"Channels\" tab should have a cable icon", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 45
+        await testRunner.AndAsync("the \"Routing\" tab should have a route icon", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 46
+        await testRunner.AndAsync("the \"OpenClaw\" tab should have a cloud icon", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Tabs have tooltips")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Settings Page")]
+        [global::Xunit.TraitAttribute("Description", "Tabs have tooltips")]
+        public async global::System.Threading.Tasks.Task TabsHaveTooltips()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "6";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Tabs have tooltips", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 48
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 7
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 49
+        await testRunner.ThenAsync("the \"Server\" tab should have tooltip \"Network, auth, and rate-limit settings\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 50
+        await testRunner.AndAsync("the \"Providers\" tab should have tooltip \"AI model provider configuration\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 51
+        await testRunner.AndAsync("the \"Agents\" tab should have tooltip \"Agent definitions and auto-spawn settings\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 52
+        await testRunner.AndAsync("the \"Channels\" tab should have tooltip \"Messaging channel connections\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 53
+        await testRunner.AndAsync("the \"Routing\" tab should have tooltip \"Channel-to-agent routing rules\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 54
+        await testRunner.AndAsync("the \"OpenClaw\" tab should have tooltip \"OpenClaw bridge integration\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Server tab is accessible")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Settings Page")]
+        [global::Xunit.TraitAttribute("Description", "Server tab is accessible")]
+        public async global::System.Threading.Tasks.Task ServerTabIsAccessible()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "7";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Server tab is accessible", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 57
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 7
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 58
+        await testRunner.WhenAsync("I click the \"Server\" tab", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 59
+        await testRunner.ThenAsync("the server settings panel should be visible", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Providers tab accessible with save")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Settings Page")]
+        [global::Xunit.TraitAttribute("Description", "Providers tab accessible with save")]
+        public async global::System.Threading.Tasks.Task ProvidersTabAccessibleWithSave()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "8";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Providers tab accessible with save", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 61
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 7
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 62
+        await testRunner.WhenAsync("I click the \"Providers\" tab", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 63
+        await testRunner.ThenAsync("the providers settings panel should be visible", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 64
+        await testRunner.AndAsync("a save providers button should be available", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Agents tab accessible with save")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Settings Page")]
+        [global::Xunit.TraitAttribute("Description", "Agents tab accessible with save")]
+        public async global::System.Threading.Tasks.Task AgentsTabAccessibleWithSave()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "9";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Agents tab accessible with save", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 66
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 7
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 67
+        await testRunner.WhenAsync("I click the \"Agents\" tab", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 68
         await testRunner.ThenAsync("the agents settings panel should be visible", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 25
+#line 69
         await testRunner.AndAsync("a save agents button should be available", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Channels tab is accessible")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Channels tab accessible with save")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Settings Page")]
-        [global::Xunit.TraitAttribute("Description", "Channels tab is accessible")]
-        public async global::System.Threading.Tasks.Task ChannelsTabIsAccessible()
+        [global::Xunit.TraitAttribute("Description", "Channels tab accessible with save")]
+        public async global::System.Threading.Tasks.Task ChannelsTabAccessibleWithSave()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "3";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Channels tab is accessible", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string pickleIndex = "10";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Channels tab accessible with save", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 27
+#line 71
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -287,31 +556,31 @@ namespace JD.AI.Specs.UI.Features.Dashboard
 #line 7
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 28
-        await testRunner.WhenAsync("I click the \"Channels\" settings tab", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line 72
+        await testRunner.WhenAsync("I click the \"Channels\" tab", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 29
+#line 73
         await testRunner.ThenAsync("the channels settings panel should be visible", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 30
+#line 74
         await testRunner.AndAsync("a save channels button should be available", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Providers tab is accessible")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Routing tab is accessible")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Settings Page")]
-        [global::Xunit.TraitAttribute("Description", "Providers tab is accessible")]
-        public async global::System.Threading.Tasks.Task ProvidersTabIsAccessible()
+        [global::Xunit.TraitAttribute("Description", "Routing tab is accessible")]
+        public async global::System.Threading.Tasks.Task RoutingTabIsAccessible()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "4";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Providers tab is accessible", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string pickleIndex = "11";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Routing tab is accessible", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 32
+#line 76
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -324,14 +593,76 @@ namespace JD.AI.Specs.UI.Features.Dashboard
 #line 7
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 33
-        await testRunner.WhenAsync("I click the \"Providers\" settings tab", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line 77
+        await testRunner.WhenAsync("I click the \"Routing\" tab", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 34
-        await testRunner.ThenAsync("the providers settings panel should be visible", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line 78
+        await testRunner.ThenAsync("the routing settings panel should be visible", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 35
-        await testRunner.AndAsync("a save providers button should be available", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="OpenClaw tab is accessible")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Settings Page")]
+        [global::Xunit.TraitAttribute("Description", "OpenClaw tab is accessible")]
+        public async global::System.Threading.Tasks.Task OpenClawTabIsAccessible()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "12";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("OpenClaw tab is accessible", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 80
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 7
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 81
+        await testRunner.WhenAsync("I click the \"OpenClaw\" tab", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 82
+        await testRunner.ThenAsync("the OpenClaw settings panel should be visible", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Page title is correct")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Settings Page")]
+        [global::Xunit.TraitAttribute("Description", "Page title is correct")]
+        public async global::System.Threading.Tasks.Task PageTitleIsCorrect()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "13";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Page title is correct", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 85
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 7
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 86
+        await testRunner.ThenAsync("the browser page title should be \"Settings — JD.AI\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
