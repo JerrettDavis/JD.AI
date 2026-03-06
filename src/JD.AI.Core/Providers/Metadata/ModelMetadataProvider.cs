@@ -100,12 +100,14 @@ public sealed class ModelMetadataProvider
             var match = ModelIdMatcher.FindBestMatch(model.Id, model.ProviderName, _entries);
             if (match is not null)
             {
+                var capabilities = ApplyCapabilities(model.Capabilities, match);
                 result.Add(model with
                 {
                     ContextWindowTokens = match.MaxInputTokens ?? model.ContextWindowTokens,
                     MaxOutputTokens = match.MaxOutputTokens ?? model.MaxOutputTokens,
                     InputCostPerToken = match.InputCostPerToken ?? model.InputCostPerToken,
                     OutputCostPerToken = match.OutputCostPerToken ?? model.OutputCostPerToken,
+                    Capabilities = capabilities,
                     HasMetadata = true,
                 });
             }
@@ -152,9 +154,9 @@ public sealed class ModelMetadataProvider
                 MaxOutputTokens = GetIntProp(prop.Value, "max_output_tokens") ?? GetIntProp(prop.Value, "max_tokens"),
                 InputCostPerToken = GetDecimalProp(prop.Value, "input_cost_per_token"),
                 OutputCostPerToken = GetDecimalProp(prop.Value, "output_cost_per_token"),
-                SupportsVision = GetBoolProp(prop.Value, "supports_vision"),
-                SupportsFunctionCalling = GetBoolProp(prop.Value, "supports_function_calling"),
-                SupportsReasoning = GetBoolProp(prop.Value, "supports_reasoning"),
+                SupportsVision = GetNullableBoolProp(prop.Value, "supports_vision"),
+                SupportsFunctionCalling = GetNullableBoolProp(prop.Value, "supports_function_calling"),
+                SupportsReasoning = GetNullableBoolProp(prop.Value, "supports_reasoning"),
             };
         }
 
@@ -190,8 +192,37 @@ public sealed class ModelMetadataProvider
         };
     }
 
-    private static bool GetBoolProp(JsonElement el, string name) =>
-        el.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.True;
+    private static bool? GetNullableBoolProp(JsonElement el, string name)
+    {
+        if (!el.TryGetProperty(name, out var value))
+            return null;
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            _ => null,
+        };
+    }
+
+    private static ModelCapabilities ApplyCapabilities(
+        ModelCapabilities existing,
+        ModelMetadataEntry entry)
+    {
+        var capabilities = existing | ModelCapabilities.Chat;
+
+        if (entry.SupportsFunctionCalling is true)
+            capabilities |= ModelCapabilities.ToolCalling;
+        else if (entry.SupportsFunctionCalling is false)
+            capabilities &= ~ModelCapabilities.ToolCalling;
+
+        if (entry.SupportsVision is true)
+            capabilities |= ModelCapabilities.Vision;
+        else if (entry.SupportsVision is false)
+            capabilities &= ~ModelCapabilities.Vision;
+
+        return capabilities;
+    }
 
     private static async Task<Dictionary<string, ModelMetadataEntry>?> ReadCacheAsync(
         CancellationToken ct)

@@ -12,7 +12,7 @@ public sealed record ModelMetadataEntry
     public int? MaxOutputTokens { get; init; }
     public decimal? InputCostPerToken { get; init; }
     public decimal? OutputCostPerToken { get; init; }
-    public bool SupportsVision { get; init; }
-    public bool SupportsFunctionCalling { get; init; }
-    public bool SupportsReasoning { get; init; }
+    public bool? SupportsVision { get; init; }
+    public bool? SupportsFunctionCalling { get; init; }
+    public bool? SupportsReasoning { get; init; }
 }

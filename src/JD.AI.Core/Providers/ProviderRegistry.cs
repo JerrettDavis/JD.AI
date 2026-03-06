@@ -11,15 +11,23 @@ public sealed class ProviderRegistry : IProviderRegistry
 {
     private readonly IReadOnlyList<IProviderDetector> _detectors;
     private readonly ModelMetadataProvider? _metadataProvider;
+    private readonly IModelCapabilityRegistry _capabilityRegistry;
     private List<ProviderInfo>? _cached;
 
     public ProviderRegistry(
         IEnumerable<IProviderDetector> detectors,
-        ModelMetadataProvider? metadataProvider = null)
+        ModelMetadataProvider? metadataProvider = null,
+        IModelCapabilityRegistry? capabilityRegistry = null)
     {
         _detectors = detectors.ToList();
         _metadataProvider = metadataProvider;
+        _capabilityRegistry = capabilityRegistry ?? new ModelCapabilityRegistry();
     }
+
+    /// <summary>
+    /// Capability-aware model metadata registry populated on provider detection.
+    /// </summary>
+    public IModelCapabilityRegistry CapabilityRegistry => _capabilityRegistry;
 
     public Task<IReadOnlyList<ProviderInfo>> DetectProvidersAsync(
         CancellationToken ct = default)
@@ -69,6 +77,7 @@ public sealed class ProviderRegistry : IProviderRegistry
             }
         }
 
+        RebuildCapabilityRegistry(results);
         _cached = results;
         return results;
     }
@@ -142,6 +151,7 @@ public sealed class ProviderRegistry : IProviderRegistry
             updated.Add(provider);
 
         _cached = updated;
+        RebuildCapabilityRegistry(updated);
         return provider;
     }
 
@@ -159,5 +169,12 @@ public sealed class ProviderRegistry : IProviderRegistry
     {
         return _detectors.FirstOrDefault(
             d => string.Equals(d.ProviderName, providerName, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void RebuildCapabilityRegistry(IEnumerable<ProviderInfo> providers)
+    {
+        _capabilityRegistry.Clear();
+        foreach (var provider in providers.Where(p => p.IsAvailable && p.Models.Count > 0))
+            _capabilityRegistry.RegisterRange(provider.Models);
     }
 }

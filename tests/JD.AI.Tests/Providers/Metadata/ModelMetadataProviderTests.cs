@@ -85,7 +85,7 @@ public sealed class ModelMetadataProviderTests
         var source = new FakeMetadataSource(SampleJson);
         var provider = new ModelMetadataProvider(source);
 
-        await provider.LoadAsync();
+        await provider.LoadAsync(forceRefresh: true);
 
         provider.IsLoaded.Should().BeTrue();
         provider.EntryCount.Should().Be(2);
@@ -107,7 +107,7 @@ public sealed class ModelMetadataProviderTests
     {
         var source = new FakeMetadataSource(SampleJson);
         var provider = new ModelMetadataProvider(source);
-        await provider.LoadAsync();
+        await provider.LoadAsync(forceRefresh: true);
 
         var models = new List<ProviderModelInfo>
         {
@@ -122,6 +122,8 @@ public sealed class ModelMetadataProviderTests
         enriched[0].MaxOutputTokens.Should().Be(16_384);
         enriched[0].InputCostPerToken.Should().Be(0.0000025m);
         enriched[0].OutputCostPerToken.Should().Be(0.00001m);
+        enriched[0].Capabilities.Should().HaveFlag(ModelCapabilities.ToolCalling);
+        enriched[0].Capabilities.Should().HaveFlag(ModelCapabilities.Vision);
     }
 
     [Fact]
@@ -129,7 +131,7 @@ public sealed class ModelMetadataProviderTests
     {
         var source = new FakeMetadataSource(SampleJson);
         var provider = new ModelMetadataProvider(source);
-        await provider.LoadAsync();
+        await provider.LoadAsync(forceRefresh: true);
 
         var models = new List<ProviderModelInfo>
         {
@@ -142,6 +144,39 @@ public sealed class ModelMetadataProviderTests
         enriched[0].HasMetadata.Should().BeFalse();
         enriched[0].ContextWindowTokens.Should().Be(128_000); // default
         enriched[0].MaxOutputTokens.Should().Be(16_384); // default
+    }
+
+    [Fact]
+    public async Task Enrich_MatchedModel_UsesMetadataToDisableUnsupportedCapabilities()
+    {
+        const string NoToolsJson = """
+            {
+                "openai/chat-basic": {
+                    "mode": "chat",
+                    "litellm_provider": "openai",
+                    "supports_function_calling": false,
+                    "supports_vision": false
+                }
+            }
+            """;
+
+        var source = new FakeMetadataSource(NoToolsJson);
+        var provider = new ModelMetadataProvider(source);
+        await provider.LoadAsync(forceRefresh: true);
+
+        var models = new List<ProviderModelInfo>
+        {
+            new(
+                "chat-basic",
+                "Chat Basic",
+                "OpenAI",
+                Capabilities: ModelCapabilities.Chat | ModelCapabilities.ToolCalling | ModelCapabilities.Vision),
+        };
+
+        var enriched = provider.Enrich(models);
+
+        enriched.Should().HaveCount(1);
+        enriched[0].Capabilities.Should().Be(ModelCapabilities.Chat);
     }
 
     private sealed class FakeMetadataSource(string? json) : IModelMetadataSource
