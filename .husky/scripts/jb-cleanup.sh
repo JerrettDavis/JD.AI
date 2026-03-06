@@ -15,8 +15,9 @@ fi
 dotnet jb cleanupcode JD.AI.slnx \
   --profile="Built-in: Full Cleanup" \
   --include="$FILES" \
-  --no-build
-rc=$?
+  --no-build \
+  || rc=$?
+rc=${rc:-0}
 
 # Exit code 3 = "no items found to cleanup" — treat as success
 if [ $rc -eq 3 ]; then

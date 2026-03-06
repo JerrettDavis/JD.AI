@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Anthropic.SDK;
 using JD.SemanticKernel.Connectors.ClaudeCode;
 using Microsoft.Extensions.AI;
@@ -10,9 +11,9 @@ using Microsoft.SemanticKernel.ChatCompletion;
 namespace JD.AI.Core.Providers;
 
 /// <summary>
-/// Detects a local Claude Code session and exposes its models.
-/// When running as a Windows service, scans user profiles for credentials.
-/// When the session token is expired, attempts a silent refresh via the Claude CLI.
+///     Detects a local Claude Code session and exposes its models.
+///     When running as a Windows service, scans user profiles for credentials.
+///     When the session token is expired, attempts a silent refresh via the Claude CLI.
 /// </summary>
 public sealed class ClaudeCodeDetector : IProviderDetector
 {
@@ -48,9 +49,9 @@ public sealed class ClaudeCodeDetector : IProviderDetector
                     provider.Dispose();
                     return new ProviderInfo(
                         ProviderName,
-                        IsAvailable: false,
-                        StatusMessage: "Not authenticated — run 'claude login' to sign in",
-                        Models: []);
+                        false,
+                        "Not authenticated — run 'claude login' to sign in",
+                        []);
                 }
             }
 
@@ -60,22 +61,22 @@ public sealed class ClaudeCodeDetector : IProviderDetector
             {
                 new(ClaudeModels.Opus, "Claude Opus 4.6", ProviderName),
                 new(ClaudeModels.Sonnet, "Claude Sonnet 4.6", ProviderName),
-                new(ClaudeModels.Haiku, "Claude Haiku 4.5", ProviderName),
+                new(ClaudeModels.Haiku, "Claude Haiku 4.5", ProviderName)
             };
 
             return new ProviderInfo(
                 ProviderName,
-                IsAvailable: true,
-                StatusMessage: "Authenticated",
-                Models: models);
+                true,
+                "Authenticated",
+                models);
         }
         catch (ClaudeCodeSessionException ex)
         {
             return new ProviderInfo(
                 ProviderName,
-                IsAvailable: false,
-                StatusMessage: ex.Message,
-                Models: []);
+                false,
+                ex.Message,
+                []);
         }
     }
 
@@ -105,18 +106,12 @@ public sealed class ClaudeCodeDetector : IProviderDetector
         builder.Services.AddSingleton<IChatClient>(sp =>
         {
             var sessionProvider = sp.GetRequiredService<ClaudeCodeSessionProvider>();
-            var token = sessionProvider
-                .GetTokenAsync(CancellationToken.None)
-                .GetAwaiter()
-                .GetResult();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                throw new ClaudeCodeSessionException("No Claude token available.");
-            }
+            var token = sessionProvider.GetTokenAsync(CancellationToken.None).GetAwaiter().GetResult();
+            if (string.IsNullOrWhiteSpace(token)) throw new ClaudeCodeSessionException("No Claude token available.");
 
             var httpClient = new HttpClient(new ClaudeCodeSessionHttpHandler(sessionProvider))
             {
-                Timeout = TimeSpan.FromMinutes(10),
+                Timeout = TimeSpan.FromMinutes(10)
             };
 
             var anthropicClient = new AnthropicClient(
@@ -124,25 +119,22 @@ public sealed class ClaudeCodeDetector : IProviderDetector
                 httpClient);
 
             return new ChatClientBuilder(
-                    new AnthropicPromptCachingChatClient(anthropicClient.Messages))
-                .ConfigureOptions(o => o.ModelId ??= modelId)
-                .Build();
+                    new AnthropicPromptCachingChatClient(anthropicClient.Messages)).
+                ConfigureOptions(o => o.ModelId ??= modelId).
+                Build();
         });
 
         builder.Services.AddSingleton<IChatCompletionService>(sp =>
-            sp.GetRequiredService<IChatClient>()
-              .AsChatCompletionService(sp));
+            sp.GetRequiredService<IChatClient>().AsChatCompletionService(sp));
     }
 
     /// <summary>
-    /// Builds session options, scanning user profiles for credentials when
-    /// running as a service account (LocalSystem, NetworkService, etc.).
+    ///     Builds session options, scanning user profiles for credentials when
+    ///     running as a service account (LocalSystem, NetworkService, etc.).
     /// </summary>
     private static ClaudeCodeSessionOptions BuildSessionOptions()
     {
-        var options = new ClaudeCodeSessionOptions
-        {
-        };
+        var options = new ClaudeCodeSessionOptions { EnableOAuthTokenSupport = true };
 
         // Check if the default path would resolve to a service account home
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -159,9 +151,9 @@ public sealed class ClaudeCodeDetector : IProviderDetector
     }
 
     /// <summary>
-    /// Attempts to refresh Claude Code auth by invoking the CLI.
-    /// Running <c>claude --version</c> triggers internal token refresh
-    /// when the refresh token is still valid.
+    ///     Attempts to refresh Claude Code auth by invoking the CLI.
+    ///     Running <c>claude --version</c> triggers internal token refresh
+    ///     when the refresh token is still valid.
     /// </summary>
     private static async Task<bool> TryRefreshAuthAsync(CancellationToken ct)
     {
@@ -172,24 +164,38 @@ public sealed class ClaudeCodeDetector : IProviderDetector
 
             Console.WriteLine("  ↻ Attempting Claude session refresh...");
 
-            var psi = new System.Diagnostics.ProcessStartInfo
+            var psi = new ProcessStartInfo
             {
                 FileName = claudePath,
                 Arguments = "--version",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
-                CreateNoWindow = true,
+                CreateNoWindow = true
             };
 
-            using var proc = System.Diagnostics.Process.Start(psi);
+            using var proc = Process.Start(psi);
             if (proc is null) return false;
 
-            await proc.WaitForExitAsync(ct).ConfigureAwait(false);
+            // Drain stdout/stderr to prevent pipe buffer deadlocks, then
+            // wait for exit with a timeout so detection never hangs.
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(15));
+            var token = cts.Token;
+
+            var stdoutTask = proc.StandardOutput.ReadToEndAsync(token);
+            var stderrTask = proc.StandardError.ReadToEndAsync(token);
+
+            await proc.WaitForExitAsync(token).ConfigureAwait(false);
+            await Task.WhenAll(stdoutTask, stderrTask).ConfigureAwait(false);
+
             return proc.ExitCode == 0;
         }
 #pragma warning disable CA1031 // best-effort refresh
-        catch { return false; }
+        catch
+        {
+            return false;
+        }
 #pragma warning restore CA1031
     }
 
@@ -201,16 +207,15 @@ public sealed class ClaudeCodeDetector : IProviderDetector
             : new[] { "" };
 
         var pathDirs = Environment.GetEnvironmentVariable("PATH")?
-            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries) ?? [];
+            .
+            Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries) ?? [];
 
         foreach (var dir in pathDirs)
-        {
             foreach (var ext in extensions)
             {
                 var candidate = Path.Combine(dir, name + ext);
                 if (File.Exists(candidate)) return candidate;
             }
-        }
 
         return null;
     }
