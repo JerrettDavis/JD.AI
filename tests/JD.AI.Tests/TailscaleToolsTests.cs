@@ -207,7 +207,7 @@ public sealed class TailscaleToolsTests : IDisposable
             credential: "client-id-123",
             configDir: _tempDir);
 
-        Assert.Contains("❌ OAuth auth method requires", result);
+        Assert.Contains("Error: OAuth auth method requires", result);
     }
 
     [Fact]
@@ -219,7 +219,7 @@ public sealed class TailscaleToolsTests : IDisposable
             credential: "key",
             configDir: _tempDir);
 
-        Assert.Contains("❌ Invalid auth method", result);
+        Assert.Contains("Error: Invalid auth method", result);
     }
 
     [Fact]

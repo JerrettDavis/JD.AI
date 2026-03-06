@@ -55,7 +55,7 @@ public sealed class MultimodalTools
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            return $"Error analyzing image: {ex.Message}";
+            return OutputFormatter.Error("analyzing image", ex);
         }
     }
 
@@ -84,7 +84,7 @@ public sealed class MultimodalTools
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            return $"Error analyzing PDF: {ex.Message}";
+            return OutputFormatter.Error("analyzing PDF", ex);
         }
     }
 
@@ -129,7 +129,7 @@ public sealed class MultimodalTools
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            return $"Error inspecting media: {ex.Message}";
+            return OutputFormatter.Error("inspecting media", ex);
         }
     }
 

@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Text;
 using JD.AI.Core.Attributes;
+using JD.AI.Core.Infrastructure;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Tools;
@@ -123,7 +124,7 @@ public sealed class CapabilityTools
             }
         }
 
-        return $"Error: Tool '{toolName}' not found. Use capability_list to see available tools.";
+        return OutputFormatter.Error($"Tool '{toolName}' not found. Use capability_list to see available tools.");
     }
 
     // ── Usage Analysis ──────────────────────────────────────

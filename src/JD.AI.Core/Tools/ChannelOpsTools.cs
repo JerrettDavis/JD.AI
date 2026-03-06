@@ -90,7 +90,7 @@ public sealed class ChannelOpsTools
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            return $"Error sending message: {ex.Message}";
+            return OutputFormatter.Error("sending message", ex);
         }
     }
 
@@ -114,7 +114,7 @@ public sealed class ChannelOpsTools
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            return $"Error connecting channel: {ex.Message}";
+            return OutputFormatter.Error("connecting channel", ex);
         }
     }
 
@@ -138,7 +138,7 @@ public sealed class ChannelOpsTools
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            return $"Error disconnecting channel: {ex.Message}";
+            return OutputFormatter.Error("disconnecting channel", ex);
         }
     }
 }

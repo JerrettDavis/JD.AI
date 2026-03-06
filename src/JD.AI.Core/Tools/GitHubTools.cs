@@ -313,7 +313,7 @@ public sealed class GitHubTools
         }
         catch (Exception ex)
         {
-            return $"Error: {ex.Message}";
+            return OutputFormatter.Error(ex.Message);
         }
     }
 

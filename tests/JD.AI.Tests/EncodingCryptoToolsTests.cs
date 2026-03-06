@@ -63,7 +63,7 @@ public sealed class EncodingCryptoToolsTests
     {
         var result = EncodingCryptoTools.DecodeBase64("not-valid-base64!!!");
 
-        Assert.Contains("❌", result);
+        Assert.Contains("Error:", result);
         Assert.Contains("Invalid Base64", result);
     }
 
@@ -171,7 +171,7 @@ public sealed class EncodingCryptoToolsTests
     {
         var result = EncodingCryptoTools.DecodeJwt("not-a-jwt");
 
-        Assert.Contains("❌", result);
+        Assert.Contains("Error:", result);
         Assert.Contains("Invalid JWT format", result);
     }
 
@@ -245,7 +245,7 @@ public sealed class EncodingCryptoToolsTests
     {
         var result = EncodingCryptoTools.ComputeHash("hello", "unknown");
 
-        Assert.Contains("❌", result);
+        Assert.Contains("Error:", result);
         Assert.Contains("Unknown algorithm", result);
     }
 
