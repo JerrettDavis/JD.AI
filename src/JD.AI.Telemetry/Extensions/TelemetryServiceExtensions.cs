@@ -39,6 +39,7 @@ public static class TelemetryServiceExtensions
                 tracing
                     .SetResourceBuilder(resourceBuilder)
                     .AddSource(ActivitySources.AllSourceNames)
+                    .AddSource("Microsoft.SemanticKernel")
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation();
 

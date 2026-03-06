@@ -34,6 +34,6 @@ public static class ActivitySources
     public static readonly ActivitySource Sessions = new(SessionsSourceName);
 
     /// <summary>All source names — pass to <c>.AddSource()</c> when configuring OTel.</summary>
-    public static string[] AllSourceNames =>
+    public static readonly string[] AllSourceNames =
         [AgentSourceName, ToolsSourceName, ProvidersSourceName, SessionsSourceName];
 }

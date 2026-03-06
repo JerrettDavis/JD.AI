@@ -51,6 +51,15 @@ public sealed class AgentLoop
 
         var sw = Stopwatch.StartNew();
 
+        using var turnActivity = AgentInstrumentation.AgentSource.StartActivity(
+            "agent.turn",
+            ActivityKind.Internal);
+        turnActivity?.SetTag(AgentInstrumentation.AttrSystem, _session.CurrentModel?.ProviderName ?? "unknown");
+        turnActivity?.SetTag(AgentInstrumentation.AttrRequestModel, _session.CurrentModel?.Id ?? "unknown");
+        turnActivity?.SetTag(AgentInstrumentation.AttrOperationName, "chat");
+        if (_session.CurrentModel?.MaxOutputTokens is > 0)
+            turnActivity?.SetTag(AgentInstrumentation.AttrRequestMaxTokens, _session.CurrentModel.MaxOutputTokens);
+
         try
         {
             var result = await chat.GetChatMessageContentAsync(
@@ -94,6 +103,16 @@ public sealed class AgentLoop
             turnEntry.Attributes["tokens_out"] = tokenEstimate.ToString(System.Globalization.CultureInfo.InvariantCulture);
             turnEntry.Complete();
             _session.LastTimeline = traceCtx.Timeline;
+
+            turnActivity?.SetTag(AgentInstrumentation.AttrUsageOutputTokens, tokenEstimate);
+            turnActivity?.SetStatus(ActivityStatusCode.Ok);
+            AgentInstrumentation.TurnCount.Add(1,
+                new KeyValuePair<string, object?>(AgentInstrumentation.AttrSystem, _session.CurrentModel?.ProviderName),
+                new KeyValuePair<string, object?>(AgentInstrumentation.AttrRequestModel, _session.CurrentModel?.Id));
+            AgentInstrumentation.TurnDuration.Record(sw.ElapsedMilliseconds,
+                new KeyValuePair<string, object?>(AgentInstrumentation.AttrSystem, _session.CurrentModel?.ProviderName));
+            AgentInstrumentation.TokensUsed.Add(tokenEstimate,
+                new KeyValuePair<string, object?>(AgentInstrumentation.AttrSystem, _session.CurrentModel?.ProviderName));
 
             return response;
         }
@@ -209,6 +228,11 @@ public sealed class AgentLoop
             turnEntry.Complete("error", ex.Message);
             _session.LastTimeline = traceCtx.Timeline;
 
+            turnActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            AgentInstrumentation.ProviderErrors.Add(1,
+                new KeyValuePair<string, object?>(AgentInstrumentation.AttrSystem, _session.CurrentModel?.ProviderName),
+                new KeyValuePair<string, object?>("error.type", ex.GetType().Name));
+
             var errorMsg = $"Error: {ex.Message}";
             AgentOutput.Current.RenderError(errorMsg);
 
@@ -220,7 +244,7 @@ public sealed class AgentLoop
     }
 
     /// <summary>
-    /// Send a user message with streaming output — tokens appear as they arrive.
+    /// Send a user message with streaming output— tokens appear as they arrive.
     /// Thinking/reasoning content (via &lt;think&gt; tags or metadata) is rendered
     /// as dim gray text, separate from the response content.
     /// </summary>
@@ -252,6 +276,15 @@ public sealed class AgentLoop
         long totalBytes = 0;
 
         var contentStarted = false;
+
+        using var turnActivity = AgentInstrumentation.AgentSource.StartActivity(
+            "agent.turn",
+            ActivityKind.Internal);
+        turnActivity?.SetTag(AgentInstrumentation.AttrSystem, _session.CurrentModel?.ProviderName ?? "unknown");
+        turnActivity?.SetTag(AgentInstrumentation.AttrRequestModel, _session.CurrentModel?.Id ?? "unknown");
+        turnActivity?.SetTag(AgentInstrumentation.AttrOperationName, "chat");
+        if (_session.CurrentModel?.MaxOutputTokens is > 0)
+            turnActivity?.SetTag(AgentInstrumentation.AttrRequestMaxTokens, _session.CurrentModel.MaxOutputTokens);
 
         try
         {
@@ -408,6 +441,16 @@ public sealed class AgentLoop
             turnEntry.Attributes["tokens_out"] = tokenEstimate.ToString(System.Globalization.CultureInfo.InvariantCulture);
             turnEntry.Complete();
             _session.LastTimeline = traceCtx.Timeline;
+
+            turnActivity?.SetTag(AgentInstrumentation.AttrUsageOutputTokens, tokenEstimate);
+            turnActivity?.SetStatus(ActivityStatusCode.Ok);
+            AgentInstrumentation.TurnCount.Add(1,
+                new KeyValuePair<string, object?>(AgentInstrumentation.AttrSystem, _session.CurrentModel?.ProviderName),
+                new KeyValuePair<string, object?>(AgentInstrumentation.AttrRequestModel, _session.CurrentModel?.Id));
+            AgentInstrumentation.TurnDuration.Record(sw.ElapsedMilliseconds,
+                new KeyValuePair<string, object?>(AgentInstrumentation.AttrSystem, _session.CurrentModel?.ProviderName));
+            AgentInstrumentation.TokensUsed.Add(tokenEstimate,
+                new KeyValuePair<string, object?>(AgentInstrumentation.AttrSystem, _session.CurrentModel?.ProviderName));
 
             return response;
         }
@@ -601,6 +644,12 @@ public sealed class AgentLoop
             turnEntry.Complete("error", ex.Message);
             _session.LastTimeline = traceCtx.Timeline;
             output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, 0, totalBytes));
+
+            turnActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            AgentInstrumentation.ProviderErrors.Add(1,
+                new KeyValuePair<string, object?>(AgentInstrumentation.AttrSystem, _session.CurrentModel?.ProviderName),
+                new KeyValuePair<string, object?>("error.type", ex.GetType().Name));
+
             var errorMsg = $"Error: {ex.Message}";
             AgentOutput.Current.RenderError(errorMsg);
 

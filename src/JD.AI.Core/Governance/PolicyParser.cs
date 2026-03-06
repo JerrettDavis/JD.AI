@@ -57,9 +57,17 @@ public static class PolicyParser
             {
                 doc = ParseFile(file);
             }
-            catch (Exception)
+            catch (YamlDotNet.Core.YamlException)
             {
-                // Skip files that fail to parse
+                // Skip YAML parse failures — malformed policy files are logged but not fatal.
+            }
+            catch (InvalidOperationException)
+            {
+                // Skip invalid structure (e.g. wrong YAML node types)
+            }
+            catch (IOException)
+            {
+                // Skip files that disappeared or are locked between enumeration and read
             }
 
             if (doc is not null)

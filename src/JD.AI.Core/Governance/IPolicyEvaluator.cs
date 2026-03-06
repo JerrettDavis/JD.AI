@@ -11,7 +11,9 @@ public sealed record PolicyContext(
     string? UserId = null,
     string? ProjectPath = null,
     string? ProviderName = null,
-    string? ModelId = null);
+    string? ModelId = null,
+    string? RoleName = null,
+    IReadOnlyList<string>? Groups = null);
 
 public interface IPolicyEvaluator
 {
