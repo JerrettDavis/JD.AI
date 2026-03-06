@@ -97,7 +97,9 @@ public sealed class AgentLoop
 
             return response;
         }
-        catch (Exception ex) when (!ct.IsCancellationRequested && IsToolCallingError(ex))
+        catch (Exception ex) when (!ct.IsCancellationRequested &&
+            (IsToolCallingError(ex) ||
+             IsToolsRejectedError(ex, settings.FunctionChoiceBehavior is not null)))
         {
             sw.Stop();
 
@@ -470,7 +472,9 @@ public sealed class AgentLoop
                 return errorMsg;
             }
         }
-        catch (Exception ex) when (!ct.IsCancellationRequested && IsToolCallingError(ex))
+        catch (Exception ex) when (!ct.IsCancellationRequested &&
+            (IsToolCallingError(ex) ||
+             IsToolsRejectedError(ex, settings.FunctionChoiceBehavior is not null)))
         {
             output.EndStreaming();
             sw.Stop();
@@ -609,8 +613,32 @@ public sealed class AgentLoop
         for (var current = ex; current != null; current = current.InnerException)
         {
             var msg = current.Message;
+            // Anthropic-style tool protocol errors
             if (msg.Contains("tool_use_id", StringComparison.OrdinalIgnoreCase) ||
                 msg.Contains("tool_result", StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Returns <see langword="true"/> when <paramref name="ex"/> looks like a provider
+    /// rejection caused by sending the <c>tools</c> array to a model that does not
+    /// actually support it at runtime (e.g. OpenRouter free-tier models that claim
+    /// tool support in metadata but return 400 when tools are sent).
+    /// Only considered when <paramref name="toolsWereEnabled"/> is <see langword="true"/>
+    /// so that genuine bad-request errors are not silently swallowed.
+    /// </summary>
+    internal static bool IsToolsRejectedError(Exception ex, bool toolsWereEnabled)
+    {
+        if (!toolsWereEnabled)
+            return false;
+
+        for (var current = ex; current != null; current = current.InnerException)
+        {
+            var msg = current.Message;
+            if (msg.Contains("400", StringComparison.Ordinal) ||
+                msg.Contains("Bad Request", StringComparison.OrdinalIgnoreCase))
                 return true;
         }
         return false;
