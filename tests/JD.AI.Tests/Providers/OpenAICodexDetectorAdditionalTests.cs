@@ -19,7 +19,8 @@ public sealed class OpenAICodexDetectorAdditionalTests : IDisposable
     [Fact]
     public void ReadModelsFromCache_NonExistentFile_ReturnsEmpty()
     {
-        var result = OpenAICodexDetector.ReadModelsFromCache("/path/that/does/not/exist.json");
+        var result = OpenAICodexDetector.ReadModelsFromCache(
+            Path.Combine(_fixture.DirectoryPath, "nonexistent-cache.json"));
         Assert.Empty(result);
     }
 
@@ -256,5 +257,6 @@ public sealed class OpenAICodexDetectorAdditionalTests : IDisposable
         var options = new CodexSessionOptions { CredentialsPath = authPath };
         OpenAICodexDetector.ApplyCredentialOverridesFromAuthFile(options);
         Assert.Equal("id-token-preferred", options.AccessToken);
+        Assert.Null(options.ApiKey);
     }
 }

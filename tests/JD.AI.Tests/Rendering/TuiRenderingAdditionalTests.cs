@@ -16,20 +16,10 @@ public sealed class TuiRenderingAdditionalTests
     [InlineData(0.9, "0.9s")]
     [InlineData(1.0, "1.0s")]
     [InlineData(59.9, "59.9s")]
-    [InlineData(59.999, "60.0s")] // rounds up to exactly 60.0s but still < 1m
     public void FormatElapsed_SubMinute_UsesSecondsFormat(double seconds, string expected)
     {
         var ts = TimeSpan.FromSeconds(seconds);
-        // Only test cases where total minutes < 1
-        if (ts.TotalMinutes < 1)
-        {
-            Assert.Equal(expected, TurnSpinner.FormatElapsed(ts));
-        }
-        else
-        {
-            // Skip boundary case where rounding pushed into minutes
-            Assert.True(true, "Boundary case — skipped");
-        }
+        Assert.Equal(expected, TurnSpinner.FormatElapsed(ts));
     }
 
     [Fact]
@@ -118,33 +108,15 @@ public sealed class TuiRenderingAdditionalTests
     [InlineData("--- a/f\n+++ b/f\n@@ -0,0 +1 @@\n+single line")]
     public void Render_ValidDiff_DoesNotThrow(string diff)
     {
-        var saved = Console.Out;
-        try
-        {
-            Console.SetOut(TextWriter.Null);
-            var ex = Record.Exception(() => DiffRenderer.Render(diff));
-            Assert.Null(ex);
-        }
-        finally
-        {
-            Console.SetOut(saved);
-        }
+        var ex = Record.Exception(() => DiffRenderer.Render(diff));
+        Assert.Null(ex);
     }
 
     [Fact]
     public void Render_EmptyString_DoesNotThrow()
     {
-        var saved = Console.Out;
-        try
-        {
-            Console.SetOut(TextWriter.Null);
-            var ex = Record.Exception(() => DiffRenderer.Render(string.Empty));
-            Assert.Null(ex);
-        }
-        finally
-        {
-            Console.SetOut(saved);
-        }
+        var ex = Record.Exception(() => DiffRenderer.Render(string.Empty));
+        Assert.Null(ex);
     }
 
     [Fact]
@@ -152,16 +124,7 @@ public sealed class TuiRenderingAdditionalTests
     {
         // Lines with Spectre markup chars like [ and ] need escaping
         var diff = "--- a/f\n+++ b/f\n@@ @@\n+var x = arr[0];\n-var x = arr[1];";
-        var saved = Console.Out;
-        try
-        {
-            Console.SetOut(TextWriter.Null);
-            var ex = Record.Exception(() => DiffRenderer.Render(diff));
-            Assert.Null(ex);
-        }
-        finally
-        {
-            Console.SetOut(saved);
-        }
+        var ex = Record.Exception(() => DiffRenderer.Render(diff));
+        Assert.Null(ex);
     }
 }
