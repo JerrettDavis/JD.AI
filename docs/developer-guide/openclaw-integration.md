@@ -7,6 +7,8 @@ description: "Bridge JD.AI and OpenClaw gateways for cross-platform multi-AI orc
 
 OpenClaw is an open-source multi-AI gateway that orchestrates conversations across different AI providers and messaging platforms. The JD.AI ↔ OpenClaw integration connects the two gateways via the `OpenClawBridgeChannel`, enabling agents on either platform to communicate, share context, and route messages across boundaries.
 
+![OpenClaw routing visibility in the JD.AI dashboard](../images/dashboard/dashboard-routing.png)
+
 ## Why integrate with OpenClaw
 
 | Scenario | Without integration | With integration |
@@ -62,6 +64,62 @@ Messages include origin metadata to prevent routing loops:
   }
 }
 ```
+
+## Bridge hijack vs native channels
+
+JD.AI supports two distinct integration shapes:
+
+| Path | Transport owner | Who answers user messages | Best fit |
+|------|------------------|---------------------------|----------|
+| **Native channel adapters** (Discord/Signal/Slack/Telegram/Web) | JD.AI | JD.AI agent mapped to that channel | Primary JD.AI deployment |
+| **OpenClaw bridge + Passthrough** | OpenClaw | OpenClaw agent (JD.AI observes) | Keep OpenClaw as primary runtime |
+| **OpenClaw bridge + Intercept/Proxy** | OpenClaw transport, JD.AI execution | JD.AI (OpenClaw run is aborted or bypassed) | "Hijack" mode where JD.AI should answer |
+| **OpenClaw bridge + Sidecar** | Shared | OpenClaw by default, JD.AI on trigger | Mixed mode with selective JD.AI takeover |
+
+Operationally, "hijacking OpenClaw" means using **Intercept** or **Proxy** so JD.AI generates the assistant response while OpenClaw remains the session transport.
+
+## Fast switching and handoff commands
+
+You can switch routing/provider behavior at runtime without restarting either gateway.
+
+### Native channels (Discord/Slack/Signal)
+
+Use native channel commands:
+
+```text
+jdai-routes
+jdai-route
+jdai-route <agent-or-provider-or-model-fragment>
+jdai-provider
+jdai-provider <provider-name>
+jdai-providers
+```
+
+Examples:
+
+```text
+jdai-route ollama
+jdai-provider openai
+jdai-routes
+```
+
+### OpenClaw bridge sessions
+
+Inside an OpenClaw conversation, send `/jdai-...` commands. The bridge intercepts them, executes in JD.AI, and injects the result back into the session:
+
+```text
+/jdai-help
+/jdai-routes
+/jdai-route ollama
+/jdai-provider openai
+/jdai-status
+```
+
+### Practical switching behavior
+
+- In **Sidecar** mode, plain messages continue to OpenClaw; `/jdai-...` commands and configured triggers route to JD.AI.
+- In **Intercept/Proxy** mode, JD.AI is the active responder for routed messages.
+- In **Passthrough** mode, OpenClaw remains responder; use `/jdai-...` commands for targeted control operations.
 
 ## Setup
 

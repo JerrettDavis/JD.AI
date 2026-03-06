@@ -1,24 +1,20 @@
 using FluentAssertions;
+using JD.AI.Tests.Fixtures;
 using JD.AI.Workflows.Store;
 
 namespace JD.AI.Tests.Governance.WorkflowStore;
 
 public class FileWorkflowStoreTests : IDisposable
 {
-    private readonly string _tempDir;
+    private readonly TempDirectoryFixture _fixture = new();
     private readonly FileWorkflowStore _store;
 
     public FileWorkflowStoreTests()
     {
-        _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-store-{Guid.NewGuid():N}");
-        _store = new FileWorkflowStore(_tempDir);
+        _store = new FileWorkflowStore(_fixture.DirectoryPath);
     }
 
-    public void Dispose()
-    {
-        if (Directory.Exists(_tempDir))
-            Directory.Delete(_tempDir, true);
-    }
+    public void Dispose() => _fixture.Dispose();
 
     private static SharedWorkflow MakeWorkflow(
         string name = "test-workflow",
@@ -45,7 +41,7 @@ public class FileWorkflowStoreTests : IDisposable
 
         await _store.PublishAsync(workflow);
 
-        var expectedPath = Path.Combine(_tempDir, "my-workflow", "1.0.0.json");
+        var expectedPath = Path.Combine(_fixture.DirectoryPath, "my-workflow", "1.0.0.json");
         File.Exists(expectedPath).Should().BeTrue();
     }
 
@@ -56,7 +52,7 @@ public class FileWorkflowStoreTests : IDisposable
 
         await _store.PublishAsync(workflow);
 
-        var path = Path.Combine(_tempDir, "json-check", "1.0.0.json");
+        var path = Path.Combine(_fixture.DirectoryPath, "json-check", "1.0.0.json");
         var content = await File.ReadAllTextAsync(path);
         content.Should().Contain("\"name\":");
         content.Should().Contain("json-check");
@@ -68,7 +64,7 @@ public class FileWorkflowStoreTests : IDisposable
         await _store.PublishAsync(MakeWorkflow("multi", "1.0.0"));
         await _store.PublishAsync(MakeWorkflow("multi", "2.0.0"));
 
-        var dir = Path.Combine(_tempDir, "multi");
+        var dir = Path.Combine(_fixture.DirectoryPath, "multi");
         Directory.GetFiles(dir, "*.json").Should().HaveCount(2);
     }
 
@@ -254,7 +250,7 @@ public class FileWorkflowStoreTests : IDisposable
     [Fact]
     public async Task Install_CopiesWorkflowToLocalDirectory()
     {
-        var installDir = Path.Combine(_tempDir, "installed");
+        var installDir = Path.Combine(_fixture.DirectoryPath, "installed");
         await _store.PublishAsync(MakeWorkflow("installable", "1.0.0"));
 
         var result = await _store.InstallAsync("installable", "1.0.0", installDir);
@@ -267,7 +263,7 @@ public class FileWorkflowStoreTests : IDisposable
     [Fact]
     public async Task Install_CreatesLocalDirectory_IfNotExists()
     {
-        var installDir = Path.Combine(_tempDir, "new-install-dir");
+        var installDir = Path.Combine(_fixture.DirectoryPath, "new-install-dir");
         await _store.PublishAsync(MakeWorkflow("installable2", "1.0.0"));
 
         Directory.Exists(installDir).Should().BeFalse();
@@ -280,7 +276,7 @@ public class FileWorkflowStoreTests : IDisposable
     [Fact]
     public async Task Install_NonExistentWorkflow_ReturnsFalse()
     {
-        var installDir = Path.Combine(_tempDir, "install-fail");
+        var installDir = Path.Combine(_fixture.DirectoryPath, "install-fail");
 
         var result = await _store.InstallAsync("nonexistent", "1.0.0", installDir);
 
@@ -290,7 +286,7 @@ public class FileWorkflowStoreTests : IDisposable
     [Fact]
     public async Task Install_InstalledFileContainsWorkflowJson()
     {
-        var installDir = Path.Combine(_tempDir, "install-verify");
+        var installDir = Path.Combine(_fixture.DirectoryPath, "install-verify");
         var workflow = new SharedWorkflow
         {
             Name = "verify-wf",

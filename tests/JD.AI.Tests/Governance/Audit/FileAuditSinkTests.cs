@@ -1,26 +1,24 @@
 using System.Text.Json;
 using FluentAssertions;
 using JD.AI.Core.Governance.Audit;
+using JD.AI.Tests.Fixtures;
 
 namespace JD.AI.Tests.Governance.Audit;
 
 public sealed class FileAuditSinkTests : IDisposable
 {
-    private readonly string _tempDir;
+    private readonly TempDirectoryFixture _fixture = new();
     private readonly FileAuditSink _sink;
 
     public FileAuditSinkTests()
     {
-        _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-audit-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(_tempDir);
-        _sink = new FileAuditSink(_tempDir);
+        _sink = new FileAuditSink(_fixture.DirectoryPath);
     }
 
     public void Dispose()
     {
         _sink.Dispose();
-        try { Directory.Delete(_tempDir, recursive: true); }
-        catch { /* best effort */ }
+        _fixture.Dispose();
     }
 
     private static AuditEvent MakeEvent(string action = "test") => new()
@@ -43,7 +41,7 @@ public sealed class FileAuditSinkTests : IDisposable
         await _sink.WriteAsync(evt);
 
         var today = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
-        var expectedFile = Path.Combine(_tempDir, $"audit-{today}.jsonl");
+        var expectedFile = Path.Combine(_fixture.DirectoryPath, $"audit-{today}.jsonl");
         File.Exists(expectedFile).Should().BeTrue();
     }
 
@@ -60,7 +58,7 @@ public sealed class FileAuditSinkTests : IDisposable
         await _sink.WriteAsync(evt);
 
         var today = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
-        var filePath = Path.Combine(_tempDir, $"audit-{today}.jsonl");
+        var filePath = Path.Combine(_fixture.DirectoryPath, $"audit-{today}.jsonl");
         var lines = await File.ReadAllLinesAsync(filePath);
 
         lines.Should().HaveCount(1);
@@ -80,7 +78,7 @@ public sealed class FileAuditSinkTests : IDisposable
         await _sink.WriteAsync(MakeEvent("event-3"));
 
         var today = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
-        var filePath = Path.Combine(_tempDir, $"audit-{today}.jsonl");
+        var filePath = Path.Combine(_fixture.DirectoryPath, $"audit-{today}.jsonl");
         var lines = (await File.ReadAllLinesAsync(filePath))
             .Where(l => !string.IsNullOrWhiteSpace(l))
             .ToList();
@@ -101,8 +99,8 @@ public sealed class FileAuditSinkTests : IDisposable
         await _sink.WriteAsync(evt1);
         await _sink.WriteAsync(evt2);
 
-        var yesterdayFile = Path.Combine(_tempDir, $"audit-{yesterday:yyyy-MM-dd}.jsonl");
-        var todayFile = Path.Combine(_tempDir, $"audit-{today:yyyy-MM-dd}.jsonl");
+        var yesterdayFile = Path.Combine(_fixture.DirectoryPath, $"audit-{yesterday:yyyy-MM-dd}.jsonl");
+        var todayFile = Path.Combine(_fixture.DirectoryPath, $"audit-{today:yyyy-MM-dd}.jsonl");
 
         File.Exists(yesterdayFile).Should().BeTrue();
         File.Exists(todayFile).Should().BeTrue();
@@ -126,7 +124,7 @@ public sealed class FileAuditSinkTests : IDisposable
         await Task.WhenAll(tasks);
 
         var today = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
-        var filePath = Path.Combine(_tempDir, $"audit-{today}.jsonl");
+        var filePath = Path.Combine(_fixture.DirectoryPath, $"audit-{today}.jsonl");
         var lines = (await File.ReadAllLinesAsync(filePath))
             .Where(l => !string.IsNullOrWhiteSpace(l))
             .ToList();
@@ -137,7 +135,7 @@ public sealed class FileAuditSinkTests : IDisposable
     [Fact]
     public async Task WriteAsync_CreatesDirectoryIfNotExists()
     {
-        var subDir = Path.Combine(_tempDir, "sub", "dir");
+        var subDir = Path.Combine(_fixture.DirectoryPath, "sub", "dir");
         using var sink = new FileAuditSink(subDir);
 
         await sink.WriteAsync(MakeEvent());

@@ -7,6 +7,8 @@ description: Install JD.AI, configure prerequisites, and run it for the first ti
 
 Get JD.AI up and running on your machine. This page covers prerequisites, installation methods, first run, and basic CLI options. For provider-specific setup, see [Provider Setup](provider-setup.md).
 
+![JD.AI CLI help output](../images/demo-cli.png)
+
 ## Prerequisites
 
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download) or later
@@ -81,7 +83,7 @@ export OPENAI_API_KEY=sk-...
 jdai --provider openai
 ```
 
-See [Provider Setup](provider-setup.md) for all 14 providers.
+See [Provider Setup](provider-setup.md) for all 15 providers.
 
 ## Common CLI options
 

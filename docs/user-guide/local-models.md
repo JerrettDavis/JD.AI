@@ -7,6 +7,8 @@ description: Run GGUF language models offline with LLamaSharp — fully private 
 
 JD.AI can run GGUF language models directly in-process via [LLamaSharp](https://github.com/SciSharp/LLamaSharp), a C# binding for [llama.cpp](https://github.com/ggerganov/llama.cpp). This enables fully standalone operation — no Ollama, no cloud API keys, no internet connection.
 
+![Provider list showing local model availability](../images/demo-providers.png)
+
 ## Quick start
 
 1. Download a GGUF model (example: TinyLlama for testing):

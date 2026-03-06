@@ -222,6 +222,36 @@ public sealed class DaemonServiceTests
 
     // ── Windows ServiceManager logs ────────────────────────────────
     [Fact]
+    public void WindowsServiceManager_BuildOpenClawGatewayScript_ContainsExpectedValues()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        var script = WindowsServiceManager.BuildOpenClawGatewayScript(
+            @"C:\Users\jd\.openclaw",
+            @"C:\Users\jd\.openclaw\openclaw.json",
+            @"C:\Users\jd",
+            @"C:\Users\jd\AppData\Roaming\npm\node_modules\openclaw\dist\index.js",
+            port: 18789);
+
+        Assert.Contains("OPENCLAW_STATE_DIR=C:\\Users\\jd\\.openclaw", script, StringComparison.Ordinal);
+        Assert.Contains("OPENCLAW_CONFIG_PATH=C:\\Users\\jd\\.openclaw\\openclaw.json", script, StringComparison.Ordinal);
+        Assert.Contains("USERPROFILE=C:\\Users\\jd", script, StringComparison.Ordinal);
+        Assert.Contains("\"%NODE_EXE%\" \"%OPENCLAW_MAIN%\" gateway --port 18789", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WindowsServiceManager_BuildOpenClawWatchdogScript_TargetsGatewayTask()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        var script = WindowsServiceManager.BuildOpenClawWatchdogScript();
+        Assert.Contains("schtasks /run /tn \"\\OpenClaw Gateway\"", script, StringComparison.Ordinal);
+    }
+
+    // ── Windows ServiceManager logs ────────────────────────────────
+    [Fact]
     public async Task WindowsServiceManager_ShowLogs_DoesNotThrow()
     {
         if (!OperatingSystem.IsWindows())

@@ -7,12 +7,14 @@ using JD.AI.Gateway.Commands;
 using JD.AI.Gateway.Config;
 using JD.AI.Gateway.Services;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.SemanticKernel;
 using NSubstitute;
 
 namespace JD.AI.Gateway.Tests.Commands;
 
 public class GatewayCommandTests
 {
+    private readonly IProviderRegistry _providers;
     private readonly AgentPoolService _pool;
     private readonly ChannelRegistry _channels;
     private readonly AgentRouter _router;
@@ -20,9 +22,29 @@ public class GatewayCommandTests
 
     public GatewayCommandTests()
     {
-        var providers = Substitute.For<IProviderRegistry>();
+        _providers = Substitute.For<IProviderRegistry>();
+
+        var ollamaModel = new ProviderModelInfo("llama3.2:latest", "llama3.2:latest", "Ollama");
+        var openAiModel = new ProviderModelInfo("gpt-5.3-codex", "gpt-5.3-codex", "OpenAI");
+
+        var detectedProviders = new List<ProviderInfo>
+        {
+            new("Ollama", true, null, [ollamaModel]),
+            new("OpenAI", true, null, [openAiModel]),
+            new("Claude", false, "offline", [])
+        };
+
+        var detector = Substitute.For<IProviderDetector>();
+        detector.BuildKernel(Arg.Any<ProviderModelInfo>()).Returns(_ => Kernel.CreateBuilder().Build());
+
+        _providers.DetectProvidersAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<IReadOnlyList<ProviderInfo>>(detectedProviders));
+        _providers.GetModelsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<IReadOnlyList<ProviderModelInfo>>([ollamaModel, openAiModel]));
+        _providers.GetDetector(Arg.Any<string>()).Returns(detector);
+
         var eventBus = Substitute.For<IEventBus>();
-        _pool = new AgentPoolService(providers, eventBus, NullLogger<AgentPoolService>.Instance);
+        _pool = new AgentPoolService(_providers, eventBus, NullLogger<AgentPoolService>.Instance);
         _channels = new ChannelRegistry();
         _router = new AgentRouter(_pool, _channels, eventBus, NullLogger<AgentRouter>.Instance);
         _config = new GatewayConfig
@@ -47,6 +69,63 @@ public class GatewayCommandTests
         ChannelType = "discord",
         Arguments = args ?? new Dictionary<string, string>(StringComparer.Ordinal)
     };
+
+    // --- Route commands ---
+
+    [Fact]
+    public async Task RouteCommand_RemapsCurrentChannel_WhenAgentMatchExists()
+    {
+        var agentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        var cmd = new RouteCommand(_router, _pool);
+
+        var result = await cmd.ExecuteAsync(MakeContext("route", new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["agent"] = "ollama"
+        }));
+
+        result.Success.Should().BeTrue();
+        _router.GetAgentForChannel("discord").Should().Be(agentId);
+        result.Content.Should().Contain("now routes");
+    }
+
+    [Fact]
+    public async Task RoutesCommand_ListsMappedChannels()
+    {
+        var agentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        _router.MapChannel("discord", agentId);
+        var cmd = new RoutesCommand(_router, _pool);
+
+        var result = await cmd.ExecuteAsync(MakeContext("routes"));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain("discord");
+        result.Content.Should().Contain("Ollama/llama3.2:latest");
+    }
+
+    [Fact]
+    public async Task ProviderCommand_SwitchesProvider_ForMappedChannel()
+    {
+        var initialAgentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        _router.MapChannel("discord", initialAgentId);
+        var cmd = new ProviderCommand(_router, _pool, _providers);
+
+        var result = await cmd.ExecuteAsync(MakeContext("provider", new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["name"] = "openai"
+        }));
+
+        result.Success.Should().BeTrue();
+        var mappedAgentId = _router.GetAgentForChannel("discord");
+        mappedAgentId.Should().NotBeNull();
+        mappedAgentId.Should().NotBe(initialAgentId);
+
+        var mappedAgent = _pool.ListAgents().Single(a =>
+            string.Equals(a.Id, mappedAgentId, StringComparison.Ordinal));
+        mappedAgent.Provider.Should().Be("OpenAI");
+        mappedAgent.Model.Should().Be("gpt-5.3-codex");
+
+        result.Content.Should().Contain("Switched to **OpenAI**");
+    }
 
     // --- StatusCommand ---
 
@@ -159,6 +238,10 @@ public class GatewayCommandTests
         registry.Register(helpCmd);
         registry.Register(new UsageCommand(_pool));
         registry.Register(new StatusCommand(_pool, _channels));
+        registry.Register(new RouteCommand(_router, _pool));
+        registry.Register(new RoutesCommand(_router, _pool));
+        registry.Register(new ProvidersCommand(_providers));
+        registry.Register(new ProviderCommand(_router, _pool, _providers));
 
         var result = await helpCmd.ExecuteAsync(MakeContext("help"));
 
@@ -166,5 +249,9 @@ public class GatewayCommandTests
         result.Content.Should().Contain("jdai-help");
         result.Content.Should().Contain("jdai-usage");
         result.Content.Should().Contain("jdai-status");
+        result.Content.Should().Contain("jdai-route");
+        result.Content.Should().Contain("jdai-routes");
+        result.Content.Should().Contain("jdai-provider");
+        result.Content.Should().Contain("jdai-providers");
     }
 }

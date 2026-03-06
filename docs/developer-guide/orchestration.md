@@ -7,6 +7,8 @@ description: "IOrchestrationStrategy interface, implementing custom strategies, 
 
 Team orchestration coordinates multiple [subagents](subagents.md) working together on complex tasks. This guide covers the internals for developers who want to understand, customize, or extend the orchestration system.
 
+![Team orchestration progress panel](../images/demo-orchestration.png)
+
 ## IOrchestrationStrategy interface
 
 All strategies implement this interface from `src/JD.AI.Core/Agents/Orchestration/`:
