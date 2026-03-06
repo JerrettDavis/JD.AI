@@ -10,6 +10,15 @@ namespace JD.AI.Commands;
 /// </summary>
 internal static class UpdateCliHandler
 {
+    internal static Func<CancellationToken, Task<InstallationInfo>> DetectInstallationAsync { get; set; } =
+        InstallationDetector.DetectAsync;
+
+    internal static Func<InstallationInfo, IInstallStrategy> UpdateStrategyFactory { get; set; } =
+        InstallerFactory.Create;
+
+    internal static Func<InstallationInfo, IInstallStrategy> InstallStrategyFactory { get; set; } =
+        static info => new GitHubReleaseStrategy(info.RuntimeId, info.ExecutablePath);
+
     public static async Task<int> RunAsync(string subcommand, string[] args)
     {
         using var cts = new CancellationTokenSource();
@@ -32,7 +41,7 @@ internal static class UpdateCliHandler
 
         if (args.Contains("--help") || args.Contains("-h"))
         {
-            AnsiConsole.MarkupLine("[bold]Usage:[/] jdai update [--check] [--force]");
+            AnsiConsole.MarkupLine("[bold]Usage:[/] jdai update [[--check]] [[--force]]");
             AnsiConsole.MarkupLine("  [dim]--check[/]   Check for updates without applying");
             AnsiConsole.MarkupLine("  [dim]--force[/]   Force update even if already on latest");
             return 0;
@@ -43,10 +52,10 @@ internal static class UpdateCliHandler
             .Spinner(Spinner.Known.Dots)
             .SpinnerStyle(Style.Parse("blue"))
             .StartAsync("Detecting installation...", async _ =>
-                await InstallationDetector.DetectAsync(ct).ConfigureAwait(false))
+                await DetectInstallationAsync(ct).ConfigureAwait(false))
             .ConfigureAwait(false);
 
-        var strategy = InstallerFactory.Create(info);
+        var strategy = UpdateStrategyFactory(info);
 
         AnsiConsole.MarkupLine(
             $"[dim]Installed via[/] [bold]{strategy.Name}[/] " +
@@ -123,7 +132,7 @@ internal static class UpdateCliHandler
     {
         if (args.Contains("--help") || args.Contains("-h"))
         {
-            AnsiConsole.MarkupLine("[bold]Usage:[/] jdai install [version] [--force]");
+            AnsiConsole.MarkupLine("[bold]Usage:[/] jdai install [[version]] [[--force]]");
             AnsiConsole.MarkupLine("  [dim]version[/]   Version to install (default: latest)");
             AnsiConsole.MarkupLine("  [dim]--force[/]   Force reinstall even if same version");
             AnsiConsole.WriteLine();
@@ -142,7 +151,7 @@ internal static class UpdateCliHandler
             .Spinner(Spinner.Known.Dots)
             .SpinnerStyle(Style.Parse("blue"))
             .StartAsync("Detecting installation...", async _ =>
-                await InstallationDetector.DetectAsync(ct).ConfigureAwait(false))
+                await DetectInstallationAsync(ct).ConfigureAwait(false))
             .ConfigureAwait(false);
 
         AnsiConsole.MarkupLine(
@@ -150,7 +159,7 @@ internal static class UpdateCliHandler
             $"[dim]Current:[/] [bold]{Markup.Escape(info.CurrentVersion)}[/]");
 
         // For `install`, always use GitHub releases (that's the whole point — no dotnet required)
-        var strategy = new GitHubReleaseStrategy(info.RuntimeId, info.ExecutablePath);
+        var strategy = InstallStrategyFactory(info);
 
         if (targetVersion is null && !force)
         {
