@@ -231,9 +231,8 @@ public sealed class McpCliHandlerTests : IDisposable
     [Fact]
     public async Task Browse_InvalidCategory_ReturnsOne()
     {
-        // Non-interactive environment: the MultiSelectionPrompt will throw
-        // InvalidOperationException; BrowseAsync catches it and returns non-zero
-        // when the catalog is empty for the requested category.
+        // BrowseAsync filters the catalog before calling Pick; an unknown category
+        // produces an empty catalog list, so it returns 1 before any UI prompt is shown.
         var result = await CaptureStderrAsync(
             () => McpCliHandler.RunAsync(["browse", "--category", "NonExistentCategory99"]));
 

@@ -84,13 +84,20 @@ internal static class McpInstaller
                                 ? ValidationResult.Success()
                                 : ValidationResult.Error("[red]Value cannot be empty.[/]")));
 
-                    // Replace placeholder in args list
+                    // Replace placeholder in args list (supports both exact slots and inline)
                     var placeholder = $"{{{argPrompt.Placeholder}}}";
+                    var replaced = false;
                     for (var i = 0; i < args.Count; i++)
                     {
-                        if (string.Equals(args[i], placeholder, StringComparison.Ordinal))
-                            args[i] = value;
+                        if (args[i].Contains(placeholder, StringComparison.Ordinal))
+                        {
+                            args[i] = args[i].Replace(placeholder, value, StringComparison.Ordinal);
+                            replaced = true;
+                        }
                     }
+                    if (!replaced)
+                        AnsiConsole.MarkupLine(
+                            $"  [yellow]⚠[/] Placeholder '{Markup.Escape(placeholder)}' not found in args for {Markup.Escape(entry.DisplayName)}.");
                 }
             }
 
@@ -98,7 +105,13 @@ internal static class McpInstaller
             McpServerDefinition definition;
             if (entry.Transport == CuratedMcpTransport.Http)
             {
-                Uri.TryCreate(entry.Url, UriKind.Absolute, out var uri);
+                if (!Uri.TryCreate(entry.Url, UriKind.Absolute, out var uri))
+                {
+                    AnsiConsole.MarkupLine(
+                        $"  [red]✗[/] Cannot install {Markup.Escape(entry.DisplayName)}: " +
+                        $"invalid URL '{Markup.Escape(entry.Url ?? "(null)")}'.");
+                    continue;
+                }
                 definition = new McpServerDefinition(
                     name: entry.Id,
                     displayName: entry.DisplayName,

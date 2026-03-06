@@ -274,7 +274,7 @@ internal static class McpCliHandler
             return 1;
         }
 
-        var selected = McpCatalogPicker.Pick(catalog, installedIds, categoryFilter);
+        var selected = McpCatalogPicker.Pick(catalog, installedIds, categoryFilter: null);
 
         var toInstall = selected
             .Where(e => !installedIds.Contains(e.Id))

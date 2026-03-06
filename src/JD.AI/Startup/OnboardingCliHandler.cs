@@ -159,11 +159,8 @@ internal static class OnboardingCliHandler
 
     private static string? GetFlagValue(string[] args, string flag)
     {
-        return args
-            .Select((value, index) => (value, index))
-            .FirstOrDefault(t => string.Equals(t.value, flag, StringComparison.OrdinalIgnoreCase))
-            .index is var idx && idx >= 0 && idx + 1 < args.Length
-            ? args[idx + 1]
-            : null;
+        var idx = Array.FindIndex(args, a =>
+            string.Equals(a, flag, StringComparison.OrdinalIgnoreCase));
+        return idx >= 0 && idx + 1 < args.Length ? args[idx + 1] : null;
     }
 }
