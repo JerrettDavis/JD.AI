@@ -29,6 +29,20 @@ public sealed class ExecutionContext
 
     /// <summary>Sentinel empty context.</summary>
     public static ExecutionContext Empty { get; } = new();
+
+    /// <summary>
+    /// Creates a child context that shares the same trace ID and session metadata
+    /// but has a new span ID and records the parent span ID.
+    /// </summary>
+    internal ExecutionContext CreateChild(string childSpanId) => new()
+    {
+        TraceId = TraceId,
+        SessionId = SessionId,
+        TurnIndex = TurnIndex,
+        ParentAgentId = ParentAgentId,
+        SpanId = childSpanId,
+        ParentSpanId = SpanId,
+    };
 }
 
 /// <summary>
@@ -59,13 +73,20 @@ public static class TraceContext
         return ctx;
     }
 
-    /// <summary>Creates a child span under the current context.</summary>
+    /// <summary>
+    /// Creates a child span under the current context.
+    /// Allocates a new <see cref="ExecutionContext"/> so each async flow gets its own
+    /// span state — avoids the read-modify-write race on the shared mutable object.
+    /// </summary>
     public static string StartChildSpan()
     {
-        var ctx = CurrentContext;
+        var parent = CurrentContext;
         var childSpan = Guid.NewGuid().ToString("N")[..16];
-        ctx.ParentSpanId = ctx.SpanId;
-        ctx.SpanId = childSpan;
+
+        // Replace the AsyncLocal slot with a new object: preserves TraceId + session
+        // metadata while assigning a new SpanId and recording the parent SpanId.
+        Current.Value = parent.CreateChild(childSpan);
+
         return childSpan;
     }
 }

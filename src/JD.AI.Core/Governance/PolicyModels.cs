@@ -40,6 +40,7 @@ public sealed class PolicySpec
     public AuditPolicy? Audit { get; set; }
     public WorkflowPolicy? Workflows { get; set; }
     public CircuitBreakerPolicy? CircuitBreaker { get; set; }
+    public RolePolicy? Roles { get; set; }
 }
 
 #pragma warning disable CA2227 // Settable collection properties required for YAML deserialization
@@ -144,4 +145,47 @@ public sealed class CircuitBreakerPolicy
 
     /// <summary>When true, circuit breakers cannot be disabled or reset by users.</summary>
     public bool Hardened { get; set; }
+}
+
+/// <summary>
+/// RBAC role definitions. Maps role names to the additional policies they grant.
+/// </summary>
+public sealed class RolePolicy
+{
+#pragma warning disable CA2227
+    /// <summary>
+    /// Defines roles and which additional tool/provider/model permissions they confer.
+    /// Key is the role name; value describes what the role permits.
+    /// </summary>
+    public IDictionary<string, RoleDefinition> Definitions { get; set; } = new Dictionary<string, RoleDefinition>();
+#pragma warning restore CA2227
+}
+
+/// <summary>
+/// Defines what a named role is allowed or denied beyond the base policy.
+/// </summary>
+public sealed class RoleDefinition
+{
+#pragma warning disable CA2227 // Settable collection properties required for YAML deserialization
+    /// <summary>Optional roles this role inherits from (additive).</summary>
+    public IList<string> Inherits { get; set; } = [];
+
+    /// <summary>Additional tools allowed for this role (on top of base policy).</summary>
+    public IList<string> AllowTools { get; set; } = [];
+
+    /// <summary>Tools explicitly denied for this role regardless of base policy.</summary>
+    public IList<string> DenyTools { get; set; } = [];
+
+    /// <summary>Additional providers allowed for this role.</summary>
+    public IList<string> AllowProviders { get; set; } = [];
+
+    /// <summary>Providers denied for this role.</summary>
+    public IList<string> DenyProviders { get; set; } = [];
+
+    /// <summary>Additional models allowed for this role.</summary>
+    public IList<string> AllowModels { get; set; } = [];
+
+    /// <summary>Models denied for this role.</summary>
+    public IList<string> DenyModels { get; set; } = [];
+#pragma warning restore CA2227
 }

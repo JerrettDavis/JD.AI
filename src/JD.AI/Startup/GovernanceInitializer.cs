@@ -114,8 +114,13 @@ internal static class GovernanceInitializer
         // Policy tools
         kernel.Plugins.AddFromObject(new PolicyTools(policyEvaluator, auditService), "policy");
 
-        // Tool loadout system
-        var loadoutRegistry = new ToolLoadoutRegistry();
+        // Tool loadout system — built-ins wrapped by file-based user loadouts
+        var builtInRegistry = new ToolLoadoutRegistry();
+        var fileRegistry = new FileToolLoadoutRegistry([
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".jdai", "loadouts"),
+            Path.Combine(Directory.GetCurrentDirectory(), "loadouts"),
+        ]);
+        var loadoutRegistry = new CompositeToolLoadoutRegistry(fileRegistry, builtInRegistry);
         var allPlugins = kernel.Plugins.ToList().AsReadOnly();
         session.LoadoutRegistry = loadoutRegistry;
         session.AllPlugins = allPlugins;
