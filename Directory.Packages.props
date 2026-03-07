@@ -70,7 +70,7 @@
   </ItemGroup>
   <!-- Channel adapters -->
   <ItemGroup>
-    <PackageVersion Include="Discord.Net" Version="3.18.0" />
+    <PackageVersion Include="Discord.Net" Version="3.19.0" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.3" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3" />
     <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.3" />
