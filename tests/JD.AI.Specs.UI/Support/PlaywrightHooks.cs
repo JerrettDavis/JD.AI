@@ -32,7 +32,7 @@ public sealed class PlaywrightHooks
         _playwright?.Dispose();
     }
 
-    [BeforeScenario("@ui")]
+    [BeforeScenario("@ui", Order = 0)]
     public async Task BeforeScenario(ScenarioContext context)
     {
         var browserContext = await _browser!.NewContextAsync(new BrowserNewContextOptions

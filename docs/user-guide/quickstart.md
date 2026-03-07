@@ -35,7 +35,7 @@ cd /path/to/your/project
 jdai
 ```
 
-On startup JD.AI detects every available provider, selects the best model, and displays a welcome banner with the active provider and model name. If multiple providers are available you can switch at any time with `/provider`.
+On startup JD.AI detects every available provider, selects the best model, and displays a welcome banner with provider/model, service health, current working directory, and version details. You can customize what appears with `/config set welcome_* ...` (for example `/config set welcome_cwd off`) and optionally enable MoTD via `welcome_motd` + `welcome_motd_url`.
 
 ## Step 2: Find and select a model
 

@@ -7,90 +7,140 @@ namespace JD.AI.Tests.Commands;
 public sealed class PluginCliHandlerTests : IDisposable
 {
     private readonly string _tempDir;
-    private readonly string _originalDataDir;
+    private readonly string _origDataDir;
 
     public PluginCliHandlerTests()
     {
-        _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-plugin-cli-{Guid.NewGuid():N}");
+        _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-plugin-cli-test-{Guid.NewGuid():N}");
         Directory.CreateDirectory(_tempDir);
 
-        _originalDataDir = Environment.GetEnvironmentVariable("JDAI_DATA_DIR") ?? string.Empty;
+        _origDataDir = Environment.GetEnvironmentVariable("JDAI_DATA_DIR") ?? string.Empty;
         Environment.SetEnvironmentVariable("JDAI_DATA_DIR", _tempDir);
         DataDirectories.Reset();
     }
 
     public void Dispose()
     {
-        Environment.SetEnvironmentVariable("JDAI_DATA_DIR",
-            string.IsNullOrEmpty(_originalDataDir) ? null : _originalDataDir);
+        Environment.SetEnvironmentVariable("JDAI_DATA_DIR", string.IsNullOrEmpty(_origDataDir) ? null : _origDataDir);
         DataDirectories.Reset();
+
         try { Directory.Delete(_tempDir, recursive: true); }
         catch { /* best effort */ }
     }
 
     [Fact]
-    public async Task HelpUnknownAndListPaths_AreHandled()
+    public async Task List_EmptyRegistry_ReturnsZero()
     {
-        var help = await CaptureStdoutAsync(() => PluginCliHandler.RunAsync(["help"]));
-        var unknown = await CaptureStderrAsync(() => PluginCliHandler.RunAsync(["bogus"]));
-        var list = await CaptureStdoutAsync(() => PluginCliHandler.RunAsync(["list"]));
+        var result = await CaptureStdoutAsync(() => PluginCliHandler.RunAsync(["list"]));
 
-        Assert.Equal(0, help.ExitCode);
-        Assert.Contains("jdai plugin", help.Output, StringComparison.OrdinalIgnoreCase);
-
-        Assert.Equal(1, unknown.ExitCode);
-        Assert.Contains("Unknown plugin subcommand", unknown.Output, StringComparison.Ordinal);
-
-        Assert.Equal(0, list.ExitCode);
-        Assert.Contains("No plugins installed", list.Output, StringComparison.Ordinal);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("No plugins installed.", result.Output);
     }
 
     [Fact]
-    public async Task MissingArguments_ReturnUsageErrors()
+    public async Task Help_ReturnsZero()
     {
-        var install = await CaptureStderrAsync(() => PluginCliHandler.RunAsync(["install"]));
-        var enable = await CaptureStderrAsync(() => PluginCliHandler.RunAsync(["enable"]));
-        var disable = await CaptureStderrAsync(() => PluginCliHandler.RunAsync(["disable"]));
-        var uninstall = await CaptureStderrAsync(() => PluginCliHandler.RunAsync(["uninstall"]));
-        var info = await CaptureStderrAsync(() => PluginCliHandler.RunAsync(["info"]));
+        var result = await CaptureStdoutAsync(() => PluginCliHandler.RunAsync(["--help"]));
 
-        Assert.Equal(1, install.ExitCode);
-        Assert.Contains("Usage: jdai plugin install", install.Output, StringComparison.Ordinal);
-
-        Assert.Equal(1, enable.ExitCode);
-        Assert.Contains("Usage: jdai plugin enable", enable.Output, StringComparison.Ordinal);
-
-        Assert.Equal(1, disable.ExitCode);
-        Assert.Contains("Usage: jdai plugin disable", disable.Output, StringComparison.Ordinal);
-
-        Assert.Equal(1, uninstall.ExitCode);
-        Assert.Contains("Usage: jdai plugin uninstall", uninstall.Output, StringComparison.Ordinal);
-
-        Assert.Equal(1, info.ExitCode);
-        Assert.Contains("Usage: jdai plugin info", info.Output, StringComparison.Ordinal);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("jdai plugin", result.Output, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Subcommands:", result.Output, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task InfoAndUninstall_ForUnknownPlugin_ReturnExpectedErrors()
+    public async Task UnknownSubcommand_ReturnsOne()
     {
-        var info = await CaptureStderrAsync(() => PluginCliHandler.RunAsync(["info", "missing-plugin"]));
-        var uninstall = await CaptureStdoutAsync(() => PluginCliHandler.RunAsync(["uninstall", "missing-plugin"]));
-        var updateAll = await CaptureStdoutAsync(() => PluginCliHandler.RunAsync(["update"]));
+        var result = await CaptureStderrAsync(() => PluginCliHandler.RunAsync(["bogus"]));
 
-        Assert.Equal(1, info.ExitCode);
-        Assert.Contains("not found", info.Output, StringComparison.OrdinalIgnoreCase);
-
-        Assert.Equal(1, uninstall.ExitCode);
-        Assert.Contains("is not installed", uninstall.Output, StringComparison.OrdinalIgnoreCase);
-
-        Assert.Equal(0, updateAll.ExitCode);
-        Assert.Contains("Updated 0 plugin(s)", updateAll.Output, StringComparison.Ordinal);
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Unknown plugin subcommand", result.Output, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task InstallInvalidSource_UsesTopLevelErrorHandler()
+    public async Task Install_MissingSource_ReturnsOne()
     {
-        var result = await CaptureStderrAsync(() => PluginCliHandler.RunAsync(["install", "not-a-plugin-source"]));
+        var result = await CaptureStderrAsync(() => PluginCliHandler.RunAsync(["install"]));
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Usage: jdai plugin install <path-or-url>", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Enable_MissingId_ReturnsOne()
+    {
+        var result = await CaptureStderrAsync(() => PluginCliHandler.RunAsync(["enable"]));
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Usage: jdai plugin enable <id>", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Disable_MissingId_ReturnsOne()
+    {
+        var result = await CaptureStderrAsync(() => PluginCliHandler.RunAsync(["disable"]));
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Usage: jdai plugin disable <id>", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Update_EmptyRegistry_ReturnsZero()
+    {
+        var result = await CaptureStdoutAsync(() => PluginCliHandler.RunAsync(["update"]));
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("Updated 0 plugin(s).", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Uninstall_MissingId_ReturnsOne()
+    {
+        var result = await CaptureStderrAsync(() => PluginCliHandler.RunAsync(["uninstall"]));
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Usage: jdai plugin uninstall <id>", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Uninstall_NotInstalled_ReturnsOne()
+    {
+        var result = await CaptureStdoutAsync(() => PluginCliHandler.RunAsync(["uninstall", "not-installed"]));
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("is not installed", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Info_MissingId_ReturnsOne()
+    {
+        var result = await CaptureStderrAsync(() => PluginCliHandler.RunAsync(["info"]));
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Usage: jdai plugin info <id>", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Info_NotInstalled_ReturnsOne()
+    {
+        var result = await CaptureStderrAsync(() => PluginCliHandler.RunAsync(["info", "not-installed"]));
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("not found", result.Output, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Enable_NotInstalled_ReturnsOneWithError()
+    {
+        var result = await CaptureStderrAsync(() => PluginCliHandler.RunAsync(["enable", "missing"]));
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Plugin command failed", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Disable_NotInstalled_ReturnsOneWithError()
+    {
+        var result = await CaptureStderrAsync(() => PluginCliHandler.RunAsync(["disable", "missing"]));
 
         Assert.Equal(1, result.ExitCode);
         Assert.Contains("Plugin command failed", result.Output, StringComparison.Ordinal);
@@ -98,33 +148,33 @@ public sealed class PluginCliHandlerTests : IDisposable
 
     private static async Task<(int ExitCode, string Output)> CaptureStdoutAsync(Func<Task<int>> action)
     {
-        var original = Console.Out;
-        using var writer = new StringWriter();
-        Console.SetOut(writer);
+        var old = Console.Out;
+        using var sw = new StringWriter();
+        Console.SetOut(sw);
         try
         {
             var code = await action().ConfigureAwait(false);
-            return (code, writer.ToString());
+            return (code, sw.ToString());
         }
         finally
         {
-            Console.SetOut(original);
+            Console.SetOut(old);
         }
     }
 
     private static async Task<(int ExitCode, string Output)> CaptureStderrAsync(Func<Task<int>> action)
     {
-        var original = Console.Error;
-        using var writer = new StringWriter();
-        Console.SetError(writer);
+        var old = Console.Error;
+        using var sw = new StringWriter();
+        Console.SetError(sw);
         try
         {
             var code = await action().ConfigureAwait(false);
-            return (code, writer.ToString());
+            return (code, sw.ToString());
         }
         finally
         {
-            Console.SetError(original);
+            Console.SetError(old);
         }
     }
 }
