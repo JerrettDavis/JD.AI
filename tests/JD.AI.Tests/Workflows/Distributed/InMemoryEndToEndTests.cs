@@ -86,7 +86,7 @@ public sealed class InMemoryEndToEndTests
     [Fact]
     public async Task EndToEnd_ManyItems_AllProcessed()
     {
-        const int count = 20;
+        const int Count = 20;
         var processed = new System.Collections.Concurrent.ConcurrentBag<string>();
 
         var worker = new DelegatingWorker(item =>
@@ -95,15 +95,15 @@ public sealed class InMemoryEndToEndTests
             return WorkItemResult.Success;
         });
 
-        var (dispatcher, service, dlq, cts) = BuildPipeline(worker, capacity: count * 2);
+        var (dispatcher, service, dlq, cts) = BuildPipeline(worker, capacity: Count * 2);
         await service.StartAsync(cts.Token);
 
-        for (var i = 0; i < count; i++)
+        for (var i = 0; i < Count; i++)
             await dispatcher.DispatchAsync(new WorkflowWorkItem { WorkflowName = $"bulk-wf-{i}" }, cts.Token);
 
         await Task.Delay(1000, cts.Token);
 
-        processed.Should().HaveCount(count);
+        processed.Should().HaveCount(Count);
         dlq.Items.Should().BeEmpty();
 
         await service.StopAsync(CancellationToken.None);
