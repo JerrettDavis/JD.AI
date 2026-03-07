@@ -128,6 +128,75 @@ public sealed class WorkflowVersioningTests
         Assert.Equal(4, bound.Minor);
         Assert.Equal(0, bound.Patch);
     }
+
+    // ── Operators ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Operator_LessThan()
+    {
+        Assert.True(WorkflowSemVersion.TryParse("1.0.0", out var a));
+        Assert.True(WorkflowSemVersion.TryParse("2.0.0", out var b));
+        Assert.True(a < b);
+        Assert.False(b < a);
+    }
+
+    [Fact]
+    public void Operator_LessThanOrEqual()
+    {
+        Assert.True(WorkflowSemVersion.TryParse("1.0.0", out var a));
+        Assert.True(WorkflowSemVersion.TryParse("1.0.0", out var b));
+        Assert.True(a <= b);
+    }
+
+    [Fact]
+    public void Operator_GreaterThanOrEqual()
+    {
+        Assert.True(WorkflowSemVersion.TryParse("2.0.0", out var a));
+        Assert.True(WorkflowSemVersion.TryParse("1.0.0", out var b));
+        Assert.True(a >= b);
+    }
+
+    [Fact]
+    public void CompareTo_PreRelease_NumericOrdering()
+    {
+        Assert.True(WorkflowSemVersion.TryParse("1.0.0-alpha.1", out var a));
+        Assert.True(WorkflowSemVersion.TryParse("1.0.0-alpha.2", out var b));
+        Assert.True(a < b);
+    }
+
+    [Fact]
+    public void TryParse_WithPreReleaseAndBuild()
+    {
+        Assert.True(WorkflowSemVersion.TryParse("2.1.0-beta.2+sha.abc", out var v));
+        Assert.Contains("beta", v.PreRelease);
+        Assert.Equal("sha.abc", v.BuildMetadata);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("   ")]
+    [InlineData("a.b.c")]
+    public void TryParse_InvalidInputs_ReturnFalse(string? input)
+    {
+        Assert.False(WorkflowSemVersion.TryParse(input, out _));
+    }
+
+    // ── ParseVersionOrThrow ───────────────────────────────────────────────────
+
+    [Fact]
+    public void ParseVersionOrThrow_ValidVersion_Succeeds()
+    {
+        var v = WorkflowVersioning.ParseVersionOrThrow("3.2.1");
+        Assert.Equal(3, v.Major);
+        Assert.Equal(2, v.Minor);
+        Assert.Equal(1, v.Patch);
+    }
+
+    [Fact]
+    public void ParseVersionOrThrow_InvalidVersion_Throws()
+    {
+        Assert.Throws<InvalidDataException>(() => WorkflowVersioning.ParseVersionOrThrow("invalid"));
+    }
 }
 
 /// <summary>
