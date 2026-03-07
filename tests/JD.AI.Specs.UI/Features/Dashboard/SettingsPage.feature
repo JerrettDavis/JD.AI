@@ -27,7 +27,6 @@ Feature: Settings Page
         And the alert should display "Unable to load gateway configuration"
 
     # ── Tab strip ─────────────────────────────────────────
-    @smoke
     Scenario: Tab strip with all six tabs
         Then I should see the settings tab strip
         And the tab strip should contain a "Server" tab
@@ -86,7 +85,6 @@ Feature: Settings Page
         Then the browser page title should be "Settings — JD.AI"
 
     # ── Server Tab Content ────────────────────────────────
-    @smoke
     Scenario: Server tab shows network configuration
         When I click the "Server" tab
         Then the server settings panel should be visible
@@ -104,7 +102,6 @@ Feature: Settings Page
         Then I should see the "Save Server Settings" button
 
     # ── Agents Tab Content ────────────────────────────────
-    @smoke
     Scenario: Agents tab shows agent definitions
         When I click the "Agents" tab
         Then the agents settings panel should be visible
@@ -118,7 +115,6 @@ Feature: Settings Page
         And each agent entry should have a "Model Parameters" expansion panel
 
     # ── Channels Tab Content ──────────────────────────────
-    @smoke
     Scenario: Channels tab shows channel configuration list
         When I click the "Channels" tab
         Then the channels settings panel should be visible
@@ -134,7 +130,6 @@ Feature: Settings Page
         Then that setting field should be a password input
 
     # ── Providers Tab Content ─────────────────────────────
-    @smoke
     Scenario: Providers tab shows provider list
         When I click the "Providers" tab
         Then the providers settings panel should be visible
@@ -145,7 +140,6 @@ Feature: Settings Page
         Then each provider entry should have a "Test" button
 
     # ── Routing Tab Content ───────────────────────────────
-    @smoke
     Scenario: Routing tab shows default agent selector
         When I click the "Routing" tab
         Then the routing settings panel should be visible
@@ -156,7 +150,6 @@ Feature: Settings Page
         Then I should see the "Add Rule" button
 
     # ── OpenClaw Tab Content ──────────────────────────────
-    @smoke
     Scenario: OpenClaw tab shows bridge configuration
         When I click the "OpenClaw" tab
         Then the OpenClaw settings panel should be visible

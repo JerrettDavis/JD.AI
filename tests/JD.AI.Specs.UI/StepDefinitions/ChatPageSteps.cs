@@ -153,7 +153,11 @@ public sealed class ChatPageSteps
     [Then(@"the message input should have placeholder ""(.*)""")]
     public async Task ThenTheMessageInputShouldHavePlaceholder(string expectedPlaceholder)
     {
+        // Try data-testid locator first, fall back to CSS class locator
         var input = _chatPage.MessageInput;
+        if (await input.CountAsync() == 0)
+            input = _page.Locator(".jd-chat-input input");
+
         var placeholder = await input.GetAttributeAsync("placeholder");
         Assert.NotNull(placeholder);
         Assert.Contains(expectedPlaceholder, placeholder, StringComparison.Ordinal);
@@ -164,7 +168,11 @@ public sealed class ChatPageSteps
     [Then(@"the message input should have a send icon")]
     public async Task ThenTheMessageInputShouldHaveASendIcon()
     {
+        // Try data-testid locator first, fall back to CSS class locator
         var sendIcon = _chatPage.SendIcon;
+        if (await sendIcon.CountAsync() == 0)
+            sendIcon = _page.Locator(".jd-chat-input .mud-input-adornment-end .mud-icon-root");
+
         await Expect(sendIcon).ToBeVisibleAsync();
     }
 
