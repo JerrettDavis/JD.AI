@@ -129,12 +129,26 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             .Select(kv =>
             {
                 var val = kv.Value?.ToString() ?? "null";
-                if (val.Length > 80)
+                if (val.Length > 200)
                 {
-                    val = string.Concat(val.AsSpan(0, 77), "...");
+                    val = string.Concat(val.AsSpan(0, 197), "...");
                 }
                 return $"{kv.Key}={val}";
             }));
+
+        // Enhanced display for file operations — show path + content size
+        var displayArgs = args;
+        if (canonicalToolName.Contains("write_file", StringComparison.Ordinal) ||
+            canonicalToolName.Contains("edit_file", StringComparison.Ordinal))
+        {
+            var path = context.Arguments?["path"]?.ToString() ?? context.Arguments?["filePath"]?.ToString();
+            var content = context.Arguments?["content"]?.ToString();
+            if (path is not null)
+            {
+                var sizeInfo = content is not null ? $" [{content.Length} chars]" : "";
+                displayArgs = $"path={path}{sizeInfo}";
+            }
+        }
 
         // ── Policy evaluation ────────────────────────────────
         PolicyEvaluationResult? policyResult = null;
@@ -191,7 +205,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
 
         if (needsConfirm)
         {
-            if (!output.ConfirmToolCall(functionName, args))
+            if (!output.ConfirmToolCall(functionName, displayArgs))
             {
                 context.Result = new FunctionResult(context.Function, "User denied tool execution.");
                 await EmitAuditEventAsync(functionName, canonicalToolName, context.Arguments, "user_denied", policyResult)
@@ -206,7 +220,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         }
         else
         {
-            output.RenderInfo($"  ▸ {functionName}({args})");
+            output.RenderInfo($"  ▸ {functionName}({displayArgs})");
         }
 
         // ── Tool execution with OTel + timeline tracing ─────────────────
@@ -246,7 +260,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
 
         // Render tool result
         var result = context.Result.GetValue<string>() ?? context.Result.ToString() ?? "";
-        output.RenderToolCall(functionName, args, result);
+        output.RenderToolCall(functionName, displayArgs, result);
 
         // ── Audit ────────────────────────────────────────────
         await EmitAuditEventAsync(functionName, canonicalToolName, context.Arguments, "ok", policyResult)
