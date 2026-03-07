@@ -110,7 +110,11 @@ public sealed class SharedSteps
     [When(@"I click the ""(.*)"" tab")]
     public async Task WhenIClickTheTab(string tabName)
     {
-        var tab = _page.GetByRole(AriaRole.Tab, new() { Name = tabName, Exact = true });
+        var tab = _page
+            .Locator("[data-testid='settings-tabs']")
+            .Locator($":text-is('{tabName}')")
+            .First;
+
         await Expect(tab).ToBeVisibleAsync();
         await tab.ClickAsync();
         await _page.WaitForTimeoutAsync(300);
