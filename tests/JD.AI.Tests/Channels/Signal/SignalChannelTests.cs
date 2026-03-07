@@ -1159,7 +1159,7 @@ public sealed class SignalChannelTests
         ch.MessageReceived += msg => { received.Add(msg); return Task.CompletedTask; };
 
         var json1 = BuildReceiveJson("From Alice", source: "+15550000001", sourceName: "Alice");
-        var json2 = BuildReceiveJson("From Bob",   source: "+15550000002", sourceName: "Bob");
+        var json2 = BuildReceiveJson("From Bob", source: "+15550000002", sourceName: "Bob");
         InjectReaderIntoDaemon(ch, MakeReader(json1, json2));
 
         await InvokeReadLoopAsync(ch);

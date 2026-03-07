@@ -29,9 +29,9 @@ public sealed class WebToolsTests
     [Fact]
     public void HtmlToText_PlainBody_ExtractsText()
     {
-        const string html = "<html><body><p>Hello World</p></body></html>";
+        const string Html = "<html><body><p>Hello World</p></body></html>";
 
-        var result = InvokeHtmlToText(html);
+        var result = InvokeHtmlToText(Html);
 
         result.Should().Contain("Hello World");
     }
@@ -39,9 +39,9 @@ public sealed class WebToolsTests
     [Fact]
     public void HtmlToText_RemovesScriptTags()
     {
-        const string html = "<html><body><p>Visible</p><script>alert('hidden')</script></body></html>";
+        const string Html = "<html><body><p>Visible</p><script>alert('hidden')</script></body></html>";
 
-        var result = InvokeHtmlToText(html);
+        var result = InvokeHtmlToText(Html);
 
         result.Should().Contain("Visible");
         result.Should().NotContain("hidden");
@@ -51,9 +51,9 @@ public sealed class WebToolsTests
     [Fact]
     public void HtmlToText_RemovesStyleTags()
     {
-        const string html = "<html><body><p>Content</p><style>.cls { color: red; }</style></body></html>";
+        const string Html = "<html><body><p>Content</p><style>.cls { color: red; }</style></body></html>";
 
-        var result = InvokeHtmlToText(html);
+        var result = InvokeHtmlToText(Html);
 
         result.Should().Contain("Content");
         result.Should().NotContain(".cls");
@@ -63,7 +63,7 @@ public sealed class WebToolsTests
     [Fact]
     public void HtmlToText_RemovesNavHeaderFooter()
     {
-        const string html = """
+        const string Html = """
             <html><body>
               <nav>Navigation links</nav>
               <header>Site header</header>
@@ -72,7 +72,7 @@ public sealed class WebToolsTests
             </body></html>
             """;
 
-        var result = InvokeHtmlToText(html);
+        var result = InvokeHtmlToText(Html);
 
         result.Should().Contain("Main content");
         result.Should().NotContain("Navigation links");
@@ -83,14 +83,14 @@ public sealed class WebToolsTests
     [Fact]
     public void HtmlToText_PrefersMainElement()
     {
-        const string html = """
+        const string Html = """
             <html><body>
               <main><p>Main area content</p></main>
               <p>Body paragraph</p>
             </body></html>
             """;
 
-        var result = InvokeHtmlToText(html);
+        var result = InvokeHtmlToText(Html);
 
         result.Should().Contain("Main area content");
     }
@@ -98,14 +98,14 @@ public sealed class WebToolsTests
     [Fact]
     public void HtmlToText_FallsBackToArticle_WhenNoMain()
     {
-        const string html = """
+        const string Html = """
             <html><body>
               <article><p>Article content</p></article>
               <p>Outside article</p>
             </body></html>
             """;
 
-        var result = InvokeHtmlToText(html);
+        var result = InvokeHtmlToText(Html);
 
         result.Should().Contain("Article content");
     }
@@ -113,9 +113,9 @@ public sealed class WebToolsTests
     [Fact]
     public void HtmlToText_FallsBackToBody_WhenNoMainOrArticle()
     {
-        const string html = "<html><body><p>Body only</p></body></html>";
+        const string Html = "<html><body><p>Body only</p></body></html>";
 
-        var result = InvokeHtmlToText(html);
+        var result = InvokeHtmlToText(Html);
 
         result.Should().Contain("Body only");
     }
@@ -123,9 +123,9 @@ public sealed class WebToolsTests
     [Fact]
     public void HtmlToText_HeadingsGetMarkdownPrefix()
     {
-        const string html = "<html><body><h1>Title</h1><h2>Subtitle</h2></body></html>";
+        const string Html = "<html><body><h1>Title</h1><h2>Subtitle</h2></body></html>";
 
-        var result = InvokeHtmlToText(html);
+        var result = InvokeHtmlToText(Html);
 
         result.Should().Contain("# Title");
         result.Should().Contain("## Subtitle");
@@ -134,9 +134,9 @@ public sealed class WebToolsTests
     [Fact]
     public void HtmlToText_H3_GetsThreeHashes()
     {
-        const string html = "<html><body><h3>Section</h3></body></html>";
+        const string Html = "<html><body><h3>Section</h3></body></html>";
 
-        var result = InvokeHtmlToText(html);
+        var result = InvokeHtmlToText(Html);
 
         result.Should().Contain("### Section");
     }
@@ -144,9 +144,9 @@ public sealed class WebToolsTests
     [Fact]
     public void HtmlToText_H4_GetsFourHashes()
     {
-        const string html = "<html><body><h4>Sub-section</h4></body></html>";
+        const string Html = "<html><body><h4>Sub-section</h4></body></html>";
 
-        var result = InvokeHtmlToText(html);
+        var result = InvokeHtmlToText(Html);
 
         result.Should().Contain("#### Sub-section");
     }
@@ -154,9 +154,9 @@ public sealed class WebToolsTests
     [Fact]
     public void HtmlToText_ListItemsGetBullets()
     {
-        const string html = "<html><body><ul><li>First</li><li>Second</li></ul></body></html>";
+        const string Html = "<html><body><ul><li>First</li><li>Second</li></ul></body></html>";
 
-        var result = InvokeHtmlToText(html);
+        var result = InvokeHtmlToText(Html);
 
         result.Should().Contain("- First");
         result.Should().Contain("- Second");
@@ -165,9 +165,9 @@ public sealed class WebToolsTests
     [Fact]
     public void HtmlToText_DecodesHtmlEntities()
     {
-        const string html = "<html><body><p>Hello &amp; World &lt;test&gt;</p></body></html>";
+        const string Html = "<html><body><p>Hello &amp; World &lt;test&gt;</p></body></html>";
 
-        var result = InvokeHtmlToText(html);
+        var result = InvokeHtmlToText(Html);
 
         result.Should().Contain("Hello & World <test>");
     }
@@ -175,9 +175,9 @@ public sealed class WebToolsTests
     [Fact]
     public void HtmlToText_CollapsesMultipleBlankLines()
     {
-        const string html = "<html><body><p>A</p><p></p><p></p><p>B</p></body></html>";
+        const string Html = "<html><body><p>A</p><p></p><p></p><p>B</p></body></html>";
 
-        var result = InvokeHtmlToText(html);
+        var result = InvokeHtmlToText(Html);
 
         // Must not have more than two consecutive newlines
         result.Should().NotMatchRegex(@"\n{3,}");
@@ -186,9 +186,9 @@ public sealed class WebToolsTests
     [Fact]
     public void HtmlToText_TrimsLeadingAndTrailingWhitespace()
     {
-        const string html = "<html><body>  <p>Trimmed</p>  </body></html>";
+        const string Html = "<html><body>  <p>Trimmed</p>  </body></html>";
 
-        var result = InvokeHtmlToText(html);
+        var result = InvokeHtmlToText(Html);
 
         result.Should().NotStartWith(" ");
         result.Should().NotEndWith(" ");
@@ -216,9 +216,9 @@ public sealed class WebToolsTests
     [Fact]
     public void HtmlToText_DivProducesNewline()
     {
-        const string html = "<html><body><div>Line one</div><div>Line two</div></body></html>";
+        const string Html = "<html><body><div>Line one</div><div>Line two</div></body></html>";
 
-        var result = InvokeHtmlToText(html);
+        var result = InvokeHtmlToText(Html);
 
         // Both texts must appear; newlines between them ensured by block logic
         result.Should().Contain("Line one");
@@ -228,9 +228,9 @@ public sealed class WebToolsTests
     [Fact]
     public void HtmlToText_BlockquoteIsExtracted()
     {
-        const string html = "<html><body><blockquote>Quoted text</blockquote></body></html>";
+        const string Html = "<html><body><blockquote>Quoted text</blockquote></body></html>";
 
-        var result = InvokeHtmlToText(html);
+        var result = InvokeHtmlToText(Html);
 
         result.Should().Contain("Quoted text");
     }
@@ -238,9 +238,9 @@ public sealed class WebToolsTests
     [Fact]
     public void HtmlToText_TableRowsAreExtracted()
     {
-        const string html = "<html><body><table><tr><td>Cell A</td></tr></table></body></html>";
+        const string Html = "<html><body><table><tr><td>Cell A</td></tr></table></body></html>";
 
-        var result = InvokeHtmlToText(html);
+        var result = InvokeHtmlToText(Html);
 
         result.Should().Contain("Cell A");
     }
@@ -280,10 +280,10 @@ public sealed class WebToolsTests
         result.Should().NotBeNullOrEmpty();
 
         // Manually truncate to simulate what WebFetchAsync does with maxLength
-        const int maxLength = 100;
-        if (result.Length > maxLength)
+        const int MaxLength = 100;
+        if (result.Length > MaxLength)
         {
-            var truncated = string.Concat(result.AsSpan(0, maxLength), "\n... [truncated]");
+            var truncated = string.Concat(result.AsSpan(0, MaxLength), "\n... [truncated]");
             truncated.Should().EndWith("[truncated]");
             truncated.Length.Should().BeLessThan(result.Length);
         }

@@ -459,7 +459,7 @@ public sealed class GitHubReleaseStrategyTests : IDisposable
         var routes = new Dictionary<string, (string Body, HttpStatusCode Status)>(StringComparer.Ordinal)
         {
             ["/releases/tags/v4.0.0"] = (releaseJson, HttpStatusCode.OK),
-            ["/releases/tags/4.0.0"]  = ("", HttpStatusCode.NotFound),
+            ["/releases/tags/4.0.0"] = ("", HttpStatusCode.NotFound),
         };
 
         await using var server = new MultiRouteStubServer(routes, defaultPath: "/releases/tags/v4.0.0");
@@ -491,7 +491,7 @@ public sealed class GitHubReleaseStrategyTests : IDisposable
         var routes = new Dictionary<string, (string Body, HttpStatusCode Status)>(StringComparer.Ordinal)
         {
             ["/releases/tags/v5.0.0"] = ("", HttpStatusCode.NotFound),
-            ["/releases/tags/5.0.0"]  = (releaseJson, HttpStatusCode.OK),
+            ["/releases/tags/5.0.0"] = (releaseJson, HttpStatusCode.OK),
         };
 
         await using var server = new MultiRouteStubServer(routes, defaultPath: "/releases/tags/v5.0.0");
@@ -937,6 +937,7 @@ public sealed class GitHubReleaseStrategyTests : IDisposable
         {
             await _cts.CancelAsync().ConfigureAwait(false);
             _listener.Stop();
+            _listener.Close();
             try { await _serverTask.ConfigureAwait(false); } catch { /* expected cancellation */ }
             _cts.Dispose();
         }
@@ -993,6 +994,7 @@ public sealed class GitHubReleaseStrategyTests : IDisposable
         {
             await _cts.CancelAsync().ConfigureAwait(false);
             _listener.Stop();
+            _listener.Close();
             try { await _serverTask.ConfigureAwait(false); } catch { }
             _cts.Dispose();
         }
@@ -1034,7 +1036,7 @@ public sealed class GitHubReleaseStrategyTests : IDisposable
                 catch { break; }
 
                 var path = ctx.Request.Url?.AbsolutePath ?? "/";
-                if (path == "/asset")
+                if (string.Equals(path, "/asset", StringComparison.Ordinal))
                 {
                     var bytes = await File.ReadAllBytesAsync(_binaryFilePath, ct).ConfigureAwait(false);
                     ctx.Response.StatusCode = 200;
@@ -1060,6 +1062,7 @@ public sealed class GitHubReleaseStrategyTests : IDisposable
         {
             await _cts.CancelAsync().ConfigureAwait(false);
             _listener.Stop();
+            _listener.Close();
             try { await _serverTask.ConfigureAwait(false); } catch { }
             _cts.Dispose();
         }

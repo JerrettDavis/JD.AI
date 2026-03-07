@@ -23,16 +23,16 @@ internal static class OpenClawTestHelpers
         string instanceName = "test",
         string sessionKey = "agent:test:main",
         string wsUrl = "ws://localhost:19999") => new()
-    {
-        WebSocketUrl = wsUrl,
-        InstanceName = instanceName,
-        SessionKey = sessionKey,
-        DeviceId = "test-device-id",
-        DeviceToken = "test-device-token",
-        GatewayToken = "test-gateway-token",
-        PublicKeyPem = "-----BEGIN PUBLIC KEY-----\ntest\n-----END PUBLIC KEY-----",
-        PrivateKeyPem = "-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----",
-    };
+        {
+            WebSocketUrl = wsUrl,
+            InstanceName = instanceName,
+            SessionKey = sessionKey,
+            DeviceId = "test-device-id",
+            DeviceToken = "test-device-token",
+            GatewayToken = "test-gateway-token",
+            PublicKeyPem = "-----BEGIN PUBLIC KEY-----\ntest\n-----END PUBLIC KEY-----",
+            PrivateKeyPem = "-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----",
+        };
 
     /// <summary>Builds an <see cref="OpenClawBridgeChannel"/> backed by a real (disconnected) RPC client.</summary>
     internal static (OpenClawBridgeChannel Channel, OpenClawRpcClient Rpc) MakeChannel(OpenClawConfig? config = null)
@@ -1898,8 +1898,8 @@ public sealed class ChannelMessageMappingTests
     public void OpenClawChannelId_Format_IsCorrect()
     {
         // The bridge produces ChannelId = $"openclaw-{_config.InstanceName}"
-        const string instanceName = "production";
-        var channelId = $"openclaw-{instanceName}";
+        const string InstanceName = "production";
+        var channelId = $"openclaw-{InstanceName}";
         channelId.Should().Be("openclaw-production");
     }
 }
