@@ -52,7 +52,7 @@ jobs:
           --collect:"XPlat Code Coverage"
           --
           DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
-          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI]*"
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI*]*"
           DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*"
 
       - name: Install ReportGenerator
@@ -66,7 +66,7 @@ jobs:
             -reports:"$REPORTS" \
             -targetdir:"coverage-report" \
             -reporttypes:"HtmlInline;Cobertura;TextSummary;Badges" \
-            -assemblyfilters:"+JD.AI;-*Tests*" \
+            -assemblyfilters:"+JD.AI*;-*Tests*" \
             -filefilters:"-**/*.Tests/*;-**/*Tests*/**"
           echo "COVERAGE_SUMMARY<<EOF" >> $GITHUB_ENV
           cat coverage-report/Summary.txt >> $GITHUB_ENV
@@ -136,7 +136,7 @@ jobs:
           --collect:"XPlat Code Coverage"
           --
           DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
-          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI]*"
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI*]*"
           DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*"
 
       - name: Install ReportGenerator
@@ -150,7 +150,7 @@ jobs:
             -reports:"$REPORTS" \
             -targetdir:"coverage-report" \
             -reporttypes:"Cobertura;TextSummary" \
-            -assemblyfilters:"+JD.AI;-*Tests*" \
+            -assemblyfilters:"+JD.AI*;-*Tests*" \
             -filefilters:"-**/*.Tests/*;-**/*Tests*/**"
 
       - name: Upload to Codecov
