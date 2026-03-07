@@ -199,4 +199,153 @@ public sealed class DataRedactorTests
         Assert.DoesNotContain("second", result, StringComparison.Ordinal);
         Assert.Equal(2, result.Split("[REDACTED]").Length - 1);
     }
+
+    // ── Classification-based redaction ───────────────────────────────
+
+    [Fact]
+    public void Redact_ClassificationRedact_ReplacesWithLabel()
+    {
+        var cls = new DataClassification
+        {
+            Name = "SSN",
+            Patterns = [@"\b\d{3}-\d{2}-\d{4}\b"],
+            Action = ClassificationAction.Redact,
+        };
+        var redactor = new DataRedactor([], [cls]);
+        var result = redactor.Redact("SSN: 123-45-6789");
+        Assert.Contains("[REDACTED:SSN]", result, StringComparison.Ordinal);
+        Assert.DoesNotContain("123-45-6789", result, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RedactWithClassifications_EmptyInput_ReturnsEmptyResult()
+    {
+        var cls = new DataClassification { Name = "SSN", Patterns = [@"\d+"] };
+        var redactor = new DataRedactor([], [cls]);
+        var result = redactor.RedactWithClassifications("");
+        Assert.Empty(result.Content);
+        Assert.False(result.HasMatches);
+    }
+
+    [Fact]
+    public void RedactWithClassifications_AuditOnly_NoRedaction()
+    {
+        var cls = new DataClassification
+        {
+            Name = "PII",
+            Patterns = [@"\b\d{3}-\d{2}-\d{4}\b"],
+            Action = ClassificationAction.AuditOnly,
+        };
+        var redactor = new DataRedactor([], [cls]);
+        var result = redactor.RedactWithClassifications("SSN: 123-45-6789");
+        Assert.Contains("123-45-6789", result.Content, StringComparison.Ordinal);
+        Assert.True(result.HasMatches);
+        Assert.Equal("PII", result.Matches[0].ClassificationName);
+        Assert.Equal(ClassificationAction.AuditOnly, result.Matches[0].Action);
+    }
+
+    [Fact]
+    public void RedactWithClassifications_DenyAndAudit_SetsShouldDeny()
+    {
+        var cls = new DataClassification
+        {
+            Name = "TopSecret",
+            Patterns = ["classified"],
+            Action = ClassificationAction.DenyAndAudit,
+        };
+        var redactor = new DataRedactor([], [cls]);
+        var result = redactor.RedactWithClassifications("This is classified information");
+        Assert.True(result.ShouldDeny);
+        Assert.True(result.HasMatches);
+    }
+
+    [Fact]
+    public void RedactWithClassifications_RedactAndAudit_RedactsAndRecords()
+    {
+        var cls = new DataClassification
+        {
+            Name = "CreditCard",
+            Patterns = [@"\b\d{4}-\d{4}-\d{4}-\d{4}\b"],
+            Action = ClassificationAction.RedactAndAudit,
+        };
+        var redactor = new DataRedactor([], [cls]);
+        var result = redactor.RedactWithClassifications("Card: 1234-5678-9012-3456");
+        Assert.Contains("[REDACTED:CreditCard]", result.Content, StringComparison.Ordinal);
+        Assert.DoesNotContain("1234-5678-9012-3456", result.Content, StringComparison.Ordinal);
+        Assert.True(result.HasMatches);
+    }
+
+    [Fact]
+    public void RedactWithClassifications_NoMatch_NoMatches()
+    {
+        var cls = new DataClassification { Name = "SSN", Patterns = [@"\b\d{9}\b"] };
+        var redactor = new DataRedactor([], [cls]);
+        var result = redactor.RedactWithClassifications("No numbers here");
+        Assert.False(result.HasMatches);
+        Assert.False(result.ShouldDeny);
+    }
+
+    [Fact]
+    public void RedactWithClassifications_FlatAndClassification_BothApply()
+    {
+        var cls = new DataClassification
+        {
+            Name = "Phone",
+            Patterns = [@"\b\d{3}-\d{4}\b"],
+            Action = ClassificationAction.Redact,
+        };
+        var redactor = new DataRedactor([@"password\S*"], [cls]);
+        var result = redactor.RedactWithClassifications("password123 phone: 555-1234");
+        Assert.DoesNotContain("password123", result.Content, StringComparison.Ordinal);
+        Assert.Contains("[REDACTED:Phone]", result.Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RedactWithClassifications_MultipleClassifications_AllFire()
+    {
+        var ssn = new DataClassification
+        {
+            Name = "SSN",
+            Patterns = [@"\b\d{3}-\d{2}-\d{4}\b"],
+            Action = ClassificationAction.Redact,
+        };
+        var email = new DataClassification
+        {
+            Name = "Email",
+            Patterns = [@"\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b"],
+            Action = ClassificationAction.RedactAndAudit,
+        };
+        var redactor = new DataRedactor([], [ssn, email]);
+        var result = redactor.RedactWithClassifications("SSN: 123-45-6789, Email: user@example.com");
+        Assert.Equal(2, result.Matches.Count);
+        Assert.Contains("[REDACTED:SSN]", result.Content, StringComparison.Ordinal);
+        Assert.Contains("[REDACTED:Email]", result.Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void HasSensitiveContent_ClassificationMatch_ReturnsTrue()
+    {
+        var cls = new DataClassification
+        {
+            Name = "CCV",
+            Patterns = [@"\b\d{3}\b"],
+            Action = ClassificationAction.AuditOnly,
+        };
+        var redactor = new DataRedactor([], [cls]);
+        Assert.True(redactor.HasSensitiveContent("CCV: 123"));
+    }
+
+    [Fact]
+    public void Redact_ClassificationRedactAndAudit_ReplacesWithLabel()
+    {
+        var cls = new DataClassification
+        {
+            Name = "PHI",
+            Patterns = [@"patient\s+\w+"],
+            Action = ClassificationAction.RedactAndAudit,
+        };
+        var redactor = new DataRedactor([], [cls]);
+        var result = redactor.Redact("patient John");
+        Assert.Contains("[REDACTED:PHI]", result, StringComparison.Ordinal);
+    }
 }
