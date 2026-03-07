@@ -497,7 +497,7 @@ public sealed class WorkflowGenerator
         }
     }
 
-    internal static string DeriveToolStepName(string tool)
+    public static string DeriveToolStepName(string tool)
     {
         // Convert "plugin-function_name" to "Function Name"
         var parts = tool.Split('-', '_', '.');
