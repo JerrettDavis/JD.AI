@@ -69,3 +69,4 @@ Generated files are saved to `docs/images/` and referenced by documentation arti
 | `demo-update.tape` | `demo-update.gif` | Update check and /update |
 | `demo-spinner.tape` | `demo-spinner.gif` | /spinner command and style switching |
 | `demo-thinking.tape` | `demo-thinking.gif` | Animated thinking indicator and turn metrics |
+| `ci-cli-smoke.tape` | `ci-cli-smoke.gif` | CI smoke run for `mcp --help` and `plugin --help` |

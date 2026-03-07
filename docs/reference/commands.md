@@ -359,7 +359,7 @@ Shows session usage stats, cross-session stats, or daily aggregates.
 Reads or writes persisted command-facing settings.
 
 Supported keys:
-`theme`, `vim_mode`, `output_style`, `spinner_style`, `prompt_cache`, `prompt_cache_ttl`, `autorun`, `permissions`, `plan_mode`.
+`theme`, `vim_mode`, `output_style`, `spinner_style`, `prompt_cache`, `prompt_cache_ttl`, `autorun`, `permissions`, `plan_mode`, `welcome_model_summary`, `welcome_services`, `welcome_cwd`, `welcome_version`, `welcome_motd`, `welcome_motd_url`.
 
 For cache behavior details and tuning guidance, see [Prompt Caching](prompt-caching.md).
 

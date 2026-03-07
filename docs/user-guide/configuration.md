@@ -158,6 +158,8 @@ See [Governance & Policies](governance.md) for the full governance configuration
 | `/config get prompt_cache` | Show prompt caching enablement |
 | `/config set prompt_cache on|off` | Enable or disable automatic prompt caching |
 | `/config set prompt_cache_ttl 5m|1h` | Set prompt cache TTL for supported providers |
+| `/config set welcome_cwd on|off` | Toggle working-directory line in the welcome panel |
+| `/config set welcome_motd on` + `/config set welcome_motd_url <url>` | Enable and source welcome MoTD text |
 
 Prompt caching defaults:
 
