@@ -36,6 +36,13 @@ public sealed class DotnetToolStrategy : IInstallStrategy
 
     public async Task<InstallResult> ApplyAsync(string? targetVersion = null, CancellationToken ct = default)
     {
+        // On Windows the running jdai.exe is file-locked by the OS; in-process
+        // `dotnet tool update` will fail with "access denied". Launch a detached
+        // cmd.exe script that runs the update after jdai exits.
+        if (OperatingSystem.IsWindows())
+            return DetachedUpdater.Launch(PackageId, targetVersion);
+
+        // Unix: the OS allows replacing a running binary's backing file.
         var versionArg = targetVersion is not null ? $" --version {targetVersion}" : "";
         var result = await ProcessExecutor.RunAsync(
             "dotnet", $"tool update -g {PackageId}{versionArg}",
