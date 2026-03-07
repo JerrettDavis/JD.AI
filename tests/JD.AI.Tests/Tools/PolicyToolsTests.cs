@@ -42,7 +42,7 @@ public sealed class PolicyToolsTests
     [Fact]
     public void ValidatePolicy_HasAllRequiredFields_NoErrors()
     {
-        const string yaml = """
+        const string PolicyText = """
             apiVersion: jdai/v1
             kind: JdaiPolicy
             metadata:
@@ -52,14 +52,14 @@ public sealed class PolicyToolsTests
                 allowed: [git]
             """;
 
-        var result = PolicyTools.ValidatePolicy(yaml);
+        var result = PolicyTools.ValidatePolicy(PolicyText);
         result.Should().Contain("0 error(s)");
     }
 
     [Fact]
     public void ValidatePolicy_NonStandardKind_WarnsAboutKind()
     {
-        const string yaml = """
+        const string PolicyText = """
             apiVersion: jdai/v1
             kind: CustomPolicy
             metadata:
@@ -69,7 +69,7 @@ public sealed class PolicyToolsTests
                 allowed: [git]
             """;
 
-        var result = PolicyTools.ValidatePolicy(yaml);
+        var result = PolicyTools.ValidatePolicy(PolicyText);
         result.Should().Contain("kind: JdaiPolicy");
         result.Should().Contain("1 warning(s)");
     }
@@ -77,7 +77,7 @@ public sealed class PolicyToolsTests
     [Fact]
     public void ValidatePolicy_StandardKind_NoKindWarning()
     {
-        const string yaml = """
+        const string PolicyText = """
             apiVersion: jdai/v1
             kind: JdaiPolicy
             metadata:
@@ -87,14 +87,14 @@ public sealed class PolicyToolsTests
                 allowed: [git]
             """;
 
-        var result = PolicyTools.ValidatePolicy(yaml);
+        var result = PolicyTools.ValidatePolicy(PolicyText);
         result.Should().NotContain("non-standard kind");
     }
 
     [Fact]
     public void ValidatePolicy_ValidScope_NoScopeWarning()
     {
-        const string yaml = """
+        const string PolicyText = """
             apiVersion: jdai/v1
             kind: JdaiPolicy
             metadata:
@@ -105,14 +105,14 @@ public sealed class PolicyToolsTests
                 allowed: [git]
             """;
 
-        var result = PolicyTools.ValidatePolicy(yaml);
+        var result = PolicyTools.ValidatePolicy(PolicyText);
         result.Should().NotContain("Scope should be");
     }
 
     [Fact]
     public void ValidatePolicy_InvalidScope_WarnsAboutScope()
     {
-        const string yaml = """
+        const string PolicyText = """
             apiVersion: jdai/v1
             kind: JdaiPolicy
             metadata:
@@ -123,7 +123,7 @@ public sealed class PolicyToolsTests
                 allowed: [git]
             """;
 
-        var result = PolicyTools.ValidatePolicy(yaml);
+        var result = PolicyTools.ValidatePolicy(PolicyText);
         result.Should().Contain("Scope should be one of");
     }
 
@@ -135,7 +135,7 @@ public sealed class PolicyToolsTests
     [InlineData("user")]
     public void ValidatePolicy_AllValidScopes_Accepted(string scope)
     {
-        var yaml = $"""
+        var policyText = $"""
             apiVersion: jdai/v1
             kind: JdaiPolicy
             metadata:
@@ -146,7 +146,7 @@ public sealed class PolicyToolsTests
                 allowed: [git]
             """;
 
-        var result = PolicyTools.ValidatePolicy(yaml);
+        var result = PolicyTools.ValidatePolicy(policyText);
         result.Should().NotContain("Scope should be");
     }
 
@@ -155,7 +155,7 @@ public sealed class PolicyToolsTests
     {
         // Note: "metadata:" contains substring "data:" so we must avoid that field
         // to test zero-section detection.
-        const string yaml = """
+        const string PolicyText = """
             apiVersion: jdai/v1
             kind: JdaiPolicy
             meta:
@@ -164,14 +164,14 @@ public sealed class PolicyToolsTests
               nothing: here
             """;
 
-        var result = PolicyTools.ValidatePolicy(yaml);
+        var result = PolicyTools.ValidatePolicy(PolicyText);
         result.Should().Contain("No policy sections found");
     }
 
     [Fact]
     public void ValidatePolicy_WithToolsSection_NoSectionsWarning()
     {
-        const string yaml = """
+        const string PolicyText = """
             apiVersion: jdai/v1
             kind: JdaiPolicy
             metadata:
@@ -181,14 +181,14 @@ public sealed class PolicyToolsTests
                 allowed: [git]
             """;
 
-        var result = PolicyTools.ValidatePolicy(yaml);
+        var result = PolicyTools.ValidatePolicy(PolicyText);
         result.Should().NotContain("No policy sections found");
     }
 
     [Fact]
     public void ValidatePolicy_HighBudget_WarnsAboutHighValue()
     {
-        const string yaml = """
+        const string PolicyText = """
             apiVersion: jdai/v1
             kind: JdaiPolicy
             metadata:
@@ -198,14 +198,14 @@ public sealed class PolicyToolsTests
                 maxDailyUsd: 5000
             """;
 
-        var result = PolicyTools.ValidatePolicy(yaml);
+        var result = PolicyTools.ValidatePolicy(PolicyText);
         result.Should().Contain("unusually high");
     }
 
     [Fact]
     public void ValidatePolicy_NormalBudget_NoHighValueWarning()
     {
-        const string yaml = """
+        const string PolicyText = """
             apiVersion: jdai/v1
             kind: JdaiPolicy
             metadata:
@@ -215,14 +215,14 @@ public sealed class PolicyToolsTests
                 maxDailyUsd: 50
             """;
 
-        var result = PolicyTools.ValidatePolicy(yaml);
+        var result = PolicyTools.ValidatePolicy(PolicyText);
         result.Should().NotContain("unusually high");
     }
 
     [Fact]
     public void ValidatePolicy_FullyValid_ShowsValidMessage()
     {
-        const string yaml = """
+        const string PolicyText = """
             apiVersion: jdai/v1
             kind: JdaiPolicy
             metadata:
@@ -235,7 +235,7 @@ public sealed class PolicyToolsTests
                 maxDailyUsd: 100
             """;
 
-        var result = PolicyTools.ValidatePolicy(yaml);
+        var result = PolicyTools.ValidatePolicy(PolicyText);
         result.Should().Contain("Valid");
         result.Should().Contain("0 error(s), 0 warning(s)");
     }
@@ -243,7 +243,7 @@ public sealed class PolicyToolsTests
     [Fact]
     public void ValidatePolicy_CaseInsensitiveFieldCheck()
     {
-        const string yaml = """
+        const string PolicyText = """
             APIVERSION: jdai/v1
             KIND: JdaiPolicy
             METADATA:
@@ -253,7 +253,7 @@ public sealed class PolicyToolsTests
                 allowed: [git]
             """;
 
-        var result = PolicyTools.ValidatePolicy(yaml);
+        var result = PolicyTools.ValidatePolicy(PolicyText);
         result.Should().Contain("0 error(s)");
     }
 
