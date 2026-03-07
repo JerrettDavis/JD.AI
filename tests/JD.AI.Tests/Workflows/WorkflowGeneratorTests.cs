@@ -1,4 +1,8 @@
 using JD.AI.Workflows;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
+using NSubstitute;
 
 namespace JD.AI.Tests.Workflows;
 
@@ -227,5 +231,159 @@ public sealed class WorkflowGeneratorTests
 
         Assert.Single(composite.Steps);
         Assert.Equal(2, composite.Steps[0].SubSteps.Count);
+    }
+
+    /// <summary>
+    /// Creates a Kernel with a mock IChatCompletionService that returns the given content.
+    /// Mocks the plural GetChatMessageContentsAsync (the actual interface method),
+    /// since the singular GetChatMessageContentAsync is an extension method.
+    /// </summary>
+    private static Kernel BuildMockKernel(string responseContent)
+    {
+        var mockChat = Substitute.For<IChatCompletionService>();
+        mockChat.GetChatMessageContentsAsync(
+                Arg.Any<ChatHistory>(),
+                Arg.Any<PromptExecutionSettings?>(),
+                Arg.Any<Kernel?>(),
+                Arg.Any<CancellationToken>())
+            .Returns([new ChatMessageContent(AuthorRole.Assistant, responseContent)]);
+
+        var builder = Kernel.CreateBuilder();
+        builder.Services.AddSingleton(mockChat);
+        return builder.Build();
+    }
+
+    /// <summary>
+    /// Creates a Kernel with a mock that captures the ChatHistory and returns given content.
+    /// </summary>
+    private static (Kernel Kernel, Func<ChatHistory?> GetCaptured) BuildCapturingMockKernel(string responseContent)
+    {
+        ChatHistory? captured = null;
+        var mockChat = Substitute.For<IChatCompletionService>();
+        mockChat.GetChatMessageContentsAsync(
+                Arg.Any<ChatHistory>(),
+                Arg.Any<PromptExecutionSettings?>(),
+                Arg.Any<Kernel?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                captured = callInfo.Arg<ChatHistory>();
+                return new List<ChatMessageContent>
+                {
+                    new(AuthorRole.Assistant, responseContent),
+                };
+            });
+
+        var builder = Kernel.CreateBuilder();
+        builder.Services.AddSingleton(mockChat);
+        return (builder.Build(), () => captured);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_UsesLlmToCreateWorkflow()
+    {
+        var responseJson = """
+            {
+              "name": "Create .NET CLI Project",
+              "version": "1.0",
+              "description": "Standard workflow for creating new .NET CLI projects",
+              "tags": ["dotnet", "scaffolding"],
+              "steps": [
+                { "name": "Check SDK", "kind": "Tool", "target": "shell-run_command" },
+                { "name": "Create project", "kind": "Tool", "target": "shell-run_command" },
+                { "name": "Build", "kind": "Tool", "target": "shell-run_command" }
+              ]
+            }
+            """;
+
+        var kernel = BuildMockKernel(responseJson);
+
+        // Act
+        var result = await _generator.GenerateAsync(
+            "Create a workflow to create a new .NET 10 CLI project",
+            kernel);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.Equal("Create .NET CLI Project", result.Workflow.Name);
+        Assert.Equal(3, result.Workflow.Steps.Count);
+        Assert.All(result.Workflow.Steps, s => Assert.Equal(AgentStepKind.Tool, s.Kind));
+    }
+
+    [Fact]
+    public async Task GenerateAsync_WithName_UsesProvidedName()
+    {
+        var responseJson = """
+            {
+              "name": "LLM Generated Name",
+              "version": "1.0",
+              "description": "Test",
+              "tags": [],
+              "steps": [
+                { "name": "Step 1", "kind": "Tool", "target": "shell-run_command" }
+              ]
+            }
+            """;
+
+        var kernel = BuildMockKernel(responseJson);
+
+        var result = await _generator.GenerateAsync("Do something", kernel, name: "my-custom-name");
+
+        Assert.True(result.Success);
+        Assert.Equal("my-custom-name", result.Workflow.Name);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_InvalidJson_FallsBackToHeuristic()
+    {
+        var kernel = BuildMockKernel("This is not valid JSON at all.");
+
+        var result = await _generator.GenerateAsync("Read the file, run the tests", kernel);
+
+        Assert.False(result.Success);
+        Assert.NotNull(result.Workflow);
+        Assert.True(result.Workflow.Steps.Count > 0, "Heuristic fallback should still produce steps");
+        Assert.Contains("LLM generation failed", result.Changelog);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_StripsMarkdownCodeFences()
+    {
+        var responseJson = """
+            ```json
+            {
+              "name": "Fenced Workflow",
+              "version": "1.0",
+              "description": "Test with code fences",
+              "tags": ["test"],
+              "steps": [
+                { "name": "Step 1", "kind": "Tool", "target": "shell-run_command" }
+              ]
+            }
+            ```
+            """;
+
+        var kernel = BuildMockKernel(responseJson);
+
+        var result = await _generator.GenerateAsync("Test fences", kernel);
+
+        Assert.True(result.Success);
+        Assert.Equal("Fenced Workflow", result.Workflow.Name);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_IncludesAvailableToolsInPrompt()
+    {
+        var (kernel, getCaptured) = BuildCapturingMockKernel(
+            """{"name":"test","version":"1.0","description":"t","tags":[],"steps":[]}""");
+
+        var tools = new HashSet<string>(StringComparer.Ordinal) { "shell-run_command", "file-read_file" };
+        await _generator.GenerateAsync("Test", kernel, availableTools: tools);
+
+        var capturedHistory = getCaptured();
+        Assert.NotNull(capturedHistory);
+        var systemMsg = capturedHistory!.First(m => m.Role == AuthorRole.System).Content!;
+        Assert.Contains("shell-run_command", systemMsg);
+        Assert.Contains("file-read_file", systemMsg);
     }
 }
