@@ -120,11 +120,26 @@ public sealed class AgentSession
     public bool WorkflowDeclinedThisTurn { get; set; }
 
     /// <summary>
+    /// Tool calls captured during an active workflow recording session.
+    /// Populated by ToolConfirmationFilter, consumed by AgentLoop at turn end.
+    /// </summary>
+    public List<(string ToolName, string? Args)> CapturedWorkflowSteps { get; } = [];
+
+    /// <summary>
+    /// Callback to save a captured workflow. Set during initialization by the host
+    /// (e.g., InteractiveLoop) that has access to the workflow catalog.
+    /// Parameters: (workflowName, steps as list of (toolName, args)), returns saved workflow name.
+    /// </summary>
+    public Func<string, IReadOnlyList<(string ToolName, string? Args)>, CancellationToken, Task<string>>?
+        SaveCapturedWorkflowAsync { get; set; }
+
+    /// <summary>
     /// Resets per-turn transient state. Called at the start of each agent turn.
     /// </summary>
     public void ResetTurnState()
     {
         WorkflowDeclinedThisTurn = false;
+        // Don't clear CapturedWorkflowSteps here — they persist across the turn
     }
 
     /// <summary>

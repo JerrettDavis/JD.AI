@@ -252,7 +252,7 @@ public static class ChatRenderer
         {
             AnsiConsole.MarkupLine($"  [dim]●[/] [bold]{Markup.Escape(header)}[/]");
 
-            if (lineCount <= 3)
+            if (lineCount <= 5)
             {
                 foreach (var line in resultLines)
                 {
@@ -261,8 +261,10 @@ public static class ChatRenderer
             }
             else
             {
-                // Show first line + collapse indicator
-                AnsiConsole.MarkupLine($"    [dim]{Markup.Escape(resultLines[0])}[/]");
+                // Show first 2 lines + collapse indicator
+                var previewCount = Math.Min(2, lineCount);
+                for (var i = 0; i < previewCount; i++)
+                    AnsiConsole.MarkupLine($"    [dim]{Markup.Escape(resultLines[i])}[/]");
                 AnsiConsole.MarkupLine($"    [dim]└ {lineCount} lines...[/]");
             }
 
@@ -278,7 +280,9 @@ public static class ChatRenderer
         }
         else
         {
-            Console.WriteLine($"    {resultLines[0]}");
+            var previewCount = Math.Min(2, lineCount);
+            for (var i = 0; i < previewCount; i++)
+                Console.WriteLine($"    {resultLines[i]}");
             Console.WriteLine($"    └ {lineCount} lines...");
         }
     }
