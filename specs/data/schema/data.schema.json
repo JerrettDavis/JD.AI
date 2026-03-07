@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JD.AI Data Specification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "id",
+    "version",
+    "status",
+    "metadata",
+    "modelType",
+    "schemas",
+    "migrations",
+    "indexes",
+    "constraints",
+    "trace"
+  ],
+  "properties": {
+    "apiVersion": { "const": "jdai.upss/v1" },
+    "kind": { "const": "Data" },
+    "id": {
+      "type": "string",
+      "pattern": "^data\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+    },
+    "version": { "type": "integer", "minimum": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "active", "deprecated", "retired"]
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owners", "reviewers", "lastReviewed", "changeReason"],
+      "properties": {
+        "owners": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "reviewers": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "lastReviewed": { "type": "string", "format": "date" },
+        "changeReason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "modelType": {
+      "type": "string",
+      "enum": ["relational", "document", "event", "graph"]
+    },
+    "schemas": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "description", "fields"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "description": { "type": "string" },
+          "fields": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "migrations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["version", "description", "reversible"],
+        "properties": {
+          "version": { "type": "string", "minLength": 1 },
+          "description": { "type": "string" },
+          "reversible": { "type": "boolean" }
+        }
+      }
+    },
+    "indexes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "table", "columns"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "table": { "type": "string" },
+          "columns": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["upstream", "downstream"],
+      "properties": {
+        "upstream": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "downstream": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["deployment", "operations", "testing"],
+          "properties": {
+            "deployment": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+            "operations": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+            "testing": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+          }
+        }
+      }
+    }
+  }
+}
