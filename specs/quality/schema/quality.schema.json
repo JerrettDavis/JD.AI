@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JD.AI Quality Specification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "id",
+    "version",
+    "status",
+    "metadata",
+    "category",
+    "slos",
+    "slis",
+    "errorBudgets",
+    "scalabilityExpectations",
+    "trace"
+  ],
+  "properties": {
+    "apiVersion": { "const": "jdai.upss/v1" },
+    "kind": { "const": "Quality" },
+    "id": {
+      "type": "string",
+      "pattern": "^quality\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+    },
+    "version": { "type": "integer", "minimum": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "active", "deprecated", "retired"]
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owners", "reviewers", "lastReviewed", "changeReason"],
+      "properties": {
+        "owners": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "reviewers": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "lastReviewed": { "type": "string", "format": "date" },
+        "changeReason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "category": {
+      "type": "string",
+      "enum": ["performance", "availability", "reliability", "scalability", "security"]
+    },
+    "slos": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "target"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "target": { "type": "string", "minLength": 1 },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "slis": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "metric"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "metric": { "type": "string", "minLength": 1 },
+          "unit": { "type": "string" }
+        }
+      }
+    },
+    "errorBudgets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sloRef", "budget"],
+        "properties": {
+          "sloRef": { "type": "string", "minLength": 1 },
+          "budget": { "type": "string", "minLength": 1 },
+          "window": { "type": "string" }
+        }
+      }
+    },
+    "scalabilityExpectations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["dimension", "target"],
+        "properties": {
+          "dimension": { "type": "string", "minLength": 1 },
+          "current": { "type": "string" },
+          "target": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["upstream", "downstream"],
+      "properties": {
+        "upstream": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "downstream": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["testing", "observability", "operations"],
+          "properties": {
+            "testing": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+            "observability": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+            "operations": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+          }
+        }
+      }
+    }
+  }
+}
