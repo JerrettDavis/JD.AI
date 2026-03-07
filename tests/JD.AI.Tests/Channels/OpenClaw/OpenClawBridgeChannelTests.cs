@@ -1898,8 +1898,8 @@ public sealed class ChannelMessageMappingTests
     public void OpenClawChannelId_Format_IsCorrect()
     {
         // The bridge produces ChannelId = $"openclaw-{_config.InstanceName}"
-        const string instanceName = "production";
-        var channelId = $"openclaw-{instanceName}";
+        const string InstanceName = "production";
+        var channelId = $"openclaw-{InstanceName}";
         channelId.Should().Be("openclaw-production");
     }
 }

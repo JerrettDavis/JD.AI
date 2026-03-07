@@ -131,15 +131,15 @@ public sealed class InMemoryDeadLetterSinkTests
     public async Task DeadLetterAsync_ConcurrentCalls_RecordsAllItems()
     {
         var sink = new InMemoryDeadLetterSink();
-        const int count = 100;
+        const int Count = 100;
 
-        var tasks = Enumerable.Range(0, count)
+        var tasks = Enumerable.Range(0, Count)
             .Select(i => sink.DeadLetterAsync(new WorkflowWorkItem { WorkflowName = $"wf-{i}" }, "r"))
             .ToArray();
 
         await Task.WhenAll(tasks);
 
-        sink.Items.Should().HaveCount(count);
+        sink.Items.Should().HaveCount(Count);
     }
 }
 
