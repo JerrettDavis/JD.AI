@@ -1,0 +1,7 @@
+apiVersion: jdai.upss/v1
+kind: BehaviorIndex
+entries:
+  - id: behavior.validate-pull-request
+    title: Validate Pull Request Behavior
+    path: specs/behavior/examples/behavior.example.yaml
+    status: draft
