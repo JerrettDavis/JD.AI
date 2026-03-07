@@ -71,12 +71,12 @@ public static class UpdateChecker
     /// <summary>
     /// Applies an update using the detected installation strategy.
     /// </summary>
-    public static async Task<(bool Success, string Output)> ApplyUpdateAsync(CancellationToken ct = default)
+    public static async Task<(bool Success, string Output, bool LaunchedDetached)> ApplyUpdateAsync(CancellationToken ct = default)
     {
         var info = await InstallationDetector.DetectAsync(ct).ConfigureAwait(false);
         var strategy = InstallerFactory.Create(info);
         var result = await strategy.ApplyAsync(ct: ct).ConfigureAwait(false);
-        return (result.Success, result.Output);
+        return (result.Success, result.Output, result.LaunchedDetached);
     }
 
     /// <summary>Compares two semver-ish version strings. Returns true if latest &gt; current.</summary>
@@ -113,7 +113,11 @@ public static class UpdateChecker
     {
         Directory.CreateDirectory(CacheDir);
         var json = JsonSerializer.Serialize(cache, JsonOptions);
-        File.WriteAllText(CacheFile, json);
+        // Write to a temp file then rename — atomic on NTFS and ext4,
+        // preventing partial reads if two jdai instances start concurrently.
+        var tmpFile = CacheFile + ".tmp";
+        File.WriteAllText(tmpFile, json);
+        File.Move(tmpFile, CacheFile, overwrite: true);
     }
 }
 

@@ -110,6 +110,14 @@ internal static class UpdateCliHandler
                 await strategy.ApplyAsync(force ? null : latest, ct).ConfigureAwait(false))
             .ConfigureAwait(false);
 
+        if (result.LaunchedDetached)
+        {
+            AnsiConsole.MarkupLine("[yellow]⬆ Update process launched in a new window.[/]");
+            AnsiConsole.MarkupLine("[dim]The update will run after this process exits.[/]");
+            AnsiConsole.MarkupLine("[bold yellow]Restart jdai once the update completes.[/]");
+            return 0;
+        }
+
         if (result.Success)
         {
             AnsiConsole.MarkupLine($"[green]✓ Update applied successfully.[/]");
