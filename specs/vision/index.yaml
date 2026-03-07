@@ -1,0 +1,7 @@
+apiVersion: jdai.upss/v1
+kind: VisionIndex
+entries:
+  - id: vision.jdai.product
+    title: JD.AI Product Vision
+    path: specs/vision/examples/vision.example.yaml
+    status: draft
