@@ -1740,8 +1740,39 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             }
         }
 
+        // Collect available tools for the LLM prompt
+        HashSet<string>? availableTools = null;
+        if (_session?.Kernel is not null)
+        {
+            availableTools = [];
+            foreach (var plugin in _session.Kernel.Plugins)
+                foreach (var fn in plugin)
+                    availableTools.Add($"{plugin.Name}-{fn.Name}");
+        }
+
         var generator = new WorkflowGenerator();
-        var workflow = generator.Generate(desc, name);
+        var result = await generator.GenerateAsync(desc, _session!.Kernel, name, availableTools, ct)
+            .ConfigureAwait(false);
+
+        var workflow = result.Workflow;
+
+        if (!result.Success)
+        {
+            return $"⚠ LLM generation failed — used heuristic fallback.\n" +
+                   $"  Reason: {result.Changelog}\n" +
+                   $"  Use '/workflow refine {workflow.Name} <feedback>' to improve.";
+        }
+
+        // Dry-run validation before saving
+        var dryRun = generator.DryRun(workflow, availableTools);
+        if (dryRun.MissingTools.Count > 0)
+        {
+            // Save anyway but warn
+            await _workflowCatalog!.SaveAsync(workflow, ct).ConfigureAwait(false);
+            return $"⚠ Created workflow '{workflow.Name}' but {dryRun.MissingTools.Count} tool(s) not found:\n" +
+                   $"  {string.Join(", ", dryRun.MissingTools)}\n" +
+                   $"  Use '/workflow refine {workflow.Name} <feedback>' to fix.";
+        }
 
         await _workflowCatalog!.SaveAsync(workflow, ct).ConfigureAwait(false);
 

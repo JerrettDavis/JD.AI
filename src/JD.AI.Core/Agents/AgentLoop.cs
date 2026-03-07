@@ -116,6 +116,8 @@ public sealed class AgentLoop
             AgentInstrumentation.TokensUsed.Add(tokenEstimate,
                 new KeyValuePair<string, object?>(AgentInstrumentation.AttrSystem, _session.CurrentModel?.ProviderName));
 
+            await SaveCapturedWorkflowIfActiveAsync(ct).ConfigureAwait(false);
+
             return response;
         }
         catch (Exception ex) when (!ct.IsCancellationRequested &&
@@ -169,46 +171,6 @@ public sealed class AgentLoop
                 AgentOutput.Current.RenderError(errorMsg);
                 _session.History.AddAssistantMessage(
                     $"[Error occurred: {retryEx.Message}. I'll try a different approach.]");
-                return errorMsg;
-            }
-        }
-        catch (WorkflowRequestedException wfEx)
-        {
-            sw.Stop();
-
-            // Remove intermediate messages SK added during the interrupted tool-calling loop
-            while (_session.History.Count > historySnapshot)
-                _session.History.RemoveAt(_session.History.Count - 1);
-
-            DebugLogger.Log(DebugCategory.Agents,
-                "Workflow requested by tool: {0}, entering planning mode", wfEx.TriggeringTool);
-
-            turnEntry.Attributes["workflow_requested"] = wfEx.TriggeringTool;
-
-            try
-            {
-                var planResponse = await RunWorkflowPlanningAsync(userMessage, ct).ConfigureAwait(false);
-
-                _session.History.AddAssistantMessage(planResponse);
-
-                var planTokens = JD.SemanticKernel.Extensions.Compaction.TokenEstimator
-                    .EstimateTokens(planResponse);
-
-                await _session.RecordAssistantTurnAsync(
-                    planResponse, durationMs: sw.ElapsedMilliseconds,
-                    tokensOut: planTokens).ConfigureAwait(false);
-
-                turnEntry.Complete();
-                _session.LastTimeline = traceCtx.Timeline;
-                return planResponse;
-            }
-            catch (Exception planEx) when (!ct.IsCancellationRequested)
-            {
-                turnEntry.Complete("error", planEx.Message);
-                _session.LastTimeline = traceCtx.Timeline;
-                var errorMsg = $"Error during workflow planning: {planEx.Message}";
-                AgentOutput.Current.RenderError(errorMsg);
-                _session.History.AddAssistantMessage($"[Workflow planning failed: {planEx.Message}]");
                 return errorMsg;
             }
         }
@@ -456,6 +418,8 @@ public sealed class AgentLoop
             AgentInstrumentation.TokensUsed.Add(tokenEstimate,
                 new KeyValuePair<string, object?>(AgentInstrumentation.AttrSystem, _session.CurrentModel?.ProviderName));
 
+            await SaveCapturedWorkflowIfActiveAsync(ct).ConfigureAwait(false);
+
             return response;
         }
         catch (OperationCanceledException)
@@ -614,49 +578,6 @@ public sealed class AgentLoop
                 AgentOutput.Current.RenderError(errorMsg);
                 _session.History.AddAssistantMessage(
                     $"[Error occurred: {retryEx.Message}. I'll try a different approach.]");
-                return errorMsg;
-            }
-        }
-        catch (WorkflowRequestedException wfEx)
-        {
-            output.EndStreaming();
-            sw.Stop();
-
-            // Remove intermediate messages SK added during the interrupted tool-calling loop
-            while (_session.History.Count > historySnapshot)
-                _session.History.RemoveAt(_session.History.Count - 1);
-
-            DebugLogger.Log(DebugCategory.Agents,
-                "Workflow requested by tool: {0}, entering planning mode (streaming)", wfEx.TriggeringTool);
-
-            turnEntry.Attributes["workflow_requested"] = wfEx.TriggeringTool;
-
-            try
-            {
-                var planResponse = await RunWorkflowPlanningAsync(userMessage, ct).ConfigureAwait(false);
-
-                _session.History.AddAssistantMessage(planResponse);
-
-                var planTokens = JD.SemanticKernel.Extensions.Compaction.TokenEstimator
-                    .EstimateTokens(planResponse);
-
-                await _session.RecordAssistantTurnAsync(
-                    planResponse, durationMs: sw.ElapsedMilliseconds,
-                    tokensOut: planTokens).ConfigureAwait(false);
-
-                output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, planTokens, 0));
-                turnEntry.Complete();
-                _session.LastTimeline = traceCtx.Timeline;
-                return planResponse;
-            }
-            catch (Exception planEx) when (!ct.IsCancellationRequested)
-            {
-                turnEntry.Complete("error", planEx.Message);
-                _session.LastTimeline = traceCtx.Timeline;
-                output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, 0, totalBytes));
-                var errorMsg = $"Error during workflow planning: {planEx.Message}";
-                AgentOutput.Current.RenderError(errorMsg);
-                _session.History.AddAssistantMessage($"[Workflow planning failed: {planEx.Message}]");
                 return errorMsg;
             }
         }
@@ -874,62 +795,37 @@ public sealed class AgentLoop
     }
 
     /// <summary>
-    /// Enters workflow planning mode — generates a workflow plan from the user's
-    /// request, presents it for approval via <see cref="IApprovalService"/>,
-    /// and activates it if approved. Returns a user-facing summary.
+    /// Saves a captured workflow if recording is active and tool calls were captured.
     /// </summary>
-    private async Task<string> RunWorkflowPlanningAsync(
-        string userMessage, CancellationToken ct)
+    private async Task SaveCapturedWorkflowIfActiveAsync(CancellationToken ct)
     {
-        var output = AgentOutput.Current;
-        output.RenderInfo("📋 Generating workflow plan...");
+        if (!string.Equals(_session.ActiveWorkflowName, "recording", StringComparison.Ordinal) ||
+            _session.CapturedWorkflowSteps.Count == 0)
+            return;
 
-        // Use the LLM to generate a structured plan description
-        var chat = _session.Kernel.GetRequiredService<IChatCompletionService>();
+        var workflowName = $"captured-{DateTime.UtcNow:yyyyMMdd-HHmmss}";
 
-        var planHistory = new ChatHistory();
-        planHistory.AddSystemMessage(
-            "You are a workflow planner. The user's request requires multiple tool invocations. " +
-            "Create a concise, numbered step-by-step plan describing the workflow needed. " +
-            "Each step should name the tool/action and its purpose. " +
-            "Format as a numbered list. Be specific but brief.");
-        planHistory.AddUserMessage(userMessage);
-
-        // No tools — pure text planning
-        var planSettings = new OpenAIPromptExecutionSettings { MaxTokens = 1024 };
-        var planResult = await chat.GetChatMessageContentAsync(
-            planHistory, planSettings, _session.Kernel, ct).ConfigureAwait(false);
-
-        var planText = planResult.Content ?? "(unable to generate plan)";
-
-        var summary = $"📋 **Workflow Plan**\n\n{planText}\n\n" +
-                      "_Use `/workflow` to refine or execute this plan._";
-
-        output.RenderInfo(summary);
-
-        // Request approval via IApprovalService if one is configured
-        if (_session.ApprovalService is { } approvalService)
+        if (_session.SaveCapturedWorkflowAsync is { } saveCallback)
         {
-            var approvalRequest = new JD.AI.Core.Governance.ApprovalRequest(
-                Id: Guid.NewGuid().ToString("N")[..12],
-                Description: "Execute workflow plan",
-                Details: planText,
-                Kind: JD.AI.Core.Governance.ApprovalKind.Workflow);
-
-            var result = await approvalService.RequestApprovalAsync(approvalRequest, ct)
-                .ConfigureAwait(false);
-
-            if (!result.IsApproved)
+            try
             {
-                var reason = result.Reason ?? "Workflow approval was not granted.";
-                output.RenderWarning($"⛔ Workflow not started: {reason}");
-                return $"Workflow plan generated but not activated: {reason}";
+                var savedName = await saveCallback(workflowName, _session.CapturedWorkflowSteps, ct)
+                    .ConfigureAwait(false);
+
+                AgentOutput.Current.RenderInfo(
+                    $"📋 Workflow '{savedName}' saved with {_session.CapturedWorkflowSteps.Count} steps.\n" +
+                    $"   Use '/workflow show {savedName}' to view, '/workflow refine {savedName} <feedback>' to improve.");
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Log(DebugCategory.Agents,
+                    "Failed to save captured workflow: {0}", ex.Message);
+                AgentOutput.Current.RenderWarning($"⚠ Failed to save captured workflow: {ex.Message}");
             }
         }
 
-        _session.ActiveWorkflowName = "pending-plan";
-
-        return summary;
+        _session.CapturedWorkflowSteps.Clear();
+        _session.ActiveWorkflowName = null;
     }
 
     /// <summary>

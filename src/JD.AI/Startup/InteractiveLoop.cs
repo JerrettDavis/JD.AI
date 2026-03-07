@@ -109,6 +109,27 @@ internal sealed class InteractiveLoop
             : new FileWorkflowStore(Path.Combine(DataDirectories.Root, "workflow-store"));
 
         var workflowCatalog = new FileWorkflowCatalog(Path.Combine(DataDirectories.Root, "workflows"));
+
+        // Wire workflow capture callback so AgentLoop can save captured workflows
+        _session.SaveCapturedWorkflowAsync = async (name, steps, ct) =>
+        {
+            var wfSteps = steps
+                .Select(s => AgentStepDefinition.InvokeTool(
+                    WorkflowGenerator.DeriveToolStepName(s.ToolName), s.ToolName))
+                .ToList();
+
+            var workflow = new AgentWorkflowDefinition
+            {
+                Name = name,
+                Version = "1.0",
+                Description = "Workflow captured from conversation turn",
+                Steps = wfSteps,
+            };
+
+            await workflowCatalog.SaveAsync(workflow, ct).ConfigureAwait(false);
+            return workflow.Name;
+        };
+
         using var searchHttp = new HttpClient();
         var modelSearchAggregator = new ModelSearchAggregator(new IRemoteModelSearch[]
         {

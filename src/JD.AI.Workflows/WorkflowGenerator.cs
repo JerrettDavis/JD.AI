@@ -149,6 +149,109 @@ public sealed class WorkflowGenerator
     }
 
     /// <summary>
+    /// Generates a workflow from a natural language description using LLM.
+    /// Falls back to heuristic generation if LLM fails.
+    /// </summary>
+    public async Task<WorkflowRefinementResult> GenerateAsync(
+        string description,
+        Kernel kernel,
+        string? name = null,
+        IReadOnlySet<string>? availableTools = null,
+        CancellationToken ct = default)
+    {
+        var chat = kernel.GetRequiredService<IChatCompletionService>();
+        var history = new ChatHistory();
+
+        var toolList = availableTools is not null
+            ? string.Join("\n", availableTools.Select(t => $"  - {t}"))
+            : "(no tool list available — use reasonable tool names)";
+
+        history.AddSystemMessage(
+            $$"""
+            You are a workflow generator. Create a structured workflow from the user's description.
+            Return ONLY a valid JSON object with this exact schema:
+            {
+              "name": "string (concise workflow name)",
+              "version": "1.0",
+              "description": "string (1-2 sentence summary)",
+              "tags": ["string"],
+              "steps": [
+                {
+                  "name": "string (step name)",
+                  "kind": "Tool|Skill|Loop|Conditional",
+                  "target": "plugin-function_name or null",
+                  "condition": "string or null (for Loop/Conditional)",
+                  "subSteps": []
+                }
+              ]
+            }
+
+            Available tools:
+            {{toolList}}
+
+            Use real tool names from the list above. Each step should be a concrete action.
+            Return ONLY the JSON, no markdown fences.
+            """);
+
+        history.AddUserMessage(description);
+
+        var result = await chat.GetChatMessageContentAsync(history, cancellationToken: ct)
+            .ConfigureAwait(false);
+
+        var responseText = result.Content?.Trim() ?? "";
+
+        // Strip markdown code fences if present (same as RefineAsync)
+        if (responseText.StartsWith("```", StringComparison.Ordinal))
+        {
+            var firstNewline = responseText.IndexOf('\n');
+            var lastFence = responseText.LastIndexOf("```", StringComparison.Ordinal);
+            if (firstNewline >= 0 && lastFence > firstNewline)
+                responseText = responseText[(firstNewline + 1)..lastFence].Trim();
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(responseText);
+            var root = doc.RootElement;
+
+            var workflow = new AgentWorkflowDefinition
+            {
+                Name = name ?? (root.TryGetProperty("name", out var n)
+                    ? n.GetString() ?? DeriveWorkflowName(description) : DeriveWorkflowName(description)),
+                Version = "1.0",
+                Description = root.TryGetProperty("description", out var d)
+                    ? d.GetString() ?? description[..Math.Min(description.Length, 200)]
+                    : description[..Math.Min(description.Length, 200)],
+                Tags = root.TryGetProperty("tags", out var t)
+                    ? [.. t.EnumerateArray().Select(e => e.GetString() ?? "")]
+                    : ExtractTags(description),
+                Steps = root.TryGetProperty("steps", out var s)
+                    ? [.. ParseSteps(s)]
+                    : [],
+            };
+
+            return new WorkflowRefinementResult
+            {
+                Success = true,
+                Workflow = workflow,
+                Changelog = "Generated from description",
+            };
+        }
+        catch (JsonException ex)
+        {
+            // Fallback to heuristic generation
+            var fallback = Generate(description, name);
+            return new WorkflowRefinementResult
+            {
+                Success = false,
+                Workflow = fallback,
+                Changelog = $"LLM generation failed ({ex.Message}), used heuristic fallback",
+                RawResponse = responseText,
+            };
+        }
+    }
+
+    /// <summary>
     /// Refines an existing workflow using AI-powered analysis. Applies the user's
     /// natural language feedback to add, remove, reorder, or modify steps.
     /// Returns a new version of the workflow with the refinements applied.
@@ -394,7 +497,7 @@ public sealed class WorkflowGenerator
         }
     }
 
-    private static string DeriveToolStepName(string tool)
+    public static string DeriveToolStepName(string tool)
     {
         // Convert "plugin-function_name" to "Function Name"
         var parts = tool.Split('-', '_', '.');
