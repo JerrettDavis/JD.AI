@@ -82,6 +82,14 @@ For developers building on JD.AI. Architecture, custom tools, providers, plugins
 - [Plugin SDK](developer-guide/plugins.md) — Build distributable plugins
 - [Gateway API](developer-guide/gateway-api.md) — REST & SignalR integration
 
+### [Specifications (UPSS)](specs/upss/index.md) — Living product specs
+
+The Unified Product Specification System — 18 machine-verifiable spec types covering product intent through operational governance.
+
+- [UPSS Overview](specs/upss/index.md) — What UPSS is, the dependency graph, and why it matters
+- [Authoring Guide](specs/upss/authoring.md) — How to create, validate, and maintain specs
+- [Specification Catalog](specs/upss/catalog.md) — Complete reference for all 18 spec types
+
 ### [Operations](operations/index.md) — Deploy, monitor, govern
 
 For ops teams and administrators. Deployment, observability, security, and enterprise governance.
