@@ -16,23 +16,23 @@ public sealed class PersonaSpecification
     public string RoleName { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public PersonaPermissions Permissions { get; set; } = new();
-    public List<PersonaTrustBoundary> TrustBoundaries { get; set; } = [];
-    public List<string> Responsibilities { get; set; } = [];
+    public IList<PersonaTrustBoundary> TrustBoundaries { get; init; } = [];
+    public IList<string> Responsibilities { get; init; } = [];
     public PersonaTraceability Trace { get; set; } = new();
 }
 
 public sealed class PersonaMetadata
 {
-    public List<string> Owners { get; set; } = [];
-    public List<string> Reviewers { get; set; } = [];
+    public IList<string> Owners { get; init; } = [];
+    public IList<string> Reviewers { get; init; } = [];
     public string LastReviewed { get; set; } = string.Empty;
     public string ChangeReason { get; set; } = string.Empty;
 }
 
 public sealed class PersonaPermissions
 {
-    public List<string> Allowed { get; set; } = [];
-    public List<string> Denied { get; set; } = [];
+    public IList<string> Allowed { get; init; } = [];
+    public IList<string> Denied { get; init; } = [];
 }
 
 public sealed class PersonaTrustBoundary
@@ -44,23 +44,23 @@ public sealed class PersonaTrustBoundary
 
 public sealed class PersonaTraceability
 {
-    public List<string> Upstream { get; set; } = [];
+    public IList<string> Upstream { get; init; } = [];
     public PersonaDownstreamTrace Downstream { get; set; } = new();
 }
 
 public sealed class PersonaDownstreamTrace
 {
-    public List<string> Capabilities { get; set; } = [];
-    public List<string> Policies { get; set; } = [];
-    public List<string> Security { get; set; } = [];
-    public List<string> UseCases { get; set; } = [];
+    public IList<string> Capabilities { get; init; } = [];
+    public IList<string> Policies { get; init; } = [];
+    public IList<string> Security { get; init; } = [];
+    public IList<string> UseCases { get; init; } = [];
 }
 
 public sealed class PersonaSpecificationIndex
 {
     public string ApiVersion { get; set; } = string.Empty;
     public string Kind { get; set; } = string.Empty;
-    public List<PersonaSpecificationIndexEntry> Entries { get; set; } = [];
+    public IList<PersonaSpecificationIndexEntry> Entries { get; init; } = [];
 }
 
 public sealed class PersonaSpecificationIndexEntry
@@ -296,7 +296,7 @@ public static class PersonaSpecificationValidator
         }
     }
 
-    private static void ValidateUpstreamReferences(string repoRoot, List<string> references, string specPath, List<string> errors)
+    private static void ValidateUpstreamReferences(string repoRoot, IList<string> references, string specPath, List<string> errors)
     {
         foreach (var reference in references)
         {
@@ -314,7 +314,7 @@ public static class PersonaSpecificationValidator
 
     private static void ValidateDownstreamReferences(
         HashSet<string> knownIds,
-        List<string> references,
+        IList<string> references,
         string specPath,
         string indexPath,
         string label,
@@ -336,7 +336,7 @@ public static class PersonaSpecificationValidator
         }
     }
 
-    private static void ValidateIds(List<string> ids, Regex pattern, string fieldName, List<string> errors)
+    private static void ValidateIds(IList<string> ids, Regex pattern, string fieldName, List<string> errors)
     {
         for (var i = 0; i < ids.Count; i++)
         {
@@ -354,7 +354,7 @@ public static class PersonaSpecificationValidator
             errors.Add(message);
     }
 
-    private static void RequireHasValues(List<string>? values, string message, List<string> errors)
+    private static void RequireHasValues(IList<string>? values, string message, List<string> errors)
     {
         if (values is null || values.Count == 0 || values.Any(string.IsNullOrWhiteSpace))
             errors.Add(message);
