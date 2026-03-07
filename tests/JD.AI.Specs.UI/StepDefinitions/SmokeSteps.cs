@@ -60,24 +60,24 @@ public sealed class SmokeSteps
     public async Task ThenIShouldSeeChannelCardsOrEmptyState()
     {
         await ExpectEitherVisibleAsync(
-            _page.Locator(".mud-card"),
-            _page.Locator("text=No channels configured"));
+            _page.Locator("[data-testid='channel-card']"),
+            _page.Locator("[data-testid='channels-empty']"));
     }
 
     [Then(@"I should see either provider cards or the providers empty state")]
     public async Task ThenIShouldSeeProviderCardsOrEmptyState()
     {
         await ExpectEitherVisibleAsync(
-            _page.Locator(".mud-card"),
-            _page.Locator("text=No providers configured"));
+            _page.Locator("[data-testid='provider-card']"),
+            _page.Locator("[data-testid='providers-empty']"));
     }
 
     [Then(@"I should see the routing data grid shell")]
     public async Task ThenIShouldSeeTheRoutingDataGridShell()
     {
-        var grids = _page.Locator(".mud-data-grid");
-        var count = await grids.CountAsync();
-        Assert.True(count > 0, "Expected routing data grid markup to be present.");
+        Assert.True(
+            await _page.Locator("[data-testid='routing-grid']").CountAsync() > 0,
+            "Expected routing grid markup.");
     }
 
     [Then(@"I should see either a sessions data grid or the sessions empty state")]
