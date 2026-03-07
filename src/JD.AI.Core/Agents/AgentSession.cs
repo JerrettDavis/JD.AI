@@ -586,16 +586,19 @@ public sealed class AgentSession
     /// </summary>
     public async Task CompactAsync(CancellationToken ct = default)
     {
+        var modelWindow = CurrentModel?.ContextWindowTokens is > 0
+            ? CurrentModel.ContextWindowTokens
+            : 4000;
+
         var tokenCount = TokenEstimator.EstimateTokens(History);
-        if (tokenCount <= 2000)
-        {
+        // Don't compact if already comfortably under a quarter of the window
+        if (tokenCount <= modelWindow / 4)
             return;
-        }
 
         var strategy = new HierarchicalSummarizationStrategy();
         var options = new CompactionOptions
         {
-            MaxContextWindowTokens = 4000,
+            MaxContextWindowTokens = modelWindow,
             TargetCompressionRatio = 0.4,
             MinMessagesBeforeCompaction = 1,
         };

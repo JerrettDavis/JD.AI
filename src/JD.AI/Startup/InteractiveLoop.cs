@@ -474,10 +474,10 @@ internal sealed class InteractiveLoop
         try
         {
             var freshSettings = TuiSettings.Load();
-            if (freshSettings.AutoCompact)
+            if (freshSettings.AutoCompact && freshSettings.CompactThresholdPercent > 0)
             {
                 var estimatedTokens = TokenEstimator.EstimateTokens(_session.History);
-                var contextWindow = _selectedModel.ContextWindowTokens;
+                var contextWindow = (_session.CurrentModel ?? _selectedModel).ContextWindowTokens;
                 var threshold = contextWindow > 0
                     ? (long)(contextWindow * (freshSettings.CompactThresholdPercent / 100.0))
                     : 3000L;

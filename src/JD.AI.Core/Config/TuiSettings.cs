@@ -42,7 +42,8 @@ public sealed record TuiSettings
 
     /// <summary>
     /// Percentage of the model context window at which auto-compaction triggers (0–100). Default: 75.
-    /// A value of 0 disables compaction; 100 means compact only when the window is completely full.
+    /// Use <c>/config set compact_auto off</c> to disable auto-compaction entirely.
+    /// A value of 100 means compact only when the window is completely full.
     /// </summary>
     public int CompactThresholdPercent { get; init; } = 75;
 

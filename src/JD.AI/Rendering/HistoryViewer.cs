@@ -119,9 +119,9 @@ public static class HistoryViewer
 
         if (turn.CumulativeContextTokens > 0)
         {
-            var contextWindow = turn.ContextWindowTokens > 0 ? turn.ContextWindowTokens : 0;
+            var contextWindow = turn.ContextWindowTokens;
             var pct = contextWindow > 0
-                ? $" ({turn.CumulativeContextTokens * 100 / contextWindow}% of {contextWindow:N0})"
+                ? $" (~{turn.CumulativeContextTokens * 100 / contextWindow}% of {contextWindow:N0})"
                 : string.Empty;
             Console.WriteLine($"  Context:   {turn.CumulativeContextTokens:N0} tokens{pct}");
         }
