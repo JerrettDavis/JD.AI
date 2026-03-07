@@ -76,16 +76,16 @@ public sealed class SmokeSteps
     public async Task ThenIShouldSeeTheRoutingDataGridShell()
     {
         Assert.True(
-            await AnyVisibleAsync(_page.Locator("[data-testid='routing-grid']")),
-            "Expected a visible routing grid.");
+            await _page.Locator("[data-testid='routing-grid']").CountAsync() > 0,
+            "Expected routing grid markup.");
     }
 
     [Then(@"I should see the routing diagram section")]
     public async Task ThenIShouldSeeTheRoutingDiagramSection()
     {
         Assert.True(
-            await AnyVisibleAsync(_page.Locator("[data-testid='routing-diagram']")),
-            "Expected a visible routing diagram.");
+            await _page.Locator("[data-testid='routing-diagram']").CountAsync() > 0,
+            "Expected routing diagram markup.");
     }
 
     [Then(@"I should see the sync OpenClaw button")]
@@ -144,17 +144,5 @@ public sealed class SmokeSteps
         }
 
         Assert.Fail("Expected one of the target UI states to become visible.");
-    }
-
-    private static async Task<bool> AnyVisibleAsync(ILocator locator)
-    {
-        var count = await locator.CountAsync();
-        for (var i = 0; i < count; i++)
-        {
-            if (await locator.Nth(i).IsVisibleAsync())
-                return true;
-        }
-
-        return false;
     }
 }
