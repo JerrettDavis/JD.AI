@@ -113,7 +113,11 @@ public static class UpdateChecker
     {
         Directory.CreateDirectory(CacheDir);
         var json = JsonSerializer.Serialize(cache, JsonOptions);
-        File.WriteAllText(CacheFile, json);
+        // Write to a temp file then rename — atomic on NTFS and ext4,
+        // preventing partial reads if two jdai instances start concurrently.
+        var tmpFile = CacheFile + ".tmp";
+        File.WriteAllText(tmpFile, json);
+        File.Move(tmpFile, CacheFile, overwrite: true);
     }
 }
 
