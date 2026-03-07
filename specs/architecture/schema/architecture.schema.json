@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JD.AI Architecture Specification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "id",
+    "version",
+    "status",
+    "metadata",
+    "architectureStyle",
+    "systems",
+    "containers",
+    "components",
+    "dependencyRules",
+    "trace"
+  ],
+  "properties": {
+    "apiVersion": { "const": "jdai.upss/v1" },
+    "kind": { "const": "Architecture" },
+    "id": {
+      "type": "string",
+      "pattern": "^architecture\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+    },
+    "version": { "type": "integer", "minimum": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "active", "deprecated", "retired"]
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owners", "reviewers", "lastReviewed", "changeReason"],
+      "properties": {
+        "owners": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "reviewers": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "lastReviewed": { "type": "string", "format": "date" },
+        "changeReason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "architectureStyle": {
+      "type": "string",
+      "enum": ["layered", "microservices", "event-driven", "modular-monolith", "hexagonal"]
+    },
+    "systems": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "description", "type"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "description": { "type": "string" },
+          "type": { "type": "string" }
+        }
+      }
+    },
+    "containers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "technology", "system"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "technology": { "type": "string" },
+          "system": { "type": "string" }
+        }
+      }
+    },
+    "components": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "container", "responsibility"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "container": { "type": "string" },
+          "responsibility": { "type": "string" }
+        }
+      }
+    },
+    "dependencyRules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["from", "to", "allowed"],
+        "properties": {
+          "from": { "type": "string", "minLength": 1 },
+          "to": { "type": "string", "minLength": 1 },
+          "allowed": { "type": "boolean" }
+        }
+      }
+    },
+    "trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["upstream", "downstream"],
+      "properties": {
+        "upstream": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "downstream": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["deployment", "security", "operations"],
+          "properties": {
+            "deployment": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+            "security": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+            "operations": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+          }
+        }
+      }
+    }
+  }
+}
