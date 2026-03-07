@@ -8,6 +8,7 @@ on:
       - 'docs/**'
       - '.vscode/**'
       - '.editorconfig'
+  workflow_dispatch:
 
 env:
   DOTNET_NOLOGO: true
