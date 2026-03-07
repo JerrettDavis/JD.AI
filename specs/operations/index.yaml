@@ -1,0 +1,7 @@
+apiVersion: jdai.upss/v1
+kind: OperationsIndex
+entries:
+  - id: operations.jdai-gateway
+    title: JD.AI Gateway Operations
+    path: specs/operations/examples/operations.example.yaml
+    status: draft
