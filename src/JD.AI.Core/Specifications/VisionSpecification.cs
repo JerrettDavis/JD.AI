@@ -14,18 +14,18 @@ public sealed class VisionSpecification
     public VisionMetadata Metadata { get; set; } = new();
     public string ProblemStatement { get; set; } = string.Empty;
     public string Mission { get; set; } = string.Empty;
-    public List<VisionTargetUser> TargetUsers { get; set; } = [];
+    public IList<VisionTargetUser> TargetUsers { get; init; } = [];
     public VisionValueProposition ValueProposition { get; set; } = new();
-    public List<VisionSuccessMetric> SuccessMetrics { get; set; } = [];
-    public List<string> Constraints { get; set; } = [];
-    public List<string> NonGoals { get; set; } = [];
+    public IList<VisionSuccessMetric> SuccessMetrics { get; init; } = [];
+    public IList<string> Constraints { get; init; } = [];
+    public IList<string> NonGoals { get; init; } = [];
     public VisionTraceability Trace { get; set; } = new();
 }
 
 public sealed class VisionMetadata
 {
-    public List<string> Owners { get; set; } = [];
-    public List<string> Reviewers { get; set; } = [];
+    public IList<string> Owners { get; init; } = [];
+    public IList<string> Reviewers { get; init; } = [];
     public string LastReviewed { get; set; } = string.Empty;
     public string ChangeReason { get; set; } = string.Empty;
 }
@@ -34,13 +34,13 @@ public sealed class VisionTargetUser
 {
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public List<string> Needs { get; set; } = [];
+    public IList<string> Needs { get; init; } = [];
 }
 
 public sealed class VisionValueProposition
 {
     public string Summary { get; set; } = string.Empty;
-    public List<string> Differentiators { get; set; } = [];
+    public IList<string> Differentiators { get; init; } = [];
 }
 
 public sealed class VisionSuccessMetric
@@ -53,20 +53,20 @@ public sealed class VisionSuccessMetric
 
 public sealed class VisionTraceability
 {
-    public List<string> Upstream { get; set; } = [];
+    public IList<string> Upstream { get; init; } = [];
     public VisionDownstreamTrace Downstream { get; set; } = new();
 }
 
 public sealed class VisionDownstreamTrace
 {
-    public List<string> Capabilities { get; set; } = [];
+    public IList<string> Capabilities { get; init; } = [];
 }
 
 public sealed class VisionSpecificationIndex
 {
     public string ApiVersion { get; set; } = string.Empty;
     public string Kind { get; set; } = string.Empty;
-    public List<VisionSpecificationIndexEntry> Entries { get; set; } = [];
+    public IList<VisionSpecificationIndexEntry> Entries { get; init; } = [];
 }
 
 public sealed class VisionSpecificationIndexEntry
@@ -81,7 +81,7 @@ public sealed class CapabilitySpecificationIndex
 {
     public string ApiVersion { get; set; } = string.Empty;
     public string Kind { get; set; } = string.Empty;
-    public List<CapabilitySpecificationIndexEntry> Entries { get; set; } = [];
+    public IList<CapabilitySpecificationIndexEntry> Entries { get; init; } = [];
 }
 
 public sealed class CapabilitySpecificationIndexEntry
@@ -386,7 +386,7 @@ public static class VisionSpecificationValidator
             errors.Add(message);
     }
 
-    private static void RequireHasValues(IReadOnlyList<string>? values, string message, List<string> errors)
+    private static void RequireHasValues(IList<string>? values, string message, List<string> errors)
     {
         if (values is null || values.Count == 0 || values.Any(string.IsNullOrWhiteSpace))
             errors.Add(message);
