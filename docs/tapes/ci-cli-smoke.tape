@@ -13,12 +13,10 @@ Set Theme "Dracula"
 
 Type "./artifacts/vhs-smoke/JD.AI mcp --help"
 Enter
-Wait /jdai mcp/
-Sleep 1s
+Sleep 3s
 Screenshot docs/images/ci-mcp-help.png
 
 Type "./artifacts/vhs-smoke/JD.AI plugin --help"
 Enter
-Wait /jdai plugin/
-Sleep 1s
+Sleep 3s
 Screenshot docs/images/ci-plugin-help.png
