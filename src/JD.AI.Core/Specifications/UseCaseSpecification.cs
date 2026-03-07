@@ -14,39 +14,39 @@ public sealed class UseCaseSpecification
     public UseCaseMetadata Metadata { get; set; } = new();
     public string Actor { get; set; } = string.Empty;
     public string CapabilityRef { get; set; } = string.Empty;
-    public List<string> Preconditions { get; set; } = [];
-    public List<string> WorkflowSteps { get; set; } = [];
-    public List<string> ExpectedOutcomes { get; set; } = [];
-    public List<string> FailureScenarios { get; set; } = [];
+    public IList<string> Preconditions { get; init; } = [];
+    public IList<string> WorkflowSteps { get; init; } = [];
+    public IList<string> ExpectedOutcomes { get; init; } = [];
+    public IList<string> FailureScenarios { get; init; } = [];
     public UseCaseTraceability Trace { get; set; } = new();
 }
 
 public sealed class UseCaseMetadata
 {
-    public List<string> Owners { get; set; } = [];
-    public List<string> Reviewers { get; set; } = [];
+    public IList<string> Owners { get; init; } = [];
+    public IList<string> Reviewers { get; init; } = [];
     public string LastReviewed { get; set; } = string.Empty;
     public string ChangeReason { get; set; } = string.Empty;
 }
 
 public sealed class UseCaseTraceability
 {
-    public List<string> Upstream { get; set; } = [];
+    public IList<string> Upstream { get; init; } = [];
     public UseCaseDownstreamTrace Downstream { get; set; } = new();
 }
 
 public sealed class UseCaseDownstreamTrace
 {
-    public List<string> Behavior { get; set; } = [];
-    public List<string> Testing { get; set; } = [];
-    public List<string> Interfaces { get; set; } = [];
+    public IList<string> Behavior { get; init; } = [];
+    public IList<string> Testing { get; init; } = [];
+    public IList<string> Interfaces { get; init; } = [];
 }
 
 public sealed class UseCaseSpecificationIndex
 {
     public string ApiVersion { get; set; } = string.Empty;
     public string Kind { get; set; } = string.Empty;
-    public List<UseCaseSpecificationIndexEntry> Entries { get; set; } = [];
+    public IList<UseCaseSpecificationIndexEntry> Entries { get; init; } = [];
 }
 
 public sealed class UseCaseSpecificationIndexEntry
@@ -238,7 +238,7 @@ public static class UseCaseSpecificationValidator
         }
     }
 
-    private static void ValidateFileReferences(string repoRoot, List<string> paths, string specPath, string fieldName, List<string> errors)
+    private static void ValidateFileReferences(string repoRoot, IList<string> paths, string specPath, string fieldName, List<string> errors)
     {
         foreach (var path in paths)
         {
@@ -260,7 +260,7 @@ public static class UseCaseSpecificationValidator
             errors.Add(message);
     }
 
-    private static void RequireHasValues(List<string>? values, string message, List<string> errors)
+    private static void RequireHasValues(IList<string>? values, string message, List<string> errors)
     {
         if (values is null || values.Count == 0 || values.Any(string.IsNullOrWhiteSpace))
             errors.Add(message);
