@@ -1,3 +1,5 @@
+using System.Net;
+using System.Text;
 using FluentAssertions;
 using JD.AI.Core.Events;
 using JD.AI.Daemon.Config;
@@ -7,8 +9,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
-using System.Net;
-using System.Text;
 using DaemonUpdateChecker = JD.AI.Daemon.Services.UpdateChecker;
 using DaemonUpdateInfo = JD.AI.Daemon.Services.UpdateInfo;
 
@@ -33,14 +33,14 @@ public sealed class UpdateServiceTests
         bool autoApply = false,
         bool notifyChannels = true,
         TimeSpan? drainTimeout = null) => new()
-    {
-        CheckInterval = TimeSpan.FromHours(24),
-        AutoApply = autoApply,
-        NotifyChannels = notifyChannels,
-        DrainTimeout = drainTimeout ?? TimeSpan.Zero,
-        PackageId = "JD.AI.Daemon",
-        NuGetFeedUrl = "https://api.nuget.org/v3-flatcontainer/",
-    };
+        {
+            CheckInterval = TimeSpan.FromHours(24),
+            AutoApply = autoApply,
+            NotifyChannels = notifyChannels,
+            DrainTimeout = drainTimeout ?? TimeSpan.Zero,
+            PackageId = "JD.AI.Daemon",
+            NuGetFeedUrl = "https://api.nuget.org/v3-flatcontainer/",
+        };
 
     private static DaemonUpdateChecker BuildChecker(string responseJson, UpdateConfig? config = null)
     {
