@@ -1,0 +1,7 @@
+apiVersion: jdai.upss/v1
+kind: PolicyIndex
+entries:
+  - id: policy.api-security-baseline
+    title: API Security Baseline Policy
+    path: specs/policies/examples/policies.example.yaml
+    status: draft
