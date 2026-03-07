@@ -85,7 +85,7 @@ jobs:
           path: sbom-${{ matrix.component }}.spdx.json
 
       - name: Attest SBOM to image
-        uses: actions/attest-sbom@v2
+        uses: actions/attest-sbom@v4
         with:
           subject-name: ${{ steps.image.outputs.name }}
           subject-digest: ${{ steps.build.outputs.digest }}
