@@ -38,12 +38,23 @@ public static class UpdatePrompter
 
         if (!shouldUpdate) return false;
 
-        var (success, output) = await AnsiConsole.Status()
+        var (success, output, launchedDetached) = await AnsiConsole.Status()
             .Spinner(Spinner.Known.Dots)
             .SpinnerStyle(Style.Parse("yellow"))
             .StartAsync("Updating jdai...", async _ =>
-                await UpdateChecker.ApplyUpdateAsync(ct).ConfigureAwait(false))
+            {
+                var r = await UpdateChecker.ApplyUpdateAsync(ct).ConfigureAwait(false);
+                return (r.Success, r.Output, r.LaunchedDetached);
+            })
             .ConfigureAwait(false);
+
+        if (launchedDetached)
+        {
+            AnsiConsole.MarkupLine("[yellow]⬆ Update process launched in a new window.[/]");
+            AnsiConsole.MarkupLine("[dim]Exit jdai — the update will run automatically.[/]");
+            AnsiConsole.MarkupLine("[bold yellow]Restart jdai once the update completes.[/]");
+            return true;
+        }
 
         if (success)
         {

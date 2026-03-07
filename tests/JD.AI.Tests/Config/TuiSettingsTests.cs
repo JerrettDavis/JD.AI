@@ -34,6 +34,8 @@ public sealed class TuiSettingsTests : IDisposable
         Assert.True(settings.Welcome.ShowWorkingDirectory);
         Assert.True(settings.Welcome.ShowVersion);
         Assert.False(settings.Welcome.ShowMotd);
+        Assert.True(settings.AutoCompact);
+        Assert.Equal(75, settings.CompactThresholdPercent);
     }
 
     [Fact]
@@ -119,5 +121,45 @@ public sealed class TuiSettingsTests : IDisposable
         var loaded = TuiSettings.Load();
 
         Assert.Equal(OutputStyle.Rich, loaded.OutputStyle);
+    }
+
+    [Fact]
+    public void AutoCompact_Default_IsTrue()
+    {
+        var settings = new TuiSettings();
+        Assert.True(settings.AutoCompact);
+    }
+
+    [Fact]
+    public void CompactThresholdPercent_Default_Is75()
+    {
+        var settings = new TuiSettings();
+        Assert.Equal(75, settings.CompactThresholdPercent);
+    }
+
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(0, 0)]
+    [InlineData(50, 50)]
+    [InlineData(75, 75)]
+    [InlineData(100, 100)]
+    [InlineData(101, 100)]
+    [InlineData(200, 100)]
+    public void CompactThresholdPercent_Normalize_Clamps(int input, int expected)
+    {
+        var settings = new TuiSettings { CompactThresholdPercent = input };
+        settings.Save();
+        var loaded = TuiSettings.Load();
+        Assert.Equal(expected, loaded.CompactThresholdPercent);
+    }
+
+    [Fact]
+    public void SaveAndLoad_CompactSettings_RoundTrips()
+    {
+        var settings = new TuiSettings { AutoCompact = false, CompactThresholdPercent = 60 };
+        settings.Save();
+        var loaded = TuiSettings.Load();
+        Assert.False(loaded.AutoCompact);
+        Assert.Equal(60, loaded.CompactThresholdPercent);
     }
 }
