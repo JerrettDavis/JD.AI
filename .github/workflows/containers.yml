@@ -43,7 +43,7 @@ jobs:
           echo "name=${{ env.REGISTRY }}/${owner}/jd.ai-${{ matrix.component }}" >> "$GITHUB_OUTPUT"
 
       - name: Login to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
