@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JD.AI — Gateway Dashboard</title>
+    <base href="/" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..800;1,9..40,300..800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+    <link href="css/app.css" rel="stylesheet" />
+
+    <style>
+        .jd-boot{display:flex;align-items:center;justify-content:center;height:100vh;background:#0f0f1a;flex-direction:column;gap:24px}
+        .jd-boot-logo{font-family:'DM Sans',sans-serif;font-weight:800;font-size:2rem;color:#e2e8f0;letter-spacing:-0.03em}
+        .jd-boot-logo span{color:#818cf8}
+        .jd-boot-bar{width:160px;height:3px;border-radius:2px;background:rgba(129,140,248,0.15);overflow:hidden;position:relative}
+        .jd-boot-bar::after{content:'';position:absolute;inset:0;background:#818cf8;border-radius:2px;animation:jd-boot-slide 1.4s ease-in-out infinite}
+        @keyframes jd-boot-slide{0%{transform:translateX(-100%)}50%{transform:translateX(0)}100%{transform:translateX(100%)}}
+        .jd-boot-text{font-family:'DM Sans',sans-serif;font-size:0.8rem;color:rgba(226,232,240,0.4);letter-spacing:0.08em;text-transform:uppercase}
+    </style>
+    <script type="importmap"></script>
+</head>
+<body>
+    <div id="app">
+        <div class="jd-boot">
+            <div class="jd-boot-logo">JD<span>.</span>AI</div>
+            <div class="jd-boot-bar"></div>
+            <div class="jd-boot-text">Initializing gateway</div>
+        </div>
+    </div>
+    <script src="_framework/blazor.webassembly.js"></script>
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script src="js/chat-interop.js"></script>
+</body>
+</html>

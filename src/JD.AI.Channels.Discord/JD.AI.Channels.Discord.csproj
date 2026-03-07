@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>JD.AI.Channels.Discord</RootNamespace>
+    <Description>Discord channel adapter for JD.AI Gateway — DMs, slash commands, and thread support via Discord.Net.</Description>
+    <PackageTags>ai;discord;channel;gateway</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JD.AI.Core\JD.AI.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Discord.Net" />
+  </ItemGroup>
+
+</Project>

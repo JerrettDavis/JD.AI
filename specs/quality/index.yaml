@@ -1,0 +1,7 @@
+apiVersion: jdai.upss/v1
+kind: QualityIndex
+entries:
+  - id: quality.api-response-time
+    title: API Response Time Quality
+    path: specs/quality/examples/quality.example.yaml
+    status: draft

@@ -1,0 +1,74 @@
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Edit" />
+            <MudText>Override: @Channel.DisplayName (@Channel.ChannelType)</MudText>
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_agentId" Label="Agent ID" Variant="Variant.Outlined"
+                          HelperText="The JD.AI agent to handle this channel"
+                          data-testid="override-agent-id" />
+            <MudTextField @bind-Value="_model" Label="Model" Variant="Variant.Outlined"
+                          HelperText="e.g. ollama/qwen3:30b-instruct, anthropic/claude-opus-4-6"
+                          data-testid="override-model" />
+            <MudSelect @bind-Value="_routingMode" Label="Routing Mode" Variant="Variant.Outlined"
+                       data-testid="override-routing-mode">
+                <MudSelectItem T="string" Value="@("Passthrough")">Passthrough — OpenClaw handles natively</MudSelectItem>
+                <MudSelectItem T="string" Value="@("Sidecar")">Sidecar — JD.AI intercepts matching messages</MudSelectItem>
+                <MudSelectItem T="string" Value="@("Intercept")">Intercept — JD.AI handles all messages</MudSelectItem>
+            </MudSelect>
+            <MudSwitch @bind-Value="_enabled" Label="Override Enabled" Color="Color.Primary"
+                       data-testid="override-enabled" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" data-testid="override-cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="_saving"
+                   data-testid="override-save">
+            @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public ChannelInfo Channel { get; set; } = null!;
+    [Parameter] public GatewayApiClient Api { get; set; } = null!;
+
+    private string _agentId = "";
+    private string _model = "";
+    private string _routingMode = "Passthrough";
+    private bool _enabled = true;
+    private bool _saving;
+
+    protected override void OnParametersSet()
+    {
+        _agentId = "";
+        _model = "";
+        _routingMode = "Passthrough";
+        _enabled = Channel.IsConnected;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            await Api.MapRoutingAsync(Channel.ChannelType, _agentId);
+            Snackbar.Add($"Override saved for {Channel.ChannelType}", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed: {ex.Message}", Severity.Error);
+        }
+        finally { _saving = false; }
+    }
+}

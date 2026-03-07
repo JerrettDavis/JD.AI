@@ -1,0 +1,14 @@
+**/.git
+**/.gitignore
+**/.vs
+**/.vscode
+**/bin
+**/obj
+**/TestResults*
+**/.idea
+**/*.user
+**/*.suo
+**/*.nupkg
+**/*.snupkg
+docs/_site
+.codex

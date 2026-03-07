@@ -1,0 +1,200 @@
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="4">
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+        OpenClaw is a Node.js AI gateway that JD.AI can integrate with for multi-channel routing and agent management.
+    </MudText>
+
+    <MudPaper Class="pa-4" Elevation="0">
+        <MudText Typo="Typo.subtitle2" Class="mb-3" Style="font-weight:600;">Bridge Connection</MudText>
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudSwitch @bind-Value="OpenClaw.Enabled" Color="Color.Primary" UncheckedColor="Color.Default"
+                           data-testid="openclaw-enabled-toggle">
+                    <ChildContent>
+                        <MudStack Spacing="0">
+                            <MudText>Enable OpenClaw</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Connect to an OpenClaw gateway instance</MudText>
+                        </MudStack>
+                    </ChildContent>
+                </MudSwitch>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSwitch @bind-Value="OpenClaw.AutoConnect" Color="Color.Primary" UncheckedColor="Color.Default"
+                           Disabled="!OpenClaw.Enabled">
+                    <ChildContent>
+                        <MudStack Spacing="0">
+                            <MudText>Auto-Connect</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Connect on gateway start</MudText>
+                        </MudStack>
+                    </ChildContent>
+                </MudSwitch>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect @bind-Value="OpenClaw.DefaultMode" Label="Default Mode" Variant="Variant.Outlined"
+                           HelperText="How JD.AI interacts with OpenClaw channels by default."
+                           Disabled="!OpenClaw.Enabled">
+                    <MudSelectItem T="string" Value="@("Passthrough")">
+                        Passthrough — OpenClaw handles natively
+                    </MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Sidecar")">
+                        Sidecar — JD.AI intercepts matching messages
+                    </MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Intercept")">
+                        Intercept — JD.AI handles all messages
+                    </MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="OpenClaw.WebSocketUrl" Label="WebSocket URL" Variant="Variant.Outlined"
+                              data-testid="openclaw-ws-url"
+                              HelperText="OpenClaw's WebSocket gateway endpoint (e.g. ws://127.0.0.1:18789/ws/gateway)."
+                              Disabled="!OpenClaw.Enabled"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Link" />
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (OpenClaw.Enabled)
+    {
+        <MudPaper Class="pa-4" Elevation="0">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                <MudText Typo="Typo.subtitle2" Style="font-weight:600;">Channel Overrides</MudText>
+                <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add" OnClick="AddChannelOverride">Add Channel</MudButton>
+            </MudStack>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
+                Override the default routing mode for specific OpenClaw channels.
+            </MudText>
+
+            @foreach (var key in OpenClaw.Channels.Keys.ToList())
+            {
+                var k = key;
+                var ch = OpenClaw.Channels[k];
+                <MudPaper Class="pa-3 mb-2" Elevation="0" Style="border:1px solid rgba(136,146,168,0.1);border-radius:6px;">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+                        <MudIcon Icon="@GetChannelIcon(k)" Size="Size.Small" Color="Color.Primary" />
+                        <MudText Typo="Typo.body2" Style="font-weight:600;flex:1;">@k</MudText>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                       OnClick="@(() => OpenClaw.Channels.Remove(k))" />
+                    </MudStack>
+                    <MudGrid>
+                        <MudItem xs="12" md="4">
+                            <MudSelect @bind-Value="ch.Mode" Label="Mode" Variant="Variant.Outlined"
+                                       HelperText="Routing mode for this channel.">
+                                <MudSelectItem T="string" Value="@("Passthrough")">Passthrough</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("Sidecar")">Sidecar</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("Intercept")">Intercept</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudTextField @bind-Value="ch.CommandPrefix" Label="Command Prefix" Variant="Variant.Outlined"
+                                          HelperText="Prefix that triggers JD.AI (e.g. /jdai). Sidecar mode only." />
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudTextField @bind-Value="ch.TriggerPattern" Label="Trigger Pattern" Variant="Variant.Outlined"
+                                          HelperText="Regex pattern to match messages. Optional." />
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            }
+        </MudPaper>
+
+        <MudPaper Class="pa-4" Elevation="0" data-testid="openclaw-agents-section">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                <MudText Typo="Typo.subtitle2" Style="font-weight:600;">Registered Agents</MudText>
+                <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add" OnClick="AddAgent">Add Agent</MudButton>
+            </MudStack>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
+                JD.AI agents registered with OpenClaw so they appear as native agents in OpenClaw's system.
+            </MudText>
+
+            @for (var i = 0; i < OpenClaw.RegisterAgents.Count; i++)
+            {
+                var idx = i;
+                var agent = OpenClaw.RegisterAgents[idx];
+                <MudPaper Class="pa-3 mb-2" Elevation="0" Style="border:1px solid rgba(136,146,168,0.1);border-radius:6px;">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudText>@agent.Emoji</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight:600;">@(string.IsNullOrEmpty(agent.Name) ? agent.Id : agent.Name)</MudText>
+                        </MudStack>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                       OnClick="@(() => OpenClaw.RegisterAgents.RemoveAt(idx))" />
+                    </MudStack>
+                    <MudGrid>
+                        <MudItem xs="12" md="3">
+                            <MudTextField @bind-Value="agent.Id" Label="Agent ID" Variant="Variant.Outlined"
+                                          HelperText="OpenClaw agent identifier." />
+                        </MudItem>
+                        <MudItem xs="12" md="3">
+                            <MudTextField @bind-Value="agent.Name" Label="Display Name" Variant="Variant.Outlined"
+                                          HelperText="Name shown in OpenClaw." />
+                        </MudItem>
+                        <MudItem xs="12" md="3">
+                            <MudTextField @bind-Value="agent.Model" Label="Model" Variant="Variant.Outlined"
+                                          HelperText="Model identifier for display." />
+                        </MudItem>
+                        <MudItem xs="12" md="3">
+                            <MudTextField @bind-Value="agent.GatewayAgentId" Label="Gateway Agent" Variant="Variant.Outlined"
+                                          HelperText="JD.AI agent ID to route to." />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="agent.Theme" Label="Theme / Description" Variant="Variant.Outlined"
+                                          HelperText="Short description of the agent's purpose." />
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            }
+        </MudPaper>
+    }
+
+    <MudStack Row="true" Justify="Justify.FlexEnd">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save"
+                   data-testid="save-openclaw-button"
+                   OnClick="SaveAsync" Disabled="_saving">
+            @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+            Save OpenClaw
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter] public OpenClawConfigModel OpenClaw { get; set; } = new();
+    [Parameter] public GatewayApiClient Api { get; set; } = null!;
+
+    private bool _saving;
+
+    private void AddChannelOverride()
+    {
+        OpenClaw.Channels["new-channel"] = new OpenClawChannelConfigModel();
+    }
+
+    private void AddAgent()
+    {
+        OpenClaw.RegisterAgents.Add(new OpenClawAgentRegistrationModel());
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            await Api.UpdateOpenClawConfigAsync(OpenClaw);
+            Snackbar.Add("OpenClaw configuration saved", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add($"Save failed: {ex.Message}", Severity.Error); }
+        finally { _saving = false; }
+    }
+
+    private static string GetChannelIcon(string type) => type.ToLowerInvariant() switch
+    {
+        "discord" => Icons.Material.Filled.Forum,
+        "signal" => Icons.Material.Filled.Security,
+        "slack" => Icons.Material.Filled.Tag,
+        "telegram" => Icons.Material.Filled.Send,
+        "web" => Icons.Material.Filled.Language,
+        _ => Icons.Material.Filled.Cable
+    };
+}

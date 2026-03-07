@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JD.AI Governance Specification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "id",
+    "version",
+    "status",
+    "metadata",
+    "ownershipModel",
+    "changeProcess",
+    "approvalGates",
+    "releasePolicy",
+    "auditRequirements",
+    "trace"
+  ],
+  "properties": {
+    "apiVersion": { "const": "jdai.upss/v1" },
+    "kind": { "const": "Governance" },
+    "id": {
+      "type": "string",
+      "pattern": "^governance\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+    },
+    "version": { "type": "integer", "minimum": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "active", "deprecated", "retired"]
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owners", "reviewers", "lastReviewed", "changeReason"],
+      "properties": {
+        "owners": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "reviewers": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "lastReviewed": { "type": "string", "format": "date" },
+        "changeReason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "ownershipModel": {
+      "type": "string",
+      "enum": ["codeowners", "team-based", "individual", "shared"]
+    },
+    "changeProcess": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "description", "requiredApprovals"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "description": { "type": "string", "minLength": 1 },
+          "requiredApprovals": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "approvalGates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "type", "criteria"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "type": { "type": "string", "enum": ["automated", "manual", "hybrid"] },
+          "criteria": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+        }
+      }
+    },
+    "releasePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cadence", "branchStrategy"],
+      "properties": {
+        "cadence": { "type": "string", "enum": ["continuous", "scheduled", "manual"] },
+        "branchStrategy": { "type": "string", "minLength": 1 },
+        "hotfixProcess": { "type": "string" }
+      }
+    },
+    "auditRequirements": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["upstream", "downstream"],
+      "properties": {
+        "upstream": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "downstream": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["allSpecTypes"],
+          "properties": {
+            "allSpecTypes": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+          }
+        }
+      }
+    }
+  }
+}
