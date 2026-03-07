@@ -109,7 +109,7 @@ public sealed class CommandAndConfigDriftGuardTests
         {
             var router = CreateRouter();
 
-            var list = await router.ExecuteAsync("/config");
+            var list = await router.ExecuteAsync("/config list");
             Assert.NotNull(list);
 
             var keys = ConfigKeyRegex
@@ -124,7 +124,7 @@ public sealed class CommandAndConfigDriftGuardTests
 
             var keyPayload = string.Join('\n', keys);
             var actualHash = ComputeSha256(keyPayload);
-            const string ExpectedHash = "9603FFF74723C9FD87B830E51E5C5AFC974A0974D316E8096AEAE91A84EB8E24";
+            const string ExpectedHash = "353A009E017418970EB86A29577D73B79F616867541F1D3857D4F786068360CC";
 
             Assert.True(
                 string.Equals(actualHash, ExpectedHash, StringComparison.Ordinal),
@@ -148,6 +148,14 @@ public sealed class CommandAndConfigDriftGuardTests
                 ["autorun"] = "off",
                 ["permissions"] = "on",
                 ["plan_mode"] = "off",
+                ["sys_prompt_compaction"] = "auto",
+                ["sys_prompt_budget"] = "30",
+                ["compact_auto"] = "on",
+                ["compact_threshold"] = "75",
+                ["welcome_motd_timeout_ms"] = "700",
+                ["welcome_motd_max_length"] = "160",
+                ["welcome_model_summary"] = "on",
+                ["welcome_services"] = "off",
             };
 
             foreach (var key in keys.Where(setSamples.ContainsKey))

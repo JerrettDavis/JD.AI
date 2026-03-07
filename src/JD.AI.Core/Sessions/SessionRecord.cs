@@ -47,6 +47,10 @@ public sealed class TurnRecord
     public long TokensIn { get; set; }
     public long TokensOut { get; set; }
     public long DurationMs { get; set; }
+    /// <summary>Estimated cumulative tokens in the context window after this turn completed.</summary>
+    public long CumulativeContextTokens { get; set; }
+    /// <summary>Model context window size at the time of this turn (0 = unknown).</summary>
+    public int ContextWindowTokens { get; set; }
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "MA0016:Prefer using collection abstraction instead of implementation", Justification = "POCO for serialization")]
     public Collection<ToolCallRecord> ToolCalls { get; init; } = new Collection<ToolCallRecord>();
