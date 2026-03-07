@@ -39,7 +39,7 @@ public static class DetachedUpdater
             if (targetVersion is not null)
                 ValidateVersion(targetVersion);
 
-            var parentPid = Process.GetCurrentProcess().Id;
+            var parentPid = Environment.ProcessId;
             var scriptPath = WriteUpdateScript(packageId, targetVersion, parentPid);
             StartDetached(scriptPath);
 
