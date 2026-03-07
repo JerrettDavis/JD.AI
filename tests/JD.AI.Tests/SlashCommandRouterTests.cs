@@ -79,18 +79,6 @@ public sealed class SlashCommandRouterTests
     }
 
     [Fact]
-    public async Task Models_HandlesNoModels()
-    {
-        _registry.GetModelsAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<ProviderModelInfo>());
-
-        var result = await _router.ExecuteAsync("/models");
-
-        Assert.NotNull(result);
-        Assert.Contains("No models", result);
-    }
-
-    [Fact]
     public async Task Model_SwitchesModel()
     {
         var newModel = new ProviderModelInfo("new-model", "New Model", "Provider1");

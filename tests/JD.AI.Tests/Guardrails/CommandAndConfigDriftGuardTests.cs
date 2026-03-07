@@ -154,6 +154,8 @@ public sealed class CommandAndConfigDriftGuardTests
                 ["compact_threshold"] = "75",
                 ["welcome_motd_timeout_ms"] = "700",
                 ["welcome_motd_max_length"] = "160",
+                ["welcome_model_summary"] = "on",
+                ["welcome_services"] = "off",
             };
 
             foreach (var key in keys.Where(setSamples.ContainsKey))

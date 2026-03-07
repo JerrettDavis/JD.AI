@@ -46,6 +46,10 @@ internal static class ConfigEditor
     {
         var changes = new List<string>();
 
+        // Pre-flight: fall back gracefully in non-interactive terminals
+        if (!AnsiConsole.Profile.Capabilities.Interactive)
+            return "No changes.";
+
         while (true)
         {
             var settings = loadSettings();
@@ -122,13 +126,13 @@ internal static class ConfigEditor
             {
                 selected = AnsiConsole.Prompt(prompt);
             }
+            catch (OperationCanceledException)
+            {
+                break; // User cancelled
+            }
             catch (InvalidOperationException)
             {
                 break; // Non-interactive terminal
-            }
-            catch (NotSupportedException)
-            {
-                break; // ANSI not supported
             }
 
             if (selected.IsDone)
