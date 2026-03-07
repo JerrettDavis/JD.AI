@@ -1,5 +1,6 @@
 using JD.AI.Core.Events;
 using JD.AI.Core.Infrastructure;
+using JD.AI.Core.Installation;
 using JD.AI.Daemon.Config;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -171,16 +172,33 @@ public sealed class UpdateService : BackgroundService
     {
         try
         {
-            var result = await ProcessExecutor.RunAsync(
-                "dotnet", $"tool update -g {_config.PackageId}", cancellationToken: ct);
-
-            if (result.Success)
+            // On Windows the running jdai-daemon binary is file-locked by the OS.
+            // Use DetachedUpdater to launch the update after the daemon exits;
+            // the service manager (SCM / systemd) will restart the daemon with
+            // the new version after _lifetime.StopApplication() is called below.
+            if (OperatingSystem.IsWindows())
             {
-                _logger.LogInformation("dotnet tool update succeeded: {Output}", result.StandardOutput);
+                var result = DetachedUpdater.Launch(_config.PackageId);
+                if (!result.Success)
+                {
+                    _logger.LogError("Failed to launch detached updater: {Output}", result.Output);
+                    return false;
+                }
+
+                _logger.LogInformation("Detached updater launched. Daemon will stop and be restarted by SCM.");
                 return true;
             }
 
-            _logger.LogError("dotnet tool update failed (exit {Code}): {Err}", result.ExitCode, result.StandardError);
+            var procResult = await ProcessExecutor.RunAsync(
+                "dotnet", $"tool update -g {_config.PackageId}", cancellationToken: ct);
+
+            if (procResult.Success)
+            {
+                _logger.LogInformation("dotnet tool update succeeded: {Output}", procResult.StandardOutput);
+                return true;
+            }
+
+            _logger.LogError("dotnet tool update failed (exit {Code}): {Err}", procResult.ExitCode, procResult.StandardError);
             return false;
         }
         catch (Exception ex)

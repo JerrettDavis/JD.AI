@@ -1172,8 +1172,11 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         }
 
         var shouldRestart = await UpdatePrompter.PromptAsync(info, ct).ConfigureAwait(false);
+
+        // PromptAsync already rendered detached-launch messaging to the console;
+        // return a summary string so the TUI can render it in the message stream.
         return shouldRestart
-            ? "Update applied. Please restart jdai."
+            ? "Update process started. Exit and restart jdai to apply the update."
             : $"Update available: {info.CurrentVersion} → {info.LatestVersion}";
     }
 

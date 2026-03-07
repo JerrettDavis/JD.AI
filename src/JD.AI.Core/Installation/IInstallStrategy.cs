@@ -21,4 +21,12 @@ public interface IInstallStrategy
 /// <param name="Success">Whether the operation completed successfully.</param>
 /// <param name="Output">Human-readable output describing what happened.</param>
 /// <param name="RequiresRestart">Whether the user must restart <c>jdai</c> after applying.</param>
-public sealed record InstallResult(bool Success, string Output, bool RequiresRestart = false);
+/// <param name="LaunchedDetached">
+/// True when the update was launched as a detached background process (Windows self-update).
+/// The caller should inform the user to exit and restart; the update will complete after the process exits.
+/// </param>
+public sealed record InstallResult(
+    bool Success,
+    string Output,
+    bool RequiresRestart = false,
+    bool LaunchedDetached = false);
