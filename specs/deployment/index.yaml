@@ -1,0 +1,7 @@
+apiVersion: jdai.upss/v1
+kind: DeploymentIndex
+entries:
+  - id: deployment.jdai-gateway
+    title: JD.AI Gateway Deployment
+    path: specs/deployment/examples/deployment.example.yaml
+    status: draft
