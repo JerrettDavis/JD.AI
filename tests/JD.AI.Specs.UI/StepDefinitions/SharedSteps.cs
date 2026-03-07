@@ -114,7 +114,6 @@ public sealed class SharedSteps
             .Locator("[data-testid='settings-tabs']")
             .Locator($":text-is('{tabName}')")
             .First;
-
         await Expect(tab).ToBeVisibleAsync();
         await tab.ClickAsync();
         await _page.WaitForTimeoutAsync(300);
