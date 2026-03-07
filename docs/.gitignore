@@ -1,0 +1,7 @@
+_site/
+api/**
+!api/index.md
+obj/
+log/
+scripts/node_modules/
+scripts/package-lock.json

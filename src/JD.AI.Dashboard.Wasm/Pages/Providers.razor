@@ -1,0 +1,117 @@
+@page "/providers"
+@inject GatewayApiClient Api
+
+<PageTitle>Providers — JD.AI</PageTitle>
+
+<div class="jd-page-header">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h4">Model Providers</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small" data-testid="refresh-button" />
+    </MudStack>
+</div>
+
+@if (_loading)
+{
+    <MudGrid>
+        @for (var i = 0; i < 2; i++)
+        {
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4 jd-skeleton-card" Elevation="0">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-4">
+                        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="36px" Height="36px" />
+                        <MudStack Spacing="1">
+                            <MudSkeleton Width="120px" Height="18px" />
+                            <MudSkeleton Width="80px" Height="12px" />
+                        </MudStack>
+                        <MudSpacer />
+                        <MudSkeleton Width="64px" Height="24px" />
+                    </MudStack>
+                    @for (var j = 0; j < 3; j++)
+                    {
+                        <div class="jd-skeleton-row">
+                            <MudSkeleton Width="180px" Height="14px" />
+                            <MudSkeleton Width="120px" Height="14px" />
+                        </div>
+                    }
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+}
+else if (_providers is null || _providers.Length == 0)
+{
+    <MudPaper Class="pa-6" Elevation="0" data-testid="providers-empty">
+        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Hub" Size="Size.Large" Color="Color.Default" Style="opacity:0.3" />
+            <MudText Color="Color.Secondary">No providers configured.</MudText>
+        </MudStack>
+    </MudPaper>
+}
+else
+{
+    <MudGrid>
+        @foreach (var provider in _providers)
+        {
+            <MudItem xs="12" md="6">
+                <MudCard Elevation="0" Class="jd-stat-card" data-testid="provider-card">
+                    <MudCardHeader>
+                        <CardHeaderAvatar>
+                            <MudAvatar Color="@(provider.IsAvailable ? Color.Success : Color.Error)"
+                                       Variant="Variant.Outlined" Size="Size.Small">
+                                <MudIcon Icon="@Icons.Material.Filled.Hub" Size="Size.Small" />
+                            </MudAvatar>
+                        </CardHeaderAvatar>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.body1" Style="font-weight:600;" data-testid="provider-name">@provider.Name</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @(provider.IsAvailable ? $"{provider.Models.Length} models" : provider.StatusMessage ?? "Unavailable")
+                            </MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
+                                     Color="@(provider.IsAvailable ? Color.Success : Color.Error)"
+                                     Icon="@(provider.IsAvailable ? Icons.Material.Filled.FiberManualRecord : Icons.Material.Filled.RadioButtonUnchecked)"
+                                     data-testid="provider-status">
+                                @(provider.IsAvailable ? "Online" : "Offline")
+                            </MudChip>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    @if (provider.Models.Length > 0)
+                    {
+                        <MudCardContent>
+                            <MudSimpleTable Dense="true" Hover="true" data-testid="provider-models">
+                                <thead>
+                                    <tr><th>Model ID</th><th>Display Name</th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var model in provider.Models)
+                                    {
+                                        <tr>
+                                            <td><MudText Typo="Typo.body2" Style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;">@model.Id</MudText></td>
+                                            <td><MudText Typo="Typo.body2">@model.DisplayName</MudText></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </MudSimpleTable>
+                        </MudCardContent>
+                    }
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private ProviderInfo[]? _providers;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try { _providers = await Api.GetProvidersAsync(); }
+        catch { _providers = null; }
+        _loading = false;
+    }
+}

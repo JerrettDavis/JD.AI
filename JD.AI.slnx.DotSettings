@@ -1,0 +1,48 @@
+﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+
+  <!-- EditorConfig takes precedence for all style rules -->
+
+  <!-- ── Custom "Pre-commit" cleanup profile ──────────────────────────
+       Format-only: reformat code + sort usings.
+       Does NOT apply code transformations (var style, brace removal, etc.)
+       so it won't silently revert semantic changes during git hooks.
+       The "Built-in: Full Cleanup" profile is still available in the IDE. -->
+  <s:String x:Key="/Default/CodeCleanup/Profiles/=Pre_002Dcommit/@EntryIndexedValue">Pre-commit</s:String>
+  <s:Boolean x:Key="/Default/CodeCleanup/Profiles/=Pre_002Dcommit/=Descriptors/=CSharpFormatDocComments/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeCleanup/Profiles/=Pre_002Dcommit/=Descriptors/=CSharpReformatCode/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeCleanup/Profiles/=Pre_002Dcommit/=Descriptors/=CSharpShortenQualifiedReferences/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeCleanup/Profiles/=Pre_002Dcommit/=Descriptors/=CSharpOptimizeUsings/@EntryIndexedValue">True</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeCleanup/Profiles/=Pre_002Dcommit/=Descriptors/=CSharpRemoveCodeRedundancies/@EntryIndexedValue">False</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeCleanup/Profiles/=Pre_002Dcommit/=Descriptors/=CSharpArrangeQualifiers/@EntryIndexedValue">False</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeCleanup/Profiles/=Pre_002Dcommit/=Descriptors/=CSharpApplyNamingConvention/@EntryIndexedValue">False</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeCleanup/Profiles/=Pre_002Dcommit/=Descriptors/=CSharpMakeAutoPropertyGetOnly/@EntryIndexedValue">False</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeCleanup/Profiles/=Pre_002Dcommit/=Descriptors/=CSharpMakeFieldReadonly/@EntryIndexedValue">False</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeCleanup/Profiles/=Pre_002Dcommit/=Descriptors/=CSharpUseAutoProperty/@EntryIndexedValue">False</s:Boolean>
+  <s:Boolean x:Key="/Default/CodeCleanup/Profiles/=Pre_002Dcommit/=Descriptors/=CSharpArrangeThisQualifier/@EntryIndexedValue">False</s:Boolean>
+
+  <!-- Ensure cleanup respects editorconfig max_line_length = 80 -->
+  <s:Int64 x:Key="/Default/CodeStyle/CodeFormatting/CSharpFormat/MAX_LINE_LENGTH/@EntryValue">80</s:Int64>
+
+  <!-- Wrap parameters when line exceeds limit -->
+  <s:String x:Key="/Default/CodeStyle/CodeFormatting/CSharpFormat/WRAP_PARAMETERS_STYLE/@EntryValue">CHOP_IF_LONG</s:String>
+
+  <!-- Wrap arguments when line exceeds limit -->
+  <s:String x:Key="/Default/CodeStyle/CodeFormatting/CSharpFormat/WRAP_ARGUMENTS_STYLE/@EntryValue">CHOP_IF_LONG</s:String>
+
+  <!-- Wrap chained method calls -->
+  <s:String x:Key="/Default/CodeStyle/CodeFormatting/CSharpFormat/WRAP_CHAINED_METHOD_CALLS/@EntryValue">CHOP_IF_LONG</s:String>
+
+  <!-- Braces: remove when not needed -->
+  <s:String x:Key="/Default/CodeStyle/CodeFormatting/CSharpFormat/FORCE_BRACES_STYLE/@EntryValue">REMOVE_BRACES</s:String>
+
+  <!-- Apply var style -->
+  <s:String x:Key="/Default/CodeStyle/CodeFormatting/CSharpFormat/USE_VAR/@EntryValue">ALWAYS</s:String>
+
+  <!-- Arrange qualifiers -->
+  <s:Boolean x:Key="/Default/CodeStyle/CodeFormatting/CSharpFormat/ARRANGE_QUALIFIER/@EntryValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/Environment/SettingsMigration/IsMigratorApplied/=JetBrains_002EReSharper_002EPsi_002ECSharp_002ECodeStyle_002ECSharpKeepExistingMigration/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/Environment/SettingsMigration/IsMigratorApplied/=JetBrains_002EReSharper_002EPsi_002ECSharp_002ECodeStyle_002ECSharpPlaceEmbeddedOnSameLineMigration/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/Environment/SettingsMigration/IsMigratorApplied/=JetBrains_002EReSharper_002EPsi_002ECSharp_002ECodeStyle_002ECSharpUseContinuousIndentInsideBracesMigration/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/Environment/SettingsMigration/IsMigratorApplied/=JetBrains_002EReSharper_002EPsi_002ECSharp_002ECodeStyle_002ESettingsUpgrade_002EMigrateBlankLinesAroundFieldToBlankLinesAroundProperty/@EntryIndexedValue">True</s:Boolean>
+
+</wpf:ResourceDictionary>

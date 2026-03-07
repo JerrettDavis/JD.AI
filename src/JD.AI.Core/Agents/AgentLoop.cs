@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using JD.AI.Core.PromptCaching;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Tools;
@@ -80,6 +81,7 @@ public sealed class AgentLoop
                 _session.History.AddAssistantMessage(response);
                 _session.History.AddUserMessage($"[Tool result for {toolResult.Value.FunctionName}]:\n{toolResult.Value.Result}");
 
+                AgentOutput.Current.RenderToolCall(toolResult.Value.FunctionName, null, toolResult.Value.Result);
                 turnEntry.Attributes["text_tool_call"] = toolResult.Value.FunctionName;
 
                 // Re-invoke the model with the tool result so it can produce a natural response
@@ -368,6 +370,8 @@ public sealed class AgentLoop
                 _session.History.AddAssistantMessage(response);
                 _session.History.AddUserMessage($"[Tool result for {toolResult.Value.FunctionName}]:\n{toolResult.Value.Result}");
 
+                output.RenderToolCall(toolResult.Value.FunctionName, null, toolResult.Value.Result);
+
                 DebugLogger.Log(DebugCategory.Agents,
                     "Text-based tool call detected: {0}, re-invoking model with result",
                     toolResult.Value.FunctionName);
@@ -445,6 +449,23 @@ public sealed class AgentLoop
                 sw.Stop();
 
                 var response = result.Content ?? "(no response)";
+
+                // Check for text-based tool calls before rendering or committing to history
+                var fallbackToolResult = await TryExecuteTextToolCallAsync(response, ct).ConfigureAwait(false);
+                if (fallbackToolResult is not null)
+                {
+                    output.RenderToolCall(fallbackToolResult.Value.FunctionName, null, fallbackToolResult.Value.Result);
+                    _session.History.AddAssistantMessage(response);
+                    _session.History.AddUserMessage(
+                        $"[Tool result for {fallbackToolResult.Value.FunctionName}]:\n{fallbackToolResult.Value.Result}");
+
+                    sw.Restart();
+                    var followUp = await chat.GetChatMessageContentAsync(
+                        _session.History, settings, _session.Kernel, ct).ConfigureAwait(false);
+                    sw.Stop();
+                    response = followUp.Content ?? fallbackToolResult.Value.Result;
+                }
+
                 _session.History.AddAssistantMessage(response);
 
                 var tokenEstimate = JD.SemanticKernel.Extensions.Compaction.TokenEstimator
@@ -508,6 +529,23 @@ public sealed class AgentLoop
                 sw.Stop();
 
                 var response = result.Content ?? "(no response)";
+
+                // Even without structured tool calling, the model may emit JSON tool calls as text
+                var retryToolResult = await TryExecuteTextToolCallAsync(response, ct).ConfigureAwait(false);
+                if (retryToolResult is not null)
+                {
+                    output.RenderToolCall(retryToolResult.Value.FunctionName, null, retryToolResult.Value.Result);
+                    _session.History.AddAssistantMessage(response);
+                    _session.History.AddUserMessage(
+                        $"[Tool result for {retryToolResult.Value.FunctionName}]:\n{retryToolResult.Value.Result}");
+
+                    sw.Restart();
+                    var followUp = await chat.GetChatMessageContentAsync(
+                        _session.History, retrySettings, _session.Kernel, ct).ConfigureAwait(false);
+                    sw.Stop();
+                    response = followUp.Content ?? retryToolResult.Value.Result;
+                }
+
                 _session.History.AddAssistantMessage(response);
 
                 var tokenEstimate = JD.SemanticKernel.Extensions.Compaction.TokenEstimator
@@ -888,6 +926,7 @@ public sealed class AgentLoop
     /// Detects when a model emits a tool/function call as plain text JSON instead of
     /// using the structured tool calling protocol. Common with smaller models (1-8B).
     /// If detected, resolves and invokes the kernel function, returning the result.
+    /// Handles single bare JSON, code-fenced JSON, and responses with prose around the JSON.
     /// </summary>
     private async Task<TextToolCallResult?> TryExecuteTextToolCallAsync(
         string response, CancellationToken ct)
@@ -895,25 +934,13 @@ public sealed class AgentLoop
         if (string.IsNullOrWhiteSpace(response))
             return null;
 
-        // Strip markdown code fences if present (```json ... ```)
-        var text = response.Trim();
-        if (text.StartsWith("```", StringComparison.Ordinal))
-        {
-            var firstNewline = text.IndexOf('\n');
-            if (firstNewline > 0)
-                text = text[(firstNewline + 1)..];
-            if (text.EndsWith("```", StringComparison.Ordinal))
-                text = text[..^3];
-            text = text.Trim();
-        }
-
-        // Must look like a JSON object with "name" and "arguments"
-        if (!text.StartsWith('{') || !text.EndsWith('}'))
+        var jsonText = ExtractFirstToolCallJson(response);
+        if (jsonText is null)
             return null;
 
         try
         {
-            using var doc = JsonDocument.Parse(text);
+            using var doc = JsonDocument.Parse(jsonText);
             var root = doc.RootElement;
 
             if (!root.TryGetProperty("name", out var nameEl) ||
@@ -981,6 +1008,93 @@ public sealed class AgentLoop
             DebugLogger.Log(DebugCategory.Agents,
                 "Text-based tool call execution failed: {0}", ex.Message);
             return null;
+        }
+    }
+
+    // Compiled regex for fenced JSON blocks (e.g. ```json\n{...}\n```)
+    private static readonly Regex FencedJsonRegex = new(
+        @"```(?:json)?\s*\r?\n(?<json>\{[\s\S]*?\})\s*\r?\n```",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    /// <summary>
+    /// Extracts the first JSON object that looks like a tool call (has "name" + "arguments")
+    /// from a response that may contain prose, code fences, or multiple JSON blocks.
+    /// </summary>
+    internal static string? ExtractFirstToolCallJson(string response)
+    {
+        var text = response.Trim();
+
+        // Strategy 1: Whole response is bare JSON
+        if (text.StartsWith('{') && text.EndsWith('}'))
+        {
+            if (LooksLikeToolCall(text))
+                return text;
+        }
+
+        // Strategy 2: Fenced code blocks (```json ... ```)
+        foreach (Match m in FencedJsonRegex.Matches(text))
+        {
+            var candidate = m.Groups["json"].Value.Trim();
+            if (LooksLikeToolCall(candidate))
+                return candidate;
+        }
+
+        // Strategy 3: Scan for first { ... } block with balanced braces
+        var pos = 0;
+        while (pos < text.Length)
+        {
+            var start = text.IndexOf('{', pos);
+            if (start < 0) break;
+
+            var depth = 0;
+            var inString = false;
+            var escape = false;
+
+            for (var i = start; i < text.Length; i++)
+            {
+                var ch = text[i];
+                if (escape) { escape = false; continue; }
+                if (ch == '\\' && inString) { escape = true; continue; }
+                if (ch == '"') { inString = !inString; continue; }
+                if (inString) continue;
+
+                if (ch == '{') depth++;
+                else if (ch == '}')
+                {
+                    depth--;
+                    if (depth == 0)
+                    {
+                        var candidate = text[start..(i + 1)];
+                        if (LooksLikeToolCall(candidate))
+                            return candidate;
+                        break;
+                    }
+                }
+            }
+
+            pos = start + 1;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Quick heuristic: returns true if the JSON text contains both "name" and "arguments" keys
+    /// at the top level, suggesting it's a tool call rather than arbitrary data.
+    /// </summary>
+    private static bool LooksLikeToolCall(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            return root.TryGetProperty("name", out var n) &&
+                   n.ValueKind == JsonValueKind.String &&
+                   root.TryGetProperty("arguments", out _);
+        }
+        catch (JsonException)
+        {
+            return false;
         }
     }
 }

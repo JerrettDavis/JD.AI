@@ -1,0 +1,17 @@
+{{- if and .Values.daemon.enabled .Values.daemon.persistence.enabled (not .Values.daemon.persistence.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "jdai.fullname" . }}-daemon
+  labels:
+    {{- include "jdai.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.daemon.persistence.accessModes | nindent 4 }}
+  {{- if .Values.daemon.persistence.storageClassName }}
+  storageClassName: {{ .Values.daemon.persistence.storageClassName }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.daemon.persistence.size }}
+{{- end }}

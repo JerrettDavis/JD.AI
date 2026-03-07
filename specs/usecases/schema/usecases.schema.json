@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jd.ai/schemas/upss/usecases.schema.json",
+  "title": "JD.AI Use Case Specification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "id",
+    "version",
+    "status",
+    "metadata",
+    "actor",
+    "capabilityRef",
+    "preconditions",
+    "workflowSteps",
+    "expectedOutcomes",
+    "failureScenarios",
+    "trace"
+  ],
+  "properties": {
+    "apiVersion": { "type": "string", "const": "jdai.upss/v1" },
+    "kind": { "type": "string", "const": "UseCase" },
+    "id": {
+      "type": "string",
+      "pattern": "^usecase\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+    },
+    "version": { "type": "integer", "minimum": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "active", "deprecated", "retired"]
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owners", "reviewers", "lastReviewed", "changeReason"],
+      "properties": {
+        "owners": { "type": "array", "items": { "type": "string" } },
+        "reviewers": { "type": "array", "items": { "type": "string" } },
+        "lastReviewed": { "type": "string" },
+        "changeReason": { "type": "string" }
+      }
+    },
+    "actor": { "type": "string" },
+    "capabilityRef": { "type": "string" },
+    "preconditions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "workflowSteps": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "expectedOutcomes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "failureScenarios": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["upstream", "downstream"],
+      "properties": {
+        "upstream": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "downstream": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["behavior", "testing", "interfaces"],
+          "properties": {
+            "behavior": { "type": "array", "items": { "type": "string" } },
+            "testing": { "type": "array", "items": { "type": "string" } },
+            "interfaces": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    }
+  }
+}

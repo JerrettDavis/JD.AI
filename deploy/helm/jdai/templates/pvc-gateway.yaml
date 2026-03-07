@@ -1,0 +1,17 @@
+{{- if and .Values.gateway.enabled .Values.gateway.persistence.enabled (not .Values.gateway.persistence.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "jdai.fullname" . }}-gateway
+  labels:
+    {{- include "jdai.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.gateway.persistence.accessModes | nindent 4 }}
+  {{- if .Values.gateway.persistence.storageClassName }}
+  storageClassName: {{ .Values.gateway.persistence.storageClassName }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.gateway.persistence.size }}
+{{- end }}

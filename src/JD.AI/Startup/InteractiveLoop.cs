@@ -494,11 +494,19 @@ internal sealed class InteractiveLoop
         // Auto-compaction
         try
         {
-            var estimatedTokens = TokenEstimator.EstimateTokens(_session.History);
-            if (estimatedTokens > 3000)
+            var freshSettings = TuiSettings.Load();
+            if (freshSettings.AutoCompact && freshSettings.CompactThresholdPercent > 0)
             {
-                ChatRenderer.RenderInfo("Compacting context...");
-                await _session.CompactAsync(appCts.Token).ConfigureAwait(false);
+                var estimatedTokens = TokenEstimator.EstimateTokens(_session.History);
+                var contextWindow = (_session.CurrentModel ?? _selectedModel).ContextWindowTokens;
+                var threshold = contextWindow > 0
+                    ? (long)(contextWindow * (freshSettings.CompactThresholdPercent / 100.0))
+                    : 3000L;
+                if (estimatedTokens > threshold)
+                {
+                    ChatRenderer.RenderInfo("Compacting context...");
+                    await _session.CompactAsync(appCts.Token).ConfigureAwait(false);
+                }
             }
         }
         catch (OperationCanceledException) when (!appCts.IsCancellationRequested)

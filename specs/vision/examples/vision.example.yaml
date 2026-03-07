@@ -1,0 +1,55 @@
+apiVersion: jdai.upss/v1
+kind: Vision
+id: vision.jdai.product
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-vision-architect
+  lastReviewed: 2026-03-07
+  changeReason: Establish the first canonical UPSS artifact for repo-native product intent.
+problemStatement: JD.AI lacks a single authoritative product-intent artifact that humans and agents can both consume and validate.
+mission: Enable safe, agent-driven software delivery from repo-native specifications.
+targetUsers:
+  - id: user.product-owner
+    name: Product owners
+    needs:
+      - Define product direction, scope, and measures of success in a durable repository artifact.
+  - id: user.delivery-agent
+    name: Delivery agents
+    needs:
+      - Read product intent directly from the repository and trace implementation work back to it.
+  - id: user.governance-reviewer
+    name: Governance reviewers
+    needs:
+      - Audit whether capabilities, tests, and operational changes remain aligned with approved product intent.
+valueProposition:
+  summary: JD.AI turns the repository into the authoritative product blueprint so intent, implementation, and validation evolve together.
+  differentiators:
+    - Product intent lives beside code, tests, and deployment assets instead of in disconnected planning systems.
+    - Structured specs are machine-readable for agents while remaining legible to human reviewers.
+    - Traceability and validation can be enforced in CI to reduce specification drift.
+successMetrics:
+  - id: metric.traceability-coverage
+    name: Traceability coverage
+    target: ">=95% of implementation artifacts map back to approved product intent."
+    measurement: Automated traceability audits across specs, code, tests, and deployment artifacts.
+  - id: metric.validation-adoption
+    name: Validation adoption
+    target: "All new canonical spec types ship with repo-native validation before general use."
+    measurement: CI enforcement coverage across UPSS spec directories.
+constraints:
+  - Specifications must be stored in-repo and versioned with the product they describe.
+  - Every canonical spec type must support both human-readable guidance and machine-readable structure.
+  - Validation must run in CI without depending on external control planes.
+nonGoals:
+  - Replace human approval for high-risk releases or security-sensitive changes.
+  - Encode sprint plans, milestones, or staffing decisions inside the vision layer.
+trace:
+  upstream:
+    - docs/index.md
+    - docs/architecture/index.md
+  downstream:
+    capabilities: []

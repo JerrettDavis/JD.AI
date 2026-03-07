@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>JD.AI.Gateway</RootNamespace>
+    <IsPackable>true</IsPackable>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>jdai-gateway</ToolCommandName>
+    <PackageId>JD.AI.Gateway</PackageId>
+    <Description>ASP.NET Core gateway control plane for JD.AI — REST API, SignalR hubs, agent routing, and channel management.</Description>
+    <PackageTags>ai;gateway;semantic-kernel;signalr;control-plane</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="JD.AI.Gateway.Tests" />
+    <InternalsVisibleTo Include="JD.AI.Specs" />
+    <InternalsVisibleTo Include="JD.AI.Specs.UI" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JD.AI.Core\JD.AI.Core.csproj" />
+    <ProjectReference Include="..\JD.AI.Telemetry\JD.AI.Telemetry.csproj" />
+    <ProjectReference Include="..\JD.AI.Plugins.SDK\JD.AI.Plugins.SDK.csproj" />
+    <ProjectReference Include="..\JD.AI.Channels.Discord\JD.AI.Channels.Discord.csproj" />
+    <ProjectReference Include="..\JD.AI.Channels.Signal\JD.AI.Channels.Signal.csproj" />
+    <ProjectReference Include="..\JD.AI.Channels.Slack\JD.AI.Channels.Slack.csproj" />
+    <ProjectReference Include="..\JD.AI.Channels.Telegram\JD.AI.Channels.Telegram.csproj" />
+    <ProjectReference Include="..\JD.AI.Channels.Web\JD.AI.Channels.Web.csproj" />
+    <ProjectReference Include="..\JD.AI.Channels.OpenClaw\JD.AI.Channels.OpenClaw.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+  </ItemGroup>
+
+</Project>

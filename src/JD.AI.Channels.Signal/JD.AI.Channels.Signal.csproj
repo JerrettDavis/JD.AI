@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>JD.AI.Channels.Signal</RootNamespace>
+    <Description>Signal channel adapter for JD.AI Gateway — bridges to signal-cli via JSON-RPC.</Description>
+    <PackageTags>ai;signal;channel;gateway</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JD.AI.Core\JD.AI.Core.csproj" />
+  </ItemGroup>
+
+</Project>

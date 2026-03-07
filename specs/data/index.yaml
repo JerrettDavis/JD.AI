@@ -1,0 +1,7 @@
+apiVersion: jdai.upss/v1
+kind: DataIndex
+entries:
+  - id: data.session-store
+    title: Session Store Data Model
+    path: specs/data/examples/data.example.yaml
+    status: draft
