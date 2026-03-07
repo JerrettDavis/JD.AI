@@ -2990,6 +2990,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
               spinner_style: {{spinner.ToString().ToLowerInvariant()}}
               prompt_cache: {{_session.PromptCachingEnabled.ToString().ToLowerInvariant()}}
               prompt_cache_ttl: {{PromptCachePolicy.ToToken(_session.PromptCacheTtl)}}
+              compact_auto: {{settings.AutoCompact.ToString().ToLowerInvariant()}}
+              compact_threshold: {{settings.CompactThresholdPercent}}
               autorun: {{_session.AutoRunEnabled.ToString().ToLowerInvariant()}}
               permissions: {{(!_session.SkipPermissions).ToString().ToLowerInvariant()}}
               plan_mode: {{_session.PlanMode.ToString().ToLowerInvariant()}}
@@ -3021,6 +3023,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "spinner_style" => $"spinner_style={(_getSpinnerStyle?.Invoke() ?? settings.SpinnerStyle).ToString().ToLowerInvariant()}",
             "prompt_cache" => $"prompt_cache={_session.PromptCachingEnabled.ToString().ToLowerInvariant()}",
             "prompt_cache_ttl" => $"prompt_cache_ttl={PromptCachePolicy.ToToken(_session.PromptCacheTtl)}",
+            "compact_auto" => $"compact_auto={settings.AutoCompact.ToString().ToLowerInvariant()}",
+            "compact_threshold" => $"compact_threshold={settings.CompactThresholdPercent}",
             "autorun" => $"autorun={_session.AutoRunEnabled.ToString().ToLowerInvariant()}",
             "permissions" => $"permissions={(!_session.SkipPermissions).ToString().ToLowerInvariant()}",
             "plan_mode" => $"plan_mode={_session.PlanMode.ToString().ToLowerInvariant()}",
@@ -3092,6 +3096,18 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                 _session.PromptCacheTtl = ttl;
                 SaveSettings(settings with { PromptCacheTtl = ttl });
                 return $"prompt_cache_ttl={PromptCachePolicy.ToToken(ttl)}";
+
+            case "compact_auto":
+                if (!TryParseOnOff(value, out var compactAuto))
+                    return "compact_auto expects on/off.";
+                SaveSettings(settings with { AutoCompact = compactAuto });
+                return $"compact_auto={compactAuto.ToString().ToLowerInvariant()}";
+
+            case "compact_threshold":
+                if (!int.TryParse(value, out var pct) || pct < 0 || pct > 100)
+                    return "compact_threshold expects a number from 0 to 100.";
+                SaveSettings(settings with { CompactThresholdPercent = pct });
+                return $"compact_threshold={pct}";
 
             case "autorun":
                 if (!TryParseOnOff(value, out var autorun))

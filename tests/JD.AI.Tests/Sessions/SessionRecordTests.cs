@@ -54,8 +54,22 @@ public sealed class SessionRecordTests
         turn.TokensIn.Should().Be(0);
         turn.TokensOut.Should().Be(0);
         turn.DurationMs.Should().Be(0);
+        turn.CumulativeContextTokens.Should().Be(0);
+        turn.ContextWindowTokens.Should().Be(0);
         turn.ToolCalls.Should().BeEmpty();
         turn.FilesTouched.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void TurnRecord_ContextFieldsRoundTrip()
+    {
+        var turn = new TurnRecord
+        {
+            CumulativeContextTokens = 12_000,
+            ContextWindowTokens = 128_000,
+        };
+        turn.CumulativeContextTokens.Should().Be(12_000);
+        turn.ContextWindowTokens.Should().Be(128_000);
     }
 
     // ── ToolCallRecord ──────────────────────────────────────────────────
