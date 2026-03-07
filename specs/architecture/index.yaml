@@ -1,7 +1,0 @@
-apiVersion: jdai.upss/v1
-kind: ArchitectureIndex
-entries:
-  - id: architecture.jdai-gateway
-    title: JD.AI Gateway Architecture
-    path: specs/architecture/examples/architecture.example.yaml
-    status: draft

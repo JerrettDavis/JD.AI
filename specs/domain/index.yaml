@@ -1,7 +1,0 @@
-apiVersion: jdai.upss/v1
-kind: DomainIndex
-entries:
-  - id: domain.session-management
-    title: Session Management Domain Model
-    path: specs/domain/examples/domain.example.yaml
-    status: draft

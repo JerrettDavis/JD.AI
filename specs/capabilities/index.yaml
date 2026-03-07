@@ -1,7 +1,0 @@
-apiVersion: jdai.upss/v1
-kind: CapabilityIndex
-entries:
-  - id: capability.spec-validation
-    title: Specification Validation
-    path: specs/capabilities/examples/capabilities.example.yaml
-    status: draft

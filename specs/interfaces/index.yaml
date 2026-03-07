@@ -1,7 +1,0 @@
-apiVersion: jdai.upss/v1
-kind: InterfaceIndex
-entries:
-  - id: interface.agent-chat-api
-    title: Agent Chat API
-    path: specs/interfaces/examples/interfaces.example.yaml
-    status: draft

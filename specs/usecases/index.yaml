@@ -1,7 +1,0 @@
-apiVersion: jdai.upss/v1
-kind: UseCaseIndex
-entries:
-  - id: usecase.validate-pull-request
-    title: Validate Pull Request
-    path: specs/usecases/examples/usecases.example.yaml
-    status: draft
