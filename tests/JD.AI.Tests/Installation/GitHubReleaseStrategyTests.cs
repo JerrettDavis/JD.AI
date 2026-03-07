@@ -1,3 +1,5 @@
+#pragma warning disable MA0002, MA0006, CA2213, CA1869, CA1849
+
 using System.IO.Compression;
 using System.Net;
 using System.Text;
@@ -454,7 +456,7 @@ public sealed class GitHubReleaseStrategyTests : IDisposable
 
         // Route /releases/tags/v4.0.0 → the release JSON
         // Route /releases/tags/4.0.0  → 404 (should not be reached if v-prefix succeeded)
-        var routes = new Dictionary<string, (string Body, HttpStatusCode Status)>
+        var routes = new Dictionary<string, (string Body, HttpStatusCode Status)>(StringComparer.Ordinal)
         {
             ["/releases/tags/v4.0.0"] = (releaseJson, HttpStatusCode.OK),
             ["/releases/tags/4.0.0"]  = ("", HttpStatusCode.NotFound),
@@ -486,7 +488,7 @@ public sealed class GitHubReleaseStrategyTests : IDisposable
             (assetName, "http://does-not-matter/asset", 100),
         ]);
 
-        var routes = new Dictionary<string, (string Body, HttpStatusCode Status)>
+        var routes = new Dictionary<string, (string Body, HttpStatusCode Status)>(StringComparer.Ordinal)
         {
             ["/releases/tags/v5.0.0"] = ("", HttpStatusCode.NotFound),
             ["/releases/tags/5.0.0"]  = (releaseJson, HttpStatusCode.OK),
@@ -572,6 +574,7 @@ public sealed class GitHubReleaseStrategyTests : IDisposable
     /// </summary>
     private sealed class TestableGitHubReleaseStrategy : IDisposable, IInstallStrategy
     {
+        private static readonly JsonSerializerOptions s_jsonOpts = new() { PropertyNameCaseInsensitive = true };
         private readonly GitHubReleaseStrategy _inner;
         private readonly string? _savedApiBase;
         private static readonly System.Reflection.FieldInfo? ApiBaseField =
@@ -691,7 +694,7 @@ public sealed class GitHubReleaseStrategyTests : IDisposable
 
                 if (asset.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
                 {
-                    ZipFile.ExtractToDirectory(archivePath, extractDir);
+                    await Task.Run(() => ZipFile.ExtractToDirectory(archivePath, extractDir), ct).ConfigureAwait(false);
                 }
                 else if (asset.Name.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase))
                 {
@@ -743,8 +746,7 @@ public sealed class GitHubReleaseStrategyTests : IDisposable
                     .ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode) return null;
                 var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                return JsonSerializer.Deserialize<GitHubReleaseDto>(json,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                return JsonSerializer.Deserialize<GitHubReleaseDto>(json, s_jsonOpts);
             }
 #pragma warning disable CA1031
             catch { return null; }
@@ -760,8 +762,7 @@ public sealed class GitHubReleaseStrategyTests : IDisposable
                     $"{BaseUrl}/releases/tags/{tag}", ct).ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode) return null;
                 var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                return JsonSerializer.Deserialize<GitHubReleaseDto>(json,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                return JsonSerializer.Deserialize<GitHubReleaseDto>(json, s_jsonOpts);
             }
 #pragma warning disable CA1031
             catch { return null; }
