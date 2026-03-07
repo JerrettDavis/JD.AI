@@ -215,6 +215,7 @@ public sealed class AgentSession
             TokensIn = tokensIn,
             TokensOut = tokensOut,
             DurationMs = durationMs,
+            ContextWindowTokens = CurrentModel?.ContextWindowTokens ?? 0,
         };
         CurrentTurn = turn;
         SessionInfo.Turns.Add(turn);
@@ -222,6 +223,7 @@ public sealed class AgentSession
         SessionInfo.TotalTokens += tokensIn + tokensOut;
         TotalTokens += tokensIn + tokensOut;
         SessionInfo.UpdatedAt = DateTime.UtcNow;
+        turn.CumulativeContextTokens = TokenEstimator.EstimateTokens(History);
 
         await Store.SaveTurnAsync(turn).ConfigureAwait(false);
         SyncModelHistoryToSession();
@@ -556,6 +558,8 @@ public sealed class AgentSession
                 TokensIn = turn.TokensIn,
                 TokensOut = turn.TokensOut,
                 DurationMs = turn.DurationMs,
+                CumulativeContextTokens = turn.CumulativeContextTokens,
+                ContextWindowTokens = turn.ContextWindowTokens,
             };
             forked.Turns.Add(clone);
             await Store.SaveTurnAsync(clone).ConfigureAwait(false);
@@ -582,16 +586,19 @@ public sealed class AgentSession
     /// </summary>
     public async Task CompactAsync(CancellationToken ct = default)
     {
+        var modelWindow = CurrentModel?.ContextWindowTokens is > 0
+            ? CurrentModel.ContextWindowTokens
+            : 4000;
+
         var tokenCount = TokenEstimator.EstimateTokens(History);
-        if (tokenCount <= 2000)
-        {
+        // Don't compact if already comfortably under a quarter of the window
+        if (tokenCount <= modelWindow / 4)
             return;
-        }
 
         var strategy = new HierarchicalSummarizationStrategy();
         var options = new CompactionOptions
         {
-            MaxContextWindowTokens = 4000,
+            MaxContextWindowTokens = modelWindow,
             TargetCompressionRatio = 0.4,
             MinMessagesBeforeCompaction = 1,
         };
