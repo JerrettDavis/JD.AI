@@ -1,7 +1,0 @@
-apiVersion: jdai.upss/v1
-kind: GovernanceIndex
-entries:
-  - id: governance.specification-lifecycle
-    title: Specification Lifecycle Governance
-    path: specs/governance/examples/governance.example.yaml
-    status: draft

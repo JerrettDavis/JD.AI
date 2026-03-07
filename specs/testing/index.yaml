@@ -1,7 +1,0 @@
-apiVersion: jdai.upss/v1
-kind: TestingIndex
-entries:
-  - id: testing.specification-validation
-    title: Specification Validation Testing
-    path: specs/testing/examples/testing.example.yaml
-    status: draft
