@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JD.AI Interface Specification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "id",
+    "version",
+    "status",
+    "metadata",
+    "interfaceType",
+    "operations",
+    "messageSchemas",
+    "compatibilityRules",
+    "trace"
+  ],
+  "properties": {
+    "apiVersion": { "const": "jdai.upss/v1" },
+    "kind": { "const": "Interface" },
+    "id": {
+      "type": "string",
+      "pattern": "^interface\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+    },
+    "version": { "type": "integer", "minimum": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "active", "deprecated", "retired"]
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owners", "reviewers", "lastReviewed", "changeReason"],
+      "properties": {
+        "owners": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "reviewers": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "lastReviewed": { "type": "string", "format": "date" },
+        "changeReason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "interfaceType": {
+      "type": "string",
+      "enum": ["rest", "graphql", "grpc", "event", "websocket"]
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "method", "path", "description"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "method": { "type": "string" },
+          "path": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "messageSchemas": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "format", "description"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "format": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "compatibilityRules": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["upstream", "downstream"],
+      "properties": {
+        "upstream": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "downstream": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "testing", "deployment"],
+          "properties": {
+            "code": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+            "testing": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+            "deployment": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+          }
+        }
+      }
+    }
+  }
+}
