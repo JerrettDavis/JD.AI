@@ -45,3 +45,6 @@ TestResults/
 .DS_Store
 Thumbs.db
 docs/demo/publish/
+
+## Worktrees
+.worktrees/
