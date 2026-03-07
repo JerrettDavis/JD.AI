@@ -88,6 +88,22 @@ public sealed class SmokeSteps
             _page.Locator("text=No sessions found"));
     }
 
+    [Then(@"I should see the sync OpenClaw button")]
+    public async Task ThenIShouldSeeTheSyncOpenClawButton()
+    {
+        await ExpectEitherVisibleAsync(
+            _page.Locator("[data-testid='sync-openclaw-button']"),
+            _page.Locator("button:has-text('Sync OpenClaw')"));
+    }
+
+    [Then(@"I should see the routing diagram section")]
+    public async Task ThenIShouldSeeTheRoutingDiagramSection()
+    {
+        await ExpectEitherVisibleAsync(
+            _page.Locator("text=Routing Diagram"),
+            _page.Locator(".jd-routing-diagram"));
+    }
+
     [Then(@"I should see either the settings tab strip or a settings unavailable message")]
     public async Task ThenIShouldSeeSettingsTabsOrUnavailableMessage()
     {
