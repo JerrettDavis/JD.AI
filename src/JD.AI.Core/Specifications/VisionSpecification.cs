@@ -87,7 +87,9 @@ public sealed class CapabilitySpecificationIndex
 public sealed class CapabilitySpecificationIndexEntry
 {
     public string Id { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
     public string Path { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
 }
 
 public static class VisionSpecificationParser
