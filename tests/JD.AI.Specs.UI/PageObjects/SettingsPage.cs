@@ -44,11 +44,11 @@ public sealed class SettingsPage : BasePage
 
     // ── Tab icon locators ──
     public ILocator TabIcon(string tabText) =>
-        Page.Locator($".mud-tab:has-text('{tabText}') .mud-icon-root");
+        Page.GetByRole(AriaRole.Tab, new() { Name = tabText, Exact = true }).Locator("svg, .mud-icon-root");
 
     // ── Tab tooltip helpers ──
     public ILocator Tab(string tabText) =>
-        Page.Locator($".mud-tab:has-text('{tabText}')");
+        Page.GetByRole(AriaRole.Tab, new() { Name = tabText, Exact = true });
 
     // ── Settings panel locators ──
     public ILocator ServerPanel => Page.Locator(".mud-tabpanel:visible");
@@ -99,6 +99,6 @@ public sealed class SettingsPage : BasePage
     /// <summary>Click a settings tab by its visible text.</summary>
     public async Task ClickTabAsync(string tabText)
     {
-        await Page.Locator($".mud-tab:has-text('{tabText}')").ClickAsync();
+        await Page.GetByRole(AriaRole.Tab, new() { Name = tabText, Exact = true }).ClickAsync();
     }
 }
