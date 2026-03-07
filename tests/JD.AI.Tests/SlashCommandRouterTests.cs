@@ -558,7 +558,7 @@ public sealed class SlashCommandRouterTests
     [Fact]
     public async Task Config_List_IncludesTheme()
     {
-        var result = await _router.ExecuteAsync("/config");
+        var result = await _router.ExecuteAsync("/config list");
 
         Assert.NotNull(result);
         Assert.Contains("theme", result, StringComparison.OrdinalIgnoreCase);
@@ -568,6 +568,10 @@ public sealed class SlashCommandRouterTests
         Assert.Contains("welcome_cwd", result, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("welcome_version", result, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("welcome_motd", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("sys_prompt_compaction", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("sys_prompt_budget", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("compact_auto", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("compact_threshold", result, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
