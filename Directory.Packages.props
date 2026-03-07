@@ -5,7 +5,7 @@
   <!-- Build infrastructure -->
   <ItemGroup>
     <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
-    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.18" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.19" />
     <PackageVersion Include="Microsoft.SemanticKernel.Abstractions" Version="1.73.0" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.103" />
     <PackageVersion Include="Nerdbank.GitVersioning" Version="3.9.50" />
