@@ -1,5 +1,7 @@
 using JD.AI.Core.Config;
 using JD.AI.Core.Providers;
+using JD.AI.Core.Providers.Credentials;
+using JD.AI.Core.Providers.Metadata;
 using JD.AI.Rendering;
 using Spectre.Console;
 
@@ -7,6 +9,18 @@ namespace JD.AI.Startup;
 
 internal static class OnboardingCliHandler
 {
+    internal static Func<AtomicConfigStore> ConfigStoreFactory { get; set; } =
+        static () => new AtomicConfigStore();
+
+    internal static Func<(ProviderRegistry Registry, ProviderConfigurationManager ProviderConfig, ModelMetadataProvider MetadataProvider)>
+        RegistryFactory { get; set; } = ProviderOrchestrator.CreateRegistry;
+
+    internal static void ResetFactoriesForTests()
+    {
+        ConfigStoreFactory = static () => new AtomicConfigStore();
+        RegistryFactory = ProviderOrchestrator.CreateRegistry;
+    }
+
     public static async Task<int> RunAsync(string[] args)
     {
         var useGlobalDefaults = args.Any(a =>
@@ -14,9 +28,9 @@ internal static class OnboardingCliHandler
         var providerArg = GetFlagValue(args, "--provider");
         var modelArg = GetFlagValue(args, "--model");
 
-        using var configStore = new AtomicConfigStore();
+        using var configStore = ConfigStoreFactory();
         var projectPath = Directory.GetCurrentDirectory();
-        var (registry, _, _) = ProviderOrchestrator.CreateRegistry();
+        var (registry, _, _) = RegistryFactory();
 
         AnsiConsole.MarkupLine("[bold]JD.AI Onboarding[/]");
         AnsiConsole.MarkupLine("[dim]Detecting providers and models...[/]");

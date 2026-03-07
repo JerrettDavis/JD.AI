@@ -26,6 +26,14 @@ internal sealed record ProviderSetup(
 /// </summary>
 internal static class ProviderOrchestrator
 {
+    internal static Func<(ProviderRegistry Registry, ProviderConfigurationManager ProviderConfig, ModelMetadataProvider MetadataProvider)>
+        RegistryFactory { get; set; } = CreateRegistry;
+
+    internal static void ResetFactoriesForTests()
+    {
+        RegistryFactory = CreateRegistry;
+    }
+
     internal static (ProviderRegistry Registry, ProviderConfigurationManager ProviderConfig, ModelMetadataProvider MetadataProvider)
         CreateRegistry()
     {
@@ -66,7 +74,7 @@ internal static class ProviderOrchestrator
             AnsiConsole.MarkupLine("[dim]Detecting providers...[/]");
         }
 
-        var (registry, providerConfig, metadataProvider) = CreateRegistry();
+        var (registry, providerConfig, metadataProvider) = RegistryFactory();
 
         // Fast path: prefer the persisted provider/model and refresh auth only for that provider.
         if (opts.CliModel is null
@@ -82,6 +90,7 @@ internal static class ProviderOrchestrator
                 var selected = SelectModel(
                     opts,
                     preferred.Models,
+                    registry.CapabilityRegistry,
                     defaultProvider,
                     defaultModel);
 
@@ -124,7 +133,12 @@ internal static class ProviderOrchestrator
             return null;
         }
 
-        var selectedModel = SelectModel(opts, allModels, defaultProvider, defaultModel);
+        var selectedModel = SelectModel(
+            opts,
+            allModels,
+            registry.CapabilityRegistry,
+            defaultProvider,
+            defaultModel);
         if (selectedModel is null)
         {
             return null;
@@ -139,6 +153,7 @@ internal static class ProviderOrchestrator
     private static ProviderModelInfo? SelectModel(
         CliOptions opts,
         IReadOnlyList<ProviderModelInfo> allModels,
+        IModelCapabilityRegistry capabilityRegistry,
         string? defaultProvider,
         string? defaultModel)
     {
@@ -204,12 +219,39 @@ internal static class ProviderOrchestrator
             return defaultCandidates[0];
         }
 
+        var toolCapableCandidates = ResolveCapabilityCandidates(
+            allModels,
+            capabilityRegistry,
+            ModelCapability.ChatCompletion | ModelCapability.ToolCalling);
+        if (toolCapableCandidates is { Count: > 0 })
+            allModels = toolCapableCandidates;
+
         if (allModels.Count == 1 || opts.PrintMode)
         {
             return allModels[0];
         }
 
         return PromptForModel(allModels);
+    }
+
+    private static IReadOnlyList<ProviderModelInfo> ResolveCapabilityCandidates(
+        IReadOnlyList<ProviderModelInfo> allModels,
+        IModelCapabilityRegistry capabilityRegistry,
+        ModelCapability requiredCapabilities)
+    {
+        var byKey = allModels.ToDictionary(
+            m => $"{m.ProviderName}:{m.Id}",
+            StringComparer.OrdinalIgnoreCase);
+
+        var compatible = capabilityRegistry.FindModels(requiredCapabilities);
+        if (compatible.Count == 0)
+            return [];
+
+        return compatible
+            .Select(entry => byKey.GetValueOrDefault($"{entry.ProviderName}:{entry.ModelId}"))
+            .Where(static model => model is not null)
+            .Cast<ProviderModelInfo>()
+            .ToList();
     }
 
     private static async Task PersistSelectionAsync(

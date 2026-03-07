@@ -152,10 +152,25 @@ internal sealed class InteractiveLoop
         WireEventHooks(interactiveInput, _session, _systemPrompt);
 
         // Welcome banner
+        var welcomeSettings = WelcomePanelSettings.Normalize(tuiSettings.Welcome);
+        var indicators = await WelcomeServiceStatusProbe
+            .ProbeSafeAsync(_opts)
+            .ConfigureAwait(false);
+        var motd = await WelcomeMotdProvider
+            .TryGetMotdAsync(welcomeSettings)
+            .ConfigureAwait(false);
+        var bannerDetails = new WelcomeBannerDetails(
+            WorkingDirectory: Directory.GetCurrentDirectory(),
+            Version: WelcomeRuntimeInfo.GetDisplayVersion(),
+            Motd: motd);
+
         ChatRenderer.RenderBanner(
             _selectedModel.DisplayName,
             _selectedModel.ProviderName,
-            _allModels.Count);
+            _allModels.Count,
+            indicators,
+            bannerDetails,
+            welcomeSettings);
 
         // System prompt budget check
         await CheckSystemPromptBudgetAsync(tuiSettings).ConfigureAwait(false);

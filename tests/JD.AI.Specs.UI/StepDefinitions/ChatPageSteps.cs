@@ -81,8 +81,8 @@ public sealed class ChatPageSteps
         await Expect(emptyState).ToBeVisibleAsync();
     }
 
-    [Then(@"the empty state should display ""(.*)""")]
-    public async Task ThenTheEmptyStateShouldDisplay(string text)
+    [Then(@"the chat empty state should display ""(.*)""")]
+    public async Task ThenTheChatEmptyStateShouldDisplay(string text)
     {
         var element = _page.Locator($".jd-chat-empty >> text={text}");
         await Expect(element).ToBeVisibleAsync();

@@ -20,7 +20,7 @@ Feature: Chat Page
 
     Scenario: Empty state shown when no messages
         Then I should see the chat empty state
-        And the empty state should display "Start a conversation"
+        And the chat empty state should display "Start a conversation"
 
     Scenario: Message history is displayed after sending
         Given an agent is selected

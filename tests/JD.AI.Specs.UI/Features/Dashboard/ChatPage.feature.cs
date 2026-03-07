@@ -272,7 +272,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         await testRunner.ThenAsync("I should see the chat empty state", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 23
-        await testRunner.AndAsync("the empty state should display \"Start a conversation\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+        await testRunner.AndAsync("the chat empty state should display \"Start a conversation\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();

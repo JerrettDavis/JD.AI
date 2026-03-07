@@ -30,6 +30,10 @@ public sealed class TuiSettingsTests : IDisposable
         Assert.Equal(OutputStyle.Rich, settings.OutputStyle);
         Assert.True(settings.PromptCacheEnabled);
         Assert.Equal(PromptCacheTtl.FiveMinutes, settings.PromptCacheTtl);
+        Assert.NotNull(settings.Welcome);
+        Assert.True(settings.Welcome.ShowWorkingDirectory);
+        Assert.True(settings.Welcome.ShowVersion);
+        Assert.False(settings.Welcome.ShowMotd);
     }
 
     [Fact]
@@ -40,6 +44,11 @@ public sealed class TuiSettingsTests : IDisposable
             SpinnerStyle = SpinnerStyle.Nerdy,
             PromptCacheEnabled = false,
             PromptCacheTtl = PromptCacheTtl.OneHour,
+            Welcome = new WelcomePanelSettings
+            {
+                ShowMotd = true,
+                MotdUrl = "https://example.com/motd.txt",
+            },
         };
         settings.Save();
 
@@ -48,6 +57,8 @@ public sealed class TuiSettingsTests : IDisposable
         Assert.Equal(SpinnerStyle.Nerdy, loaded.SpinnerStyle);
         Assert.False(loaded.PromptCacheEnabled);
         Assert.Equal(PromptCacheTtl.OneHour, loaded.PromptCacheTtl);
+        Assert.True(loaded.Welcome.ShowMotd);
+        Assert.Equal("https://example.com/motd.txt", loaded.Welcome.MotdUrl);
     }
 
     [Fact]
