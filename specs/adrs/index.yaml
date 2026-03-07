@@ -1,7 +1,0 @@
-apiVersion: jdai.upss/v1
-kind: AdrIndex
-entries:
-  - id: adr.modular-monolith-architecture
-    title: Modular Monolith Architecture
-    path: specs/adrs/examples/adrs.example.yaml
-    status: draft

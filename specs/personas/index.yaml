@@ -1,7 +1,0 @@
-apiVersion: jdai.upss/v1
-kind: PersonaIndex
-entries:
-  - id: persona.platform-admin
-    title: Platform Administrator
-    path: specs/personas/examples/personas.example.yaml
-    status: draft
