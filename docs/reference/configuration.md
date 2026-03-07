@@ -242,6 +242,12 @@ See [Skills and Plugins](../developer-guide/plugins.md) for lifecycle, precedenc
 | `autorun` | Auto-run tool confirmation behavior | `/config set autorun off` |
 | `permissions` | Global permission checks | `/config set permissions on` |
 | `plan_mode` | Plan mode state | `/config set plan_mode off` |
+| `welcome_model_summary` | Show provider/model summary in welcome panel | `/config set welcome_model_summary on` |
+| `welcome_services` | Show daemon/gateway indicators in welcome panel | `/config set welcome_services on` |
+| `welcome_cwd` | Show current working directory in welcome panel | `/config set welcome_cwd off` |
+| `welcome_version` | Show JD.AI version in welcome panel | `/config set welcome_version on` |
+| `welcome_motd` | Enable or disable welcome MoTD line | `/config set welcome_motd on` |
+| `welcome_motd_url` | MoTD source URL (raw text endpoint; use `none` to clear) | `/config set welcome_motd_url https://raw.githubusercontent.com/<org>/<repo>/main/docs/motd.txt` |
 
 Note: `output_style=json` is session-only and will not persist as startup default.
 
