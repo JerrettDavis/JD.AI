@@ -24,7 +24,7 @@ public sealed class ChatPage : BasePage
     public ILocator NoAgentsWarning => Page.Locator("[data-testid='no-agents-warning']");
 
     // ── Message input ──
-    public ILocator MessageInput => Page.Locator("[data-testid='message-input'] input, [data-testid='message-input'] textarea");
+    public ILocator MessageInput => Page.Locator(".jd-chat-input input, .jd-chat-input textarea");
     public ILocator SendButton => Page.Locator("[data-testid='send-button']");
     public ILocator ClearChatButton => Page.Locator("[data-testid='clear-chat-button']");
 
@@ -47,13 +47,13 @@ public sealed class ChatPage : BasePage
     public ILocator StreamingCursor => Page.Locator(".jd-cursor");
 
     // ── Disabled state detection ──
-    public ILocator MessageInputDisabled => Page.Locator("[data-testid='message-input'] input[disabled], [data-testid='message-input'].mud-disabled input");
+    public ILocator MessageInputDisabled => Page.Locator(".jd-chat-input input[disabled], .jd-chat-input textarea[disabled], .jd-chat-input .mud-disabled input");
 
     // ── Chat icon in header ──
     public ILocator ChatHeaderIcon => Page.Locator("[data-testid='chat-header'] .mud-icon-root");
 
     // ── Send icon (adornment) ──
-    public ILocator SendIcon => Page.Locator("[data-testid='message-input'] .mud-input-adornment-end .mud-icon-root");
+    public ILocator SendIcon => Page.Locator(".jd-chat-input .mud-input-adornment-end .mud-icon-root, .jd-chat-input svg");
 
     // ── Snackbar ──
     public ILocator ErrorSnackbar => Page.Locator(".mud-snackbar-error, .mud-snackbar.mud-alert-filled-error");
