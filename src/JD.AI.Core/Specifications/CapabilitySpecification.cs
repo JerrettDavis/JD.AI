@@ -15,32 +15,32 @@ public sealed class CapabilitySpecification
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string Maturity { get; set; } = string.Empty;
-    public List<string> Actors { get; set; } = [];
-    public List<string> Dependencies { get; set; } = [];
-    public List<string> RelatedUseCases { get; set; } = [];
+    public IList<string> Actors { get; init; } = [];
+    public IList<string> Dependencies { get; init; } = [];
+    public IList<string> RelatedUseCases { get; init; } = [];
     public CapabilityTraceability Trace { get; set; } = new();
 }
 
 public sealed class CapabilityMetadata
 {
-    public List<string> Owners { get; set; } = [];
-    public List<string> Reviewers { get; set; } = [];
+    public IList<string> Owners { get; init; } = [];
+    public IList<string> Reviewers { get; init; } = [];
     public string LastReviewed { get; set; } = string.Empty;
     public string ChangeReason { get; set; } = string.Empty;
 }
 
 public sealed class CapabilityTraceability
 {
-    public List<string> VisionRefs { get; set; } = [];
-    public List<string> Upstream { get; set; } = [];
+    public IList<string> VisionRefs { get; init; } = [];
+    public IList<string> Upstream { get; init; } = [];
     public CapabilityDownstreamTrace Downstream { get; set; } = new();
 }
 
 public sealed class CapabilityDownstreamTrace
 {
-    public List<string> UseCases { get; set; } = [];
-    public List<string> Architecture { get; set; } = [];
-    public List<string> Testing { get; set; } = [];
+    public IList<string> UseCases { get; init; } = [];
+    public IList<string> Architecture { get; init; } = [];
+    public IList<string> Testing { get; init; } = [];
 }
 
 public static class CapabilitySpecificationParser
@@ -255,7 +255,7 @@ public static class CapabilitySpecificationValidator
         }
     }
 
-    private static void ValidateIds(List<string> ids, Regex pattern, string fieldName, List<string> errors)
+    private static void ValidateIds(IList<string> ids, Regex pattern, string fieldName, List<string> errors)
     {
         for (var i = 0; i < ids.Count; i++)
         {
@@ -264,7 +264,7 @@ public static class CapabilitySpecificationValidator
         }
     }
 
-    private static void ValidateFileReferences(string repoRoot, List<string> paths, string specPath, string fieldName, List<string> errors)
+    private static void ValidateFileReferences(string repoRoot, IList<string> paths, string specPath, string fieldName, List<string> errors)
     {
         foreach (var path in paths)
         {
@@ -280,7 +280,7 @@ public static class CapabilitySpecificationValidator
         }
     }
 
-    private static void ValidateVisionReferences(HashSet<string> knownIds, List<string> ids, string specPath, List<string> errors)
+    private static void ValidateVisionReferences(HashSet<string> knownIds, IList<string> ids, string specPath, List<string> errors)
     {
         foreach (var id in ids)
         {
@@ -289,7 +289,7 @@ public static class CapabilitySpecificationValidator
         }
     }
 
-    private static void ValidateCapabilityReferences(HashSet<string> knownIds, List<string> ids, string selfId, string specPath, List<string> errors)
+    private static void ValidateCapabilityReferences(HashSet<string> knownIds, IList<string> ids, string selfId, string specPath, List<string> errors)
     {
         foreach (var id in ids)
         {
@@ -304,7 +304,7 @@ public static class CapabilitySpecificationValidator
         }
     }
 
-    private static void ValidateUseCaseReferences(HashSet<string> knownIds, List<string> ids, string specPath, string fieldName, List<string> errors)
+    private static void ValidateUseCaseReferences(HashSet<string> knownIds, IList<string> ids, string specPath, string fieldName, List<string> errors)
     {
         if (ids.Count == 0)
             return;
@@ -328,7 +328,7 @@ public static class CapabilitySpecificationValidator
             errors.Add(message);
     }
 
-    private static void RequireHasValues(List<string>? values, string message, List<string> errors)
+    private static void RequireHasValues(IList<string>? values, string message, List<string> errors)
     {
         if (values is null || values.Count == 0 || values.Any(string.IsNullOrWhiteSpace))
             errors.Add(message);
