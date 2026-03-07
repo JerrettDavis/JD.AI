@@ -459,7 +459,7 @@ public sealed class GitHubReleaseStrategyTests : IDisposable
         var routes = new Dictionary<string, (string Body, HttpStatusCode Status)>(StringComparer.Ordinal)
         {
             ["/releases/tags/v4.0.0"] = (releaseJson, HttpStatusCode.OK),
-            ["/releases/tags/4.0.0"]  = ("", HttpStatusCode.NotFound),
+            ["/releases/tags/4.0.0"] = ("", HttpStatusCode.NotFound),
         };
 
         await using var server = new MultiRouteStubServer(routes, defaultPath: "/releases/tags/v4.0.0");
@@ -491,7 +491,7 @@ public sealed class GitHubReleaseStrategyTests : IDisposable
         var routes = new Dictionary<string, (string Body, HttpStatusCode Status)>(StringComparer.Ordinal)
         {
             ["/releases/tags/v5.0.0"] = ("", HttpStatusCode.NotFound),
-            ["/releases/tags/5.0.0"]  = (releaseJson, HttpStatusCode.OK),
+            ["/releases/tags/5.0.0"] = (releaseJson, HttpStatusCode.OK),
         };
 
         await using var server = new MultiRouteStubServer(routes, defaultPath: "/releases/tags/v5.0.0");
