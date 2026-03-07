@@ -80,20 +80,6 @@ public sealed class SmokeSteps
             "Expected routing grid markup.");
     }
 
-    [Then(@"I should see the routing diagram section")]
-    public async Task ThenIShouldSeeTheRoutingDiagramSection()
-    {
-        Assert.True(
-            await _page.Locator("[data-testid='routing-diagram']").CountAsync() > 0,
-            "Expected routing diagram markup.");
-    }
-
-    [Then(@"I should see the sync OpenClaw button")]
-    public async Task ThenIShouldSeeTheSyncOpenClawButton()
-    {
-        await Expect(_page.Locator("[data-testid='sync-openclaw-button']")).ToBeVisibleAsync();
-    }
-
     [Then(@"I should see either a sessions data grid or the sessions empty state")]
     public async Task ThenIShouldSeeSessionsGridOrEmptyState()
     {
