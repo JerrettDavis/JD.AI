@@ -937,6 +937,7 @@ public sealed class GitHubReleaseStrategyTests : IDisposable
         {
             await _cts.CancelAsync().ConfigureAwait(false);
             _listener.Stop();
+            _listener.Close();
             try { await _serverTask.ConfigureAwait(false); } catch { /* expected cancellation */ }
             _cts.Dispose();
         }
@@ -993,6 +994,7 @@ public sealed class GitHubReleaseStrategyTests : IDisposable
         {
             await _cts.CancelAsync().ConfigureAwait(false);
             _listener.Stop();
+            _listener.Close();
             try { await _serverTask.ConfigureAwait(false); } catch { }
             _cts.Dispose();
         }
@@ -1034,7 +1036,7 @@ public sealed class GitHubReleaseStrategyTests : IDisposable
                 catch { break; }
 
                 var path = ctx.Request.Url?.AbsolutePath ?? "/";
-                if (path == "/asset")
+                if (string.Equals(path, "/asset", StringComparison.Ordinal))
                 {
                     var bytes = await File.ReadAllBytesAsync(_binaryFilePath, ct).ConfigureAwait(false);
                     ctx.Response.StatusCode = 200;
@@ -1060,6 +1062,7 @@ public sealed class GitHubReleaseStrategyTests : IDisposable
         {
             await _cts.CancelAsync().ConfigureAwait(false);
             _listener.Stop();
+            _listener.Close();
             try { await _serverTask.ConfigureAwait(false); } catch { }
             _cts.Dispose();
         }
