@@ -37,6 +37,15 @@ public sealed record TuiSettings
     /// <summary>Prompt cache TTL (5m default, optional 1h where supported).</summary>
     public PromptCacheTtl PromptCacheTtl { get; init; } = PromptCacheTtl.FiveMinutes;
 
+    /// <summary>When true, chat history is automatically compacted when context usage crosses <see cref="CompactThresholdPercent"/>.</summary>
+    public bool AutoCompact { get; init; } = true;
+
+    /// <summary>
+    /// Percentage of the model context window at which auto-compaction triggers (0–100). Default: 75.
+    /// A value of 0 disables compaction; 100 means compact only when the window is completely full.
+    /// </summary>
+    public int CompactThresholdPercent { get; init; } = 75;
+
     /// <summary>Welcome panel visibility and MoTD settings.</summary>
     public WelcomePanelSettings Welcome { get; init; } = new();
 
@@ -79,6 +88,7 @@ public sealed record TuiSettings
         return settings with
         {
             SystemPromptBudgetPercent = Math.Clamp(settings.SystemPromptBudgetPercent, 0, 100),
+            CompactThresholdPercent = Math.Clamp(settings.CompactThresholdPercent, 0, 100),
             OutputStyle = settings.OutputStyle == OutputStyle.Json
                 ? OutputStyle.Rich
                 : settings.OutputStyle,

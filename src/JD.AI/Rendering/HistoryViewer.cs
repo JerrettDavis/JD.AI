@@ -116,6 +116,16 @@ public static class HistoryViewer
         Console.WriteLine($"  Tokens:    {turn.TokensIn} in / {turn.TokensOut} out");
         Console.WriteLine($"  Duration:  {turn.DurationMs}ms");
         Console.WriteLine($"  Time:      {turn.CreatedAt:g}");
+
+        if (turn.CumulativeContextTokens > 0)
+        {
+            var contextWindow = turn.ContextWindowTokens > 0 ? turn.ContextWindowTokens : 0;
+            var pct = contextWindow > 0
+                ? $" ({turn.CumulativeContextTokens * 100 / contextWindow}% of {contextWindow:N0})"
+                : string.Empty;
+            Console.WriteLine($"  Context:   {turn.CumulativeContextTokens:N0} tokens{pct}");
+        }
+
         Console.ResetColor();
 
         if (turn.ToolCalls.Count > 0)

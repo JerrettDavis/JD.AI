@@ -215,6 +215,7 @@ public sealed class AgentSession
             TokensIn = tokensIn,
             TokensOut = tokensOut,
             DurationMs = durationMs,
+            ContextWindowTokens = CurrentModel?.ContextWindowTokens ?? 0,
         };
         CurrentTurn = turn;
         SessionInfo.Turns.Add(turn);
@@ -222,6 +223,7 @@ public sealed class AgentSession
         SessionInfo.TotalTokens += tokensIn + tokensOut;
         TotalTokens += tokensIn + tokensOut;
         SessionInfo.UpdatedAt = DateTime.UtcNow;
+        turn.CumulativeContextTokens = TokenEstimator.EstimateTokens(History);
 
         await Store.SaveTurnAsync(turn).ConfigureAwait(false);
         SyncModelHistoryToSession();
@@ -556,6 +558,8 @@ public sealed class AgentSession
                 TokensIn = turn.TokensIn,
                 TokensOut = turn.TokensOut,
                 DurationMs = turn.DurationMs,
+                CumulativeContextTokens = turn.CumulativeContextTokens,
+                ContextWindowTokens = turn.ContextWindowTokens,
             };
             forked.Turns.Add(clone);
             await Store.SaveTurnAsync(clone).ConfigureAwait(false);
