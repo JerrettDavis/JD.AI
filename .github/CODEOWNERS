@@ -1,0 +1,24 @@
+# Code Owners for JD.AI
+# These users will be automatically requested for review
+
+# Global owners
+* @jerrettdavis
+
+# Workflows and CI/CD
+/.github/ @jerrettdavis
+
+# Documentation
+/docs/ @jerrettdavis
+*.md @jerrettdavis
+
+# Core agent
+/src/JD.AI/Agent/ @jerrettdavis
+
+# Tools
+/src/JD.AI/Tools/ @jerrettdavis
+
+# Providers
+/src/JD.AI/Providers/ @jerrettdavis
+
+# Tests
+/tests/ @jerrettdavis

@@ -1,0 +1,7 @@
+apiVersion: jdai.upss/v1
+kind: ObservabilityIndex
+entries:
+  - id: observability.jdai-gateway
+    title: JD.AI Gateway Observability
+    path: specs/observability/examples/observability.example.yaml
+    status: draft

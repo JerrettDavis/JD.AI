@@ -1,0 +1,7 @@
+apiVersion: jdai.upss/v1
+kind: SecurityIndex
+entries:
+  - id: security.api-gateway
+    title: API Gateway Security
+    path: specs/security/examples/security.example.yaml
+    status: draft

@@ -2977,15 +2977,32 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     {
         var settings = TuiSettings.Load();
         var parts = (arg ?? string.Empty).Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
-        var action = parts.Length == 0 ? "list" : parts[0].ToLowerInvariant();
+        var action = parts.Length == 0 ? "edit" : parts[0].ToLowerInvariant();
         var rest = parts.Length > 1 ? parts[1] : null;
+
+        // Fall back to list in non-interactive (non-ANSI) terminals
+        if (string.Equals(action, "edit", StringComparison.Ordinal) &&
+            !AnsiConsole.Profile.Capabilities.Ansi)
+            action = "list";
 
         return action switch
         {
+            "edit" => ConfigEditor.Edit(
+                TuiSettings.Load,
+                SaveSettings,
+                _session,
+                _onThemeChanged,
+                _getTheme,
+                _onVimModeChanged,
+                _getVimMode,
+                _onOutputStyleChanged,
+                _getOutputStyle,
+                _onSpinnerStyleChanged,
+                _getSpinnerStyle),
             "list" => FormatConfig(settings),
             "get" => GetConfigValue(rest, settings),
             "set" => SetConfigValue(rest, settings),
-            _ => "Usage: /config [list|get <key>|set <key> <value>]",
+            _ => "Usage: /config [edit|list|get <key>|set <key> <value>]",
         };
     }
 
@@ -3021,6 +3038,10 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
               spinner_style: {{spinner.ToString().ToLowerInvariant()}}
               prompt_cache: {{_session.PromptCachingEnabled.ToString().ToLowerInvariant()}}
               prompt_cache_ttl: {{PromptCachePolicy.ToToken(_session.PromptCacheTtl)}}
+              sys_prompt_compaction: {{settings.SystemPromptCompaction.ToString().ToLowerInvariant()}}
+              sys_prompt_budget: {{settings.SystemPromptBudgetPercent}}
+              compact_auto: {{settings.AutoCompact.ToString().ToLowerInvariant()}}
+              compact_threshold: {{settings.CompactThresholdPercent}}
               autorun: {{_session.AutoRunEnabled.ToString().ToLowerInvariant()}}
               permissions: {{(!_session.SkipPermissions).ToString().ToLowerInvariant()}}
               plan_mode: {{_session.PlanMode.ToString().ToLowerInvariant()}}
@@ -3030,8 +3051,12 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
               welcome_version: {{welcome.ShowVersion.ToString().ToLowerInvariant()}}
               welcome_motd: {{welcome.ShowMotd.ToString().ToLowerInvariant()}}
               welcome_motd_url: {{motdUrl}}
+              welcome_motd_timeout_ms: {{welcome.MotdTimeoutMs}}
+              welcome_motd_max_length: {{welcome.MotdMaxLength}}
 
             Usage:
+              /config          — interactive editor
+              /config list     — show all settings
               /config get <key>
               /config set <key> <value>
             """;
@@ -3052,6 +3077,10 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "spinner_style" => $"spinner_style={(_getSpinnerStyle?.Invoke() ?? settings.SpinnerStyle).ToString().ToLowerInvariant()}",
             "prompt_cache" => $"prompt_cache={_session.PromptCachingEnabled.ToString().ToLowerInvariant()}",
             "prompt_cache_ttl" => $"prompt_cache_ttl={PromptCachePolicy.ToToken(_session.PromptCacheTtl)}",
+            "sys_prompt_compaction" => $"sys_prompt_compaction={settings.SystemPromptCompaction.ToString().ToLowerInvariant()}",
+            "sys_prompt_budget" => $"sys_prompt_budget={settings.SystemPromptBudgetPercent}",
+            "compact_auto" => $"compact_auto={settings.AutoCompact.ToString().ToLowerInvariant()}",
+            "compact_threshold" => $"compact_threshold={settings.CompactThresholdPercent}",
             "autorun" => $"autorun={_session.AutoRunEnabled.ToString().ToLowerInvariant()}",
             "permissions" => $"permissions={(!_session.SkipPermissions).ToString().ToLowerInvariant()}",
             "plan_mode" => $"plan_mode={_session.PlanMode.ToString().ToLowerInvariant()}",
@@ -3061,6 +3090,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "welcome_version" => $"welcome_version={welcome.ShowVersion.ToString().ToLowerInvariant()}",
             "welcome_motd" => $"welcome_motd={welcome.ShowMotd.ToString().ToLowerInvariant()}",
             "welcome_motd_url" => $"welcome_motd_url={welcome.MotdUrl ?? "(none)"}",
+            "welcome_motd_timeout_ms" => $"welcome_motd_timeout_ms={welcome.MotdTimeoutMs}",
+            "welcome_motd_max_length" => $"welcome_motd_max_length={welcome.MotdMaxLength}",
             _ => $"Unknown config key '{key}'.",
         };
     }
@@ -3124,6 +3155,30 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                 SaveSettings(settings with { PromptCacheTtl = ttl });
                 return $"prompt_cache_ttl={PromptCachePolicy.ToToken(ttl)}";
 
+            case "compact_auto":
+                if (!TryParseOnOff(value, out var compactAuto))
+                    return "compact_auto expects on/off.";
+                SaveSettings(settings with { AutoCompact = compactAuto });
+                return $"compact_auto={compactAuto.ToString().ToLowerInvariant()}";
+
+            case "compact_threshold":
+                if (!int.TryParse(value, out var pct) || pct < 0 || pct > 100)
+                    return "compact_threshold expects a number from 0 to 100.";
+                SaveSettings(settings with { CompactThresholdPercent = pct });
+                return $"compact_threshold={pct}";
+
+            case "sys_prompt_compaction":
+                if (!Enum.TryParse<SystemPromptCompaction>(value, ignoreCase: true, out var compactionMode))
+                    return "sys_prompt_compaction expects: off, auto, always.";
+                SaveSettings(settings with { SystemPromptCompaction = compactionMode });
+                return $"sys_prompt_compaction={compactionMode.ToString().ToLowerInvariant()}";
+
+            case "sys_prompt_budget":
+                if (!int.TryParse(value, out var budget) || budget < 0 || budget > 100)
+                    return "sys_prompt_budget expects a number from 0 to 100.";
+                SaveSettings(settings with { SystemPromptBudgetPercent = budget });
+                return $"sys_prompt_budget={budget}";
+
             case "autorun":
                 if (!TryParseOnOff(value, out var autorun))
                     return "autorun expects on/off.";
@@ -3180,6 +3235,18 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                     : value;
                 SaveSettings(settings with { Welcome = welcome with { MotdUrl = motdUrl } });
                 return $"welcome_motd_url={motdUrl ?? "(none)"}";
+
+            case "welcome_motd_timeout_ms":
+                if (!int.TryParse(value, out var motdTimeout) || motdTimeout < 100 || motdTimeout > 5000)
+                    return "welcome_motd_timeout_ms expects a number from 100 to 5000.";
+                SaveSettings(settings with { Welcome = welcome with { MotdTimeoutMs = motdTimeout } });
+                return $"welcome_motd_timeout_ms={motdTimeout}";
+
+            case "welcome_motd_max_length":
+                if (!int.TryParse(value, out var motdMax) || motdMax < 40 || motdMax > 1000)
+                    return "welcome_motd_max_length expects a number from 40 to 1000.";
+                SaveSettings(settings with { Welcome = welcome with { MotdMaxLength = motdMax } });
+                return $"welcome_motd_max_length={motdMax}";
 
             default:
                 return $"Unknown config key '{parts[0]}'.";

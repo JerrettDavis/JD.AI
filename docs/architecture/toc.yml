@@ -1,0 +1,28 @@
+- name: Overview
+  href: index.md
+- name: Kubernetes Operator Design
+  href: kubernetes-operator-design.md
+- name: Architecture Decisions
+  items:
+    - name: ADR-001 OTel Instrumentation
+      href: decisions/ADR-001-otel-instrumentation.md
+    - name: ADR-002 Tool Loadout YAML
+      href: decisions/ADR-002-tool-loadout-yaml.md
+    - name: ADR-003 Policy RBAC
+      href: decisions/ADR-003-policy-rbac.md
+    - name: ADR-004 SQLite Audit Sink
+      href: decisions/ADR-004-sqlite-audit-sink.md
+    - name: ADR-005 Approval Service
+      href: decisions/ADR-005-approval-service.md
+    - name: ADR-006 File Agent Registry
+      href: decisions/ADR-006-file-agent-registry.md
+    - name: ADR-007 Compliance Profiles
+      href: decisions/ADR-007-compliance-profiles.md
+    - name: ADR-008 Secret Vault Backends
+      href: decisions/ADR-008-secret-vault-backends.md
+    - name: ADR-009 Security Hardening
+      href: decisions/ADR-009-security-hardening.md
+    - name: ADR-010 Connector SDK
+      href: decisions/ADR-010-connector-sdk.md
+    - name: ADR-011 Distributed Workflow Execution
+      href: decisions/ADR-011-distributed-workflow-execution.md

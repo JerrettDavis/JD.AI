@@ -1,0 +1,248 @@
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="4">
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+        Define agents that can handle conversations. Auto-spawn agents start when the gateway boots.
+    </MudText>
+
+    @for (var i = 0; i < Agents.Count; i++)
+    {
+        var idx = i;
+        var agent = Agents[idx];
+        <MudPaper Class="pa-4" Elevation="0" data-testid="agent-entry">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                <MudText Typo="Typo.subtitle2" Style="font-weight:600;">
+                    @(string.IsNullOrEmpty(agent.Id) ? "New Agent" : agent.Id)
+                </MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                               OnClick="@(() => RemoveAgent(idx))" />
+            </MudStack>
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="agent.Id" Label="Agent ID" Variant="Variant.Outlined" Required="true"
+                                  data-testid="agent-id-field"
+                                  HelperText="Unique identifier for this agent (e.g. 'default', 'code-reviewer')."
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Badge" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudSelect @bind-Value="agent.Provider" Label="Provider" Variant="Variant.Outlined"
+                               data-testid="agent-provider-select"
+                               HelperText="The AI provider to use for this agent."
+                               Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Hub">
+                        @foreach (var p in AvailableProviders.Where(p => p.Enabled))
+                        {
+                            <MudSelectItem T="string" Value="@p.Name">@p.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    @if (_providerModels.TryGetValue(agent.Provider, out var models) && models.Length > 0)
+                    {
+                        <MudSelect @bind-Value="agent.Model" Label="Model" Variant="Variant.Outlined"
+                                   data-testid="agent-model-select"
+                                   HelperText="Select the AI model. List filtered by chosen provider."
+                                   Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Memory">
+                            @foreach (var m in models)
+                            {
+                                <MudSelectItem T="string" Value="@m.Id">@m.DisplayName (@m.Id)</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                    else
+                    {
+                        <MudTextField @bind-Value="agent.Model" Label="Model" Variant="Variant.Outlined"
+                                      HelperText="Model identifier (e.g. 'qwen3.5:27b'). Select a provider to see available models."
+                                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Memory" />
+                    }
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudNumericField @bind-Value="agent.MaxTurns" Label="Max Turns" Variant="Variant.Outlined"
+                                     Min="0" Max="100"
+                                     HelperText="Maximum conversation turns (0 = unlimited)." />
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudSwitch @bind-Value="agent.AutoSpawn" Color="Color.Primary" UncheckedColor="Color.Default" Class="mt-3">
+                        <ChildContent>
+                            <MudStack Spacing="0">
+                                <MudText>Auto-Spawn</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Start on boot</MudText>
+                            </MudStack>
+                        </ChildContent>
+                    </MudSwitch>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="agent.SystemPrompt" Label="System Prompt" Variant="Variant.Outlined"
+                                  Lines="3"
+                                  HelperText="Instructions that define the agent's personality and capabilities." />
+                </MudItem>
+
+                @* ── Model Parameters (collapsible) ── *@
+                <MudItem xs="12">
+                    <MudExpansionPanels Elevation="0" Class="mt-n2">
+                        <MudExpansionPanel Text="Model Parameters" MaxHeight="600"
+                                           data-testid="agent-params-panel"
+                                           Style="background: transparent;">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
+                                Fine-tune inference behavior. Leave blank to use provider defaults.
+                            </MudText>
+                            <MudGrid>
+                                <MudItem xs="6" md="3">
+                                    <MudNumericField @bind-Value="agent.Parameters.Temperature"
+                                                     Label="Temperature" Variant="Variant.Outlined"
+                                                     Min="0.0" Max="2.0" Step="0.05"
+                                                     Format="F2" Clearable="true"
+                                                     HelperText="0 = deterministic, 2 = very creative" />
+                                </MudItem>
+                                <MudItem xs="6" md="3">
+                                    <MudNumericField @bind-Value="agent.Parameters.TopP"
+                                                     Label="Top-P" Variant="Variant.Outlined"
+                                                     Min="0.0" Max="1.0" Step="0.05"
+                                                     Format="F2" Clearable="true"
+                                                     HelperText="Nucleus sampling threshold" />
+                                </MudItem>
+                                <MudItem xs="6" md="3">
+                                    <MudNumericField @bind-Value="agent.Parameters.TopK"
+                                                     Label="Top-K" Variant="Variant.Outlined"
+                                                     Min="1" Max="200" Clearable="true"
+                                                     HelperText="Limit to K most probable tokens" />
+                                </MudItem>
+                                <MudItem xs="6" md="3">
+                                    <MudNumericField @bind-Value="agent.Parameters.MaxTokens"
+                                                     Label="Max Tokens" Variant="Variant.Outlined"
+                                                     Min="1" Max="131072" Clearable="true"
+                                                     HelperText="Max tokens in response" />
+                                </MudItem>
+                                <MudItem xs="6" md="3">
+                                    <MudNumericField @bind-Value="agent.Parameters.ContextWindowSize"
+                                                     Label="Context Window" Variant="Variant.Outlined"
+                                                     Min="0" Max="1048576" Clearable="true"
+                                                     HelperText="Ollama num_ctx (0 = default)" />
+                                </MudItem>
+                                <MudItem xs="6" md="3">
+                                    <MudNumericField @bind-Value="agent.Parameters.FrequencyPenalty"
+                                                     Label="Frequency Penalty" Variant="Variant.Outlined"
+                                                     Min="-2.0" Max="2.0" Step="0.1"
+                                                     Format="F1" Clearable="true"
+                                                     HelperText="Penalize repeated tokens" />
+                                </MudItem>
+                                <MudItem xs="6" md="3">
+                                    <MudNumericField @bind-Value="agent.Parameters.PresencePenalty"
+                                                     Label="Presence Penalty" Variant="Variant.Outlined"
+                                                     Min="-2.0" Max="2.0" Step="0.1"
+                                                     Format="F1" Clearable="true"
+                                                     HelperText="Encourage new topics" />
+                                </MudItem>
+                                <MudItem xs="6" md="3">
+                                    <MudNumericField @bind-Value="agent.Parameters.RepeatPenalty"
+                                                     Label="Repeat Penalty" Variant="Variant.Outlined"
+                                                     Min="0.0" Max="3.0" Step="0.1"
+                                                     Format="F1" Clearable="true"
+                                                     HelperText="Ollama repeat_penalty (1.0 = off)" />
+                                </MudItem>
+                                <MudItem xs="6" md="3">
+                                    <MudNumericField @bind-Value="agent.Parameters.Seed"
+                                                     Label="Seed" Variant="Variant.Outlined"
+                                                     Min="0" Clearable="true"
+                                                     HelperText="For reproducible output" />
+                                </MudItem>
+                                <MudItem xs="6" md="9">
+                                    <MudTextField @bind-Value="_stopSeqText[idx]"
+                                                  Label="Stop Sequences" Variant="Variant.Outlined"
+                                                  HelperText="Comma-separated stop tokens (e.g. &lt;|end|&gt;, [DONE])"
+                                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Stop" />
+                                </MudItem>
+                            </MudGrid>
+                        </MudExpansionPanel>
+                    </MudExpansionPanels>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    }
+
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               data-testid="add-agent-button"
+               OnClick="AddAgent" FullWidth="true">
+        Add Agent Definition
+    </MudButton>
+
+    <MudStack Row="true" Justify="Justify.FlexEnd">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save"
+                   data-testid="save-agents-button"
+                   OnClick="SaveAsync" Disabled="_saving">
+            @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+            Save Agents
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter] public IList<AgentDefinition> Agents { get; set; } = new List<AgentDefinition>();
+    [Parameter] public IList<ProviderConfigModel> AvailableProviders { get; set; } = new List<ProviderConfigModel>();
+    [Parameter] public GatewayApiClient Api { get; set; } = null!;
+
+    private readonly Dictionary<string, ProviderModelInfo[]> _providerModels = [];
+    private readonly Dictionary<int, string> _stopSeqText = [];
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Initialize stop-sequence text fields from model
+        for (var i = 0; i < Agents.Count; i++)
+            _stopSeqText[i] = string.Join(", ", Agents[i].Parameters.StopSequences);
+
+        foreach (var p in AvailableProviders.Where(p => p.Enabled))
+        {
+            try { _providerModels[p.Name] = await Api.GetProviderModelsAsync(p.Name); }
+            catch { /* Provider may be offline */ }
+        }
+    }
+
+    private async Task OnProviderChanged(AgentDefinition agent)
+    {
+        if (!_providerModels.ContainsKey(agent.Provider))
+        {
+            try { _providerModels[agent.Provider] = await Api.GetProviderModelsAsync(agent.Provider); }
+            catch { /* ignore */ }
+        }
+    }
+
+    private void AddAgent()
+    {
+        var idx = Agents.Count;
+        Agents.Add(new AgentDefinition { AutoSpawn = true });
+        _stopSeqText[idx] = "";
+    }
+
+    private void RemoveAgent(int idx)
+    {
+        Agents.RemoveAt(idx);
+        // Re-index stop-sequence text
+        _stopSeqText.Clear();
+        for (var i = 0; i < Agents.Count; i++)
+            _stopSeqText[i] = string.Join(", ", Agents[i].Parameters.StopSequences);
+    }
+
+    private void SyncStopSequences()
+    {
+        for (var i = 0; i < Agents.Count; i++)
+        {
+            if (_stopSeqText.TryGetValue(i, out var text) && !string.IsNullOrWhiteSpace(text))
+                Agents[i].Parameters.StopSequences = text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            else
+                Agents[i].Parameters.StopSequences = [];
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            SyncStopSequences();
+            await Api.UpdateAgentsConfigAsync(Agents);
+            Snackbar.Add("Agent definitions saved", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add($"Save failed: {ex.Message}", Severity.Error); }
+        finally { _saving = false; }
+    }
+}

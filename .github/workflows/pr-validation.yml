@@ -1,0 +1,181 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.vscode/**'
+      - '.editorconfig'
+  workflow_dispatch:
+
+env:
+  DOTNET_NOLOGO: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  validate-pr:
+    name: Validate PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Determine version (NBGV)
+        id: nbgv
+        uses: dotnet/nbgv@master
+        with:
+          setAllVars: true
+
+      - name: Restore
+        run: dotnet restore JD.AI.slnx
+
+      - name: Build
+        run: >
+          dotnet build JD.AI.slnx
+          --configuration Release
+          --no-restore
+          /p:ContinuousIntegrationBuild=true
+          /p:Deterministic=true
+
+      - name: Verify formatting
+        run: >
+          dotnet format JD.AI.slnx
+          --severity warn
+          --verify-no-changes
+
+      - name: Run tests with coverage
+        run: >
+          dotnet test JD.AI.slnx
+          --configuration Release
+          --no-build
+          --filter "Category!=Integration"
+          --verbosity normal
+          --logger "trx;LogFileName=test-results.trx"
+          --collect:"XPlat Code Coverage"
+          --
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI]*"
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*"
+
+      - name: Install ReportGenerator
+        run: dotnet tool update -g dotnet-reportgenerator-globaltool
+
+      - name: Generate coverage report
+        shell: bash
+        run: |
+          REPORTS=$(find . -type f -path "*/TestResults/*/coverage.cobertura.xml" | tr '\n' ';')
+          reportgenerator \
+            -reports:"$REPORTS" \
+            -targetdir:"coverage-report" \
+            -reporttypes:"Cobertura;TextSummary" \
+            -assemblyfilters:"+JD.AI*;-*Tests*"
+
+      - name: Coverage gate — check changed source files
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # Determine if this PR has a coverage-override label
+          LABELS=$(gh pr view "$PR_NUMBER" --json labels --jq '[.labels[].name] | join(",")' 2>/dev/null || echo "")
+          if echo "$LABELS" | grep -q "coverage-override"; then
+            echo "ℹ️  coverage-override label found — skipping coverage gate."
+            exit 0
+          fi
+
+          # Get changed runtime source files (not tests)
+          CHANGED_SRC=$(git diff --name-only origin/main...HEAD -- 'src/**/*.cs' 2>/dev/null || \
+                        git diff --name-only HEAD~1...HEAD -- 'src/**/*.cs' 2>/dev/null || echo "")
+
+          if [ -z "$CHANGED_SRC" ]; then
+            echo "✅ No runtime source files changed — coverage gate passed."
+            exit 0
+          fi
+
+          echo "📁 Changed source files:"
+          echo "$CHANGED_SRC"
+
+          # Check if test files were also changed
+          CHANGED_TESTS=$(git diff --name-only origin/main...HEAD -- 'tests/**/*.cs' 2>/dev/null || \
+                          git diff --name-only HEAD~1...HEAD -- 'tests/**/*.cs' 2>/dev/null || echo "")
+
+          if [ -z "$CHANGED_TESTS" ]; then
+            echo ""
+            echo "⚠️  Runtime source files were modified but no test files changed."
+            echo "   Please add or update tests for the changed code, or add the"
+            echo "   'coverage-override' label to this PR to bypass this check."
+            echo ""
+            echo "Changed files requiring tests:"
+            echo "$CHANGED_SRC"
+            exit 1
+          fi
+
+          echo "✅ Test files updated alongside source changes — coverage gate passed."
+          echo "Changed test files:"
+          echo "$CHANGED_TESTS"
+
+      - name: Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: |
+            **/TestResults/**/*.trx
+          check_name: Test Results
+
+      - name: Dry-run NuGet packaging
+        run: |
+          echo "📦 Performing dry-run of NuGet packaging..."
+          mkdir -p ./dry-run-packages
+          dotnet pack JD.AI.slnx \
+            --configuration Release \
+            --no-build \
+            --output ./dry-run-packages \
+            /p:ContinuousIntegrationBuild=true || true
+          PACKAGE_COUNT=$(ls -1 ./dry-run-packages/*.nupkg 2>/dev/null | wc -l)
+          if [ "$PACKAGE_COUNT" -eq 0 ]; then
+            echo "❌ No packages were created"
+            exit 1
+          fi
+          echo "📦 Packaged files:"
+          ls -lh ./dry-run-packages/
+
+      - name: Upload dry-run packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: dry-run-packages
+          path: ./dry-run-packages/*.nupkg
+          retention-days: 7
+
+      - name: PR Summary
+        if: always()
+        run: |
+          echo "## 🎯 PR Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Version**: $NBGV_NuGetPackageVersion" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Packages" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if ls ./dry-run-packages/*.nupkg 1> /dev/null 2>&1; then
+            echo "The following packages will be created on merge:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            ls -1 ./dry-run-packages/*.nupkg | xargs -n1 basename >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ No packages were created during the dry-run." >> $GITHUB_STEP_SUMMARY
+          fi

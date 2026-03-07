@@ -1,0 +1,31 @@
+# JD.AI built-in compliance preset: GDPR
+# Suitable for organizations processing personal data of EU residents.
+apiVersion: jdai/v1
+kind: Policy
+metadata:
+  name: jdai/compliance/gdpr
+  scope: Organization
+  priority: 1
+spec:
+  audit:
+    enabled: true
+    sink: file
+  data:
+    noExternalProviders:
+      - '*'
+    classifications:
+      - name: PII-Email
+        patterns:
+          - '\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b'
+        action: RedactAndAudit
+      - name: PII-Name
+        patterns:
+          - '\b(Mr\.|Mrs\.|Ms\.|Dr\.)\s+[A-Z][a-z]+\s+[A-Z][a-z]+\b'
+        action: AuditOnly
+      - name: PII-Phone
+        patterns:
+          - '\b(\+?\d{1,3}[\s-]?)?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{4}\b'
+        action: RedactAndAudit
+  sessions:
+    retentionDays: 90
+    requireProjectTag: true
