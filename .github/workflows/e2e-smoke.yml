@@ -43,7 +43,8 @@ jobs:
           /p:ContinuousIntegrationBuild=true
 
       - name: Install Playwright browsers
-        run: pwsh tests/JD.AI.Specs.UI/bin/Release/net10.0/playwright.ps1 install --with-deps
+        shell: pwsh
+        run: ./tests/JD.AI.Specs.UI/bin/Release/net10.0/playwright.ps1 install --with-deps
 
       - name: Start dashboard host
         run: |
@@ -78,6 +79,7 @@ jobs:
           files: |
             tests/JD.AI.Specs.UI/TestResults/**/*.trx
           check_name: UI Smoke Test Results
+          comment_mode: off
 
       - name: Upload UI artifacts
         uses: actions/upload-artifact@v7
@@ -137,7 +139,12 @@ jobs:
           sudo chmod +x /usr/local/bin/ttyd
 
       - name: Render VHS smoke tape
-        run: vhs docs/tapes/ci-cli-smoke.tape
+        run: >
+          docker run --rm
+          -v "${PWD}:/vhs"
+          -w /vhs
+          ghcr.io/charmbracelet/vhs
+          docs/tapes/ci-cli-smoke.tape
 
       - name: Verify generated VHS outputs
         run: |
