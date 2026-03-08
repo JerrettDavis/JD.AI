@@ -20,7 +20,7 @@ public sealed class InteractiveInput
     private const int PromptWidth = 2; // "> " prefix
     private const int MaxDropdownItems = 8;
     private const int PasteBurstThresholdMs = 8;
-    private const int PasteCollapseMinChars = 10;
+    private const int PasteCollapseMinChars = 180;
     private static readonly TimeSpan EscapeDoubleWindow = TimeSpan.FromMilliseconds(1500);
 
     /// <summary>Fires when the user double-taps ESC at an empty prompt.</summary>
