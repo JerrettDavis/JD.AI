@@ -359,7 +359,18 @@ internal static class ProviderOrchestrator
         if (context.Models.Count == 0)
             return ModelSelectionDecision.Error("No models available.");
 
-        return ModelSelectionDecision.Select(context.PromptSelector(context.Models));
+        try
+        {
+            return ModelSelectionDecision.Select(context.PromptSelector(context.Models));
+        }
+        catch (OperationCanceledException)
+        {
+            return ModelSelectionDecision.Error("Model selection cancelled.");
+        }
+        catch (InvalidOperationException)
+        {
+            return ModelSelectionDecision.Error("Model selection cancelled.");
+        }
     }
 
     private static List<ProviderModelInfo> FilterCandidates(

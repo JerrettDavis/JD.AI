@@ -148,6 +148,26 @@ public sealed class ProviderOrchestratorSelectionTests
         Assert.Contains("No model matching", decision.ErrorMessage);
     }
 
+    [Fact]
+    public void EvaluateSelection_InteractivePromptCancelled_ReturnsCancellationError()
+    {
+        var models = CreateModels();
+        var opts = new CliOptions { PrintMode = false };
+
+        var decision = ProviderOrchestrator.EvaluateSelection(
+            opts,
+            models,
+            defaultProvider: null,
+            defaultModel: null,
+            router: new NoopRouter(),
+            routingPolicy: RoutingPolicy.Default,
+            promptSelector: _ => throw new OperationCanceledException());
+
+        Assert.True(decision.Handled);
+        Assert.Null(decision.SelectedModel);
+        Assert.Equal("Model selection cancelled.", decision.ErrorMessage);
+    }
+
     private static List<ProviderModelInfo> CreateModels() =>
     [
         new("claude-sonnet", "Claude Sonnet", "ClaudeCode", InputCostPerToken: 0.000003m, OutputCostPerToken: 0.000015m),
@@ -155,4 +175,11 @@ public sealed class ProviderOrchestratorSelectionTests
         new("ollama-chat", "Ollama Chat", "Ollama", InputCostPerToken: 0m, OutputCostPerToken: 0m),
         new("ollama-coder", "Ollama Coder", "Ollama", InputCostPerToken: 0m, OutputCostPerToken: 0m),
     ];
+
+    private sealed class NoopRouter : IModelRouter
+    {
+        public ModelRouteDecision Route(
+            IReadOnlyList<ProviderModelInfo> candidates,
+            RoutingPolicy policy) => ModelRouteDecision.None;
+    }
 }

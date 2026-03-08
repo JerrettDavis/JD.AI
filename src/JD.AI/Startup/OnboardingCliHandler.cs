@@ -140,6 +140,11 @@ internal static class OnboardingCliHandler
 
             toImport = AnsiConsole.Prompt(prompt);
         }
+        catch (OperationCanceledException)
+        {
+            AnsiConsole.MarkupLine("[dim]Import cancelled.[/]");
+            return;
+        }
         catch (InvalidOperationException)
         {
             AnsiConsole.MarkupLine("[dim]Non-interactive terminal: import skipped. Run `jdai mcp list` anytime to review.[/]");
@@ -226,12 +231,23 @@ internal static class OnboardingCliHandler
                 p.Name.Contains(providerArg, StringComparison.OrdinalIgnoreCase));
         }
 
-        return AnsiConsole.Prompt(
-            new SelectionPrompt<ProviderInfo>()
-                .Title("[bold]Select provider[/]")
-                .WithAdaptivePaging(preferredPageSize: 12, totalChoices: providers.Count, singularNoun: "provider")
-                .UseConverter(p => $"{Markup.Escape(p.Name)} [dim]({p.Models.Count} models)[/]")
-                .AddChoices(providers));
+        try
+        {
+            return AnsiConsole.Prompt(
+                new SelectionPrompt<ProviderInfo>()
+                    .Title("[bold]Select provider[/]")
+                    .WithAdaptivePaging(preferredPageSize: 12, totalChoices: providers.Count, singularNoun: "provider")
+                    .UseConverter(p => $"{Markup.Escape(p.Name)} [dim]({p.Models.Count} models)[/]")
+                    .AddChoices(providers));
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
     }
 
     private static ProviderModelInfo? ResolveModel(
@@ -245,16 +261,27 @@ internal static class OnboardingCliHandler
                 || m.DisplayName.Contains(modelArg, StringComparison.OrdinalIgnoreCase));
         }
 
-        return AnsiConsole.Prompt(
-            new SelectionPrompt<ProviderModelInfo>()
-                .Title("[bold]Select model[/] [dim](💬=Chat 🔧=Tools 👁=Vision 📐=Embed)[/]")
-                .WithAdaptivePaging(preferredPageSize: 15, totalChoices: models.Count, singularNoun: "model")
-                .UseConverter(m =>
-                {
-                    var badge = m.Capabilities.ToBadge();
-                    return $"{badge} {Markup.Escape(m.DisplayName)} [dim]({Markup.Escape(m.Id)})[/]";
-                })
-                .AddChoices(models));
+        try
+        {
+            return AnsiConsole.Prompt(
+                new SelectionPrompt<ProviderModelInfo>()
+                    .Title("[bold]Select model[/] [dim](💬=Chat 🔧=Tools 👁=Vision 📐=Embed)[/]")
+                    .WithAdaptivePaging(preferredPageSize: 15, totalChoices: models.Count, singularNoun: "model")
+                    .UseConverter(m =>
+                    {
+                        var badge = m.Capabilities.ToBadge();
+                        return $"{badge} {Markup.Escape(m.DisplayName)} [dim]({Markup.Escape(m.Id)})[/]";
+                    })
+                    .AddChoices(models));
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
     }
 
     private static string? GetFlagValue(string[] args, string flag)
