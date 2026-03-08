@@ -1212,6 +1212,8 @@ public sealed class AgentLoop
 
         argumentsElement = default;
         return false;
+    }
+
     // ── Text-based tool call safety ──────────────────────────────────────
 
     /// <summary>
