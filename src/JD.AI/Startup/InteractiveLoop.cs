@@ -249,7 +249,7 @@ internal sealed class InteractiveLoop
                 JD.AI.Core.Agents.PermissionMode.AcceptEdits => JD.AI.Core.Agents.PermissionMode.Normal,
                 _ => JD.AI.Core.Agents.PermissionMode.Normal,
             };
-            ChatRenderer.RenderInfo($"Permission mode: {session.PermissionMode}");
+            ChatRenderer.RenderModeBar(session.PermissionMode);
         };
 
         interactiveInput.OnToggleExtendedThinking += (_, _) =>
@@ -334,6 +334,7 @@ internal sealed class InteractiveLoop
         {
             _refreshSkills(true);
 
+            ChatRenderer.RenderModeBar(_session.PermissionMode);
             var inputResult = ChatRenderer.ReadInputStructured(interactiveInput);
             if (inputResult is null) continue;
 
