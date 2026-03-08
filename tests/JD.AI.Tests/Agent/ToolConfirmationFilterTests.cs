@@ -1,3 +1,4 @@
+using FluentAssertions;
 using JD.AI.Agent;
 using Microsoft.SemanticKernel;
 
@@ -102,5 +103,37 @@ public sealed class ToolConfirmationFilterTests
     {
         var result = ToolConfirmationFilter.ResolvePolicyToolName("AnyFunctionName");
         Assert.NotNull(result);
+    }
+
+    // ── BuildContentPreview ───────────────────────────────────────────────────
+
+    [Fact]
+    public void BuildContentPreview_NullOrWhitespace_ReturnsNull()
+    {
+        ToolConfirmationFilter.BuildContentPreview(null).Should().BeNull();
+        ToolConfirmationFilter.BuildContentPreview("").Should().BeNull();
+        ToolConfirmationFilter.BuildContentPreview("   ").Should().BeNull();
+    }
+
+    [Fact]
+    public void BuildContentPreview_UsesFirstNonEmptyLine()
+    {
+        var content = "\n\nfirst line\nsecond line";
+
+        var preview = ToolConfirmationFilter.BuildContentPreview(content);
+
+        preview.Should().Be("first line");
+    }
+
+    [Fact]
+    public void BuildContentPreview_TruncatesLongLine()
+    {
+        var longLine = new string('x', 200);
+
+        var preview = ToolConfirmationFilter.BuildContentPreview(longLine, maxChars: 50);
+
+        preview.Should().NotBeNull();
+        preview!.Length.Should().Be(50);
+        preview.Should().EndWith("...");
     }
 }

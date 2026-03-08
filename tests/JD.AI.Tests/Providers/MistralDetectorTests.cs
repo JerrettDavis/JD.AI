@@ -454,4 +454,17 @@ public sealed class MistralDetectorTests : IDisposable
         result.IsAvailable.Should().BeFalse();
         result.Models.Should().BeEmpty();
     }
+
+    [Theory]
+    [InlineData("mistral-large-latest", true)]
+    [InlineData("mistral-embed-2312", false)]
+    [InlineData("codestral-embed-2505", false)]
+    [InlineData("mistral-ocr-2512", false)]
+    [InlineData("mistral-moderation-2411", false)]
+    public void IsConversationalModelId_FiltersNonChatCatalogEntries(string modelId, bool expected)
+    {
+        var result = MistralDetector.IsConversationalModelId(modelId);
+
+        result.Should().Be(expected);
+    }
 }

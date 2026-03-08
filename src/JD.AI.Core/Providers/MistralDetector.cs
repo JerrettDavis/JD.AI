@@ -15,12 +15,18 @@ public sealed class MistralDetector : ApiKeyProviderDetectorBase
 {
     private static readonly ProviderModelInfo[] KnownModelsCatalog =
     [
-        new("mistral-large-latest", "Mistral Large", "Mistral"),
-        new("mistral-medium-latest", "Mistral Medium", "Mistral"),
-        new("mistral-small-latest", "Mistral Small", "Mistral"),
-        new("codestral-latest", "Codestral", "Mistral"),
-        new("open-mistral-nemo", "Mistral Nemo", "Mistral"),
-        new("ministral-8b-latest", "Ministral 8B", "Mistral"),
+        new("mistral-large-latest", "Mistral Large", "Mistral",
+            Capabilities: ModelCapabilityHeuristics.InferFromName("mistral-large-latest")),
+        new("mistral-medium-latest", "Mistral Medium", "Mistral",
+            Capabilities: ModelCapabilityHeuristics.InferFromName("mistral-medium-latest")),
+        new("mistral-small-latest", "Mistral Small", "Mistral",
+            Capabilities: ModelCapabilityHeuristics.InferFromName("mistral-small-latest")),
+        new("codestral-latest", "Codestral", "Mistral",
+            Capabilities: ModelCapabilityHeuristics.InferFromName("codestral-latest")),
+        new("open-mistral-nemo", "Mistral Nemo", "Mistral",
+            Capabilities: ModelCapabilityHeuristics.InferFromName("open-mistral-nemo")),
+        new("ministral-8b-latest", "Ministral 8B", "Mistral",
+            Capabilities: ModelCapabilityHeuristics.InferFromName("ministral-8b-latest")),
     ];
 
     public MistralDetector(ProviderConfigurationManager config)
@@ -44,9 +50,13 @@ public sealed class MistralDetector : ApiKeyProviderDetectorBase
             return KnownModels;
 
         return response.Data
-            .Where(m => !string.IsNullOrEmpty(m.Id))
+            .Where(m => !string.IsNullOrEmpty(m.Id) && IsConversationalModelId(m.Id!))
             .OrderByDescending(m => m.Created)
-            .Select(m => new ProviderModelInfo(m.Id!, FormatName(m.Id!), ProviderName))
+            .Select(m => new ProviderModelInfo(
+                m.Id!,
+                FormatName(m.Id!),
+                ProviderName,
+                Capabilities: ModelCapabilityHeuristics.InferFromName(m.Id!)))
             .ToList();
     }
 
@@ -63,6 +73,18 @@ public sealed class MistralDetector : ApiKeyProviderDetectorBase
         id.Replace('-', ' ')
           .Replace("latest", "", StringComparison.OrdinalIgnoreCase)
           .Trim();
+
+    // Exclude non-conversational catalogs from fallback/routing.
+    internal static bool IsConversationalModelId(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            return false;
+
+        return !(
+            id.Contains("embed", StringComparison.OrdinalIgnoreCase) ||
+            id.Contains("moderation", StringComparison.OrdinalIgnoreCase) ||
+            id.Contains("ocr", StringComparison.OrdinalIgnoreCase));
+    }
 
     private sealed record MistralModelsResponse(
         [property: JsonPropertyName("data")] List<MistralModel>? Data);

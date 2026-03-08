@@ -27,14 +27,24 @@ public sealed class HuggingFaceDetector : ApiKeyProviderDetectorBase
     /// </summary>
     private static readonly ProviderModelInfo[] KnownModelsCatalog =
     [
-        new("Qwen/Qwen2.5-72B-Instruct", "Qwen 2.5 72B", "HuggingFace"),
-        new("Qwen/Qwen2.5-7B-Instruct", "Qwen 2.5 7B", "HuggingFace"),
-        new("meta-llama/Llama-3.3-70B-Instruct", "Llama 3.3 70B", "HuggingFace"),
-        new("meta-llama/Llama-3.1-8B-Instruct", "Llama 3.1 8B", "HuggingFace"),
-        new("mistralai/Mistral-7B-Instruct-v0.3", "Mistral 7B v0.3", "HuggingFace"),
-        new("microsoft/Phi-4-mini-instruct", "Phi 4 Mini", "HuggingFace"),
-        new("deepseek-ai/DeepSeek-R1-Distill-Qwen-32B", "DeepSeek R1 32B", "HuggingFace"),
-        new("google/gemma-3-27b-it", "Gemma 3 27B", "HuggingFace"),
+        // HF Inference router currently operates as chat/text generation for these models.
+        // Do not advertise tool-calling unless we have provider-verified support.
+        new("Qwen/Qwen2.5-72B-Instruct", "Qwen 2.5 72B", "HuggingFace",
+            Capabilities: ModelCapabilities.Chat),
+        new("Qwen/Qwen2.5-7B-Instruct", "Qwen 2.5 7B", "HuggingFace",
+            Capabilities: ModelCapabilities.Chat),
+        new("meta-llama/Llama-3.3-70B-Instruct", "Llama 3.3 70B", "HuggingFace",
+            Capabilities: ModelCapabilities.Chat),
+        new("meta-llama/Llama-3.1-8B-Instruct", "Llama 3.1 8B", "HuggingFace",
+            Capabilities: ModelCapabilities.Chat),
+        new("mistralai/Mistral-7B-Instruct-v0.3", "Mistral 7B v0.3", "HuggingFace",
+            Capabilities: ModelCapabilities.Chat),
+        new("microsoft/Phi-4-mini-instruct", "Phi 4 Mini", "HuggingFace",
+            Capabilities: ModelCapabilities.Chat),
+        new("deepseek-ai/DeepSeek-R1-Distill-Qwen-32B", "DeepSeek R1 32B", "HuggingFace",
+            Capabilities: ModelCapabilities.Chat),
+        new("google/gemma-3-27b-it", "Gemma 3 27B", "HuggingFace",
+            Capabilities: ModelCapabilities.Chat),
     ];
 
     public HuggingFaceDetector(ProviderConfigurationManager config)
@@ -67,7 +77,11 @@ public sealed class HuggingFaceDetector : ApiKeyProviderDetectorBase
         return models
             .Where(m => !string.IsNullOrEmpty(m.Id) && IsHfInferenceAvailable(m))
             .Take(10)
-            .Select(m => new ProviderModelInfo(m.Id!, FormatName(m.Id!), ProviderName))
+            .Select(m => new ProviderModelInfo(
+                m.Id!,
+                FormatName(m.Id!),
+                ProviderName,
+                Capabilities: ModelCapabilities.Chat))
             .ToList<ProviderModelInfo>()
             is { Count: > 0 } discovered ? discovered : KnownModels;
     }

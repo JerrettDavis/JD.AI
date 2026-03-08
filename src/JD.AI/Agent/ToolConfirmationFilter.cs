@@ -146,7 +146,10 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             if (path is not null)
             {
                 var sizeInfo = content is not null ? $" [{content.Length} chars]" : "";
-                displayArgs = $"path={path}{sizeInfo}";
+                var preview = BuildContentPreview(content);
+                displayArgs = preview is null
+                    ? $"path={path}{sizeInfo}"
+                    : $"path={path}{sizeInfo}, preview=\"{preview}\"";
             }
         }
 
@@ -319,5 +322,24 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
 
             return $"{kv.Key}={val}";
         }));
+    }
+
+    internal static string? BuildContentPreview(string? content, int maxChars = 120)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+            return null;
+
+        var singleLine = content
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n')
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .FirstOrDefault();
+
+        if (string.IsNullOrWhiteSpace(singleLine))
+            return null;
+
+        return singleLine.Length <= maxChars
+            ? singleLine
+            : string.Concat(singleLine.AsSpan(0, maxChars - 3), "...");
     }
 }
