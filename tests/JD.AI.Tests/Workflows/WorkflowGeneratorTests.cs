@@ -334,7 +334,7 @@ public sealed class WorkflowGeneratorTests
     }
 
     [Fact]
-    public async Task GenerateAsync_InvalidJson_FallsBackToHeuristic()
+    public async Task GenerateAsync_InvalidJson_ReturnsFailureWithoutHeuristicSteps()
     {
         var kernel = BuildMockKernel("This is not valid JSON at all.");
 
@@ -342,8 +342,33 @@ public sealed class WorkflowGeneratorTests
 
         Assert.False(result.Success);
         Assert.NotNull(result.Workflow);
-        Assert.True(result.Workflow.Steps.Count > 0, "Heuristic fallback should still produce steps");
+        Assert.Empty(result.Workflow.Steps);
         Assert.Contains("LLM generation failed", result.Changelog);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_ExtractsJsonWhenModelAddsPreambleText()
+    {
+        var response = """
+            Here is the workflow JSON:
+            {
+              "name": "Preamble Workflow",
+              "version": "1.0",
+              "description": "Generated with prose around JSON",
+              "tags": ["test"],
+              "steps": [
+                { "name": "Step 1", "kind": "Tool", "target": "shell-run_command" }
+              ]
+            }
+            """;
+
+        var kernel = BuildMockKernel(response);
+
+        var result = await _generator.GenerateAsync("Do a thing", kernel);
+
+        Assert.True(result.Success);
+        Assert.Equal("Preamble Workflow", result.Workflow.Name);
+        Assert.Single(result.Workflow.Steps);
     }
 
     [Fact]
