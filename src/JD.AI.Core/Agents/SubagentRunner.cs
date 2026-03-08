@@ -63,7 +63,7 @@ public sealed class SubagentRunner
             ModelId = _parentSession.CurrentModel?.Id,
             MaxTokens = maxTokens,
             FunctionChoiceBehavior = supportsTools
-                ? FunctionChoiceBehavior.Auto()
+                ? FunctionChoiceBehavior.Auto(autoInvoke: true)
                 : null,
         };
         PromptCachePolicy.Apply(

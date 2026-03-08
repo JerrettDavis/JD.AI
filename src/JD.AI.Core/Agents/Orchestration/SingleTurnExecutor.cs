@@ -55,7 +55,7 @@ public sealed class SingleTurnExecutor : ISubagentExecutor
             ModelId = parentSession.CurrentModel?.Id,
             MaxTokens = maxTokens,
             FunctionChoiceBehavior = supportsTools
-                ? FunctionChoiceBehavior.Auto()
+                ? FunctionChoiceBehavior.Auto(autoInvoke: true)
                 : null,
         };
         PromptCachePolicy.Apply(
