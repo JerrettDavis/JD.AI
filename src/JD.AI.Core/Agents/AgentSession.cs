@@ -504,9 +504,18 @@ public sealed class AgentSession
         });
 
         var newKernel = _registry.BuildKernel(model);
+        var previousKernel = _kernel;
+
+        // Preserve governance/safety filters (tool confirmations, workflows, audit hooks)
+        // so model/provider switches keep the same enforcement pipeline.
+        foreach (var filter in previousKernel.AutoFunctionInvocationFilters)
+        {
+            if (!newKernel.AutoFunctionInvocationFilters.Any(f => ReferenceEquals(f, filter)))
+                newKernel.AutoFunctionInvocationFilters.Add(filter);
+        }
 
         // Re-register plugins from the old kernel
-        foreach (var plugin in _kernel.Plugins)
+        foreach (var plugin in previousKernel.Plugins)
         {
             newKernel.Plugins.Add(plugin);
         }

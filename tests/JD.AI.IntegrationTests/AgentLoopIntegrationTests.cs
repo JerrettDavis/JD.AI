@@ -120,4 +120,33 @@ public sealed class AgentLoopIntegrationTests
         // Validate session integrity instead of lexical response quality.
         Assert.True(session.History.Count >= 2);
     }
+
+    [SkippableFact]
+    public async Task AgentSession_SwitchModel_PreservesAutoFunctionFilters_WithOllamaModel()
+    {
+        await TuiIntegrationGuard.EnsureOllamaAsync();
+
+        var model = new ProviderModelInfo(TuiIntegrationGuard.OllamaModel, "Ollama Chat", "Ollama");
+        var detector = new OllamaDetector();
+        var kernel = detector.BuildKernel(model);
+        var registry = new ProviderRegistry([detector]);
+        var session = new AgentSession(registry, kernel, model);
+
+        var filter = new PassThroughAutoFunctionFilter();
+        session.Kernel.AutoFunctionInvocationFilters.Add(filter);
+
+        // Rebuild kernel via model switch path (same model is sufficient to exercise the swap).
+        session.SwitchModel(model);
+
+        Assert.Contains(
+            session.Kernel.AutoFunctionInvocationFilters,
+            f => ReferenceEquals(f, filter));
+    }
+
+    private sealed class PassThroughAutoFunctionFilter : IAutoFunctionInvocationFilter
+    {
+        public Task OnAutoFunctionInvocationAsync(
+            AutoFunctionInvocationContext context,
+            Func<AutoFunctionInvocationContext, Task> next) => next(context);
+    }
 }
