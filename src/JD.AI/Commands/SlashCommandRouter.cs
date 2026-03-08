@@ -397,7 +397,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         var selection = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
                 .Title("Select a model to pull:")
-                .PageSize(15)
+                .WithAdaptivePaging(preferredPageSize: 15, totalChoices: choices.Count, singularNoun: "model")
                 .AddChoices(choices));
 
         if (string.Equals(selection, "Cancel", StringComparison.Ordinal))
@@ -636,7 +636,10 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
         var prompt = new SelectionPrompt<string>()
             .Title("[bold]Switch Provider[/]")
-            .PageSize(15)
+            .WithAdaptivePaging(
+                preferredPageSize: 15,
+                totalChoices: activeChoices.Count + configuredChoices.Count + availableChoices.Count + 1,
+                singularNoun: "provider")
             .HighlightStyle(new Style(Color.Aqua, decoration: Decoration.Bold));
 
         if (activeChoices.Count > 0)

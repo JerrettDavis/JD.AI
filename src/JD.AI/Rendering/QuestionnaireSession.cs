@@ -246,7 +246,7 @@ public sealed class QuestionnaireSession
 
         var selected = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
-                .PageSize(10)
+                .WithAdaptivePaging(preferredPageSize: 10, totalChoices: choices.Count, singularNoun: "option")
                 .AddChoices(choices)
                 .HighlightStyle(Style.Parse("blue bold"))
                 .Title(string.Empty));
@@ -267,7 +267,7 @@ public sealed class QuestionnaireSession
         }
 
         var prompt = new MultiSelectionPrompt<string>()
-            .PageSize(10)
+            .WithAdaptivePaging(preferredPageSize: 10, totalChoices: question.Options.Count, singularNoun: "option")
             .Title(string.Empty)
             .InstructionsText("[dim](Space to toggle, Enter to confirm)[/]")
             .AddChoices(question.Options);
@@ -344,6 +344,7 @@ public sealed class QuestionnaireSession
                 var toEdit = AnsiConsole.Prompt(
                     new SelectionPrompt<string>()
                         .Title("Which question would you like to edit?")
+                        .WithAdaptivePaging(preferredPageSize: 12, totalChoices: labels.Count, singularNoun: "question")
                         .AddChoices(labels));
 
                 var selectedKey = toEdit.Split(':', 2)[0];

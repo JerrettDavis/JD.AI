@@ -4,6 +4,7 @@ using JD.AI.Core.Providers;
 using JD.AI.Core.Providers.Credentials;
 using JD.AI.Core.Providers.Metadata;
 using JD.AI.Core.Routing;
+using JD.AI.Rendering;
 using Microsoft.SemanticKernel;
 using Spectre.Console;
 
@@ -459,7 +460,7 @@ internal static class ProviderOrchestrator
         return AnsiConsole.Prompt(
             new SelectionPrompt<ProviderModelInfo>()
                 .Title("[bold]Select a model[/] [dim](💬=Chat 🔧=Tools 👁=Vision 📐=Embed)[/]")
-                .PageSize(15)
+                .WithAdaptivePaging(preferredPageSize: 15, totalChoices: models.Count, singularNoun: "model")
                 .UseConverter(model =>
                 {
                     var badge = model.Capabilities.ToBadge();

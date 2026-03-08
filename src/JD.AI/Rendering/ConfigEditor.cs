@@ -104,11 +104,19 @@ internal static class ConfigEditor
                 new ConfigEntry("motd_timeout_ms",  "motd_timeout_ms    ", $"{welcome.MotdTimeoutMs}ms"),
                 new ConfigEntry("motd_max_length",  "motd_max_length    ", $"{welcome.MotdMaxLength} chars"),
             };
+            var totalMainEntries = 1
+                + displayEntries.Length
+                + cacheEntries.Length
+                + sysPromptEntries.Length
+                + compactEntries.Length
+                + sessionEntries.Length
+                + 1
+                + motdEntries.Length;
 
             // Selection prompt
             var prompt = new SelectionPrompt<ConfigEntry>()
                 .Title("[bold]Configuration Editor[/] [dim](↑/↓ navigate · Enter select)[/]")
-                .PageSize(25)
+                .WithAdaptivePaging(preferredPageSize: 25, totalChoices: totalMainEntries, singularNoun: "setting")
                 .HighlightStyle(new Style(Color.Aqua, decoration: Decoration.Bold))
                 .UseConverter(e => e.IsDone
                     ? $"[green]{Markup.Escape(e.Label)}[/]"
@@ -182,7 +190,7 @@ internal static class ConfigEditor
 
         var prompt = new MultiSelectionPrompt<(string Label, string Id)>()
             .Title("[bold]Welcome Panel[/] [dim](Space toggle · Enter confirm · a all · n none)[/]")
-            .PageSize(10)
+            .WithAdaptivePaging(preferredPageSize: 10, totalChoices: allOptions.Length, singularNoun: "setting")
             .InstructionsText("[dim]<space> toggle · <enter> confirm[/]")
             .UseConverter(o => o.Label)
             .AddChoices(allOptions);
@@ -401,7 +409,7 @@ internal static class ConfigEditor
         var list = choices.ToList();
         var prompt = new SelectionPrompt<T>()
             .Title($"[bold]{Markup.Escape(title)}[/]")
-            .PageSize(15)
+            .WithAdaptivePaging(preferredPageSize: 15, totalChoices: list.Count, singularNoun: "option")
             .HighlightStyle(new Style(Color.Aqua, decoration: Decoration.Bold))
             .UseConverter(item =>
             {
