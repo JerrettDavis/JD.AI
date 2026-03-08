@@ -265,11 +265,11 @@ public static class ChatRenderer
             }
             else
             {
-                // Show first 2 lines + collapse indicator
-                var previewCount = Math.Min(2, lineCount);
+                // Show a richer preview for long outputs before collapsing.
+                var previewCount = Math.Min(5, lineCount);
                 for (var i = 0; i < previewCount; i++)
                     AnsiConsole.MarkupLine($"    [dim]{Markup.Escape(resultLines[i])}[/]");
-                AnsiConsole.MarkupLine($"    [dim]└ {lineCount} lines...[/]");
+                AnsiConsole.MarkupLine($"    [dim]└ {lineCount - previewCount} more lines...[/]");
             }
 
             return;
@@ -284,10 +284,10 @@ public static class ChatRenderer
         }
         else
         {
-            var previewCount = Math.Min(2, lineCount);
+            var previewCount = Math.Min(5, lineCount);
             for (var i = 0; i < previewCount; i++)
                 Console.WriteLine($"    {resultLines[i]}");
-            Console.WriteLine($"    └ {lineCount} lines...");
+            Console.WriteLine($"    └ {lineCount - previewCount} more lines...");
         }
     }
 
