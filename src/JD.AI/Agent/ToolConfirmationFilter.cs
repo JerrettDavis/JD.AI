@@ -26,7 +26,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
     private readonly HashSet<string> _confirmedOnce = new(StringComparer.Ordinal);
 
     // Safety tier mappings — built from [ToolSafetyTier] attributes via assembly scanning
-    private static readonly IReadOnlyDictionary<string, SafetyTier> ToolTiers =
+    internal static readonly IReadOnlyDictionary<string, SafetyTier> ToolTierMap =
         ToolAssemblyScanner.BuildSafetyTierMap(typeof(FileTools).Assembly, typeof(SubagentTools).Assembly);
 
     internal static string ResolvePolicyToolName(string functionName) =>
@@ -50,7 +50,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
     {
         var functionName = context.Function.Name;
         var canonicalToolName = ResolvePolicyToolName(functionName);
-        var tier = ToolTiers.GetValueOrDefault(canonicalToolName, SafetyTier.AlwaysConfirm);
+        var tier = ToolTierMap.GetValueOrDefault(canonicalToolName, SafetyTier.AlwaysConfirm);
         var output = AgentOutput.Current;
 
         // ── Workflow enforcement ────────────────────────────
