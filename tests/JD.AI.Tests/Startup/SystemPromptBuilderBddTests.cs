@@ -114,7 +114,7 @@ public sealed class SystemPromptBuilderBddTests : TinyBddXunitBase
             {
                 result.Should().NotBeNull();
                 result.Should().Contain("You are jdai, a helpful AI coding assistant");
-                result.Should().Contain("do not simulate tool calls in plain text", StringComparison.OrdinalIgnoreCase);
+                result.Should().ContainEquivalentOf("do not simulate tool calls in plain text");
                 result.Should().Contain("# Project Instructions (AGENTS.md)");
                 result.Should().Contain("Respect repository guardrails.");
                 return true;
