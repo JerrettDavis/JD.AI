@@ -90,6 +90,24 @@ public sealed class AgentSessionTests
     }
 
     [Fact]
+    public void SwitchModel_PreservesAutoFunctionInvocationFilters()
+    {
+        var session = CreateSession();
+        var filter = new PassThroughAutoFunctionFilter();
+        session.Kernel.AutoFunctionInvocationFilters.Add(filter);
+
+        var newModel = new ProviderModelInfo("new-model", "New", "NewProvider");
+        var newKernel = Kernel.CreateBuilder().Build();
+        _registry.BuildKernel(newModel).Returns(newKernel);
+
+        session.SwitchModel(newModel);
+
+        Assert.Contains(
+            session.Kernel.AutoFunctionInvocationFilters,
+            f => ReferenceEquals(f, filter));
+    }
+
+    [Fact]
     public async Task CompactAsync_NoOpWhenFewTokens()
     {
         var session = CreateSession();
@@ -107,5 +125,12 @@ public sealed class AgentSessionTests
         [Microsoft.SemanticKernel.KernelFunction("dummy")]
         [System.ComponentModel.Description("A dummy function")]
         public static string Dummy() => "dummy";
+    }
+
+    private sealed class PassThroughAutoFunctionFilter : IAutoFunctionInvocationFilter
+    {
+        public Task OnAutoFunctionInvocationAsync(
+            AutoFunctionInvocationContext context,
+            Func<AutoFunctionInvocationContext, Task> next) => next(context);
     }
 }
