@@ -20,6 +20,13 @@ public sealed class ShellTools
         [Description("Working directory (defaults to cwd)")] string? cwd = null,
         [Description("Timeout in seconds (default 60)")] int timeoutSeconds = 60)
     {
+        // Common Unix-style command used by models; map to cmd-compatible form.
+        if (OperatingSystem.IsWindows() &&
+            string.Equals(command.Trim(), "pwd", StringComparison.OrdinalIgnoreCase))
+        {
+            command = "cd";
+        }
+
         var workDir = cwd ?? Directory.GetCurrentDirectory();
 
         var isWindows = OperatingSystem.IsWindows();
