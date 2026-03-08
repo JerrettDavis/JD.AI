@@ -103,6 +103,36 @@ public sealed class AgentLoopTextToolCallTests
         result.Should().Contain("\"shell-run_command\"");
     }
 
+    [Fact]
+    public void ExtractFirstToolCallJson_TaggedToolCallBlock_ReturnsJson()
+    {
+        const string response = """
+            Let me check.
+            <tool_call> {"name": "run_command", "parameters": {"command": "pwd"}} </tool_call>
+            <tool_response> /home/user </tool_response>
+            """;
+
+        var result = AgentLoop.ExtractFirstToolCallJson(response);
+
+        result.Should().NotBeNull();
+        result.Should().Contain("\"run_command\"");
+        result.Should().Contain("\"parameters\"");
+    }
+
+    [Fact]
+    public void ExtractFirstToolCallJson_BareJsonWithParameters_ReturnsJson()
+    {
+        const string response = """
+            { "name": "run_command", "parameters": { "command": "pwd" } }
+            """;
+
+        var result = AgentLoop.ExtractFirstToolCallJson(response);
+
+        result.Should().NotBeNull();
+        result.Should().Contain("\"run_command\"");
+        result.Should().Contain("\"parameters\"");
+    }
+
     // ── Not a tool call ──────────────────────────────────────────────────
 
     [Fact]
