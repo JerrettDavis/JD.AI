@@ -128,7 +128,7 @@ internal static class OnboardingCliHandler
         {
             var prompt = new MultiSelectionPrompt<McpServerDefinition>()
                 .Title("[bold]Select servers to import[/]")
-                .PageSize(15)
+                .WithAdaptivePaging(preferredPageSize: 15, totalChoices: candidates.Count, singularNoun: "server")
                 .InstructionsText("[dim](Space to toggle, Enter to confirm)[/]")
                 .UseConverter(s =>
                     $"{Markup.Escape(s.DisplayName ?? s.Name)} [dim]({Markup.Escape(s.SourceProvider ?? "unknown")})[/]")
@@ -217,7 +217,7 @@ internal static class OnboardingCliHandler
     }
 
     private static ProviderInfo? ResolveProvider(
-        IReadOnlyList<ProviderInfo> providers,
+        List<ProviderInfo> providers,
         string? providerArg)
     {
         if (!string.IsNullOrWhiteSpace(providerArg))
@@ -229,7 +229,7 @@ internal static class OnboardingCliHandler
         return AnsiConsole.Prompt(
             new SelectionPrompt<ProviderInfo>()
                 .Title("[bold]Select provider[/]")
-                .PageSize(12)
+                .WithAdaptivePaging(preferredPageSize: 12, totalChoices: providers.Count, singularNoun: "provider")
                 .UseConverter(p => $"{Markup.Escape(p.Name)} [dim]({p.Models.Count} models)[/]")
                 .AddChoices(providers));
     }
@@ -248,7 +248,7 @@ internal static class OnboardingCliHandler
         return AnsiConsole.Prompt(
             new SelectionPrompt<ProviderModelInfo>()
                 .Title("[bold]Select model[/] [dim](💬=Chat 🔧=Tools 👁=Vision 📐=Embed)[/]")
-                .PageSize(15)
+                .WithAdaptivePaging(preferredPageSize: 15, totalChoices: models.Count, singularNoun: "model")
                 .UseConverter(m =>
                 {
                     var badge = m.Capabilities.ToBadge();

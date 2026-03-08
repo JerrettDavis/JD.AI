@@ -43,8 +43,7 @@ internal static class McpCatalogPicker
 
         var prompt = new MultiSelectionPrompt<CuratedMcpEntry>()
             .Title("[bold]Select MCP servers to install[/] [dim](Space to toggle, Enter to confirm)[/]")
-            .PageSize(20)
-            .MoreChoicesText("[dim]Scroll for more...[/]")
+            .WithAdaptivePaging(preferredPageSize: 20, totalChoices: entries.Count, singularNoun: "server")
             .InstructionsText("[dim]<space> toggle · <enter> confirm · <a> all · <n> none[/]")
             .UseConverter(e =>
             {
