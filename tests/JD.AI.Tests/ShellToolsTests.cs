@@ -36,6 +36,22 @@ public sealed class ShellToolsTests
     }
 
     [Fact]
+    public async Task RunCommand_Pwd_WorksOnWindowsAndUnix()
+    {
+        var tempDir = Path.GetTempPath();
+        var result = await ShellTools.RunCommandAsync("pwd", cwd: tempDir);
+
+        Assert.Contains("Exit code: 0", result);
+
+        var normalizedResult = result.Replace('\\', '/');
+        var normalizedDir = tempDir
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            .Replace('\\', '/');
+
+        Assert.Contains(normalizedDir, normalizedResult, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task RunCommand_TimesOut()
     {
         var cmd = OperatingSystem.IsWindows()
