@@ -37,6 +37,11 @@ public sealed class OpenAICodexDetector : IProviderDetector
                     Models: []);
             }
 
+            // Force credential materialization once at startup. This triggers token
+            // refresh/exchange logic and prevents false "Authenticated" status when
+            // the current token is already expired.
+            _ = await provider.GetApiKeyAsync(ct).ConfigureAwait(false);
+
             // Use live model discovery first, then local cache as a supplement.
             var models = new List<ProviderModelInfo>();
             try
@@ -123,12 +128,16 @@ public sealed class OpenAICodexDetector : IProviderDetector
     }
 
     /// <summary>
-    /// Reads Codex auth.json (if present) and promotes file credentials into explicit
+    /// Reads Codex auth.json (if present) and promotes file API keys into explicit
     /// connector options so they win over environment-variable fallback precedence.
-    /// This keeps interactive Codex subscription auth from being shadowed by stale
-    /// OPENAI_API_KEY values in the process environment.
+    ///
+    /// We intentionally avoid setting explicit access tokens by default because doing so
+    /// bypasses auth.json-based token refresh paths in the connector. We only force an
+    /// explicit token when OPENAI_API_KEY is present and would otherwise shadow auth.json.
     /// </summary>
-    internal static void ApplyCredentialOverridesFromAuthFile(CodexSessionOptions options)
+    internal static void ApplyCredentialOverridesFromAuthFile(
+        CodexSessionOptions options,
+        string? envApiKeyOverride = null)
     {
         var authPath = ResolveAuthPath(options);
         if (authPath is null || !File.Exists(authPath))
@@ -166,8 +175,10 @@ public sealed class OpenAICodexDetector : IProviderDetector
         var token = !string.IsNullOrWhiteSpace(creds.EffectiveIdToken)
             ? creds.EffectiveIdToken
             : creds.EffectiveAccessToken;
+        var envApiKey = envApiKeyOverride ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY");
 
-        if (!string.IsNullOrWhiteSpace(token))
+        if (!string.IsNullOrWhiteSpace(token) &&
+            !string.IsNullOrWhiteSpace(envApiKey))
         {
             options.AccessToken = token;
             options.ApiKey = null;
