@@ -18,6 +18,9 @@ public sealed class OrgInstructionsTests : IDisposable
 
         Directory.CreateDirectory(_orgDir);
         Directory.CreateDirectory(_projectDir);
+        // Create a fake .git boundary in project dir so GetDirectoryChain stops here
+        // instead of walking up to the real user home directory.
+        Directory.CreateDirectory(Path.Combine(_projectDir, ".git"));
 
         DataDirectories.Reset();
     }
