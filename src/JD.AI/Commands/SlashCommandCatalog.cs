@@ -94,12 +94,14 @@ public static class SlashCommandCatalog
             SlashCommandId.Workflow,
             "/workflow",
             "/workflow",
-            "Manage workflows (list|show|create|compose|dry-run|export|replay|refine|from-history|catalog|publish|install|search|versions)",
+            "Manage workflows (list|show|create|rename|remove|compose|dry-run|export|replay|refine|from-history|catalog|publish|install|search|versions)",
             AdditionalCompletions:
             [
                 new SlashCommandDescriptor("/workflow list", "List local workflows"),
                 new SlashCommandDescriptor("/workflow show", "Show a workflow"),
                 new SlashCommandDescriptor("/workflow create", "Generate a workflow from text"),
+                new SlashCommandDescriptor("/workflow rename", "Rename a workflow"),
+                new SlashCommandDescriptor("/workflow remove", "Remove a workflow"),
                 new SlashCommandDescriptor("/workflow compose", "Compose multiple workflows"),
                 new SlashCommandDescriptor("/workflow dry-run", "Preview workflow execution"),
                 new SlashCommandDescriptor("/workflow export", "Export a workflow"),
