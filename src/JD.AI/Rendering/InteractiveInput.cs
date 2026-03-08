@@ -114,11 +114,7 @@ public sealed class InteractiveInput
                         break;
                     }
 
-                    if (matches.Count > 0)
-                    {
-                        DismissCompletions();
-                    }
-                    else if (buffer.Count == 0 && attachments.Count == 0)
+                    if (buffer.Count == 0 && attachments.Count == 0)
                     {
                         var now = DateTime.UtcNow;
                         if (now - _lastEscapeTime <= EscapeDoubleWindow)
@@ -133,7 +129,7 @@ public sealed class InteractiveInput
                     }
                     else
                     {
-                        DismissCompletions();
+                        ClearCurrentInput();
                     }
                     break;
 
@@ -441,6 +437,10 @@ public sealed class InteractiveInput
                         {
                             _lastEscapeTime = now;
                         }
+                    }
+                    else
+                    {
+                        ClearCurrentInput();
                     }
                     return true;
             }
@@ -751,6 +751,20 @@ public sealed class InteractiveInput
             matches = [];
             selected = 0;
             RedrawInputLine(showGhost: false);
+        }
+
+        void ClearCurrentInput()
+        {
+            buffer.Clear();
+            attachments.Clear();
+            chipRanges.Clear();
+            cursor = 0;
+            matches = [];
+            selected = 0;
+            _lastEscapeTime = DateTime.MinValue;
+            ClearDropdown();
+            RedrawInputLine(showGhost: false);
+            SetCursorPos();
         }
 
         void NavigateHistory(int direction)
