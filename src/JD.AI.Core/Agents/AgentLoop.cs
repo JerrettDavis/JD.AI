@@ -18,6 +18,7 @@ namespace JD.AI.Core.Agents;
 public sealed class AgentLoop
 {
     private readonly AgentSession _session;
+    private readonly HashSet<string> _textToolConfirmedOnce = new(StringComparer.Ordinal);
 
     public AgentLoop(AgentSession session)
     {
@@ -1049,8 +1050,25 @@ public sealed class AgentLoop
             DebugLogger.Log(DebugCategory.Agents,
                 "Intercepted text-based tool call: {0} with {1} args", fullName, args.Count);
 
+            var argsSummary = string.Join(", ", args.Select(kv =>
+            {
+                var val = kv.Value?.ToString() ?? "null";
+                if (val.Length > 200)
+                    val = string.Concat(val.AsSpan(0, 197), "...");
+                return $"{kv.Key}={val}";
+            }));
+
+            if (!CheckTextToolCallSafety(fullName!, argsSummary))
+            {
+                DebugLogger.Log(DebugCategory.Agents,
+                    "Text-based tool call blocked by safety gate: {0}", fullName);
+                return null;
+            }
+
             var result = await func.InvokeAsync(_session.Kernel, args, ct).ConfigureAwait(false);
             var resultStr = result?.ToString() ?? "(no output)";
+
+            AgentOutput.Current.RenderToolCall(fullName!, argsSummary, resultStr);
 
             return new TextToolCallResult(fullName, resultStr);
         }
@@ -1194,5 +1212,84 @@ public sealed class AgentLoop
 
         argumentsElement = default;
         return false;
+    // ── Text-based tool call safety ──────────────────────────────────────
+
+    /// <summary>
+    /// Mirrors ToolConfirmationFilter's safety tier / permission mode logic
+    /// for text-based tool calls that bypass the SK auto-function-invocation pipeline.
+    /// Delegates to <see cref="EvaluateTextToolCallSafety"/> for testability.
+    /// </summary>
+    private bool CheckTextToolCallSafety(string functionName, string argsSummary)
+    {
+        var canonicalName = OpenClawToolAliasResolver.Resolve(functionName);
+        return EvaluateTextToolCallSafety(
+            canonicalName, argsSummary,
+            _session.PermissionMode, _session.SkipPermissions, _session.AutoRunEnabled,
+            _session.ToolSafetyTiers, _textToolConfirmedOnce, AgentOutput.Current);
+    }
+
+    /// <summary>
+    /// Pure-logic safety evaluation for text-based tool calls.
+    /// Returns true if the tool call should proceed, false if blocked.
+    /// </summary>
+    internal static bool EvaluateTextToolCallSafety(
+        string canonicalName, string argsSummary,
+        PermissionMode permissionMode, bool skipPermissions, bool autoRunEnabled,
+        IReadOnlyDictionary<string, Tools.SafetyTier>? tierMap,
+        HashSet<string> confirmedOnce, IAgentOutput output)
+    {
+        var tier = tierMap?.GetValueOrDefault(canonicalName, Tools.SafetyTier.AlwaysConfirm)
+                   ?? Tools.SafetyTier.AlwaysConfirm;
+
+        switch (permissionMode)
+        {
+            case PermissionMode.Plan:
+                if (tier != Tools.SafetyTier.AutoApprove)
+                {
+                    output.RenderWarning($"  \u2717 {canonicalName} blocked (plan mode \u2014 read-only)");
+                    return false;
+                }
+                break;
+            case PermissionMode.BypassAll:
+                output.RenderInfo($"  \u25b8 [text-tool] {canonicalName}({argsSummary})");
+                return true;
+            case PermissionMode.AcceptEdits:
+                if (tier == Tools.SafetyTier.AlwaysConfirm)
+                {
+                    if (!output.ConfirmToolCall(canonicalName, argsSummary))
+                        return false;
+                }
+                else
+                    output.RenderInfo($"  \u25b8 [text-tool] {canonicalName}({argsSummary})");
+                return true;
+            default: // Normal
+                break;
+        }
+
+        if (skipPermissions || autoRunEnabled)
+        {
+            output.RenderInfo($"  \u25b8 [text-tool] {canonicalName}({argsSummary})");
+            return true;
+        }
+
+        var needsConfirm = tier switch
+        {
+            Tools.SafetyTier.AutoApprove => false,
+            Tools.SafetyTier.ConfirmOnce => !confirmedOnce.Contains(canonicalName),
+            Tools.SafetyTier.AlwaysConfirm => true,
+            _ => true,
+        };
+
+        if (needsConfirm)
+        {
+            if (!output.ConfirmToolCall(canonicalName, argsSummary))
+                return false;
+            if (tier == Tools.SafetyTier.ConfirmOnce)
+                confirmedOnce.Add(canonicalName);
+        }
+        else
+            output.RenderInfo($"  \u25b8 [text-tool] {canonicalName}({argsSummary})");
+
+        return true;
     }
 }

@@ -131,7 +131,8 @@ public sealed class AgentSession
     /// Parameters: (workflowName, steps as list of (toolName, args)), returns saved workflow name.
     /// </summary>
     public Func<string, IReadOnlyList<(string ToolName, string? Args)>, CancellationToken, Task<string>>?
-        SaveCapturedWorkflowAsync { get; set; }
+        SaveCapturedWorkflowAsync
+    { get; set; }
 
     /// <summary>
     /// Resets per-turn transient state. Called at the start of each agent turn.
@@ -151,6 +152,12 @@ public sealed class AgentSession
     /// Registry of agent definitions loaded from <c>*.agent.yaml</c> files.
     /// </summary>
     public IAgentDefinitionRegistry? AgentDefinitionRegistry { get; set; }
+
+    /// <summary>
+    /// Safety tier map for text-based tool call validation.
+    /// Set during initialization from ToolAssemblyScanner.
+    /// </summary>
+    public IReadOnlyDictionary<string, Tools.SafetyTier>? ToolSafetyTiers { get; set; }
 
     /// <summary>
     /// Approval service for human-in-the-loop or policy-based operation gates.
