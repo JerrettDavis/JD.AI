@@ -634,14 +634,7 @@ public sealed class InteractiveInput
             if (collected.Count <= 1)
                 return null;
 
-            var text = new string(collected.ToArray());
-            var lineCount = text.Split('\n').Length;
-
-            // Only collapse if it meets the threshold
-            if (text.Length < PasteCollapseMinChars && lineCount < 2)
-                return null;
-
-            return text;
+            return new string(collected.ToArray());
         }
 
         void HandleClipboardPaste()
