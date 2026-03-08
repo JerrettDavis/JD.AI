@@ -1003,15 +1003,18 @@ public sealed class AgentLoop
             if (string.IsNullOrEmpty(fullName))
                 return null;
 
-            // Parse "pluginName-functionName" or just "functionName"
+            // Parse "pluginName-functionName", "pluginName.functionName",
+            // "pluginName/functionName", or just "functionName".
             string? pluginName = null;
-            string functionName = fullName;
-            var dashIndex = fullName.IndexOf('-');
-            if (dashIndex > 0)
+            var normalizedName = fullName.Trim();
+            string functionName = normalizedName;
+            var separatorIndex = normalizedName.IndexOfAny(['-', '.', '/']);
+            if (separatorIndex > 0)
             {
-                pluginName = fullName[..dashIndex];
-                functionName = fullName[(dashIndex + 1)..];
+                pluginName = normalizedName[..separatorIndex];
+                functionName = normalizedName[(separatorIndex + 1)..];
             }
+            functionName = OpenClawToolAliasResolver.Resolve(functionName);
 
             // Resolve the kernel function
             KernelFunction? func = null;
@@ -1032,7 +1035,7 @@ public sealed class AgentLoop
 
             // Build arguments from the "arguments" property
             var args = new KernelArguments();
-            if (root.TryGetProperty("arguments", out var argsEl) &&
+            if (TryGetToolCallArguments(root, out var argsEl) &&
                 argsEl.ValueKind == JsonValueKind.Object)
             {
                 foreach (var prop in argsEl.EnumerateObject())
@@ -1068,8 +1071,14 @@ public sealed class AgentLoop
         @"```(?:json)?\s*\r?\n(?<json>\{[\s\S]*?\})\s*\r?\n```",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+    // Small models sometimes emit XML-like wrappers:
+    // <tool_call>{...}</tool_call>
+    private static readonly Regex TaggedToolCallRegex = new(
+        @"<tool_call>\s*(?<json>\{[\s\S]*?\})\s*</tool_call>",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
     /// <summary>
-    /// Extracts the first JSON object that looks like a tool call (has "name" + "arguments")
+    /// Extracts the first JSON object that looks like a tool call (has "name" + args payload)
     /// from a response that may contain prose, code fences, or multiple JSON blocks.
     /// </summary>
     internal static string? ExtractFirstToolCallJson(string response)
@@ -1083,7 +1092,15 @@ public sealed class AgentLoop
                 return text;
         }
 
-        // Strategy 2: Fenced code blocks (```json ... ```)
+        // Strategy 2: Tagged tool-call blocks (<tool_call> ... </tool_call>)
+        foreach (Match m in TaggedToolCallRegex.Matches(text))
+        {
+            var candidate = m.Groups["json"].Value.Trim();
+            if (LooksLikeToolCall(candidate))
+                return candidate;
+        }
+
+        // Strategy 3: Fenced code blocks (```json ... ```)
         foreach (Match m in FencedJsonRegex.Matches(text))
         {
             var candidate = m.Groups["json"].Value.Trim();
@@ -1091,7 +1108,7 @@ public sealed class AgentLoop
                 return candidate;
         }
 
-        // Strategy 3: Scan for first { ... } block with balanced braces
+        // Strategy 4: Scan for first { ... } block with balanced braces
         var pos = 0;
         while (pos < text.Length)
         {
@@ -1131,8 +1148,9 @@ public sealed class AgentLoop
     }
 
     /// <summary>
-    /// Quick heuristic: returns true if the JSON text contains both "name" and "arguments" keys
-    /// at the top level, suggesting it's a tool call rather than arbitrary data.
+    /// Quick heuristic: returns true if the JSON text contains both "name" and a
+    /// recognized argument payload key at the top level ("arguments", "parameters", "input"),
+    /// suggesting it's a tool call rather than arbitrary data.
     /// </summary>
     private static bool LooksLikeToolCall(string json)
     {
@@ -1142,11 +1160,39 @@ public sealed class AgentLoop
             var root = doc.RootElement;
             return root.TryGetProperty("name", out var n) &&
                    n.ValueKind == JsonValueKind.String &&
-                   root.TryGetProperty("arguments", out _);
+                   TryGetToolCallArguments(root, out _);
         }
         catch (JsonException)
         {
             return false;
         }
+    }
+
+    private static bool TryGetToolCallArguments(
+        JsonElement root, out JsonElement argumentsElement)
+    {
+        if (root.TryGetProperty("arguments", out var arguments) &&
+            arguments.ValueKind == JsonValueKind.Object)
+        {
+            argumentsElement = arguments;
+            return true;
+        }
+
+        if (root.TryGetProperty("parameters", out var parameters) &&
+            parameters.ValueKind == JsonValueKind.Object)
+        {
+            argumentsElement = parameters;
+            return true;
+        }
+
+        if (root.TryGetProperty("input", out var input) &&
+            input.ValueKind == JsonValueKind.Object)
+        {
+            argumentsElement = input;
+            return true;
+        }
+
+        argumentsElement = default;
+        return false;
     }
 }
