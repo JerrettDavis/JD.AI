@@ -72,6 +72,12 @@ public sealed class AgentLoop
             sw.Stop();
 
             var response = result.Content ?? "(no response)";
+            if (string.IsNullOrWhiteSpace(result.Content) &&
+                HasUnpairedFunctionCalls(_session.History, historySnapshot))
+            {
+                throw new InvalidOperationException(
+                    "Each `tool_use` block must have a corresponding `tool_result` block");
+            }
 
             // Detect and execute text-based tool calls from models that emit JSON
             // instead of using the structured tool calling protocol.
@@ -345,6 +351,13 @@ public sealed class AgentLoop
             }
 
             if (thinkingActive) output.EndThinking();
+
+            if (!contentStarted &&
+                HasUnpairedFunctionCalls(_session.History, historySnapshot))
+            {
+                throw new InvalidOperationException(
+                    "Each `tool_use` block must have a corresponding `tool_result` block");
+            }
 
             // If the LLM produced no visible content, render a fallback
             if (!contentStarted)
@@ -630,6 +643,45 @@ public sealed class AgentLoop
                 return true;
         }
         return false;
+    }
+
+    private static bool HasUnpairedFunctionCalls(ChatHistory history, int startIndex)
+    {
+        if (startIndex < 0 || startIndex >= history.Count)
+            return false;
+
+        var pendingIds = new HashSet<string>(StringComparer.Ordinal);
+        var seenCallWithoutId = false;
+
+        for (var i = startIndex; i < history.Count; i++)
+        {
+            var items = history[i].Items;
+            if (items is null || items.Count == 0)
+                continue;
+
+            foreach (var item in items)
+            {
+                if (item is FunctionCallContent call)
+                {
+                    if (!string.IsNullOrWhiteSpace(call.Id))
+                    {
+                        pendingIds.Add(call.Id);
+                    }
+                    else
+                    {
+                        // Without an ID, the corresponding result cannot be linked.
+                        seenCallWithoutId = true;
+                    }
+                }
+                else if (item is FunctionResultContent result &&
+                         !string.IsNullOrWhiteSpace(result.CallId))
+                {
+                    pendingIds.Remove(result.CallId);
+                }
+            }
+        }
+
+        return seenCallWithoutId || pendingIds.Count > 0;
     }
 
     /// <summary>
