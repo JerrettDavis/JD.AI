@@ -78,7 +78,7 @@ public sealed class OpenAICodexDetectorTests : IDisposable
     }
 
     [Fact]
-    public void ApplyCredentialOverridesFromAuthFile_UsesNestedIdTokenWhenApiKeyMissing()
+    public void ApplyCredentialOverridesFromAuthFile_DoesNotForceTokenWhenApiKeyMissing()
     {
         var authPath = Path.Combine(_fixture.DirectoryPath, "auth.json");
         File.WriteAllText(authPath, """
@@ -95,7 +95,7 @@ public sealed class OpenAICodexDetectorTests : IDisposable
         OpenAICodexDetector.ApplyCredentialOverridesFromAuthFile(options);
 
         options.ApiKey.Should().BeNull();
-        options.AccessToken.Should().Be("id-token");
+        options.AccessToken.Should().BeNull();
     }
 
     [Fact]
