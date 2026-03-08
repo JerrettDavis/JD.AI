@@ -111,6 +111,9 @@ internal static class GovernanceInitializer
         kernel.AutoFunctionInvocationFilters.Add(
             new ToolConfirmationFilter(session, policyEvaluator, auditService, circuitBreaker));
 
+        // Wire safety tier map for text-based tool call validation
+        session.ToolSafetyTiers = ToolConfirmationFilter.ToolTierMap;
+
         // Policy tools
         kernel.Plugins.AddFromObject(new PolicyTools(policyEvaluator, auditService), "policy");
 
