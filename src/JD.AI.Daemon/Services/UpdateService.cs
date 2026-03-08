@@ -178,7 +178,10 @@ public sealed class UpdateService : BackgroundService
             // the new version after _lifetime.StopApplication() is called below.
             if (OperatingSystem.IsWindows())
             {
-                var result = DetachedUpdater.Launch(_config.PackageId);
+                var result = DetachedUpdater.Launch(
+                    _config.PackageId,
+                    visibleWindow: false,
+                    pauseOnExit: false);
                 if (!result.Success)
                 {
                     _logger.LogError("Failed to launch detached updater: {Output}", result.Output);

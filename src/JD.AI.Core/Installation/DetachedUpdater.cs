@@ -30,8 +30,14 @@ public static class DetachedUpdater
     /// </summary>
     /// <param name="packageId">The dotnet tool package ID to update.</param>
     /// <param name="targetVersion">Specific version to pin, or null for latest.</param>
+    /// <param name="visibleWindow">Whether to launch a visible terminal window for update progress.</param>
+    /// <param name="pauseOnExit">Whether to pause at the end of the updater script.</param>
     /// <returns>An <see cref="InstallResult"/> with <c>LaunchedDetached = true</c> on success.</returns>
-    public static InstallResult Launch(string packageId, string? targetVersion = null)
+    public static InstallResult Launch(
+        string packageId,
+        string? targetVersion = null,
+        bool visibleWindow = true,
+        bool pauseOnExit = true)
     {
         try
         {
@@ -40,8 +46,8 @@ public static class DetachedUpdater
                 ValidateVersion(targetVersion);
 
             var parentPid = Environment.ProcessId;
-            var scriptPath = WriteUpdateScript(packageId, targetVersion, parentPid);
-            StartDetached(scriptPath);
+            var scriptPath = WriteUpdateScript(packageId, targetVersion, parentPid, pauseOnExit);
+            StartDetached(scriptPath, visibleWindow);
 
             return new InstallResult(
                 Success: true,
@@ -75,7 +81,11 @@ public static class DetachedUpdater
 
     // ── Script writing ────────────────────────────────────────────────────
 
-    private static string WriteUpdateScript(string packageId, string? targetVersion, int parentPid)
+    private static string WriteUpdateScript(
+        string packageId,
+        string? targetVersion,
+        int parentPid,
+        bool pauseOnExit)
     {
         var tempDir = Path.GetTempPath();
         var versionArg = targetVersion is not null ? $" --version {targetVersion}" : "";
@@ -93,26 +103,40 @@ public static class DetachedUpdater
             bat.AppendLine("echo  ============");
             bat.AppendLine("echo.");
             bat.AppendLine("echo  Waiting for jdai (PID %PARENT_PID%) to exit...");
+            bat.AppendLine("set \"POWERSHELL_EXE=%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\"");
+            bat.AppendLine("if not exist \"%POWERSHELL_EXE%\" set \"POWERSHELL_EXE=powershell\"");
             bat.AppendLine(":wait_loop");
-            bat.AppendLine("  tasklist /FI \"PID eq %PARENT_PID%\" 2>nul | find \"%PARENT_PID%\" >nul");
-            bat.AppendLine("  if not errorlevel 1 (");
+            bat.AppendLine("  \"%POWERSHELL_EXE%\" -NoProfile -ExecutionPolicy Bypass -Command \"if (Get-Process -Id %PARENT_PID% -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }\" >nul 2>&1");
+            bat.AppendLine("  if %ERRORLEVEL% == 0 (");
             bat.AppendLine("    timeout /t 1 /nobreak >nul");
             bat.AppendLine("    goto wait_loop");
             bat.AppendLine("  )");
             bat.AppendLine("echo  jdai has exited. Applying update...");
             bat.AppendLine("echo.");
-            bat.AppendLine($"echo  Running: {updateCmd}");
+            bat.AppendLine("set \"MAX_ATTEMPTS=5\"");
+            bat.AppendLine("set \"ATTEMPT=1\"");
+            bat.AppendLine(":apply_update");
+            bat.AppendLine($"echo  Running (attempt %ATTEMPT%/%MAX_ATTEMPTS%): {updateCmd}");
             bat.AppendLine(updateCmd);
-            bat.AppendLine("if %ERRORLEVEL% == 0 (");
-            bat.AppendLine("    echo.");
-            bat.AppendLine("    echo  [OK] Update applied successfully. Restart jdai.");
-            bat.AppendLine(") else (");
-            bat.AppendLine("    echo.");
-            bat.AppendLine("    echo  [ERROR] Update failed. Run manually:");
-            bat.AppendLine($"    echo    {updateCmd}");
-            bat.AppendLine(")");
+            bat.AppendLine("if %ERRORLEVEL% == 0 goto update_ok");
+            bat.AppendLine("if %ATTEMPT% GEQ %MAX_ATTEMPTS% goto update_failed");
             bat.AppendLine("echo.");
-            bat.AppendLine("pause");
+            bat.AppendLine("echo  [WARN] Update attempt failed. Retrying in 2 seconds...");
+            bat.AppendLine("set /a ATTEMPT+=1");
+            bat.AppendLine("timeout /t 2 /nobreak >nul");
+            bat.AppendLine("goto apply_update");
+            bat.AppendLine(":update_ok");
+            bat.AppendLine("echo.");
+            bat.AppendLine("echo  [OK] Update applied successfully. Restart jdai.");
+            bat.AppendLine("goto finish");
+            bat.AppendLine(":update_failed");
+            bat.AppendLine("echo.");
+            bat.AppendLine("echo  [ERROR] Update failed after %MAX_ATTEMPTS% attempts. Run manually:");
+            bat.AppendLine($"echo    {updateCmd}");
+            bat.AppendLine(":finish");
+            bat.AppendLine("echo.");
+            if (pauseOnExit)
+                bat.AppendLine("pause");
             // Self-delete — no temp file accumulation.
             bat.AppendLine("del /f /q \"%~f0\" >nul 2>&1");
             File.WriteAllText(scriptPath, bat.ToString(), Encoding.ASCII);
@@ -153,21 +177,35 @@ public static class DetachedUpdater
 
     // ── Process launch ────────────────────────────────────────────────────
 
-    private static void StartDetached(string scriptPath)
+    private static void StartDetached(string scriptPath, bool visibleWindow)
     {
         ProcessStartInfo psi;
 
         if (OperatingSystem.IsWindows())
         {
-            // `start "title" "script.bat"` opens a new visible cmd.exe window.
-            // UseShellExecute = false lets us run cmd.exe directly without a shell wrapper.
-            psi = new ProcessStartInfo
+            if (visibleWindow)
             {
-                FileName = "cmd.exe",
-                Arguments = $"/c start \"JD.AI Updater\" \"{scriptPath}\"",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
+                // `start "title" "script.bat"` opens a new visible cmd.exe window.
+                psi = new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c start \"JD.AI Updater\" \"{scriptPath}\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                };
+            }
+            else
+            {
+                // Silent detached run (used by daemon auto-update).
+                psi = new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c \"{scriptPath}\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WindowStyle = ProcessWindowStyle.Hidden,
+                };
+            }
         }
         else
         {
