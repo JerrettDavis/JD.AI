@@ -28,36 +28,46 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
     public void RenderInfo(string message)
     {
         PauseProgress();
+        ChatRenderer.PauseStreaming();
         ChatRenderer.RenderInfo(message);
+        ChatRenderer.ResumeStreaming();
         ResumeProgress();
     }
 
     public void RenderWarning(string message)
     {
         PauseProgress();
+        ChatRenderer.PauseStreaming();
         ChatRenderer.RenderWarning(message);
+        ChatRenderer.ResumeStreaming();
         ResumeProgress();
     }
 
     public void RenderError(string message)
     {
         PauseProgress();
+        ChatRenderer.PauseStreaming();
         ChatRenderer.RenderError(message);
+        ChatRenderer.ResumeStreaming();
         ResumeProgress();
     }
 
     public void RenderToolCall(string toolName, string? args, string result)
     {
         PauseProgress();
+        ChatRenderer.PauseStreaming();
         ChatRenderer.RenderToolCall(toolName, args, result);
+        ChatRenderer.ResumeStreaming();
         ResumeProgress();
     }
 
     public bool ConfirmToolCall(string toolName, string? args)
     {
         PauseProgress();
+        ChatRenderer.PauseStreaming();
         ChatRenderer.RenderWarning($"Tool: {toolName}({args})");
         var confirmed = ChatRenderer.Confirm("Allow this tool to run?");
+        ChatRenderer.ResumeStreaming();
         ResumeProgress();
         return confirmed;
     }
@@ -65,8 +75,10 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
     public bool ConfirmWorkflowPrompt(string triggeringTool)
     {
         PauseProgress();
-        ChatRenderer.RenderInfo($"  📋 Tool '{triggeringTool}' requested — this looks like multi-step work.");
+        ChatRenderer.PauseStreaming();
+        ChatRenderer.RenderInfo($"  \ud83d\udccb Tool '{triggeringTool}' requested \u2014 this looks like multi-step work.");
         var accepted = ChatRenderer.ConfirmWorkflow("Start a workflow?");
+        ChatRenderer.ResumeStreaming();
         ResumeProgress();
         return accepted;
     }
