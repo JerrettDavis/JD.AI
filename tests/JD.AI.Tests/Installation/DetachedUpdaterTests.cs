@@ -49,18 +49,11 @@ public sealed class DetachedUpdaterTests
     [InlineData("dotnet-tool")]
     public void Launch_SafePackageId_DoesNotThrow(string packageId)
     {
-        // On Windows this actually launches — skip actual execution.
-        // We just verify that invalid IDs are rejected before writing any script.
-        if (OperatingSystem.IsWindows())
-        {
-            // Launch will succeed (return LaunchedDetached) for a valid ID.
-            // We can't prevent the detached window from opening in a real test,
-            // so we only test for ArgumentException on invalid IDs.
-            return;
-        }
-
-        // On non-Windows (CI), no detached process is launched.
-        var result = DetachedUpdater.Launch(packageId, null);
+        var result = DetachedUpdater.Launch(
+            packageId,
+            null,
+            visibleWindow: false,
+            pauseOnExit: false);
         // Either success or a process-not-found error — but NOT an ArgumentException.
         Assert.NotNull(result);
     }
@@ -100,7 +93,11 @@ public sealed class DetachedUpdaterTests
         if (!OperatingSystem.IsWindows())
             return; // Windows-only path
 
-        var result = DetachedUpdater.Launch("JD.AI", null);
+        var result = DetachedUpdater.Launch(
+            "JD.AI",
+            null,
+            visibleWindow: false,
+            pauseOnExit: false);
 
         Assert.True(result.LaunchedDetached);
         Assert.True(result.Success);
