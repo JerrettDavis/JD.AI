@@ -1818,11 +1818,15 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         var dryRun = generator.DryRun(workflow, availableTools);
         if (dryRun.MissingTools.Count > 0)
         {
-            // Save anyway but warn
-            await _workflowCatalog!.SaveAsync(workflow, ct).ConfigureAwait(false);
-            return $"⚠ Created workflow '{workflow.Name}' but {dryRun.MissingTools.Count} tool(s) not found:\n" +
-                   $"  {string.Join(", ", dryRun.MissingTools)}\n" +
-                   $"  Use '/workflow refine {workflow.Name} <feedback>' to fix.";
+            var warning = new System.Text.StringBuilder();
+            warning.AppendLine($"⚠ Generated workflow '{workflow.Name}' references {dryRun.MissingTools.Count} unavailable tool(s); not saved.");
+            warning.AppendLine($"  Missing: {string.Join(", ", dryRun.MissingTools)}");
+            warning.AppendLine();
+            warning.AppendLine("Preview:");
+            warning.Append(FlattenSteps(workflow.Steps, 1));
+            warning.AppendLine();
+            warning.AppendLine("Refine the description and run /workflow create again.");
+            return warning.ToString().TrimEnd();
         }
 
         await _workflowCatalog!.SaveAsync(workflow, ct).ConfigureAwait(false);
