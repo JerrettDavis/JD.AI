@@ -259,6 +259,8 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Publish self-contained binary
+        env:
+          GITHUB_ACTIONS: "false"
         run: >
           dotnet publish src/JD.AI/JD.AI.csproj
           --configuration Release
