@@ -59,7 +59,7 @@ public sealed class RunSkillStep : IStep<AgentWorkflowData>
 
         var settings = new PromptExecutionSettings
         {
-            FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(),
+            FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(autoInvoke: true),
         };
 
         var result = await chat.GetChatMessageContentAsync(
@@ -212,7 +212,7 @@ public sealed class AgentDecisionStep : IStep<AgentWorkflowData>
         var settings = new PromptExecutionSettings
         {
             FunctionChoiceBehavior = _allowedPlugins.Count > 0
-                ? FunctionChoiceBehavior.Auto()
+                ? FunctionChoiceBehavior.Auto(autoInvoke: true)
                 : null,
         };
 

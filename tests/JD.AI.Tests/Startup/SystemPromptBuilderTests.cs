@@ -57,6 +57,7 @@ public sealed class SystemPromptBuilderTests
         var prompt = await SystemPromptBuilder.BuildAsync(new CliOptions(), instructions, planMode: false);
 
         Assert.Contains("You are jdai, a helpful AI coding assistant", prompt, StringComparison.Ordinal);
+        Assert.Contains("do not simulate tool calls in plain text", prompt, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Project Instructions (AGENTS.md)", prompt, StringComparison.Ordinal);
         Assert.Contains("Follow AGENTS rules", prompt, StringComparison.Ordinal);
     }
