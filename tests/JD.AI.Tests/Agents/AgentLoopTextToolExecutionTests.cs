@@ -16,7 +16,11 @@ public sealed class AgentLoopTextToolExecutionTests
     public async Task RunTurnStreamingAsync_TaggedToolCall_ExecutesRealToolAndReinvokesModel()
     {
         var registry = Substitute.For<IProviderRegistry>();
-        var model = new ProviderModelInfo("test-model", "Test", "TestProvider");
+        var model = new ProviderModelInfo(
+            "test-model",
+            "Test",
+            "TestProvider",
+            Capabilities: ModelCapabilities.Chat);
 
         const string firstResponse = """
             Looks like we're on Windows. Let me try again:
@@ -84,6 +88,67 @@ public sealed class AgentLoopTextToolExecutionTests
             m.Content is not null &&
             m.Content.Contains("Tool result for run_command", StringComparison.Ordinal))
             .Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RunTurnStreamingAsync_ToolCapableModel_DoesNotExecuteTaggedTextToolCall()
+    {
+        var registry = Substitute.For<IProviderRegistry>();
+        var model = new ProviderModelInfo(
+            "test-model",
+            "Test",
+            "TestProvider",
+            Capabilities: ModelCapabilities.Chat | ModelCapabilities.ToolCalling);
+
+        const string response = """
+            Let me check.
+            <tool_call> {"name": "run_command", "arguments": {"command": "cd"}} </tool_call>
+            """;
+
+        var chatService = Substitute.For<IChatCompletionService>();
+        chatService
+            .GetStreamingChatMessageContentsAsync(
+                Arg.Any<ChatHistory>(),
+                Arg.Any<PromptExecutionSettings>(),
+                Arg.Any<Kernel>(),
+                Arg.Any<CancellationToken>())
+            .Returns(StreamOnce(response));
+
+        var executedCommands = new List<string>();
+        var builder = Kernel.CreateBuilder();
+        builder.Services.AddSingleton<IChatCompletionService>(chatService);
+        var kernel = builder.Build();
+        kernel.Plugins.AddFromFunctions("shell", [
+            KernelFunctionFactory.CreateFromMethod(
+                (string command) =>
+                {
+                    executedCommands.Add(command);
+                    return "Exit code: 0\n--- stdout ---\nC:\\Users\\jd";
+                },
+                "run_command",
+                "Execute command")
+        ]);
+
+        var session = new AgentSession(registry, kernel, model);
+        var loop = new AgentLoop(session);
+
+        var previousOutput = AgentOutput.Current;
+        AgentOutput.Current = new NullOutput();
+        try
+        {
+            _ = await loop.RunTurnStreamingAsync("What folder are we running in?");
+        }
+        finally
+        {
+            AgentOutput.Current = previousOutput;
+        }
+
+        executedCommands.Should().BeEmpty();
+        session.History.Any(m =>
+            m.Role == AuthorRole.User &&
+            m.Content is not null &&
+            m.Content.Contains("Tool result for run_command", StringComparison.Ordinal))
+            .Should().BeFalse();
     }
 
     private static async IAsyncEnumerable<StreamingChatMessageContent> StreamOnce(string text)

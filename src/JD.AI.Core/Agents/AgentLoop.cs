@@ -783,7 +783,7 @@ public sealed class AgentLoop
             ModelId = _session.CurrentModel?.Id,
             MaxTokens = maxTokens,
             FunctionChoiceBehavior = supportsTools
-                ? FunctionChoiceBehavior.Auto()
+                ? FunctionChoiceBehavior.Auto(autoInvoke: true)
                 : null,
         };
     }
@@ -987,6 +987,11 @@ public sealed class AgentLoop
         if (string.IsNullOrWhiteSpace(response))
             return null;
 
+        // Tool-capable models must use SK's structured tool-calling channel so
+        // confirmations, policy checks, and auditing always run through filters.
+        if (ShouldEnforceStructuredToolChannel())
+            return null;
+
         var jsonText = ExtractFirstToolCallJson(response);
         if (jsonText is null)
             return null;
@@ -1083,6 +1088,9 @@ public sealed class AgentLoop
             return null;
         }
     }
+
+    private bool ShouldEnforceStructuredToolChannel() =>
+        _session.CurrentModel?.Capabilities.HasFlag(ModelCapabilities.ToolCalling) ?? false;
 
     // Compiled regex for fenced JSON blocks (e.g. ```json\n{...}\n```)
     private static readonly Regex FencedJsonRegex = new(
