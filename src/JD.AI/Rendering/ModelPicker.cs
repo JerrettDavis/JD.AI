@@ -67,6 +67,10 @@ internal static class ModelPicker
         {
             return AnsiConsole.Prompt(prompt);
         }
+        catch (OperationCanceledException)
+        {
+            return null;
+        }
         catch (InvalidOperationException)
         {
             return null;

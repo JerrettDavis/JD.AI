@@ -246,7 +246,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           Tab             — Accept completion
           Up/Down         — Navigate history / completion dropdown
           Home/End        — Move to start/end of input
-          ESC             — Dismiss completions / vim normal mode
+          ESC             — Clear input / dismiss completions / vim normal mode
           ESC ESC         — Cancel (at empty prompt)
 
         Vim Mode (when enabled with /vim):
@@ -281,7 +281,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
         return selected != null
             ? $"Current model: {selected.DisplayName} ({selected.ProviderName})"
-            : "No model selected.";
+            : "Model selection cancelled.";
     }
 
     private async Task<string> SwitchModelAsync(string? modelId, CancellationToken ct)
@@ -394,11 +394,23 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             .Append("Cancel")
             .ToList();
 
-        var selection = AnsiConsole.Prompt(
-            new SelectionPrompt<string>()
-                .Title("Select a model to pull:")
-                .WithAdaptivePaging(preferredPageSize: 15, totalChoices: choices.Count, singularNoun: "model")
-                .AddChoices(choices));
+        string selection;
+        try
+        {
+            selection = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("Select a model to pull:")
+                    .WithAdaptivePaging(preferredPageSize: 15, totalChoices: choices.Count, singularNoun: "model")
+                    .AddChoices(choices));
+        }
+        catch (OperationCanceledException)
+        {
+            return "Model search cancelled.";
+        }
+        catch (InvalidOperationException)
+        {
+            return "Model search cancelled.";
+        }
 
         if (string.Equals(selection, "Cancel", StringComparison.Ordinal))
             return "Model search cancelled.";
@@ -655,6 +667,10 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         try
         {
             choice = AnsiConsole.Prompt(prompt);
+        }
+        catch (OperationCanceledException)
+        {
+            return "Selection cancelled.";
         }
         catch (InvalidOperationException)
         {

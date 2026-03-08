@@ -207,6 +207,10 @@ internal static class ConfigEditor
         {
             selected = AnsiConsole.Prompt(prompt);
         }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
         catch (InvalidOperationException)
         {
             return;
@@ -423,6 +427,11 @@ internal static class ConfigEditor
         {
             selected = AnsiConsole.Prompt(prompt);
             return true;
+        }
+        catch (OperationCanceledException)
+        {
+            selected = current;
+            return false;
         }
         catch (InvalidOperationException)
         {
