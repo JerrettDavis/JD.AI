@@ -209,6 +209,8 @@ public sealed class WorkflowGenerator
                 responseText = responseText[(firstNewline + 1)..lastFence].Trim();
         }
 
+        responseText = ExtractFirstJsonObject(responseText);
+
         try
         {
             using var doc = JsonDocument.Parse(responseText);
@@ -239,13 +241,18 @@ public sealed class WorkflowGenerator
         }
         catch (JsonException ex)
         {
-            // Fallback to heuristic generation
-            var fallback = Generate(description, name);
             return new WorkflowRefinementResult
             {
                 Success = false,
-                Workflow = fallback,
-                Changelog = $"LLM generation failed ({ex.Message}), used heuristic fallback",
+                Workflow = new AgentWorkflowDefinition
+                {
+                    Name = name ?? DeriveWorkflowName(description),
+                    Version = "1.0",
+                    Description = description[..Math.Min(description.Length, 200)],
+                    Tags = ExtractTags(description),
+                    Steps = [],
+                },
+                Changelog = $"LLM generation failed ({ex.Message})",
                 RawResponse = responseText,
             };
         }
@@ -495,6 +502,68 @@ public sealed class WorkflowGenerator
                 SubSteps = subSteps,
             };
         }
+    }
+
+    private static string ExtractFirstJsonObject(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return text;
+
+        var start = text.IndexOf('{');
+        if (start < 0)
+            return text;
+
+        var depth = 0;
+        var inString = false;
+        var escape = false;
+
+        for (var i = start; i < text.Length; i++)
+        {
+            var ch = text[i];
+
+            if (inString)
+            {
+                if (escape)
+                {
+                    escape = false;
+                    continue;
+                }
+
+                if (ch == '\\')
+                {
+                    escape = true;
+                    continue;
+                }
+
+                if (ch == '"')
+                {
+                    inString = false;
+                }
+
+                continue;
+            }
+
+            if (ch == '"')
+            {
+                inString = true;
+                continue;
+            }
+
+            if (ch == '{')
+            {
+                depth++;
+                continue;
+            }
+
+            if (ch != '}')
+                continue;
+
+            depth--;
+            if (depth == 0)
+                return text[start..(i + 1)];
+        }
+
+        return text;
     }
 
     public static string DeriveToolStepName(string tool)

@@ -6,7 +6,9 @@ using JD.AI.Core.Config;
 using JD.AI.Core.Providers;
 using JD.AI.Workflows;
 using JD.AI.Workflows.Store;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
 using NSubstitute;
 using TinyBDD;
 using TinyBDD.Xunit;
@@ -1197,5 +1199,50 @@ public sealed class SlashCommandRouterBddTests : TinyBddXunitBase
                 return true;
             })
             .AssertPassed();
+    }
+
+    // ── 51. /workflow create missing tools does not save ─────
+
+    [Scenario("Workflow create with unavailable tools is not saved"), Fact]
+    public async Task WorkflowCreateMissingToolsDoesNotSave()
+    {
+        var responseJson = """
+            {
+              "name": "Broken Workflow",
+              "version": "1.0",
+              "description": "References a tool that's not in kernel plugins",
+              "tags": ["test"],
+              "steps": [
+                { "name": "Run shell", "kind": "Tool", "target": "shell-run_command" }
+              ]
+            }
+            """;
+
+        var mockChat = Substitute.For<IChatCompletionService>();
+        mockChat.GetChatMessageContentsAsync(
+                Arg.Any<ChatHistory>(),
+                Arg.Any<PromptExecutionSettings?>(),
+                Arg.Any<Kernel?>(),
+                Arg.Any<CancellationToken>())
+            .Returns([new ChatMessageContent(AuthorRole.Assistant, responseJson)]);
+
+        var builder = Kernel.CreateBuilder();
+        builder.Services.AddSingleton(mockChat);
+        var kernel = builder.Build();
+
+        var session = new AgentSession(
+            _registry,
+            kernel,
+            new ProviderModelInfo("test-model", "Test Model", "TestProvider"));
+
+        var workflowCatalog = Substitute.For<IWorkflowCatalog>();
+        var router = new SlashCommandRouter(session, _registry, workflowCatalog: workflowCatalog);
+
+        var result = await router.ExecuteAsync("/workflow create create a new project workflow");
+
+        result.Should().Contain("not saved");
+        await workflowCatalog.DidNotReceive().SaveAsync(
+            Arg.Any<AgentWorkflowDefinition>(),
+            Arg.Any<CancellationToken>());
     }
 }
