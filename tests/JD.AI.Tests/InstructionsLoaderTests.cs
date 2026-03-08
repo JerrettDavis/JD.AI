@@ -10,6 +10,9 @@ public sealed class InstructionsLoaderTests : IDisposable
     {
         _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-test-{Guid.NewGuid():N}");
         Directory.CreateDirectory(_tempDir);
+        // Create a fake .git boundary so GetDirectoryChain stops here
+        // instead of walking up to the real user home directory.
+        Directory.CreateDirectory(Path.Combine(_tempDir, ".git"));
     }
 
     public void Dispose()
