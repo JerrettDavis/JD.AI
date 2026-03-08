@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
+using JD.AI.Core.Agents;
 using JD.AI.Core.Config;
 using Spectre.Console;
 
@@ -351,6 +352,32 @@ public static class ChatRenderer
 
         AnsiConsole.Markup($"[on grey]{Markup.Escape(status)}[/]");
         AnsiConsole.WriteLine();
+    }
+
+    /// <summary>Returns (label, color) for a permission mode. Visible for testing.</summary>
+    internal static (string Label, string Color) GetModeBarLabel(PermissionMode mode) =>
+        mode switch
+        {
+            PermissionMode.Plan => ("Plan (read-only)", "yellow"),
+            PermissionMode.AcceptEdits => ("Auto-edit", "cyan"),
+            PermissionMode.BypassAll => ("Autopilot", "red"),
+            _ => ("Normal", _palette.InfoColor),
+        };
+
+    /// <summary>Render a mode indicator bar above the input prompt.</summary>
+    public static void RenderModeBar(PermissionMode mode)
+    {
+        if (CurrentOutputStyle == OutputStyle.Json)
+            return;
+
+        var (label, color) = GetModeBarLabel(mode);
+
+        var width = Math.Max(Console.WindowWidth, 40);
+        var prefix = $"── {label} ";
+        var ruleLen = Math.Max(0, width - prefix.Length);
+        var rule = new string('─', ruleLen);
+
+        AnsiConsole.MarkupLine($"[{color}]{Markup.Escape(prefix)}{rule}[/]");
     }
 
     /// <summary>Prompt for user input with interactive completions.</summary>
