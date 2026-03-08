@@ -1394,6 +1394,10 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "SHOW" => "Usage: /workflow show <name>",
             "CREATE" when param is not null => await CreateWorkflowAsync(param, ct).ConfigureAwait(false),
             "CREATE" => "Usage: /workflow create <description>  — Generate a workflow from a natural language description",
+            "RENAME" when param is not null => await RenameWorkflowAsync(param, ct).ConfigureAwait(false),
+            "RENAME" => "Usage: /workflow rename <old-name> <new-name>",
+            "REMOVE" or "DELETE" when param is not null => await RemoveWorkflowAsync(param, ct).ConfigureAwait(false),
+            "REMOVE" or "DELETE" => "Usage: /workflow remove <name>",
             "COMPOSE" when param is not null => await ComposeWorkflowsAsync(param, ct).ConfigureAwait(false),
             "COMPOSE" => "Usage: /workflow compose <name> <workflow1> <workflow2> [...]  — Combine workflows",
             "DRY-RUN" or "DRYRUN" when param is not null => await DryRunWorkflowAsync(param, ct).ConfigureAwait(false),
@@ -1414,7 +1418,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             "SEARCH" => "Usage: /workflow search <query>",
             "VERSIONS" when param is not null => await ShowWorkflowVersionsAsync(param, ct).ConfigureAwait(false),
             "VERSIONS" => "Usage: /workflow versions <name>",
-            _ => "Usage: /workflow [list|show|create|compose|dry-run|export|replay|refine|from-history|catalog|publish|install|search|versions]",
+            _ => "Usage: /workflow [list|show|create|rename|remove|compose|dry-run|export|replay|refine|from-history|catalog|publish|install|search|versions]",
         };
     }
 
@@ -1440,6 +1444,34 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
         var artifact = _workflowEmitter.Emit(workflow, WorkflowExportFormat.Json);
         return $"Workflow: {workflow.Name} v{workflow.Version}\n{artifact.Content}";
+    }
+
+    private async Task<string> RenameWorkflowAsync(string param, CancellationToken ct)
+    {
+        var parts = param.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 2)
+            return "Usage: /workflow rename <old-name> <new-name>";
+
+        var oldName = parts[0];
+        var newName = parts[1];
+
+        var workflow = await _workflowCatalog!.GetAsync(oldName, ct: ct).ConfigureAwait(false);
+        if (workflow is null)
+            return $"Workflow '{oldName}' not found.";
+
+        workflow.Name = newName;
+        await _workflowCatalog.SaveAsync(workflow, ct).ConfigureAwait(false);
+        await _workflowCatalog.DeleteAsync(oldName, ct: ct).ConfigureAwait(false);
+
+        return $"Renamed workflow '{oldName}' to '{newName}'.";
+    }
+
+    private async Task<string> RemoveWorkflowAsync(string name, CancellationToken ct)
+    {
+        var deleted = await _workflowCatalog!.DeleteAsync(name.Trim(), ct: ct).ConfigureAwait(false);
+        return deleted
+            ? $"Removed workflow '{name.Trim()}'."
+            : $"Workflow '{name.Trim()}' not found.";
     }
 
     private async Task<string> ExportWorkflowAsync(string param, CancellationToken ct)
