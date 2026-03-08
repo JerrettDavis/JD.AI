@@ -349,6 +349,161 @@ public sealed class AgentLoopToolCallingErrorTests : TinyBddXunitBase
             .AssertPassed();
     }
 
+    [Scenario("Non-streaming unresolved function call is recovered via retry without tools"), Fact]
+    public async Task RunTurnAsync_UnpairedFunctionCallInHistory_RetriesWithoutTools()
+    {
+        string? result = null;
+
+        await Given("a chat service that returns empty content while appending an unpaired function call", () =>
+            {
+                var registry = Substitute.For<IProviderRegistry>();
+                var model = new ProviderModelInfo("test-model", "Test", "TestProvider");
+
+                var chatService = Substitute.For<IChatCompletionService>();
+                var recovered = new ChatMessageContent(AuthorRole.Assistant, "Recovered response without tools");
+
+                chatService
+                    .GetChatMessageContentsAsync(
+                        Arg.Any<ChatHistory>(),
+                        Arg.Any<PromptExecutionSettings?>(),
+                        Arg.Any<Kernel?>(),
+                        Arg.Any<CancellationToken>())
+                    .Returns(
+                        callInfo =>
+                        {
+                            var history = callInfo.ArgAt<ChatHistory>(0);
+                            history.Add(new ChatMessageContent(AuthorRole.Assistant, [
+                                new FunctionCallContent(
+                                    functionName: "toolDiscovery",
+                                    pluginName: "toolDiscovery",
+                                    id: "toolu_01J5o3ra5PqVyditJwJdywu5",
+                                    arguments: new KernelArguments()),
+                            ]));
+
+                            return new List<ChatMessageContent>
+                            {
+                                new(AuthorRole.Assistant, string.Empty),
+                            };
+                        },
+                        _ => new List<ChatMessageContent> { recovered });
+
+                var builder = Kernel.CreateBuilder();
+                builder.Services.AddSingleton<IChatCompletionService>(chatService);
+                var testKernel = builder.Build();
+
+                return (registry, testKernel, model);
+            })
+            .When("RunTurnAsync is called",
+                new Func<(IProviderRegistry registry, Kernel testKernel, ProviderModelInfo model),
+                    Task<(IProviderRegistry, Kernel, ProviderModelInfo)>>(async ctx =>
+            {
+                var session = new AgentSession(ctx.registry, ctx.testKernel, ctx.model);
+                var loop = new AgentLoop(session);
+                result = await loop.RunTurnAsync("What tools do we have available?");
+
+                session.History.Should().HaveCount(2);
+                session.History[0].Role.Should().Be(AuthorRole.User);
+                session.History[1].Role.Should().Be(AuthorRole.Assistant);
+                session.History.SelectMany(m => m.Items ?? [])
+                    .Should().NotContain(i => i is FunctionCallContent);
+
+                return ctx;
+            }))
+            .Then("the response comes from the retry path", _ =>
+            {
+                result.Should().Be("Recovered response without tools");
+                return true;
+            })
+            .AssertPassed();
+    }
+
+    [Scenario("Streaming unresolved function call is recovered via retry without tools"), Fact]
+    public async Task RunTurnStreamingAsync_UnpairedFunctionCallInHistory_RetriesWithoutTools()
+    {
+        string? result = null;
+        var spyOutput = new SpyAgentOutput();
+
+        await Given("a streaming chat service that appends an unpaired function call with no text", () =>
+            {
+                var registry = Substitute.For<IProviderRegistry>();
+                var model = new ProviderModelInfo("test-model", "Test", "TestProvider");
+
+                var chatService = Substitute.For<IChatCompletionService>();
+                var recovered = new ChatMessageContent(AuthorRole.Assistant, "Recovered stream response");
+
+                chatService
+                    .GetStreamingChatMessageContentsAsync(
+                        Arg.Any<ChatHistory>(),
+                        Arg.Any<PromptExecutionSettings>(),
+                        Arg.Any<Kernel>(),
+                        Arg.Any<CancellationToken>())
+                    .Returns(callInfo =>
+                    {
+                        var history = callInfo.ArgAt<ChatHistory>(0);
+                        return StreamWithUnpairedFunctionCall(history);
+                    });
+
+                chatService
+                    .GetChatMessageContentsAsync(
+                        Arg.Any<ChatHistory>(),
+                        Arg.Any<PromptExecutionSettings?>(),
+                        Arg.Any<Kernel?>(),
+                        Arg.Any<CancellationToken>())
+                    .Returns(new List<ChatMessageContent> { recovered });
+
+                var builder = Kernel.CreateBuilder();
+                builder.Services.AddSingleton<IChatCompletionService>(chatService);
+                var testKernel = builder.Build();
+
+                return (registry, testKernel, model);
+            })
+            .When("RunTurnStreamingAsync is called",
+                new Func<(IProviderRegistry registry, Kernel testKernel, ProviderModelInfo model),
+                    Task<(IProviderRegistry, Kernel, ProviderModelInfo)>>(async ctx =>
+            {
+                var previousOutput = AgentOutput.Current;
+                AgentOutput.Current = spyOutput;
+                try
+                {
+                    var session = new AgentSession(ctx.registry, ctx.testKernel, ctx.model);
+                    var loop = new AgentLoop(session);
+                    result = await loop.RunTurnStreamingAsync("What tools do we have available?");
+
+                    session.History.Should().HaveCount(2);
+                    session.History[0].Role.Should().Be(AuthorRole.User);
+                    session.History[1].Role.Should().Be(AuthorRole.Assistant);
+                    session.History.SelectMany(m => m.Items ?? [])
+                        .Should().NotContain(i => i is FunctionCallContent);
+                }
+                finally
+                {
+                    AgentOutput.Current = previousOutput;
+                }
+                return ctx;
+            }))
+            .Then("the streamed output comes from the retry path", _ =>
+            {
+                result.Should().Be("Recovered stream response");
+                spyOutput.StreamingChunks.Should().Contain("Recovered stream response");
+                return true;
+            })
+            .AssertPassed();
+
+        static async IAsyncEnumerable<StreamingChatMessageContent> StreamWithUnpairedFunctionCall(ChatHistory history)
+        {
+            history.Add(new ChatMessageContent(AuthorRole.Assistant, [
+                new FunctionCallContent(
+                    functionName: "toolDiscovery",
+                    pluginName: "toolDiscovery",
+                    id: "toolu_01Phna5tsdXcDzuLXiuXaMpx",
+                    arguments: new KernelArguments()),
+            ]));
+
+            await Task.Yield();
+            yield break;
+        }
+    }
+
     private sealed class SpyAgentOutput : IAgentOutput
     {
         public bool BeginStreamingCalled { get; private set; }
