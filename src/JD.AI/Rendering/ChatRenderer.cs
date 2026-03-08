@@ -43,6 +43,9 @@ public static class ChatRenderer
     private static readonly System.Threading.Lock _streamLock = new();
     private static readonly System.Text.StringBuilder _streamBuffer = new();
     private static bool _bufferedStreamActive;
+    private static bool _streamingPaused;
+    private static StreamingMarkdownRenderer? _progressiveRenderer;
+    private static int _pauseBufferStart;
 
     public static TuiTheme CurrentTheme { get; private set; } = TuiTheme.DefaultDark;
     public static OutputStyle CurrentOutputStyle { get; private set; } = OutputStyle.Rich;
@@ -428,6 +431,35 @@ public static class ChatRenderer
 
     // ── Streaming rendering ────────────────────────────────
 
+    /// <summary>
+    /// Pause the streaming indicator so it doesn't overwrite interactive prompts.
+    /// Text continues to buffer but no indicator line is written until <see cref="ResumeStreaming"/>.
+    /// </summary>
+    public static void PauseStreaming()
+    {
+        lock (_streamLock)
+        {
+            if (!_bufferedStreamActive) return;
+            _streamingPaused = true;
+            _pauseBufferStart = _streamBuffer.Length;
+        }
+    }
+
+    /// <summary>Resume the streaming indicator after a pause, rendering any text buffered during the pause.</summary>
+    public static void ResumeStreaming()
+    {
+        lock (_streamLock)
+        {
+            _streamingPaused = false;
+            if (_progressiveRenderer is not null && _streamBuffer.Length > _pauseBufferStart)
+            {
+                var pausedText = _streamBuffer.ToString(
+                    _pauseBufferStart, _streamBuffer.Length - _pauseBufferStart);
+                _progressiveRenderer.ProcessChunk(pausedText);
+            }
+        }
+    }
+
     /// <summary>Begin an assistant streaming block (response content).</summary>
     public static void BeginStreaming()
     {
@@ -442,14 +474,15 @@ public static class ChatRenderer
         if (CurrentOutputStyle != OutputStyle.Rich)
             return;
 
-        // Rich: buffer the full response so we can render markdown when done.
-        // Show a live byte-counter on one line while receiving chunks.
+        // Rich: buffer the full response and render progressively.
         lock (_streamLock)
         {
             _streamBuffer.Clear();
             _bufferedStreamActive = true;
+            _streamingPaused = false;
+            _progressiveRenderer = new StreamingMarkdownRenderer();
+            _pauseBufferStart = 0;
         }
-        Console.Write($"\x1b[2K\r\x1b[36m◆\x1b[0m \x1b[2mstreaming…\x1b[0m");
     }
 
     /// <summary>Write a streaming text chunk (raw, inline).</summary>
@@ -463,14 +496,12 @@ public static class ChatRenderer
 
         if (_bufferedStreamActive)
         {
-            string label;
             lock (_streamLock)
             {
                 _streamBuffer.Append(text);
-                var kb = _streamBuffer.Length / 1024.0;
-                label = _streamBuffer.Length >= 1024 ? $"{kb:F1} KB" : $"{_streamBuffer.Length} B";
+                if (_streamingPaused) return; // buffer text but don't update indicator
+                _progressiveRenderer?.ProcessChunk(text);
             }
-            Console.Write($"\x1b[2K\r\x1b[36m◆\x1b[0m \x1b[2m{label}…\x1b[0m");
             return;
         }
 
@@ -491,28 +522,26 @@ public static class ChatRenderer
             return;
         }
 
-        string? content = null;
+        bool wasActive;
         lock (_streamLock)
         {
+            wasActive = _bufferedStreamActive;
             if (_bufferedStreamActive)
             {
                 _bufferedStreamActive = false;
-                content = _streamBuffer.ToString();
                 _streamBuffer.Clear();
+                _progressiveRenderer?.Flush();
+                _progressiveRenderer = null;
+                _streamingPaused = false;
+                _pauseBufferStart = 0;
             }
         }
 
-        if (content is not null)
+        if (!wasActive)
         {
-            // Clear the streaming indicator line
-            Console.Write("\x1b[2K\r");
-            // Render the full response as markdown
-            MarkdownRenderer.Render(content);
-            return;
+            // Already ended or never started — emit one blank line to preserve spacing
+            Console.WriteLine();
         }
-
-        // Already ended or never started — emit one blank line to preserve spacing
-        Console.WriteLine();
     }
 
     // ── Thinking/reasoning rendering ─────────────────────
