@@ -197,7 +197,7 @@ public sealed class OpenAICodexDetectorAdditionalTests : IDisposable
     }
 
     [Fact]
-    public void ApplyCredentialOverridesFromAuthFile_UsesAccessToken_WhenIdTokenMissing()
+    public void ApplyCredentialOverridesFromAuthFile_DoesNotForceAccessToken_WhenIdTokenMissing()
     {
         var authPath = Path.Combine(_fixture.DirectoryPath, "auth.json");
         File.WriteAllText(authPath, """
@@ -209,7 +209,7 @@ public sealed class OpenAICodexDetectorAdditionalTests : IDisposable
             """);
         var options = new CodexSessionOptions { CredentialsPath = authPath };
         OpenAICodexDetector.ApplyCredentialOverridesFromAuthFile(options);
-        Assert.Equal("fallback-access-token", options.AccessToken);
+        Assert.Null(options.AccessToken);
         Assert.Null(options.ApiKey);
     }
 
@@ -243,7 +243,7 @@ public sealed class OpenAICodexDetectorAdditionalTests : IDisposable
     }
 
     [Fact]
-    public void ApplyCredentialOverridesFromAuthFile_PrefersIdToken_OverAccessToken()
+    public void ApplyCredentialOverridesFromAuthFile_DoesNotForceToken_WhenEnvApiKeyNotPresent()
     {
         var authPath = Path.Combine(_fixture.DirectoryPath, "auth.json");
         File.WriteAllText(authPath, """
@@ -256,7 +256,25 @@ public sealed class OpenAICodexDetectorAdditionalTests : IDisposable
             """);
         var options = new CodexSessionOptions { CredentialsPath = authPath };
         OpenAICodexDetector.ApplyCredentialOverridesFromAuthFile(options);
-        Assert.Equal("id-token-preferred", options.AccessToken);
+        Assert.Null(options.AccessToken);
+        Assert.Null(options.ApiKey);
+    }
+
+    [Fact]
+    public void ApplyCredentialOverridesFromAuthFile_UsesToken_WhenEnvApiKeyWouldShadowAuthFile()
+    {
+        var authPath = Path.Combine(_fixture.DirectoryPath, "auth.json");
+        File.WriteAllText(authPath, """
+            {
+              "tokens": {
+                "id_token": "id-token-from-file"
+              }
+            }
+            """);
+        var options = new CodexSessionOptions { CredentialsPath = authPath };
+        OpenAICodexDetector.ApplyCredentialOverridesFromAuthFile(options, envApiKeyOverride: "stale-env-key");
+
+        Assert.Equal("id-token-from-file", options.AccessToken);
         Assert.Null(options.ApiKey);
     }
 }
