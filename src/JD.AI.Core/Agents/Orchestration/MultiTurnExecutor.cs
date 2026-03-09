@@ -75,6 +75,10 @@ public sealed class MultiTurnExecutor : ISubagentExecutor
                 ? FunctionChoiceBehavior.Auto(autoInvoke: true)
                 : null,
         };
+        AgentLoop.ApplyReasoningEffort(
+            settings,
+            parentSession.CurrentModel,
+            parentSession.ReasoningEffortOverride);
         PromptCachePolicy.Apply(
             settings,
             parentSession.CurrentModel,
