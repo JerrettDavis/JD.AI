@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using JD.AI.Core.Config;
 
 namespace JD.AI.Rendering;
@@ -17,10 +18,13 @@ internal sealed class TurnProgress : IDisposable
     private readonly string? _modelName;
     private readonly Stopwatch _sw = Stopwatch.StartNew();
     private readonly Timer _timer;
+    private readonly System.Threading.Lock _renderLock = new();
     private int _frame;
+    private int _renderedLineCount;
     private volatile bool _stopped;
     private volatile bool _paused;
     private volatile string? _thinkingPreview;
+    private volatile int _thinkingTokenCount;
 
     /// <summary>Elapsed milliseconds when the spinner was stopped (first content arrived).</summary>
     public long TimeToFirstTokenMs { get; private set; } = -1;
@@ -57,8 +61,12 @@ internal sealed class TurnProgress : IDisposable
 
         try
         {
-            // Clear the line and write new content
-            Console.Write($"\x1b[2K\r{line}");
+            lock (_renderLock)
+            {
+                ClearRenderedBlockNoLock();
+                Console.Write(line);
+                _renderedLineCount = CountRenderedLines(line);
+            }
         }
         catch (ObjectDisposedException)
         {
@@ -77,7 +85,10 @@ internal sealed class TurnProgress : IDisposable
 
         try
         {
-            Console.Write("\x1b[2K\r");
+            lock (_renderLock)
+            {
+                ClearRenderedBlockNoLock();
+            }
         }
         catch (ObjectDisposedException)
         {
@@ -97,7 +108,10 @@ internal sealed class TurnProgress : IDisposable
 
         try
         {
-            Console.Write("\x1b[2K\r");
+            lock (_renderLock)
+            {
+                ClearRenderedBlockNoLock();
+            }
         }
         catch (ObjectDisposedException)
         {
@@ -124,7 +138,22 @@ internal sealed class TurnProgress : IDisposable
             return;
         }
 
-        _thinkingPreview = preview.Replace('\r', ' ').Replace('\n', ' ').Trim();
+        var normalized = preview
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n');
+        var lines = normalized
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+
+        _thinkingPreview = lines.Count == 0
+            ? null
+            : string.Join('\n', lines);
+    }
+
+    /// <summary>Updates thinking token count shown in Nerdy mode.</summary>
+    public void SetThinkingTokenCount(int tokens)
+    {
+        _thinkingTokenCount = Math.Max(0, tokens);
     }
 
     public void Dispose()
@@ -146,7 +175,8 @@ internal sealed class TurnProgress : IDisposable
     {
         var spinner = BrailleFrames[_frame++ % BrailleFrames.Length];
         var core = $"  \x1b[36m{spinner}\x1b[0m Thinking... \x1b[2m{FormatElapsed(elapsed)}\x1b[0m";
-        return AppendPreview(core, _thinkingPreview, 96);
+        var preview = GetLastPreviewLine();
+        return AppendPreview(core, preview, 96, multiline: false);
     }
 
     internal string FormatRich(TimeSpan elapsed)
@@ -155,7 +185,7 @@ internal sealed class TurnProgress : IDisposable
         var bar = BuildProgressBar(elapsed);
         var core = $"  \x1b[36m{spinner}\x1b[0m Thinking \x1b[2m{bar}\x1b[0m " +
                    $"\x1b[2m{FormatElapsed(elapsed)}\x1b[0m";
-        return AppendPreview(core, _thinkingPreview, 120);
+        return AppendPreview(core, _thinkingPreview, 120, multiline: true);
     }
 
     internal string FormatNerdy(TimeSpan elapsed)
@@ -165,9 +195,10 @@ internal sealed class TurnProgress : IDisposable
         var model = !string.IsNullOrEmpty(_modelName)
             ? $" │ \x1b[33m{_modelName}\x1b[0m"
             : "";
+        var thinkTokens = _thinkingTokenCount >= 0 ? _thinkingTokenCount : 0;
         var core = $"  \x1b[36m{spinner}\x1b[0m Thinking \x1b[2m{bar}\x1b[0m " +
-                   $"\x1b[2m{FormatElapsed(elapsed)}{model} │ awaiting first token\x1b[0m";
-        return AppendPreview(core, _thinkingPreview, 140);
+                   $"\x1b[2m{FormatElapsed(elapsed)}{model} │ {thinkTokens} think-tok\x1b[0m";
+        return AppendPreview(core, _thinkingPreview, 140, multiline: true);
     }
 
     internal static string BuildProgressBar(TimeSpan elapsed)
@@ -189,15 +220,82 @@ internal sealed class TurnProgress : IDisposable
             ? $"{ts.Minutes}m {ts.Seconds:D2}s"
             : $"{ts.TotalSeconds:F1}s";
 
-    private static string AppendPreview(string core, string? preview, int maxChars)
+    private void ClearRenderedBlockNoLock()
+    {
+        if (_renderedLineCount <= 0)
+            return;
+
+        for (var i = 0; i < _renderedLineCount - 1; i++)
+        {
+            Console.Write("\x1b[2K\r\x1b[1A");
+        }
+
+        Console.Write("\x1b[2K\r");
+        _renderedLineCount = 0;
+    }
+
+    private static int CountRenderedLines(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return 0;
+
+        var lines = 1;
+        foreach (var c in text)
+        {
+            if (c == '\n')
+                lines++;
+        }
+
+        return lines;
+    }
+
+    private string? GetLastPreviewLine()
+    {
+        if (string.IsNullOrWhiteSpace(_thinkingPreview))
+            return null;
+
+        var normalized = _thinkingPreview
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n');
+        var lines = normalized
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        return lines.Length == 0 ? null : lines[^1];
+    }
+
+    private static string AppendPreview(string core, string? preview, int maxChars, bool multiline)
     {
         if (string.IsNullOrWhiteSpace(preview))
             return core;
 
-        var compact = preview.Trim();
-        if (compact.Length > maxChars)
-            compact = string.Concat(compact.AsSpan(0, maxChars - 3), "...");
+        var normalized = preview
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n');
+        var lines = normalized
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
 
-        return $"{core} \x1b[2m│ {compact}\x1b[0m";
+        if (lines.Count == 0)
+            return core;
+
+        if (!multiline || lines.Count == 1)
+        {
+            var compact = lines[0];
+            if (compact.Length > maxChars)
+                compact = string.Concat(compact.AsSpan(0, maxChars - 3), "...");
+
+            return $"{core} \x1b[2m│ {compact}\x1b[0m";
+        }
+
+        var sb = new StringBuilder(core);
+        foreach (var line in lines.Take(4))
+        {
+            var compact = line;
+            if (compact.Length > maxChars)
+                compact = string.Concat(compact.AsSpan(0, maxChars - 3), "...");
+            sb.Append('\n').Append("  \x1b[2m").Append(compact).Append("\x1b[0m");
+        }
+
+        return sb.ToString();
     }
 }

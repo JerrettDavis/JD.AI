@@ -16,7 +16,9 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
     private TurnProgress? _progress;
     private readonly StringBuilder _thinkingBuffer = new();
     private readonly List<string> _thinkingSteps = [];
+    private readonly Queue<string> _thinkingDetails = new();
     private string? _lastThinkingDetail;
+    private int _thinkingTokenCount;
 
     public SpectreAgentOutput(SpinnerStyle style = SpinnerStyle.Normal, string? modelName = null)
     {
@@ -92,7 +94,9 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
     {
         _thinkingBuffer.Clear();
         _thinkingSteps.Clear();
+        _thinkingDetails.Clear();
         _lastThinkingDetail = null;
+        _thinkingTokenCount = 0;
         _progress = new TurnProgress(Style, ModelName);
     }
 
@@ -123,8 +127,10 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
         }
 
         _thinkingBuffer.Append(text);
+        _thinkingTokenCount += JD.SemanticKernel.Extensions.Compaction.TokenEstimator.EstimateTokens(text);
         UpdateThinkingSignals(text);
         _progress?.SetThinkingPreview(GetLiveThinkingPreview());
+        _progress?.SetThinkingTokenCount(_thinkingTokenCount);
     }
 
     public void EndThinking()
@@ -186,6 +192,7 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
                     !string.Equals(_thinkingSteps[^1], step, StringComparison.OrdinalIgnoreCase))
                 {
                     _thinkingSteps.Add(step);
+                    _thinkingDetails.Clear();
                 }
 
                 _lastThinkingDetail = step;
@@ -193,6 +200,13 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
             else
             {
                 _lastThinkingDetail = compact;
+                if (_thinkingDetails.Count == 0 ||
+                    !string.Equals(_thinkingDetails.Last(), compact, StringComparison.OrdinalIgnoreCase))
+                {
+                    _thinkingDetails.Enqueue(compact);
+                    if (_thinkingDetails.Count > 2)
+                        _thinkingDetails.Dequeue();
+                }
             }
         }
     }
@@ -205,24 +219,39 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
         if (Style == SpinnerStyle.Normal)
             return _lastThinkingDetail;
 
-        if (_thinkingSteps.Count == 0)
-            return _lastThinkingDetail;
+        var lines = new List<string>(6);
 
-        var step = _thinkingSteps[^1];
-        if (string.IsNullOrWhiteSpace(_lastThinkingDetail) ||
-            string.Equals(step, _lastThinkingDetail, StringComparison.OrdinalIgnoreCase))
+        var completedCount = Math.Max(0, _thinkingSteps.Count - 1);
+        var completedStart = Math.Max(0, completedCount - 3);
+        for (var i = completedStart; i < completedCount; i++)
         {
-            return $"▶ {step}";
+            lines.Add($"✔ {_thinkingSteps[i]}");
         }
 
-        return $"▶ {step} | {_lastThinkingDetail}";
+        if (_thinkingSteps.Count > 0)
+        {
+            lines.Add($"▶ {_thinkingSteps[^1]}");
+        }
+
+        var details = _thinkingDetails.ToArray();
+        var detailStart = Math.Max(0, details.Length - 2);
+        for (var i = detailStart; i < details.Length; i++)
+        {
+            var detail = TrimForSummary(details[i], 96);
+            lines.Add($"│ {detail}");
+        }
+
+        if (lines.Count == 0 && !string.IsNullOrWhiteSpace(_lastThinkingDetail))
+            lines.Add($"│ {TrimForSummary(_lastThinkingDetail, 96)}");
+
+        return lines.Count == 0 ? null : string.Join('\n', lines);
     }
 
     private string? BuildThinkingSummary()
     {
         if (_thinkingSteps.Count > 0)
         {
-            var joined = string.Join(" -> ", _thinkingSteps.Take(4));
+            var joined = string.Join(" → ", _thinkingSteps.Take(4));
             return TrimForSummary(joined, 140);
         }
 
