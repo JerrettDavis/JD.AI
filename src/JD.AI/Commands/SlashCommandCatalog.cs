@@ -132,6 +132,33 @@ public static class SlashCommandCatalog
             "Manage MCP servers (list|add|remove|enable|disable)"),
         new(SlashCommandId.Context, "/context", "/context", "Show context window usage"),
         new(
+            SlashCommandId.SystemPrompt,
+            "/system-prompt",
+            "/system-prompt [append|prepend|replace|reset|edit]",
+            "View or modify the active system prompt",
+            AdditionalCompletions:
+            [
+                new SlashCommandDescriptor("/system-prompt append", "Append text to the system prompt"),
+                new SlashCommandDescriptor("/system-prompt prepend", "Prepend text to the system prompt"),
+                new SlashCommandDescriptor("/system-prompt replace", "Replace system prompt from file path or inline text"),
+                new SlashCommandDescriptor("/system-prompt reset", "Restore the original startup system prompt"),
+                new SlashCommandDescriptor("/system-prompt edit", "Show edit usage guidance")
+            ],
+            Aliases: ["/sysprompt", "/sp"]),
+        new(
+            SlashCommandId.Prompt,
+            "/prompt",
+            "/prompt [--full|drop <n[-m]>|inject [--system] <text>|export [path]]",
+            "Inspect and edit the active prompt/context messages",
+            AdditionalCompletions:
+            [
+                new SlashCommandDescriptor("/prompt --full", "Show full message text"),
+                new SlashCommandDescriptor("/prompt drop", "Drop one message index or an index range"),
+                new SlashCommandDescriptor("/prompt inject", "Inject additional context message"),
+                new SlashCommandDescriptor("/prompt export", "Export context to markdown")
+            ],
+            Aliases: ["/p"]),
+        new(
             SlashCommandId.CompactSystemPrompt,
             "/compact-system-prompt",
             "/compact-system-prompt [off|auto|always]",
@@ -373,6 +400,8 @@ public enum SlashCommandId
     Local,
     Mcp,
     Context,
+    SystemPrompt,
+    Prompt,
     CompactSystemPrompt,
     Copy,
     Diff,

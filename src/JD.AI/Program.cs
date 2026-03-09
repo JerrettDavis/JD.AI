@@ -292,6 +292,7 @@ using var _fileAuditSink = governance.FileAuditSink;
 var systemPrompt = await SystemPromptBuilder.BuildAsync(opts, governance.Instructions, session.PlanMode)
     .ConfigureAwait(false);
 session.History.AddSystemMessage(systemPrompt);
+session.CaptureOriginalSystemPromptIfUnset(systemPrompt);
 
 // 10. Print mode: non-interactive execution
 if (opts.PrintMode)
