@@ -20,6 +20,7 @@ internal sealed class TurnProgress : IDisposable
     private int _frame;
     private volatile bool _stopped;
     private volatile bool _paused;
+    private volatile string? _thinkingPreview;
 
     /// <summary>Elapsed milliseconds when the spinner was stopped (first content arrived).</summary>
     public long TimeToFirstTokenMs { get; private set; } = -1;
@@ -114,6 +115,18 @@ internal sealed class TurnProgress : IDisposable
         _timer.Change(0, interval);
     }
 
+    /// <summary>Updates inline thinking preview text displayed next to the spinner.</summary>
+    public void SetThinkingPreview(string? preview)
+    {
+        if (string.IsNullOrWhiteSpace(preview))
+        {
+            _thinkingPreview = null;
+            return;
+        }
+
+        _thinkingPreview = preview.Replace('\r', ' ').Replace('\n', ' ').Trim();
+    }
+
     public void Dispose()
     {
         Stop();
@@ -132,15 +145,17 @@ internal sealed class TurnProgress : IDisposable
     internal string FormatNormal(TimeSpan elapsed)
     {
         var spinner = BrailleFrames[_frame++ % BrailleFrames.Length];
-        return $"  \x1b[36m{spinner}\x1b[0m Thinking... \x1b[2m{FormatElapsed(elapsed)}\x1b[0m";
+        var core = $"  \x1b[36m{spinner}\x1b[0m Thinking... \x1b[2m{FormatElapsed(elapsed)}\x1b[0m";
+        return AppendPreview(core, _thinkingPreview, 96);
     }
 
     internal string FormatRich(TimeSpan elapsed)
     {
         var spinner = BrailleFrames[_frame++ % BrailleFrames.Length];
         var bar = BuildProgressBar(elapsed);
-        return $"  \x1b[36m{spinner}\x1b[0m Thinking \x1b[2m{bar}\x1b[0m " +
-               $"\x1b[2m{FormatElapsed(elapsed)}\x1b[0m";
+        var core = $"  \x1b[36m{spinner}\x1b[0m Thinking \x1b[2m{bar}\x1b[0m " +
+                   $"\x1b[2m{FormatElapsed(elapsed)}\x1b[0m";
+        return AppendPreview(core, _thinkingPreview, 120);
     }
 
     internal string FormatNerdy(TimeSpan elapsed)
@@ -150,8 +165,9 @@ internal sealed class TurnProgress : IDisposable
         var model = !string.IsNullOrEmpty(_modelName)
             ? $" │ \x1b[33m{_modelName}\x1b[0m"
             : "";
-        return $"  \x1b[36m{spinner}\x1b[0m Thinking \x1b[2m{bar}\x1b[0m " +
-               $"\x1b[2m{FormatElapsed(elapsed)}{model} │ awaiting first token\x1b[0m";
+        var core = $"  \x1b[36m{spinner}\x1b[0m Thinking \x1b[2m{bar}\x1b[0m " +
+                   $"\x1b[2m{FormatElapsed(elapsed)}{model} │ awaiting first token\x1b[0m";
+        return AppendPreview(core, _thinkingPreview, 140);
     }
 
     internal static string BuildProgressBar(TimeSpan elapsed)
@@ -172,4 +188,16 @@ internal sealed class TurnProgress : IDisposable
         ts.TotalMinutes >= 1
             ? $"{ts.Minutes}m {ts.Seconds:D2}s"
             : $"{ts.TotalSeconds:F1}s";
+
+    private static string AppendPreview(string core, string? preview, int maxChars)
+    {
+        if (string.IsNullOrWhiteSpace(preview))
+            return core;
+
+        var compact = preview.Trim();
+        if (compact.Length > maxChars)
+            compact = string.Concat(compact.AsSpan(0, maxChars - 3), "...");
+
+        return $"{core} \x1b[2m│ {compact}\x1b[0m";
+    }
 }

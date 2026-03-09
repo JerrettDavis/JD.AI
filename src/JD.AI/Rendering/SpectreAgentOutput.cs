@@ -1,5 +1,7 @@
 using JD.AI.Core.Agents;
 using JD.AI.Core.Config;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace JD.AI.Rendering;
 
@@ -12,6 +14,9 @@ namespace JD.AI.Rendering;
 internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
 {
     private TurnProgress? _progress;
+    private readonly StringBuilder _thinkingBuffer = new();
+    private readonly List<string> _thinkingSteps = [];
+    private string? _lastThinkingDetail;
 
     public SpectreAgentOutput(SpinnerStyle style = SpinnerStyle.Normal, string? modelName = null)
     {
@@ -85,6 +90,9 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
 
     public void BeginTurn()
     {
+        _thinkingBuffer.Clear();
+        _thinkingSteps.Clear();
+        _lastThinkingDetail = null;
         _progress = new TurnProgress(Style, ModelName);
     }
 
@@ -99,16 +107,43 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
 
     public void BeginThinking()
     {
-        StopProgress();
-        ChatRenderer.BeginThinking();
+        if (ChatRenderer.CurrentOutputStyle == OutputStyle.Json)
+            ChatRenderer.BeginThinking();
     }
 
-    public void WriteThinkingChunk(string text) => ChatRenderer.WriteThinkingChunk(text);
-    public void EndThinking() => ChatRenderer.EndThinking();
+    public void WriteThinkingChunk(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return;
+
+        if (ChatRenderer.CurrentOutputStyle == OutputStyle.Json)
+        {
+            ChatRenderer.WriteThinkingChunk(text);
+            return;
+        }
+
+        _thinkingBuffer.Append(text);
+        UpdateThinkingSignals(text);
+        _progress?.SetThinkingPreview(GetLiveThinkingPreview());
+    }
+
+    public void EndThinking()
+    {
+        if (ChatRenderer.CurrentOutputStyle == OutputStyle.Json)
+            ChatRenderer.EndThinking();
+    }
 
     public void BeginStreaming()
     {
+        var summary = BuildThinkingSummary();
         StopProgress();
+
+        if (!string.IsNullOrWhiteSpace(summary) &&
+            Style is SpinnerStyle.Normal or SpinnerStyle.Rich or SpinnerStyle.Nerdy)
+        {
+            ChatRenderer.RenderInfo($"💭 Thought: {summary}");
+        }
+
         ChatRenderer.BeginStreaming();
     }
 
@@ -126,7 +161,112 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
     private void StopProgress()
     {
         if (_progress is null) return;
+        _progress.SetThinkingPreview(null);
         _progress.Dispose();
         _progress = null;
+    }
+
+    private void UpdateThinkingSignals(string chunk)
+    {
+        var normalized = chunk
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n');
+
+        var lines = normalized.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (var line in lines)
+        {
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
+            var compact = CollapseWhitespace(line);
+            if (IsStepCandidate(compact))
+            {
+                var step = CompactStepText(compact);
+                if (_thinkingSteps.Count == 0 ||
+                    !string.Equals(_thinkingSteps[^1], step, StringComparison.OrdinalIgnoreCase))
+                {
+                    _thinkingSteps.Add(step);
+                }
+
+                _lastThinkingDetail = step;
+            }
+            else
+            {
+                _lastThinkingDetail = compact;
+            }
+        }
+    }
+
+    private string? GetLiveThinkingPreview()
+    {
+        if (Style == SpinnerStyle.Minimal || Style == SpinnerStyle.None)
+            return null;
+
+        if (Style == SpinnerStyle.Normal)
+            return _lastThinkingDetail;
+
+        if (_thinkingSteps.Count == 0)
+            return _lastThinkingDetail;
+
+        var step = _thinkingSteps[^1];
+        if (string.IsNullOrWhiteSpace(_lastThinkingDetail) ||
+            string.Equals(step, _lastThinkingDetail, StringComparison.OrdinalIgnoreCase))
+        {
+            return $"▶ {step}";
+        }
+
+        return $"▶ {step} | {_lastThinkingDetail}";
+    }
+
+    private string? BuildThinkingSummary()
+    {
+        if (_thinkingSteps.Count > 0)
+        {
+            var joined = string.Join(" -> ", _thinkingSteps.Take(4));
+            return TrimForSummary(joined, 140);
+        }
+
+        if (!string.IsNullOrWhiteSpace(_lastThinkingDetail))
+            return TrimForSummary(_lastThinkingDetail, 140);
+
+        if (_thinkingBuffer.Length == 0)
+            return null;
+
+        return TrimForSummary(CollapseWhitespace(_thinkingBuffer.ToString()), 140);
+    }
+
+    private static bool IsStepCandidate(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return false;
+
+        if (Regex.IsMatch(text, @"^\d+\.\s+", RegexOptions.CultureInvariant))
+            return true;
+
+        var lower = text.ToLowerInvariant();
+        return lower.StartsWith("step ", StringComparison.Ordinal) ||
+               lower.StartsWith("next,", StringComparison.Ordinal) ||
+               lower.StartsWith("next ", StringComparison.Ordinal) ||
+               lower.StartsWith("now ", StringComparison.Ordinal) ||
+               lower.StartsWith("let's ", StringComparison.Ordinal) ||
+               lower.StartsWith("lets ", StringComparison.Ordinal) ||
+               lower.StartsWith("finally", StringComparison.Ordinal);
+    }
+
+    private static string CompactStepText(string text)
+    {
+        var compact = CollapseWhitespace(text);
+        return TrimForSummary(compact, 80);
+    }
+
+    private static string CollapseWhitespace(string text) =>
+        Regex.Replace(text, @"\s+", " ", RegexOptions.CultureInvariant).Trim();
+
+    private static string TrimForSummary(string text, int maxChars)
+    {
+        if (text.Length <= maxChars)
+            return text;
+
+        return string.Concat(text.AsSpan(0, maxChars - 3), "...");
     }
 }
