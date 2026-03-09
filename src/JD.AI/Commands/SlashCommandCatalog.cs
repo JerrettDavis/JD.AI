@@ -120,6 +120,19 @@ public static class SlashCommandCatalog
             "/spinner [style]",
             "Set progress style (none|minimal|normal|rich|nerdy)"),
         new(
+            SlashCommandId.Reasoning,
+            "/reasoning",
+            "/reasoning [auto|none|low|medium|high|max]",
+            "Show or set reasoning effort for compatible models",
+            AdditionalCompletions:
+            [
+                new SlashCommandDescriptor("/reasoning auto", "Use provider/model default reasoning effort"),
+                new SlashCommandDescriptor("/reasoning low", "Favor faster/cheaper reasoning"),
+                new SlashCommandDescriptor("/reasoning medium", "Balanced reasoning effort"),
+                new SlashCommandDescriptor("/reasoning high", "Deeper reasoning"),
+                new SlashCommandDescriptor("/reasoning max", "Maximum supported reasoning effort")
+            ]),
+        new(
             SlashCommandId.Local,
             "/local",
             "/local <cmd>",
@@ -397,6 +410,7 @@ public enum SlashCommandId
     Sandbox,
     Workflow,
     Spinner,
+    Reasoning,
     Local,
     Mcp,
     Context,

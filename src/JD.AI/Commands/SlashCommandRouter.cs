@@ -155,6 +155,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             SlashCommandId.Sandbox => ShowSandboxInfo(),
             SlashCommandId.Workflow => await HandleWorkflowAsync(arg, ct).ConfigureAwait(false),
             SlashCommandId.Spinner => HandleSpinner(arg),
+            SlashCommandId.Reasoning => HandleReasoning(arg),
             SlashCommandId.Local => await HandleLocalModelAsync(arg, ct).ConfigureAwait(false),
             SlashCommandId.Mcp => await HandleMcpAsync(arg, ct).ConfigureAwait(false),
             SlashCommandId.Context => GetContextUsage(),
@@ -244,7 +245,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
           Ctrl+R          — Reverse history search
           Ctrl+V          — Paste from clipboard
           Shift+Tab       — Toggle plan mode
-          Alt+T           — Toggle extended thinking
+          Alt+T           — Cycle reasoning effort (auto/low/medium/high/max)
           Alt+P           — Cycle through recent models
           Tab             — Accept completion
           Up/Down         — Navigate history / completion dropdown
@@ -1953,6 +1954,70 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 #pragma warning restore CA1031
 
         return $"Spinner style set to: {style.ToString().ToLowerInvariant()}";
+    }
+
+    private string HandleReasoning(string? arg)
+    {
+        if (string.IsNullOrWhiteSpace(arg))
+        {
+            var level = ToReasoningToken(_session.ReasoningEffortOverride);
+            var support = SupportsReasoningEffort(_session.CurrentModel)
+                ? "supported by current model/provider"
+                : "may be ignored by current model/provider";
+            return $"Reasoning effort: {level} ({support}). Usage: /reasoning [auto|none|low|medium|high|max]";
+        }
+
+        var token = arg.Trim().ToLowerInvariant();
+        ReasoningEffort? selected = token switch
+        {
+            "auto" => null,
+            "none" => ReasoningEffort.None,
+            "low" => ReasoningEffort.Low,
+            "medium" => ReasoningEffort.Medium,
+            "high" => ReasoningEffort.High,
+            "max" => ReasoningEffort.Max,
+            _ => null,
+        };
+
+        if (selected is null && !string.Equals(token, "auto", StringComparison.Ordinal))
+            return "Usage: /reasoning [auto|none|low|medium|high|max]";
+
+        _session.ReasoningEffortOverride = selected;
+
+        var warning = !SupportsReasoningEffort(_session.CurrentModel) && selected is not null
+            ? "\n⚠ Current model may ignore this setting."
+            : string.Empty;
+
+        return $"Reasoning effort set to: {ToReasoningToken(selected)}.{warning}";
+    }
+
+    private static string ToReasoningToken(ReasoningEffort? effort) =>
+        effort?.ToString().ToLowerInvariant() ?? "auto";
+
+    internal static bool SupportsReasoningEffort(ProviderModelInfo? model)
+    {
+        if (model is null)
+            return false;
+
+        var provider = model.ProviderName.ToLowerInvariant();
+        var id = model.Id.ToLowerInvariant();
+
+        if (provider.Contains("openai", StringComparison.Ordinal) ||
+            provider.Contains("anthropic", StringComparison.Ordinal) ||
+            provider.Contains("claude", StringComparison.Ordinal) ||
+            provider.Contains("gemini", StringComparison.Ordinal) ||
+            provider.Contains("google", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        return id.StartsWith("o1", StringComparison.Ordinal) ||
+               id.StartsWith("o3", StringComparison.Ordinal) ||
+               id.StartsWith("o4", StringComparison.Ordinal) ||
+               id.Contains("reasoning", StringComparison.Ordinal) ||
+               id.Contains("qwq", StringComparison.Ordinal) ||
+               id.Contains("deepseek-r1", StringComparison.Ordinal) ||
+               id.Contains("grok-3-mini", StringComparison.Ordinal);
     }
 
     private async Task<string> HandleLocalModelAsync(string? arg, CancellationToken ct)

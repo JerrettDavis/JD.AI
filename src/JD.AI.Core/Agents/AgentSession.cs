@@ -177,6 +177,11 @@ public sealed class AgentSession
     public PromptCacheTtl PromptCacheTtl { get; set; } = PromptCacheTtl.FiveMinutes;
 
     /// <summary>
+    /// Session-level reasoning effort override. Null means provider/model default ("auto").
+    /// </summary>
+    public ReasoningEffort? ReasoningEffortOverride { get; set; }
+
+    /// <summary>
     /// When true, emit verbose diagnostics (tool calls, arguments) to stderr.
     /// Set via --verbose CLI flag.
     /// </summary>
@@ -670,6 +675,24 @@ public sealed class AgentSession
     {
         History.Clear();
         TotalTokens = 0;
+    }
+
+    /// <summary>
+    /// Cycles reasoning effort for quick keyboard toggles:
+    /// auto -> low -> medium -> high -> max -> auto.
+    /// </summary>
+    public ReasoningEffort? CycleReasoningEffort()
+    {
+        ReasoningEffortOverride = ReasoningEffortOverride switch
+        {
+            null => ReasoningEffort.Low,
+            ReasoningEffort.Low => ReasoningEffort.Medium,
+            ReasoningEffort.Medium => ReasoningEffort.High,
+            ReasoningEffort.High => ReasoningEffort.Max,
+            _ => null,
+        };
+
+        return ReasoningEffortOverride;
     }
 
     /// <summary>
