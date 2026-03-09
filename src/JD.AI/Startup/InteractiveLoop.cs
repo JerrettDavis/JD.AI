@@ -254,7 +254,9 @@ internal sealed class InteractiveLoop
 
         interactiveInput.OnToggleExtendedThinking += (_, _) =>
         {
-            ChatRenderer.RenderInfo("Extended thinking is not yet available for this model.");
+            var next = session.CycleReasoningEffort();
+            var token = next?.ToString().ToLowerInvariant() ?? "auto";
+            ChatRenderer.RenderInfo($"Reasoning effort: {token}");
         };
 
         interactiveInput.OnCycleModel += (_, _) =>

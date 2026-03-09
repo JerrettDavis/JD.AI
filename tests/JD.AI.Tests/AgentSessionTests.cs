@@ -150,6 +150,18 @@ public sealed class AgentSessionTests
         Assert.Equal("a1", session.History[2].Content);
     }
 
+    [Fact]
+    public void CycleReasoningEffort_FollowsExpectedOrder()
+    {
+        var session = CreateSession();
+
+        Assert.Equal(ReasoningEffort.Low, session.CycleReasoningEffort());
+        Assert.Equal(ReasoningEffort.Medium, session.CycleReasoningEffort());
+        Assert.Equal(ReasoningEffort.High, session.CycleReasoningEffort());
+        Assert.Equal(ReasoningEffort.Max, session.CycleReasoningEffort());
+        Assert.Null(session.CycleReasoningEffort());
+    }
+
     // Dummy plugin for SwitchModel test
     private sealed class DummyPlugin
     {
