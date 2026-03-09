@@ -1294,4 +1294,30 @@ public sealed class SlashCommandRouterBddTests : TinyBddXunitBase
         session.History[0].Content.Should().Contain("System base");
         session.History[0].Content.Should().Contain("Additional system directive");
     }
+
+    // ── 55. /reasoning set updates session override ────────
+
+    [Scenario("Reasoning command updates session override"), Fact]
+    public async Task ReasoningCommandSetsOverride()
+    {
+        var (router, session) = CreateRouterWithSession();
+
+        var result = await router.ExecuteAsync("/reasoning high");
+
+        result.Should().Contain("high");
+        session.ReasoningEffortOverride.Should().Be(ReasoningEffort.High);
+    }
+
+    // ── 56. /reasoning with no arg shows current level ─────
+
+    [Scenario("Reasoning command with no args shows current level"), Fact]
+    public async Task ReasoningCommandShowsCurrentLevel()
+    {
+        var (router, session) = CreateRouterWithSession();
+        session.ReasoningEffortOverride = ReasoningEffort.Medium;
+
+        var result = await router.ExecuteAsync("/reasoning");
+
+        result.Should().Contain("medium");
+    }
 }

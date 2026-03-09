@@ -190,6 +190,57 @@ public sealed class BuildExecutionSettingsTests
         Assert.Null(openAiSettings.ToolCallBehavior);
     }
 
+    [Fact]
+    public void Settings_WithReasoningEffortOverride_OpenAISetsReasoningEffort()
+    {
+        var model = new ProviderModelInfo(
+            "o3-mini",
+            "o3-mini",
+            "OpenAI",
+            Capabilities: ModelCapabilities.Chat | ModelCapabilities.ToolCalling);
+
+        var registry = new ProviderRegistry([]);
+        var kernel = Kernel.CreateBuilder().Build();
+        var session = new AgentSession(registry, kernel, model)
+        {
+            ReasoningEffortOverride = ReasoningEffort.High,
+        };
+        var loop = new AgentLoop(session);
+
+        var settings = Build(loop);
+        var openAiSettings = Assert.IsType<OpenAIPromptExecutionSettings>(settings);
+
+        Assert.NotNull(openAiSettings.ExtensionData);
+        Assert.True(openAiSettings.ExtensionData!.ContainsKey("reasoning_effort"));
+        Assert.Equal("high", openAiSettings.ExtensionData["reasoning_effort"]);
+    }
+
+    [Fact]
+    public void Settings_WithReasoningEffortOverride_AnthropicSetsOutputConfig()
+    {
+        var model = new ProviderModelInfo(
+            "claude-sonnet-4-6",
+            "Claude Sonnet 4.6",
+            "Anthropic",
+            Capabilities: ModelCapabilities.Chat | ModelCapabilities.ToolCalling);
+
+        var registry = new ProviderRegistry([]);
+        var kernel = Kernel.CreateBuilder().Build();
+        var session = new AgentSession(registry, kernel, model)
+        {
+            ReasoningEffortOverride = ReasoningEffort.Max,
+        };
+        var loop = new AgentLoop(session);
+
+        var settings = Build(loop);
+        var openAiSettings = Assert.IsType<OpenAIPromptExecutionSettings>(settings);
+
+        Assert.NotNull(openAiSettings.ExtensionData);
+        Assert.True(openAiSettings.ExtensionData!.ContainsKey("output_config"));
+        var outputConfig = Assert.IsType<Dictionary<string, object?>>(openAiSettings.ExtensionData["output_config"]);
+        Assert.Equal("max", outputConfig["effort"]);
+    }
+
     // ── Settings type ──────────────────────────────────────
 
     [Fact]

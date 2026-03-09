@@ -778,7 +778,7 @@ public sealed class AgentLoop
             maxTokens = 4096;
         }
 
-        return new OpenAIPromptExecutionSettings
+        var settings = new OpenAIPromptExecutionSettings
         {
             ModelId = _session.CurrentModel?.Id,
             MaxTokens = maxTokens,
@@ -786,7 +786,82 @@ public sealed class AgentLoop
                 ? FunctionChoiceBehavior.Auto(autoInvoke: true)
                 : null,
         };
+        ApplyReasoningEffort(settings, _session.CurrentModel, _session.ReasoningEffortOverride);
+        return settings;
     }
+
+    internal static void ApplyReasoningEffort(
+        OpenAIPromptExecutionSettings settings,
+        ProviderModelInfo? model,
+        ReasoningEffort? effort)
+    {
+        if (effort is null)
+            return;
+
+        var provider = (model?.ProviderName ?? string.Empty).ToLowerInvariant();
+        var extensionData = settings.ExtensionData is null
+            ? new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, object>(settings.ExtensionData, StringComparer.OrdinalIgnoreCase);
+
+        if (provider.Contains("anthropic", StringComparison.Ordinal) ||
+            provider.Contains("claude", StringComparison.Ordinal))
+        {
+            extensionData["thinking"] = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["type"] = "adaptive",
+            };
+            extensionData["output_config"] = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["effort"] = MapAnthropicEffort(effort.Value),
+            };
+            settings.ExtensionData = extensionData;
+            return;
+        }
+
+        if (provider.Contains("google", StringComparison.Ordinal) ||
+            provider.Contains("gemini", StringComparison.Ordinal))
+        {
+            extensionData["thinking_config"] = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["thinking_level"] = MapGeminiEffort(effort.Value),
+            };
+            settings.ExtensionData = extensionData;
+            return;
+        }
+
+        extensionData["reasoning_effort"] = MapOpenAiEffort(effort.Value);
+        settings.ExtensionData = extensionData;
+    }
+
+    private static string MapOpenAiEffort(ReasoningEffort effort) => effort switch
+    {
+        ReasoningEffort.None => "low",
+        ReasoningEffort.Low => "low",
+        ReasoningEffort.Medium => "medium",
+        ReasoningEffort.High => "high",
+        ReasoningEffort.Max => "xhigh",
+        _ => "medium",
+    };
+
+    private static string MapAnthropicEffort(ReasoningEffort effort) => effort switch
+    {
+        ReasoningEffort.None => "low",
+        ReasoningEffort.Low => "low",
+        ReasoningEffort.Medium => "medium",
+        ReasoningEffort.High => "high",
+        ReasoningEffort.Max => "max",
+        _ => "high",
+    };
+
+    private static string MapGeminiEffort(ReasoningEffort effort) => effort switch
+    {
+        ReasoningEffort.None => "minimal",
+        ReasoningEffort.Low => "low",
+        ReasoningEffort.Medium => "medium",
+        ReasoningEffort.High => "high",
+        ReasoningEffort.Max => "high",
+        _ => "medium",
+    };
 
     /// <summary>
     /// Detects when a streaming connection was terminated prematurely by the server.
