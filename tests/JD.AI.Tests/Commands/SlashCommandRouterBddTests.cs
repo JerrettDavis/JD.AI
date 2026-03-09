@@ -1320,4 +1320,34 @@ public sealed class SlashCommandRouterBddTests : TinyBddXunitBase
 
         result.Should().Contain("medium");
     }
+
+    // ── 57. /model search invalid sort reports error ───────
+
+    [Scenario("Model search with invalid sort reports error"), Fact]
+    public async Task ModelSearchInvalidSortReportsError()
+    {
+        var router = CreateRouter();
+
+        var result = await router.ExecuteAsync("/model search --sort nope llama");
+
+        result.Should().Contain("Sort must be one of");
+    }
+
+    // ── 58. /model search provider filter can return no-results ──
+
+    [Scenario("Model search with provider filter returns no results when unmatched"), Fact]
+    public async Task ModelSearchProviderFilterReturnsNoResults()
+    {
+        _registry.GetModelsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<ProviderModelInfo>>(
+            [
+                new ProviderModelInfo("gpt-4.1", "GPT-4.1", "OpenAI"),
+            ]));
+
+        var router = CreateRouter();
+
+        var result = await router.ExecuteAsync("/model search --provider Ollama gpt-4");
+
+        result.Should().Contain("No models found");
+    }
 }
