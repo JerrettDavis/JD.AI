@@ -4,6 +4,7 @@ using JD.AI.Core.Agents;
 using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Config;
 using JD.AI.Core.Providers;
+using JD.AI.Core.Providers.Metadata;
 using JD.AI.Workflows;
 using JD.AI.Workflows.Store;
 using Microsoft.Extensions.DependencyInjection;
@@ -1350,4 +1351,64 @@ public sealed class SlashCommandRouterBddTests : TinyBddXunitBase
 
         result.Should().Contain("No models found");
     }
+
+    // ── 59. /model search accepts popularity sort ───────────
+
+    [Scenario("Model search with popularity sort is accepted"), Fact]
+    public async Task ModelSearchPopularitySortIsAccepted()
+    {
+        _registry.GetModelsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<ProviderModelInfo>>(
+            [
+                new ProviderModelInfo("gpt-4.1", "GPT-4.1", "OpenAI"),
+            ]));
+
+        var router = CreateRouter();
+
+        var result = await router.ExecuteAsync("/model search --sort popularity gpt");
+
+        result.Should().NotContain("Sort must be one of");
+    }
+
+    // ── 60. /model search includes LiteLLM catalog matches ──
+
+    [Scenario("Model search falls back to LiteLLM metadata catalog"), Fact]
+    public async Task ModelSearchUsesLiteLlmCatalog()
+    {
+        _registry.GetModelsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<ProviderModelInfo>>([]));
+
+        const string metadataJson = """
+            {
+              "openrouter/meta-llama/llama-3.1-8b-instruct": {
+                "litellm_provider": "openrouter",
+                "mode": "chat",
+                "max_input_tokens": 131072,
+                "max_output_tokens": 8192,
+                "input_cost_per_token": 0.0000001,
+                "output_cost_per_token": 0.0000002,
+                "supports_function_calling": true,
+                "supports_vision": false
+              }
+            }
+            """;
+
+        var source = Substitute.For<IModelMetadataSource>();
+        source.FetchAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<string?>(metadataJson));
+        var metadataProvider = new ModelMetadataProvider(source);
+
+        var kernel = Kernel.CreateBuilder().Build();
+        var model = new ProviderModelInfo("test-model", "Test Model", "TestProvider");
+        var session = new AgentSession(_registry, kernel, model);
+        var router = new SlashCommandRouter(
+            session,
+            _registry,
+            metadataProvider: metadataProvider);
+
+        var result = await router.ExecuteAsync("/model search --provider openrouter llama");
+
+        result.Should().NotContain("No models found");
+    }
+
 }

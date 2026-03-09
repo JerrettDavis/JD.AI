@@ -55,6 +55,7 @@ Supports optional filters:
 
 ```text
 /model search --provider openrouter --cap reasoning --sort cost llama
+/model search --sort popularity gpt
 ```
 
 ### `/model url <url>`

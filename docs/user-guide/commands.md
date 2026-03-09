@@ -57,6 +57,7 @@ Checks:
 /model gpt-4o
 /model search llama 70b
 /model search --provider openrouter --cap reasoning --sort cost llama
+/model search --sort popularity gpt
 /reasoning high
 /providers
 /provider add openai

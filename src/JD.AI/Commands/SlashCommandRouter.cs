@@ -355,6 +355,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             m => $"{m.ProviderName}|{m.Id}",
             m => m,
             StringComparer.OrdinalIgnoreCase);
+        var modelInfoMap = new Dictionary<string, ProviderModelInfo>(installedMap, StringComparer.OrdinalIgnoreCase);
 
         var results = installedMatches
             .Select(m => new RemoteModelResult(
@@ -366,6 +367,23 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                 null,
                 m.Capabilities))
             .ToList();
+        var resultKeys = new HashSet<string>(
+            results.Select(r => $"{r.ProviderName}|{r.Id}"),
+            StringComparer.OrdinalIgnoreCase);
+
+        foreach (var catalog in await SearchMetadataCatalogAsync(options, ct).ConfigureAwait(false))
+        {
+            var key = $"{catalog.Result.ProviderName}|{catalog.Result.Id}";
+            if (resultKeys.Add(key))
+            {
+                results.Add(catalog.Result);
+            }
+
+            if (!modelInfoMap.ContainsKey(key))
+            {
+                modelInfoMap[key] = catalog.ModelInfo;
+            }
+        }
 
         if (_modelSearchAggregator is not null && !string.IsNullOrWhiteSpace(options.Query))
         {
@@ -378,8 +396,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                         continue;
 
                     var key = $"{remote.ProviderName}|{remote.Id}";
-                    if (!installedMap.ContainsKey(key) &&
-                        results.All(r => !string.Equals($"{r.ProviderName}|{r.Id}", key, StringComparison.OrdinalIgnoreCase)))
+                    if (resultKeys.Add(key))
                     {
                         results.Add(remote);
                     }
@@ -395,7 +412,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         if (results.Count == 0)
             return $"No models found for '{options.Query}'.";
 
-        results = SortModelSearchResults(results, installedMap, options.Sort);
+        results = SortModelSearchResults(results, modelInfoMap, options.Sort);
 
         // Display results table
         var table = new Table()
@@ -417,12 +434,13 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
         foreach (var r in results)
         {
-            installedMap.TryGetValue($"{r.ProviderName}|{r.Id}", out var installed);
+            modelInfoMap.TryGetValue($"{r.ProviderName}|{r.Id}", out var modelInfo);
             var statusMarkup = r.Status switch
             {
                 "Installed" => "[green]Installed[/]",
                 "Available" or "Pull" => $"[yellow]{Markup.Escape(r.Status)}[/]",
                 "Download" => "[blue]Download[/]",
+                "Catalog" => "[grey]Catalog[/]",
                 _ => Markup.Escape(r.Status),
             };
 
@@ -430,9 +448,9 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                 Markup.Escape(r.ProviderName),
                 Markup.Escape(r.DisplayName),
                 r.Capabilities.ToBadge(),
-                installed is null ? "-" : installed.ContextWindowTokens.ToString("N0"),
-                installed is { HasMetadata: true }
-                    ? $"${installed.InputCostPerToken}/{installed.OutputCostPerToken}"
+                modelInfo is null ? "-" : modelInfo.ContextWindowTokens.ToString("N0"),
+                modelInfo is { HasMetadata: true }
+                    ? $"${modelInfo.InputCostPerToken}/{modelInfo.OutputCostPerToken}"
                     : "-",
                 statusMarkup);
         }
@@ -459,6 +477,10 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             return "Model search cancelled.";
         }
         catch (InvalidOperationException)
+        {
+            return "Model search cancelled.";
+        }
+        catch (NotSupportedException)
         {
             return "Model search cancelled.";
         }
@@ -494,13 +516,17 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         string? Capability,
         string Sort);
 
+    private sealed record CatalogSearchResult(
+        RemoteModelResult Result,
+        ProviderModelInfo ModelInfo);
+
     private static bool TryParseModelSearchOptions(
         string raw,
         out ModelSearchOptions options,
         out string error)
     {
         options = new ModelSearchOptions(string.Empty, null, null, "name");
-        error = "Usage: /model search [--provider <name>] [--cap <chat|tools|vision|embeddings|reasoning>] [--sort <name|context|cost>] <query>";
+        error = "Usage: /model search [--provider <name>] [--cap <chat|tools|vision|embeddings|reasoning>] [--sort <name|context|cost|popularity>] <query>";
 
         if (string.IsNullOrWhiteSpace(raw))
             return false;
@@ -542,9 +568,9 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         if (string.IsNullOrWhiteSpace(query))
             return false;
 
-        if (sort is not ("name" or "context" or "cost"))
+        if (sort is not ("name" or "context" or "cost" or "popularity"))
         {
-            error = "Sort must be one of: name, context, cost.";
+            error = "Sort must be one of: name, context, cost, popularity.";
             return false;
         }
 
@@ -616,25 +642,130 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         };
     }
 
+    private async Task<IReadOnlyList<CatalogSearchResult>> SearchMetadataCatalogAsync(
+        ModelSearchOptions options,
+        CancellationToken ct)
+    {
+        if (_metadataProvider is null || string.IsNullOrWhiteSpace(options.Query))
+            return [];
+
+        if (!_metadataProvider.IsLoaded)
+        {
+            await _metadataProvider.LoadAsync(ct: ct).ConfigureAwait(false);
+        }
+
+        var entries = _metadataProvider.GetEntriesSnapshot();
+        if (entries.Count == 0)
+            return [];
+
+        var results = new List<CatalogSearchResult>();
+        foreach (var (key, entry) in entries)
+        {
+            var providerToken = ResolveCatalogProviderToken(entry, key);
+            var providerName = ToDisplayProviderName(providerToken);
+            var modelId = StripProviderPrefix(key, providerToken);
+            var capabilities = ToCapabilities(entry);
+
+            var candidate = new RemoteModelResult(
+                modelId,
+                modelId,
+                providerName,
+                null,
+                "Catalog",
+                null,
+                capabilities);
+
+            if (MatchesRemoteSearch(candidate, options))
+            {
+                results.Add(new CatalogSearchResult(
+                    candidate,
+                    new ProviderModelInfo(
+                        modelId,
+                        modelId,
+                        providerName,
+                        ContextWindowTokens: entry.MaxInputTokens ?? 128_000,
+                        MaxOutputTokens: entry.MaxOutputTokens ?? 16_384,
+                        InputCostPerToken: entry.InputCostPerToken ?? 0m,
+                        OutputCostPerToken: entry.OutputCostPerToken ?? 0m,
+                        HasMetadata: true,
+                        Capabilities: capabilities)));
+            }
+        }
+
+        return results;
+    }
+
+    private static string ResolveCatalogProviderToken(ModelMetadataEntry entry, string key)
+    {
+        if (!string.IsNullOrWhiteSpace(entry.LitellmProvider))
+            return entry.LitellmProvider!;
+
+        var slash = key.IndexOf('/', StringComparison.Ordinal);
+        return slash > 0 ? key[..slash] : "unknown";
+    }
+
+    private static string StripProviderPrefix(string key, string providerToken)
+    {
+        if (!string.IsNullOrWhiteSpace(providerToken) &&
+            key.StartsWith(providerToken + "/", StringComparison.OrdinalIgnoreCase))
+        {
+            return key[(providerToken.Length + 1)..];
+        }
+
+        return key;
+    }
+
+    private static string ToDisplayProviderName(string providerToken) => providerToken.ToLowerInvariant() switch
+    {
+        "openai" => "OpenAI",
+        "openrouter" => "OpenRouter",
+        "azure" or "azure_ai" => "Azure OpenAI",
+        "anthropic" => "Anthropic",
+        "gemini" or "google" or "vertex_ai" => "Google Gemini",
+        "bedrock" or "bedrock_converse" => "Amazon Bedrock",
+        "huggingface" => "HuggingFace",
+        "mistral" => "Mistral",
+        "ollama" => "Ollama",
+        "foundrylocal" or "foundry_local" => "Foundry Local",
+        _ => providerToken,
+    };
+
+    private static ModelCapabilities ToCapabilities(ModelMetadataEntry entry)
+    {
+        var caps = ModelCapabilities.Chat;
+
+        if (entry.SupportsFunctionCalling is true)
+            caps |= ModelCapabilities.ToolCalling;
+        if (entry.SupportsVision is true)
+            caps |= ModelCapabilities.Vision;
+
+        return caps;
+    }
+
     private static List<RemoteModelResult> SortModelSearchResults(
         IEnumerable<RemoteModelResult> results,
-        Dictionary<string, ProviderModelInfo> installedMap,
+        Dictionary<string, ProviderModelInfo> modelInfoMap,
         string sort)
     {
         return sort switch
         {
             "context" => results
-                .OrderByDescending(r => installedMap.TryGetValue($"{r.ProviderName}|{r.Id}", out var m)
+                .OrderByDescending(r => modelInfoMap.TryGetValue($"{r.ProviderName}|{r.Id}", out var m)
                     ? m.ContextWindowTokens : 0)
                 .ThenBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
                 .ToList(),
             "cost" => results
                 .OrderBy(r =>
                 {
-                    if (!installedMap.TryGetValue($"{r.ProviderName}|{r.Id}", out var model) || !model.HasMetadata)
+                    if (!modelInfoMap.TryGetValue($"{r.ProviderName}|{r.Id}", out var model) || !model.HasMetadata)
                         return decimal.MaxValue;
                     return model.InputCostPerToken + model.OutputCostPerToken;
                 })
+                .ThenBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .ToList(),
+            "popularity" => results
+                .OrderByDescending(r => r.Status.Equals("Installed", StringComparison.OrdinalIgnoreCase))
+                .ThenBy(r => r.DisplayName.Length)
                 .ThenBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
                 .ToList(),
             _ => results
