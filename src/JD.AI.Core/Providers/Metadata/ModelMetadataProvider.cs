@@ -86,6 +86,18 @@ public sealed class ModelMetadataProvider
     }
 
     /// <summary>
+    /// Returns a copy of the currently loaded metadata entries keyed by LiteLLM model key.
+    /// Returns an empty dictionary when metadata has not been loaded.
+    /// </summary>
+    public IReadOnlyDictionary<string, ModelMetadataEntry> GetEntriesSnapshot()
+    {
+        if (_entries is null || _entries.Count == 0)
+            return new Dictionary<string, ModelMetadataEntry>(StringComparer.Ordinal);
+
+        return new Dictionary<string, ModelMetadataEntry>(_entries, StringComparer.Ordinal);
+    }
+
+    /// <summary>
     /// Enriches a list of models with metadata from the loaded catalog.
     /// Unmatched models are returned unchanged.
     /// </summary>
