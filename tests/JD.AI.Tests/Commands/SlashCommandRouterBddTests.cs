@@ -1378,7 +1378,7 @@ public sealed class SlashCommandRouterBddTests : TinyBddXunitBase
         _registry.GetModelsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<ProviderModelInfo>>([]));
 
-        const string metadataJson = """
+        const string MetadataJson = """
             {
               "openrouter/meta-llama/llama-3.1-8b-instruct": {
                 "litellm_provider": "openrouter",
@@ -1395,7 +1395,7 @@ public sealed class SlashCommandRouterBddTests : TinyBddXunitBase
 
         var source = Substitute.For<IModelMetadataSource>();
         source.FetchAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<string?>(metadataJson));
+            .Returns(Task.FromResult<string?>(MetadataJson));
         var metadataProvider = new ModelMetadataProvider(source);
 
         var kernel = Kernel.CreateBuilder().Build();

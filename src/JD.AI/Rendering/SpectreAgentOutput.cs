@@ -1,7 +1,7 @@
-using JD.AI.Core.Agents;
-using JD.AI.Core.Config;
 using System.Text;
 using System.Text.RegularExpressions;
+using JD.AI.Core.Agents;
+using JD.AI.Core.Config;
 
 namespace JD.AI.Rendering;
 
