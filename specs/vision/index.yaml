@@ -3,5 +3,5 @@ kind: VisionIndex
 entries:
   - id: vision.jdai.product
     title: JD.AI Product Vision
-    path: specs/vision/examples/vision.example.yaml
+    path: specs/vision/jdai-product-vision.yaml
     status: draft
