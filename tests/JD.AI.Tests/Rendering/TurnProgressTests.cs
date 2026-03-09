@@ -100,9 +100,10 @@ public sealed class TurnProgressTests : IDisposable
     public void FormatNerdy_ContainsModelName()
     {
         using var progress = new TurnProgress(SpinnerStyle.Nerdy, "gpt-4o");
+        progress.SetThinkingTokenCount(42);
         var result = progress.FormatNerdy(TimeSpan.FromSeconds(3));
         result.Should().Contain("gpt-4o");
-        result.Should().Contain("awaiting first token");
+        result.Should().Contain("42 think-tok");
     }
 
     [Fact]
@@ -122,6 +123,19 @@ public sealed class TurnProgressTests : IDisposable
         progress.SetThinkingPreview(longText);
         var result = progress.FormatRich(TimeSpan.FromSeconds(1));
         result.Should().Contain("...");
+    }
+
+    [Fact]
+    public void FormatRich_WithMultilinePreview_RendersMultipleLines()
+    {
+        using var progress = new TurnProgress(SpinnerStyle.Rich);
+        progress.SetThinkingPreview("✔ Step 1\n▶ Step 2\n│ detail");
+
+        var result = progress.FormatRich(TimeSpan.FromSeconds(1));
+
+        result.Should().Contain("\n");
+        result.Should().Contain("✔ Step 1");
+        result.Should().Contain("▶ Step 2");
     }
 
     // ── State transitions ────────────────────────────────────────────────
