@@ -1,5 +1,6 @@
 #pragma warning disable CA2227 // Collection properties should be read only — needed for IOptions binding
 
+using JD.AI.Core.Agents;
 using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Gateway.Config;
@@ -128,6 +129,9 @@ public sealed class ModelParameters
 
     /// <summary>Sequences that cause the model to stop generating further tokens.</summary>
     public IList<string> StopSequences { get; set; } = [];
+
+    /// <summary>Reasoning effort hint for compatible reasoning models.</summary>
+    public ReasoningEffort? ReasoningEffort { get; set; }
 }
 
 /// <summary>Routing rules that map channels to agents.</summary>

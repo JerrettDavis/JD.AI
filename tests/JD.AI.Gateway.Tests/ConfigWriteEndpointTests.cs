@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
 using JD.AI.Gateway.Config;
+using CoreReasoningEffort = JD.AI.Core.Agents.ReasoningEffort;
 
 namespace JD.AI.Gateway.Tests;
 
@@ -116,6 +117,7 @@ public sealed class ConfigWriteEndpointTests : IClassFixture<GatewayTestFactory>
                     RepeatPenalty = 1.2,
                     Seed = 42,
                     StopSequences = ["<|end|>"],
+                    ReasoningEffort = CoreReasoningEffort.Low,
                 }
             }
         };

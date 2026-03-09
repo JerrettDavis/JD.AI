@@ -44,8 +44,9 @@ Checks:
 |---------|-------------|
 | `/models` | List all available models across providers |
 | `/model <id>` | Switch to a different model (fuzzy-matches) |
-| `/model search <query>` | Search remote catalogs (Ollama, HuggingFace, Foundry Local) |
+| `/model search <query>` | Search models with optional provider/capability/sort filters |
 | `/model url <url>` | Pull a model from a URL |
+| `/reasoning [auto\|none\|low\|medium\|high\|max]` | Show or set session reasoning effort |
 | `/providers` | List detected providers with connection status |
 | `/provider` | Interactive picker to switch providers |
 | `/provider add <name>` | Configure an API-key provider interactively |
@@ -55,6 +56,8 @@ Checks:
 ```text
 /model gpt-4o
 /model search llama 70b
+/model search --provider openrouter --cap reasoning --sort cost llama
+/reasoning high
 /providers
 /provider add openai
 /provider test

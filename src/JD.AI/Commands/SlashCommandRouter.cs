@@ -3502,6 +3502,10 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             MaxTokens = 2200,
             Temperature = 0.1,
         };
+        AgentLoop.ApplyReasoningEffort(
+            settings,
+            _session.CurrentModel,
+            _session.ReasoningEffortOverride);
         PromptCachePolicy.Apply(
             settings,
             _session.CurrentModel,

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using JD.AI.Core.Agents;
 using JD.AI.Core.Events;
 using JD.AI.Core.PromptCaching;
 using JD.AI.Core.Providers;
@@ -91,7 +92,7 @@ public sealed class AgentPoolService : IHostedService
 
         agent.History.AddUserMessage(message);
         var chat = agent.Kernel.GetRequiredService<IChatCompletionService>();
-        var settings = BuildExecutionSettings(agent.Parameters);
+        var settings = BuildExecutionSettings(agent.Parameters, agent.Provider, agent.Model);
         PromptCachePolicy.Apply(
             settings,
             agent.Provider,
@@ -142,7 +143,7 @@ public sealed class AgentPoolService : IHostedService
                 new KeyValuePair<string, object?>("gen_ai.system", agent.Provider));
 
             // Try fallback providers before giving up
-            var fallbackResult = await TryFallbackProvidersAsync(agent, settings, ct).ConfigureAwait(false);
+            var fallbackResult = await TryFallbackProvidersAsync(agent, ct).ConfigureAwait(false);
             if (fallbackResult is not null)
             {
                 content = fallbackResult;
@@ -173,7 +174,7 @@ public sealed class AgentPoolService : IHostedService
     /// response content on first success, or <c>null</c> if all fallbacks fail.
     /// </summary>
     private async Task<string?> TryFallbackProvidersAsync(
-        AgentInstance agent, OpenAIPromptExecutionSettings settings, CancellationToken ct)
+        AgentInstance agent, CancellationToken ct)
     {
         if (agent.FallbackProviders.Count == 0)
             return null;
@@ -223,8 +224,20 @@ public sealed class AgentPoolService : IHostedService
                     new GatewayEvent("agent.fallback", agent.Id, DateTimeOffset.UtcNow,
                         new { Provider = fbProvider, Model = modelInfo.Id }), ct);
 
+                var fallbackSettings = BuildExecutionSettings(
+                    agent.Parameters,
+                    fbProvider,
+                    modelInfo.Id);
+                PromptCachePolicy.Apply(
+                    fallbackSettings,
+                    fbProvider,
+                    modelInfo.Id,
+                    agent.History,
+                    enabled: true,
+                    ttl: PromptCacheTtl.FiveMinutes);
+
                 var result = await fbChat.GetChatMessageContentAsync(
-                    agent.History, settings, cancellationToken: ct).ConfigureAwait(false);
+                    agent.History, fallbackSettings, cancellationToken: ct).ConfigureAwait(false);
 
                 return result.Content ?? "";
             }
@@ -370,7 +383,10 @@ public sealed class AgentPoolService : IHostedService
     public IProviderDetector? GetDetector(string provider) =>
         _providers.GetDetector(provider);
 
-    internal static OpenAIPromptExecutionSettings BuildExecutionSettings(ModelParameters? p)
+    internal static OpenAIPromptExecutionSettings BuildExecutionSettings(
+        ModelParameters? p,
+        string? providerName = null,
+        string? modelId = null)
     {
         var settings = new OpenAIPromptExecutionSettings
         {
@@ -393,6 +409,11 @@ public sealed class AgentPoolService : IHostedService
         if (p.RepeatPenalty.HasValue) extra["repeat_penalty"] = p.RepeatPenalty.Value;
 
         if (extra.Count > 0) settings.ExtensionData = extra;
+
+        AgentLoop.ApplyReasoningEffort(
+            settings,
+            new ProviderModelInfo(modelId ?? "unknown", modelId ?? "unknown", providerName ?? "unknown"),
+            p.ReasoningEffort);
 
         return settings;
     }

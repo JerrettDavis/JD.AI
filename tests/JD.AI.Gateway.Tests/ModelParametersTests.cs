@@ -1,6 +1,7 @@
 using FluentAssertions;
 using JD.AI.Gateway.Config;
 using JD.AI.Gateway.Services;
+using CoreReasoningEffort = JD.AI.Core.Agents.ReasoningEffort;
 
 namespace JD.AI.Gateway.Tests;
 
@@ -165,6 +166,34 @@ public sealed class ModelParametersTests
     }
 
     [Fact]
+    public void BuildExecutionSettings_ReasoningEffort_OpenAiProvider_MapsReasoningEffort()
+    {
+        var p = new ModelParameters { ReasoningEffort = CoreReasoningEffort.Max };
+
+        var settings = AgentPoolService.BuildExecutionSettings(
+            p, providerName: "OpenAI", modelId: "o3-mini");
+
+        settings.ExtensionData.Should().ContainKey("reasoning_effort");
+        settings.ExtensionData!["reasoning_effort"].Should().Be("xhigh");
+    }
+
+    [Fact]
+    public void BuildExecutionSettings_ReasoningEffort_AnthropicProvider_MapsOutputConfig()
+    {
+        var p = new ModelParameters { ReasoningEffort = CoreReasoningEffort.High };
+
+        var settings = AgentPoolService.BuildExecutionSettings(
+            p, providerName: "Anthropic", modelId: "claude-sonnet-4-6");
+
+        settings.ExtensionData.Should().ContainKey("thinking");
+        settings.ExtensionData.Should().ContainKey("output_config");
+        settings.ExtensionData!["output_config"]
+            .Should().BeOfType<Dictionary<string, object>>();
+        var outputConfig = (Dictionary<string, object>)settings.ExtensionData["output_config"];
+        outputConfig["effort"].Should().Be("high");
+    }
+
+    [Fact]
     public void BuildExecutionSettings_FullConfig_AllFieldsMapped()
     {
         var p = new ModelParameters
@@ -209,6 +238,7 @@ public sealed class ModelParametersTests
         p.PresencePenalty.Should().BeNull();
         p.RepeatPenalty.Should().BeNull();
         p.Seed.Should().BeNull();
+        p.ReasoningEffort.Should().BeNull();
         p.StopSequences.Should().BeEmpty();
     }
 

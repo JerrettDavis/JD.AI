@@ -51,6 +51,12 @@ Search remote model catalogs (Ollama, HuggingFace, Foundry Local) for models mat
 /model search phi-3
 ```
 
+Supports optional filters:
+
+```text
+/model search --provider openrouter --cap reasoning --sort cost llama
+```
+
 ### `/model url <url>`
 
 Pull a model directly from a URL. Supports Ollama model URLs, HuggingFace repository URLs, and direct GGUF download links.
@@ -120,6 +126,17 @@ Clears current conversation history for the active session.
 ### `/compact`
 
 Triggers context compaction immediately.
+
+### `/reasoning [auto|none|low|medium|high|max]`
+
+Shows or sets session reasoning effort override for compatible reasoning models.
+
+```text
+/reasoning
+/reasoning low
+/reasoning max
+/reasoning auto
+```
 
 ### `/context`
 

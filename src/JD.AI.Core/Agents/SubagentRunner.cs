@@ -66,6 +66,10 @@ public sealed class SubagentRunner
                 ? FunctionChoiceBehavior.Auto(autoInvoke: true)
                 : null,
         };
+        AgentLoop.ApplyReasoningEffort(
+            settings,
+            _parentSession.CurrentModel,
+            _parentSession.ReasoningEffortOverride);
         PromptCachePolicy.Apply(
             settings,
             _parentSession.CurrentModel,
