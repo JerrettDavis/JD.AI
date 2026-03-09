@@ -661,6 +661,34 @@ public sealed class SingleTurnExecutorTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_WithReasoningEffortOverride_MapsProviderReasoningSettings()
+    {
+        PromptExecutionSettings? capturedSettings = null;
+        var svc = Substitute.For<IChatCompletionService>();
+        svc.GetStreamingChatMessageContentsAsync(
+                Arg.Any<ChatHistory>(),
+                Arg.Do<PromptExecutionSettings>(s => capturedSettings = s),
+                Arg.Any<Kernel>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Chunks("ok"));
+
+        var model = new ProviderModelInfo("claude-sonnet-4-6", "Claude Sonnet 4.6", "Anthropic");
+        var session = SessionWithChatService(svc, model);
+        session.ReasoningEffortOverride = ReasoningEffort.Max;
+        var sut = new SingleTurnExecutor();
+
+        await sut.ExecuteAsync(Cfg(), session);
+
+        var openAiSettings = capturedSettings as Microsoft.SemanticKernel.Connectors.OpenAI.OpenAIPromptExecutionSettings;
+        openAiSettings.Should().NotBeNull();
+        openAiSettings!.ExtensionData.Should().ContainKey("output_config");
+        openAiSettings.ExtensionData!["output_config"]
+            .Should().BeOfType<Dictionary<string, object>>();
+        var outputConfig = (Dictionary<string, object>)openAiSettings.ExtensionData["output_config"];
+        outputConfig["effort"].Should().Be("max");
+    }
+
+    [Fact]
     public async Task ExecuteAsync_ModelMaxOutputTokensZero_DefaultsTo4096()
     {
         PromptExecutionSettings? capturedSettings = null;

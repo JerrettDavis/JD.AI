@@ -148,6 +148,10 @@ public sealed class AgentLoop
                     MaxTokens = _session.CurrentModel?.MaxOutputTokens is > 0
                         ? _session.CurrentModel.MaxOutputTokens : 4096,
                 };
+                ApplyReasoningEffort(
+                    retrySettings,
+                    _session.CurrentModel,
+                    _session.ReasoningEffortOverride);
 
                 var result = await chat.GetChatMessageContentAsync(
                     _session.History, retrySettings, _session.Kernel, ct).ConfigureAwait(false);
@@ -537,6 +541,10 @@ public sealed class AgentLoop
                     MaxTokens = _session.CurrentModel?.MaxOutputTokens is > 0
                         ? _session.CurrentModel.MaxOutputTokens : 4096,
                 };
+                ApplyReasoningEffort(
+                    retrySettings,
+                    _session.CurrentModel,
+                    _session.ReasoningEffortOverride);
 
                 var result = await chat.GetChatMessageContentAsync(
                     _session.History, retrySettings, _session.Kernel, ct).ConfigureAwait(false);
@@ -790,7 +798,7 @@ public sealed class AgentLoop
         return settings;
     }
 
-    internal static void ApplyReasoningEffort(
+    public static void ApplyReasoningEffort(
         OpenAIPromptExecutionSettings settings,
         ProviderModelInfo? model,
         ReasoningEffort? effort)
