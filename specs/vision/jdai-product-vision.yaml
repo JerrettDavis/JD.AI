@@ -1,0 +1,111 @@
+apiVersion: jdai.upss/v1
+kind: Vision
+id: vision.jdai.product
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-vision-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Establish the canonical JD.AI product vision as the root artifact for the UPSS specification graph.
+problemStatement: >-
+  AI-assisted development is tightly coupled to individual providers, models,
+  and proprietary tool ecosystems. Workflows are locked inside opaque platforms
+  that control governance, data residency, and extensibility. Developers and
+  teams cannot freely compose agents, tools, and channels across providers —
+  nor can they enforce their own privacy, compliance, and quality policies on
+  the AI that operates inside their repositories.
+mission: >-
+  Deliver an open, provider-agnostic AI platform where workflows, tools, and
+  governance are externalized and user-controlled — enabling developers and
+  organizations to compose any provider, model, channel, and tool into governed
+  agent pipelines without surrendering control of their data, processes, or
+  policies.
+targetUsers:
+  - id: user.individual-developer
+    name: Individual developers
+    needs:
+      - Use AI across providers and models from a single interface without vendor lock-in.
+      - Automate coding, testing, and review tasks through composable agent workflows.
+      - Run fully local models with no mandatory cloud connectivity or external telemetry.
+  - id: user.team-lead
+    name: Team leads and architects
+    needs:
+      - Orchestrate multi-agent workflows with sequential, fan-out, supervisor, and debate strategies.
+      - Enforce coding standards and review policies through governed agent pipelines.
+      - Maintain traceability from product intent through implementation to deployment.
+  - id: user.platform-engineer
+    name: Platform engineers
+    needs:
+      - Extend the platform with custom tools, providers, channels, and MCP servers.
+      - Manage tool loadouts and agent configurations across teams and environments.
+      - Integrate the agent runtime into CI/CD, observability, and infrastructure workflows.
+  - id: user.governance-owner
+    name: Governance and compliance owners
+    needs:
+      - Define and enforce privacy, data residency, and quality policies on all AI interactions.
+      - Audit traceability from product intent to deployed artifacts.
+      - Validate that specifications, tests, and operational changes remain aligned with approved intent.
+  - id: user.enterprise-admin
+    name: Enterprise and organization administrators
+    needs:
+      - Manage platform deployments, provider credentials, and policy rollouts across teams.
+      - Control which providers, models, and channels are available to different groups.
+      - Monitor platform usage, cost allocation, and compliance posture at organizational scale.
+valueProposition:
+  summary: >-
+    JD.AI externalizes AI workflows, tooling, and governance into a
+    provider-agnostic platform that developers own and extend — so teams can
+    compose any combination of providers, models, channels, and tools into
+    governed agent pipelines without vendor lock-in or loss of control.
+  differentiators:
+    - "Provider-agnostic runtime: 15+ providers from cloud APIs to fully local models, switchable at runtime without workflow changes."
+    - "Externalized workflows: composable multi-step automations defined in the repository, not locked inside a vendor platform."
+    - "Repo-native governance: specifications, policies, and validation live beside the code and are enforced in CI."
+    - "Multi-channel delivery: the same agent capabilities accessible through terminal, Discord, Slack, Signal, Telegram, and web."
+    - "Agent orchestration: subagent swarms with sequential, fan-out, supervisor, and debate coordination strategies."
+    - "Open extensibility: custom tools, providers, channels, MCP servers, skills, and plugins integrate through public APIs without forking core."
+    - "Privacy and data control: local model support, user-controlled data residency, no mandatory external telemetry."
+successMetrics:
+  - id: metric.provider-portability
+    name: Provider portability
+    target: "Any workflow runs unmodified across >=3 provider backends."
+    measurement: Integration tests exercising provider-swap scenarios across cloud and local providers.
+  - id: metric.governance-coverage
+    name: Governance coverage
+    target: ">=90% of canonical spec types have repo-native validation enforced in CI."
+    measurement: Automated audit of UPSS spec directories versus validator coverage.
+  - id: metric.channel-parity
+    name: Channel feature parity
+    target: "Core agent capabilities available on all supported channel adapters."
+    measurement: Feature matrix tests across terminal, Discord, Slack, Signal, Telegram, and web channels.
+  - id: metric.extensibility-surface
+    name: Extension surface area
+    target: "Custom tools, providers, channels, and MCP servers can be added without modifying core."
+    measurement: Integration tests verifying the plugin and extension lifecycle end-to-end.
+  - id: metric.traceability-coverage
+    name: Traceability coverage
+    target: ">=95% of implementation artifacts trace back to approved product intent."
+    measurement: Automated traceability audits across specs, code, tests, and deployment artifacts.
+constraints:
+  - All specifications must be stored in-repo and versioned alongside the code they govern.
+  - The platform must remain provider-agnostic with no hard dependency on any single AI provider or model family.
+  - Workflows, tools, and channel adapters must be composable and independently deployable.
+  - Governance policies must be enforceable in CI without depending on external control planes.
+  - Local-only operation must remain viable — the platform must function fully with local models and no cloud connectivity.
+  - Extensibility must not require forking core — custom tools, providers, channels, and MCP servers integrate through public APIs.
+nonGoals:
+  - Replace human approval for high-risk releases, security-sensitive changes, or compliance sign-offs.
+  - Become a hosted SaaS AI platform — JD.AI is a tool developers run, not a service they subscribe to.
+  - Implement foundation model training or fine-tuning pipelines.
+  - Encode sprint plans, milestones, staffing decisions, or project management inside the vision layer.
+  - Guarantee identical output across providers — provider-agnosticism means workflow portability, not output determinism.
+  - Provide a GUI-first experience — the terminal is the primary interface; other channels extend reach but do not replace it.
+trace:
+  upstream:
+    - docs/index.md
+    - docs/architecture/index.md
+  downstream:
+    capabilities: []
