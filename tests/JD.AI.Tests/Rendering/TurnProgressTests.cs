@@ -79,6 +79,15 @@ public sealed class TurnProgressTests : IDisposable
     }
 
     [Fact]
+    public void FormatNormal_WithThinkingPreview_IncludesPreview()
+    {
+        using var progress = new TurnProgress(SpinnerStyle.Normal);
+        progress.SetThinkingPreview("Analyzing auth middleware");
+        var result = progress.FormatNormal(TimeSpan.FromSeconds(2));
+        result.Should().Contain("Analyzing auth middleware");
+    }
+
+    [Fact]
     public void FormatRich_ContainsThinkingAndProgressBar()
     {
         using var progress = new TurnProgress(SpinnerStyle.Rich);
@@ -103,6 +112,16 @@ public sealed class TurnProgressTests : IDisposable
         var result = progress.FormatNerdy(TimeSpan.FromSeconds(1));
         result.Should().Contain("Thinking");
         result.Should().NotContain("│ \x1b[33m");
+    }
+
+    [Fact]
+    public void FormatRich_WithLongPreview_TruncatesPreview()
+    {
+        using var progress = new TurnProgress(SpinnerStyle.Rich);
+        var longText = new string('x', 240);
+        progress.SetThinkingPreview(longText);
+        var result = progress.FormatRich(TimeSpan.FromSeconds(1));
+        result.Should().Contain("...");
     }
 
     // ── State transitions ────────────────────────────────────────────────
