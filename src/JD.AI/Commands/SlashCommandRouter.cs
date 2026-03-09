@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -157,6 +158,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             SlashCommandId.Local => await HandleLocalModelAsync(arg, ct).ConfigureAwait(false),
             SlashCommandId.Mcp => await HandleMcpAsync(arg, ct).ConfigureAwait(false),
             SlashCommandId.Context => GetContextUsage(),
+            SlashCommandId.SystemPrompt => HandleSystemPrompt(arg),
+            SlashCommandId.Prompt => await HandlePromptAsync(arg, ct).ConfigureAwait(false),
             SlashCommandId.CompactSystemPrompt => await CompactSystemPromptAsync(arg, ct).ConfigureAwait(false),
             SlashCommandId.Copy => await CopyLastResponseInstanceAsync().ConfigureAwait(false),
             SlashCommandId.Diff => await ShowDiffAsync(ct).ConfigureAwait(false),
@@ -2299,7 +2302,383 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         var filledCount = (int)(pct / 2);
         if (filledCount > 50) filledCount = 50;
         var bar = new string('█', filledCount) + new string('░', 50 - filledCount);
-        return $"Context: [{bar}] {used:N0}/{max:N0} tokens ({pct:F1}%)";
+        return $"Context: [{bar}] {used:N0}/{max:N0} tokens ({pct:F1}%)\nUse /prompt to inspect message-level context.";
+    }
+
+    private string HandleSystemPrompt(string? arg)
+    {
+        _session.CaptureOriginalSystemPromptIfUnset();
+        var current = GetCurrentSystemPromptText();
+
+        if (string.IsNullOrWhiteSpace(arg))
+        {
+            if (string.IsNullOrWhiteSpace(current))
+                return "No system prompt is currently loaded.";
+
+            return $"System prompt ({_session.SystemPromptTokens:N0} tokens):\n\n{current}";
+        }
+
+        var trimmed = arg.Trim();
+        if (string.Equals(trimmed, "reset", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!_session.TryResetSystemPrompt())
+                return "No original startup system prompt is available to reset.";
+
+            return $"System prompt reset to original startup text ({_session.SystemPromptTokens:N0} tokens).";
+        }
+
+        if (string.Equals(trimmed, "edit", StringComparison.OrdinalIgnoreCase))
+        {
+            return EditSystemPromptInEditor();
+        }
+
+        const string appendPrefix = "append ";
+        if (trimmed.StartsWith(appendPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            var text = trimmed[appendPrefix.Length..].Trim();
+            if (string.IsNullOrWhiteSpace(text))
+                return "Usage: /system-prompt append <text>";
+
+            var before = _session.SystemPromptTokens;
+            var next = string.IsNullOrWhiteSpace(current) ? text : $"{current}\n\n{text}";
+            _session.ReplaceSystemPrompt(next);
+            return FormatSystemPromptUpdateResult("Appended to", before, _session.SystemPromptTokens);
+        }
+
+        const string prependPrefix = "prepend ";
+        if (trimmed.StartsWith(prependPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            var text = trimmed[prependPrefix.Length..].Trim();
+            if (string.IsNullOrWhiteSpace(text))
+                return "Usage: /system-prompt prepend <text>";
+
+            var before = _session.SystemPromptTokens;
+            var next = string.IsNullOrWhiteSpace(current) ? text : $"{text}\n\n{current}";
+            _session.ReplaceSystemPrompt(next);
+            return FormatSystemPromptUpdateResult("Prepended to", before, _session.SystemPromptTokens);
+        }
+
+        const string replacePrefix = "replace ";
+        if (trimmed.StartsWith(replacePrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            var target = trimmed[replacePrefix.Length..].Trim();
+            if (string.IsNullOrWhiteSpace(target))
+                return "Usage: /system-prompt replace <file-path|text>";
+
+            var cleanedTarget = target.Trim().Trim('"');
+            var replacement = File.Exists(cleanedTarget)
+                ? File.ReadAllText(cleanedTarget)
+                : target;
+
+            if (string.IsNullOrWhiteSpace(replacement))
+                return "Replacement system prompt cannot be empty.";
+
+            var before = _session.SystemPromptTokens;
+            _session.ReplaceSystemPrompt(replacement);
+            return FormatSystemPromptUpdateResult("Replaced", before, _session.SystemPromptTokens);
+        }
+
+        return "Usage: /system-prompt [append <text>|prepend <text>|replace <file-path|text>|reset|edit]";
+    }
+
+    private async Task<string> HandlePromptAsync(string? arg, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(arg))
+            return RenderPromptView(full: false);
+
+        var trimmed = arg.Trim();
+        if (string.Equals(trimmed, "--full", StringComparison.OrdinalIgnoreCase))
+            return RenderPromptView(full: true);
+
+        const string dropPrefix = "drop ";
+        if (trimmed.StartsWith(dropPrefix, StringComparison.OrdinalIgnoreCase))
+            return DropPromptMessages(trimmed[dropPrefix.Length..].Trim());
+
+        const string injectPrefix = "inject ";
+        if (trimmed.StartsWith(injectPrefix, StringComparison.OrdinalIgnoreCase))
+            return InjectPromptMessage(trimmed[injectPrefix.Length..].Trim());
+
+        if (string.Equals(trimmed, "export", StringComparison.OrdinalIgnoreCase))
+            return await ExportPromptAsync(null, ct).ConfigureAwait(false);
+
+        const string exportPrefix = "export ";
+        if (trimmed.StartsWith(exportPrefix, StringComparison.OrdinalIgnoreCase))
+            return await ExportPromptAsync(trimmed[exportPrefix.Length..].Trim(), ct).ConfigureAwait(false);
+
+        return "Usage: /prompt [--full|drop <n[-m]>|inject [--system] <text>|export [path]]";
+    }
+
+    private string RenderPromptView(bool full)
+    {
+        var sb = new StringBuilder();
+        var systemTokens = _session.SystemPromptTokens;
+        sb.AppendLine($"System Prompt: {systemTokens:N0} tokens (use /system-prompt to view/edit)");
+        sb.AppendLine(new string('─', 24));
+
+        var indexed = GetIndexedPromptMessages();
+        if (indexed.Count == 0)
+        {
+            sb.AppendLine("No non-system messages in context.");
+        }
+        else
+        {
+            foreach (var entry in indexed)
+            {
+                var role = entry.Message.Role.ToString().ToLowerInvariant();
+                var content = entry.Message.Content ?? string.Empty;
+                var msgTokens = JD.SemanticKernel.Extensions.Compaction.TokenEstimator.EstimateTokens(content);
+
+                if (full)
+                {
+                    sb.AppendLine($"#{entry.DisplayIndex} [{role}] ({msgTokens:N0} tokens)");
+                    sb.AppendLine(string.IsNullOrWhiteSpace(content) ? "(empty)" : content);
+                    sb.AppendLine();
+                    continue;
+                }
+
+                var preview = BuildSingleLinePreview(content, 80);
+                sb.AppendLine($"#{entry.DisplayIndex} [{role}] {preview} ({msgTokens:N0} tokens)");
+            }
+        }
+
+        var totalTokens = JD.SemanticKernel.Extensions.Compaction.TokenEstimator.EstimateTokens(_session.History);
+        var contextWindow = _session.CurrentModel?.ContextWindowTokens ?? 128_000;
+        var pct = contextWindow > 0 ? (100.0 * totalTokens / contextWindow) : 0;
+        sb.AppendLine(new string('─', 24));
+        sb.AppendLine($"Total: {totalTokens:N0} / {contextWindow:N0} tokens ({pct:F1}%)");
+        return sb.ToString().TrimEnd();
+    }
+
+    private string DropPromptMessages(string indexSpec)
+    {
+        if (!TryParseDisplayRange(indexSpec, out var start, out var end))
+            return "Usage: /prompt drop <n> or /prompt drop <n-m>";
+
+        var indexed = GetIndexedPromptMessages();
+        if (indexed.Count == 0)
+            return "No non-system messages available to drop.";
+
+        if (start < 1 || end < start || end > indexed.Count)
+            return $"Range must be between 1 and {indexed.Count}.";
+
+        var toRemove = indexed
+            .Where(e => e.DisplayIndex >= start && e.DisplayIndex <= end)
+            .Select(e => e.HistoryIndex)
+            .OrderByDescending(i => i)
+            .ToList();
+
+        var before = JD.SemanticKernel.Extensions.Compaction.TokenEstimator.EstimateTokens(_session.History);
+        foreach (var historyIndex in toRemove)
+            _session.History.RemoveAt(historyIndex);
+        var after = JD.SemanticKernel.Extensions.Compaction.TokenEstimator.EstimateTokens(_session.History);
+
+        var dropped = end - start + 1;
+        var range = start == end ? $"#{start}" : $"#{start}-#{end}";
+        return $"Dropped {dropped} context message(s) ({range}). Tokens: {before:N0} -> {after:N0}.";
+    }
+
+    private string InjectPromptMessage(string payload)
+    {
+        if (string.IsNullOrWhiteSpace(payload))
+            return "Usage: /prompt inject [--system] <text>";
+
+        const string systemPrefix = "--system ";
+        if (payload.StartsWith(systemPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            var text = payload[systemPrefix.Length..].Trim();
+            if (string.IsNullOrWhiteSpace(text))
+                return "Usage: /prompt inject --system <text>";
+
+            _session.CaptureOriginalSystemPromptIfUnset();
+            var current = GetCurrentSystemPromptText();
+            var next = string.IsNullOrWhiteSpace(current) ? text : $"{current}\n\n{text}";
+            var before = _session.SystemPromptTokens;
+            _session.ReplaceSystemPrompt(next);
+            return $"Injected system context. System prompt tokens: {before:N0} -> {_session.SystemPromptTokens:N0}.";
+        }
+
+        _session.History.AddUserMessage(payload);
+        var index = GetIndexedPromptMessages().Count;
+        return $"Injected user context as message #{index}.";
+    }
+
+    private async Task<string> ExportPromptAsync(string? path, CancellationToken ct)
+    {
+        var targetPath = string.IsNullOrWhiteSpace(path)
+            ? Path.Combine(Directory.GetCurrentDirectory(), $"context-export-{DateTime.UtcNow:yyyyMMdd-HHmmss}.md")
+            : path.Trim().Trim('"');
+
+        var fullPath = Path.GetFullPath(targetPath);
+        var dir = Path.GetDirectoryName(fullPath);
+        if (!string.IsNullOrWhiteSpace(dir))
+            Directory.CreateDirectory(dir);
+
+        var markdown = BuildPromptExportMarkdown();
+        await File.WriteAllTextAsync(fullPath, markdown, ct).ConfigureAwait(false);
+        return $"Prompt context exported to {fullPath}";
+    }
+
+    private string BuildPromptExportMarkdown()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("# Prompt Context Export");
+        sb.AppendLine();
+        sb.AppendLine($"- Generated (UTC): {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}");
+        sb.AppendLine($"- Model: {_session.CurrentModel?.Id ?? "(unknown)"}");
+        sb.AppendLine();
+
+        for (var i = 0; i < _session.History.Count; i++)
+        {
+            var msg = _session.History[i];
+            var role = msg.Role.ToString().ToLowerInvariant();
+            var content = msg.Content ?? string.Empty;
+            var tokens = JD.SemanticKernel.Extensions.Compaction.TokenEstimator.EstimateTokens(content);
+
+            sb.AppendLine($"## {i + 1}. {role} ({tokens:N0} tokens)");
+            sb.AppendLine();
+            sb.AppendLine(string.IsNullOrWhiteSpace(content) ? "(empty)" : content);
+            sb.AppendLine();
+        }
+
+        return sb.ToString().TrimEnd();
+    }
+
+    private string? GetCurrentSystemPromptText() =>
+        _session.History.FirstOrDefault(m => m.Role == AuthorRole.System)?.Content;
+
+    private static string FormatSystemPromptUpdateResult(string action, int beforeTokens, int afterTokens)
+    {
+        var delta = afterTokens - beforeTokens;
+        var deltaText = delta == 0 ? "0" : delta > 0 ? $"+{delta:N0}" : $"{delta:N0}";
+        return $"{action} system prompt. Before: {beforeTokens:N0} tokens; After: {afterTokens:N0} tokens ({deltaText}).";
+    }
+
+    private string EditSystemPromptInEditor()
+    {
+        var current = GetCurrentSystemPromptText();
+        if (string.IsNullOrWhiteSpace(current))
+            return "No system prompt is currently loaded.";
+
+        var editorSpec = Environment.GetEnvironmentVariable("EDITOR");
+        if (string.IsNullOrWhiteSpace(editorSpec))
+            editorSpec = OperatingSystem.IsWindows() ? "notepad" : "vi";
+
+        var tempPath = Path.Combine(
+            Path.GetTempPath(),
+            $"jdai-system-prompt-{Guid.NewGuid():N}.md");
+        File.WriteAllText(tempPath, current);
+
+        try
+        {
+            var parts = editorSpec
+                .Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (parts.Length == 0)
+                return "Unable to launch editor: EDITOR is empty.";
+
+            var executable = parts[0];
+            var args = parts.Length > 1
+                ? $"{parts[1]} \"{tempPath}\""
+                : $"\"{tempPath}\"";
+
+            using var process = Process.Start(new ProcessStartInfo(executable, args)
+            {
+                UseShellExecute = false,
+            });
+
+            if (process is null)
+                return $"Unable to launch editor '{editorSpec}'.";
+
+            process.WaitForExit();
+            if (process.ExitCode != 0)
+                return $"Editor exited with code {process.ExitCode}. No changes applied.";
+
+            var edited = File.ReadAllText(tempPath);
+            if (string.IsNullOrWhiteSpace(edited))
+                return "Edited system prompt is empty. No changes applied.";
+
+            if (string.Equals(edited, current, StringComparison.Ordinal))
+                return "System prompt unchanged.";
+
+            var before = _session.SystemPromptTokens;
+            _session.ReplaceSystemPrompt(edited);
+            return FormatSystemPromptUpdateResult("Updated", before, _session.SystemPromptTokens);
+        }
+        catch (Exception ex)
+        {
+            return $"Failed to edit system prompt: {ex.Message}";
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(tempPath))
+                    File.Delete(tempPath);
+            }
+#pragma warning disable CA1031
+            catch
+#pragma warning restore CA1031
+            {
+                // Best effort cleanup for temp file.
+            }
+        }
+    }
+
+    private List<(int DisplayIndex, int HistoryIndex, ChatMessageContent Message)> GetIndexedPromptMessages()
+    {
+        var result = new List<(int DisplayIndex, int HistoryIndex, ChatMessageContent Message)>();
+        var displayIndex = 1;
+        for (var i = 0; i < _session.History.Count; i++)
+        {
+            var msg = _session.History[i];
+            if (msg.Role == AuthorRole.System)
+                continue;
+
+            result.Add((displayIndex, i, msg));
+            displayIndex++;
+        }
+
+        return result;
+    }
+
+    private static string BuildSingleLinePreview(string text, int maxChars)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return "(empty)";
+
+        var singleLine = text
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n')
+            .Replace('\n', ' ')
+            .Trim();
+
+        if (singleLine.Length <= maxChars)
+            return singleLine;
+
+        return string.Concat(singleLine.AsSpan(0, maxChars - 3), "...");
+    }
+
+    private static bool TryParseDisplayRange(string input, out int start, out int end)
+    {
+        start = 0;
+        end = 0;
+        if (string.IsNullOrWhiteSpace(input))
+            return false;
+
+        var trimmed = input.Trim();
+        var dash = trimmed.IndexOf('-');
+        if (dash < 0)
+        {
+            if (!int.TryParse(trimmed, out start))
+                return false;
+            end = start;
+            return true;
+        }
+
+        var left = trimmed[..dash].Trim();
+        var right = trimmed[(dash + 1)..].Trim();
+        if (!int.TryParse(left, out start) || !int.TryParse(right, out end))
+            return false;
+        return true;
     }
 
     private async Task<string> CompactSystemPromptAsync(string? arg, CancellationToken ct)
@@ -2315,10 +2694,11 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             if (before == 0)
                 return "No system prompt to compact.";
 
+            _session.CaptureOriginalSystemPromptIfUnset();
             var after = await _session.CompactSystemPromptAsync(budgetTokens, ct).ConfigureAwait(false);
             return before == after
-                ? $"System prompt already within budget ({before:N0} tokens ≤ {budgetTokens:N0} budget)."
-                : $"System prompt compacted: {before:N0} → {after:N0} tokens (budget: {budgetTokens:N0}).";
+                ? $"System prompt already within budget ({before:N0} tokens ≤ {budgetTokens:N0} budget).\nUse /system-prompt to inspect the current prompt."
+                : $"System prompt compacted: {before:N0} → {after:N0} tokens (budget: {budgetTokens:N0}).\nUse /system-prompt to inspect the current prompt.";
         }
 
         // off/auto/always: persist setting

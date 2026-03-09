@@ -1,6 +1,7 @@
 using JD.AI.Core.Agents;
 using JD.AI.Core.Providers;
 using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
 using NSubstitute;
 using Xunit;
 
@@ -117,6 +118,36 @@ public sealed class AgentSessionTests
         await session.CompactAsync();
 
         Assert.Single(session.History);
+    }
+
+    [Fact]
+    public void CaptureOriginalSystemPromptIfUnset_ThenReset_RestoresOriginalText()
+    {
+        var session = CreateSession();
+        session.History.AddSystemMessage("Original system prompt");
+        session.CaptureOriginalSystemPromptIfUnset();
+
+        session.ReplaceSystemPrompt("Modified system prompt");
+        var reset = session.TryResetSystemPrompt();
+
+        Assert.True(reset);
+        Assert.Equal("Original system prompt", session.History[0].Content);
+    }
+
+    [Fact]
+    public void ReplaceSystemPrompt_ReplacesFirstSystemMessageInPlace()
+    {
+        var session = CreateSession();
+        session.History.AddUserMessage("u1");
+        session.History.AddSystemMessage("old");
+        session.History.AddAssistantMessage("a1");
+
+        session.ReplaceSystemPrompt("new");
+
+        Assert.Equal("u1", session.History[0].Content);
+        Assert.Equal(AuthorRole.System, session.History[1].Role);
+        Assert.Equal("new", session.History[1].Content);
+        Assert.Equal("a1", session.History[2].Content);
     }
 
     // Dummy plugin for SwitchModel test

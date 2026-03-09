@@ -1245,4 +1245,53 @@ public sealed class SlashCommandRouterBddTests : TinyBddXunitBase
             Arg.Any<AgentWorkflowDefinition>(),
             Arg.Any<CancellationToken>());
     }
+
+    // ── 52. /system-prompt append updates prompt ────────────
+
+    [Scenario("System-prompt append updates the active system prompt"), Fact]
+    public async Task SystemPromptAppendUpdatesPrompt()
+    {
+        var (router, session) = CreateRouterWithSession();
+        session.History.AddSystemMessage("Base prompt");
+        session.CaptureOriginalSystemPromptIfUnset();
+
+        var result = await router.ExecuteAsync("/system-prompt append Always cite files");
+
+        result.Should().Contain("Appended");
+        session.History[0].Content.Should().Contain("Base prompt");
+        session.History[0].Content.Should().Contain("Always cite files");
+    }
+
+    // ── 53. /prompt drop removes selected message ───────────
+
+    [Scenario("Prompt drop removes a selected context message"), Fact]
+    public async Task PromptDropRemovesMessage()
+    {
+        var (router, session) = CreateRouterWithSession();
+        session.History.AddSystemMessage("System");
+        session.History.AddUserMessage("User one");
+        session.History.AddAssistantMessage("Assistant one");
+
+        var result = await router.ExecuteAsync("/prompt drop 1");
+
+        result.Should().Contain("Dropped 1");
+        session.History.Count(m => m.Role != AuthorRole.System).Should().Be(1);
+        session.History.Last().Content.Should().Be("Assistant one");
+    }
+
+    // ── 54. /prompt inject --system augments prompt ─────────
+
+    [Scenario("Prompt inject system augments current system prompt"), Fact]
+    public async Task PromptInjectSystemAugmentsPrompt()
+    {
+        var (router, session) = CreateRouterWithSession();
+        session.History.AddSystemMessage("System base");
+        session.CaptureOriginalSystemPromptIfUnset();
+
+        var result = await router.ExecuteAsync("/prompt inject --system Additional system directive");
+
+        result.Should().Contain("Injected system context");
+        session.History[0].Content.Should().Contain("System base");
+        session.History[0].Content.Should().Contain("Additional system directive");
+    }
 }

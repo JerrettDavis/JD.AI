@@ -45,6 +45,7 @@ public sealed class AgentSession
     // ── System prompt cache ──────────────────────────────────
     private string? _cachedSystemPromptText;
     private int _cachedSystemPromptTokens;
+    private string? _originalSystemPromptText;
 
     public ChatHistory History { get; } = new();
     public ProviderModelInfo? CurrentModel { get; private set; }
@@ -402,6 +403,71 @@ public sealed class AgentSession
     }
 
     /// <summary>
+    /// Original system prompt captured at session startup (before compaction or runtime edits).
+    /// </summary>
+    public string? OriginalSystemPrompt => _originalSystemPromptText;
+
+    /// <summary>
+    /// Captures the original system prompt if it has not already been captured.
+    /// </summary>
+    public void CaptureOriginalSystemPromptIfUnset(string? prompt = null)
+    {
+        if (!string.IsNullOrWhiteSpace(_originalSystemPromptText))
+            return;
+
+        var candidate = prompt;
+        if (string.IsNullOrWhiteSpace(candidate))
+            candidate = History.FirstOrDefault(m => m.Role == AuthorRole.System)?.Content;
+
+        if (!string.IsNullOrWhiteSpace(candidate))
+            _originalSystemPromptText = candidate;
+    }
+
+    /// <summary>
+    /// Replaces the current system prompt in chat history, inserting one if absent.
+    /// </summary>
+    public void ReplaceSystemPrompt(string prompt)
+    {
+        var normalized = prompt ?? string.Empty;
+        var idx = -1;
+        for (var i = 0; i < History.Count; i++)
+        {
+            if (History[i].Role == AuthorRole.System)
+            {
+                idx = i;
+                break;
+            }
+        }
+
+        var message = new ChatMessageContent(AuthorRole.System, normalized);
+        if (idx >= 0)
+        {
+            History.RemoveAt(idx);
+            History.Insert(idx, message);
+        }
+        else
+        {
+            History.Insert(0, message);
+        }
+
+        _cachedSystemPromptText = normalized;
+        _cachedSystemPromptTokens = TokenEstimator.EstimateTokens(normalized);
+    }
+
+    /// <summary>
+    /// Restores the current system prompt to the originally captured startup text.
+    /// </summary>
+    public bool TryResetSystemPrompt()
+    {
+        CaptureOriginalSystemPromptIfUnset();
+        if (string.IsNullOrWhiteSpace(_originalSystemPromptText))
+            return false;
+
+        ReplaceSystemPrompt(_originalSystemPromptText);
+        return true;
+    }
+
+    /// <summary>
     /// Compacts the system prompt using the LLM to summarize it while preserving key instructions.
     /// Returns the new token count. Skips if already within budget.
     /// </summary>
@@ -435,14 +501,8 @@ public sealed class AgentSession
 
         var compacted = result.Content ?? systemMsg.Content ?? "";
 
-        // Replace system message and update cache
-        var idx = History.IndexOf(systemMsg);
-        History.RemoveAt(idx);
-        History.Insert(idx, new ChatMessageContent(AuthorRole.System, compacted));
-        _cachedSystemPromptText = compacted;
-        _cachedSystemPromptTokens = TokenEstimator.EstimateTokens(compacted);
-
-        return _cachedSystemPromptTokens;
+        ReplaceSystemPrompt(compacted);
+        return SystemPromptTokens;
     }
 
     /// <summary>
