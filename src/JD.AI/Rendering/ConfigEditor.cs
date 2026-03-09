@@ -197,10 +197,10 @@ internal static class ConfigEditor
 
         // Pre-select currently enabled items
         if (welcome.ShowModelSummary) prompt.Select(allOptions[0]);
-        if (welcome.ShowServices)     prompt.Select(allOptions[1]);
+        if (welcome.ShowServices) prompt.Select(allOptions[1]);
         if (welcome.ShowWorkingDirectory) prompt.Select(allOptions[2]);
-        if (welcome.ShowVersion)      prompt.Select(allOptions[3]);
-        if (welcome.ShowMotd)         prompt.Select(allOptions[4]);
+        if (welcome.ShowVersion) prompt.Select(allOptions[3]);
+        if (welcome.ShowMotd) prompt.Select(allOptions[4]);
 
         IList<(string Label, string Id)> selected;
         try
@@ -219,11 +219,11 @@ internal static class ConfigEditor
         var selectedIds = selected.Select(o => o.Id).ToHashSet();
         var updated = welcome with
         {
-            ShowModelSummary    = selectedIds.Contains("model_summary"),
-            ShowServices        = selectedIds.Contains("services"),
+            ShowModelSummary = selectedIds.Contains("model_summary"),
+            ShowServices = selectedIds.Contains("services"),
             ShowWorkingDirectory = selectedIds.Contains("cwd"),
-            ShowVersion         = selectedIds.Contains("version"),
-            ShowMotd            = selectedIds.Contains("motd"),
+            ShowVersion = selectedIds.Contains("version"),
+            ShowMotd = selectedIds.Contains("motd"),
         };
 
         saveSettings(settings with { Welcome = updated });
@@ -247,155 +247,155 @@ internal static class ConfigEditor
         switch (id)
         {
             case "theme":
-            {
-                var themes = Enum.GetValues<TuiTheme>();
-                if (!TrySelectOne("Select theme", themes, ThemeToken, settings.Theme, out var pick))
-                    return null;
-                onThemeChanged?.Invoke(pick);
-                saveSettings(settings with { Theme = pick });
-                return $"theme = {ThemeToken(pick)}";
-            }
+                {
+                    var themes = Enum.GetValues<TuiTheme>();
+                    if (!TrySelectOne("Select theme", themes, ThemeToken, settings.Theme, out var pick))
+                        return null;
+                    onThemeChanged?.Invoke(pick);
+                    saveSettings(settings with { Theme = pick });
+                    return $"theme = {ThemeToken(pick)}";
+                }
 
             case "output_style":
-            {
-                // Exclude Json: session-only, confusing as a persistent default
-                var styles = Enum.GetValues<OutputStyle>().Where(s => s != OutputStyle.Json).ToArray();
-                if (!TrySelectOne("Select output style", styles, s => s.ToString().ToLowerInvariant(), settings.OutputStyle, out var pick))
-                    return null;
-                onOutputStyleChanged?.Invoke(pick);
-                saveSettings(settings with { OutputStyle = pick });
-                return $"output_style = {pick.ToString().ToLowerInvariant()}";
-            }
+                {
+                    // Exclude Json: session-only, confusing as a persistent default
+                    var styles = Enum.GetValues<OutputStyle>().Where(s => s != OutputStyle.Json).ToArray();
+                    if (!TrySelectOne("Select output style", styles, s => s.ToString().ToLowerInvariant(), settings.OutputStyle, out var pick))
+                        return null;
+                    onOutputStyleChanged?.Invoke(pick);
+                    saveSettings(settings with { OutputStyle = pick });
+                    return $"output_style = {pick.ToString().ToLowerInvariant()}";
+                }
 
             case "spinner_style":
-            {
-                var styles = Enum.GetValues<SpinnerStyle>();
-                if (!TrySelectOne("Select spinner style", styles, SpinnerDesc, settings.SpinnerStyle, out var pick))
-                    return null;
-                onSpinnerStyleChanged?.Invoke(pick);
-                saveSettings(settings with { SpinnerStyle = pick });
-                return $"spinner_style = {pick.ToString().ToLowerInvariant()}";
-            }
+                {
+                    var styles = Enum.GetValues<SpinnerStyle>();
+                    if (!TrySelectOne("Select spinner style", styles, SpinnerDesc, settings.SpinnerStyle, out var pick))
+                        return null;
+                    onSpinnerStyleChanged?.Invoke(pick);
+                    saveSettings(settings with { SpinnerStyle = pick });
+                    return $"spinner_style = {pick.ToString().ToLowerInvariant()}";
+                }
 
             case "vim_mode":
-            {
-                if (!TrySelectBool("vim_mode", settings.VimMode, out var pick))
-                    return null;
-                onVimModeChanged?.Invoke(pick);
-                saveSettings(settings with { VimMode = pick });
-                return $"vim_mode = {OnOff(pick)}";
-            }
+                {
+                    if (!TrySelectBool("vim_mode", settings.VimMode, out var pick))
+                        return null;
+                    onVimModeChanged?.Invoke(pick);
+                    saveSettings(settings with { VimMode = pick });
+                    return $"vim_mode = {OnOff(pick)}";
+                }
 
             case "prompt_cache":
-            {
-                if (!TrySelectBool("prompt_cache", session.PromptCachingEnabled, out var pick))
-                    return null;
-                session.PromptCachingEnabled = pick;
-                saveSettings(settings with { PromptCacheEnabled = pick });
-                return $"prompt_cache = {OnOff(pick)}";
-            }
+                {
+                    if (!TrySelectBool("prompt_cache", session.PromptCachingEnabled, out var pick))
+                        return null;
+                    session.PromptCachingEnabled = pick;
+                    saveSettings(settings with { PromptCacheEnabled = pick });
+                    return $"prompt_cache = {OnOff(pick)}";
+                }
 
             case "prompt_cache_ttl":
-            {
-                var options = new[] { ("5m — 5 minutes", PromptCacheTtl.FiveMinutes), ("1h — 1 hour", PromptCacheTtl.OneHour) };
-                var defaultOpt = options.First(o => o.Item2 == session.PromptCacheTtl);
-                if (!TrySelectOne("Select prompt cache TTL", options, o => o.Item1, defaultOpt, out var pick))
-                    return null;
-                session.PromptCacheTtl = pick.Item2;
-                saveSettings(settings with { PromptCacheTtl = pick.Item2 });
-                return $"prompt_cache_ttl = {PromptCachePolicy.ToToken(pick.Item2)}";
-            }
+                {
+                    var options = new[] { ("5m — 5 minutes", PromptCacheTtl.FiveMinutes), ("1h — 1 hour", PromptCacheTtl.OneHour) };
+                    var defaultOpt = options.First(o => o.Item2 == session.PromptCacheTtl);
+                    if (!TrySelectOne("Select prompt cache TTL", options, o => o.Item1, defaultOpt, out var pick))
+                        return null;
+                    session.PromptCacheTtl = pick.Item2;
+                    saveSettings(settings with { PromptCacheTtl = pick.Item2 });
+                    return $"prompt_cache_ttl = {PromptCachePolicy.ToToken(pick.Item2)}";
+                }
 
             case "sys_prompt_compaction":
-            {
-                var modes = Enum.GetValues<SystemPromptCompaction>();
-                if (!TrySelectOne("Select system prompt compaction", modes,
-                        m => m switch
-                        {
-                            SystemPromptCompaction.Off    => "off    — never compact system prompt",
-                            SystemPromptCompaction.Auto   => "auto   — compact when over budget",
-                            SystemPromptCompaction.Always => "always — compact at every startup",
-                            _ => m.ToString().ToLowerInvariant(),
-                        },
-                        settings.SystemPromptCompaction, out var pick))
-                    return null;
-                saveSettings(settings with { SystemPromptCompaction = pick });
-                return $"sys_prompt_compaction = {pick.ToString().ToLowerInvariant()}";
-            }
+                {
+                    var modes = Enum.GetValues<SystemPromptCompaction>();
+                    if (!TrySelectOne("Select system prompt compaction", modes,
+                            m => m switch
+                            {
+                                SystemPromptCompaction.Off => "off    — never compact system prompt",
+                                SystemPromptCompaction.Auto => "auto   — compact when over budget",
+                                SystemPromptCompaction.Always => "always — compact at every startup",
+                                _ => m.ToString().ToLowerInvariant(),
+                            },
+                            settings.SystemPromptCompaction, out var pick))
+                        return null;
+                    saveSettings(settings with { SystemPromptCompaction = pick });
+                    return $"sys_prompt_compaction = {pick.ToString().ToLowerInvariant()}";
+                }
 
             case "sys_prompt_budget":
-            {
-                var pct = PromptInt("System prompt budget [dim](0–100%)[/]", settings.SystemPromptBudgetPercent, 0, 100);
-                if (pct is null) return null;
-                saveSettings(settings with { SystemPromptBudgetPercent = pct.Value });
-                return $"sys_prompt_budget = {pct.Value}%";
-            }
+                {
+                    var pct = PromptInt("System prompt budget [dim](0–100%)[/]", settings.SystemPromptBudgetPercent, 0, 100);
+                    if (pct is null) return null;
+                    saveSettings(settings with { SystemPromptBudgetPercent = pct.Value });
+                    return $"sys_prompt_budget = {pct.Value}%";
+                }
 
             case "compact_auto":
-            {
-                if (!TrySelectBool("compact_auto", settings.AutoCompact, out var pick))
-                    return null;
-                saveSettings(settings with { AutoCompact = pick });
-                return $"compact_auto = {OnOff(pick)}";
-            }
+                {
+                    if (!TrySelectBool("compact_auto", settings.AutoCompact, out var pick))
+                        return null;
+                    saveSettings(settings with { AutoCompact = pick });
+                    return $"compact_auto = {OnOff(pick)}";
+                }
 
             case "compact_threshold":
-            {
-                var pct = PromptInt("Compaction threshold [dim](1–100%)[/]", settings.CompactThresholdPercent, 1, 100);
-                if (pct is null) return null;
-                saveSettings(settings with { CompactThresholdPercent = pct.Value });
-                return $"compact_threshold = {pct.Value}%";
-            }
+                {
+                    var pct = PromptInt("Compaction threshold [dim](1–100%)[/]", settings.CompactThresholdPercent, 1, 100);
+                    if (pct is null) return null;
+                    saveSettings(settings with { CompactThresholdPercent = pct.Value });
+                    return $"compact_threshold = {pct.Value}%";
+                }
 
             case "autorun":
-            {
-                if (!TrySelectBool("autorun", session.AutoRunEnabled, out var pick))
-                    return null;
-                session.AutoRunEnabled = pick;
-                return $"autorun = {OnOff(pick)}";
-            }
+                {
+                    if (!TrySelectBool("autorun", session.AutoRunEnabled, out var pick))
+                        return null;
+                    session.AutoRunEnabled = pick;
+                    return $"autorun = {OnOff(pick)}";
+                }
 
             case "permissions":
-            {
-                var current = !session.SkipPermissions;
-                if (!TrySelectBool("permissions", current, out var pick))
-                    return null;
-                session.SkipPermissions = !pick;
-                return $"permissions = {OnOff(pick)}";
-            }
+                {
+                    var current = !session.SkipPermissions;
+                    if (!TrySelectBool("permissions", current, out var pick))
+                        return null;
+                    session.SkipPermissions = !pick;
+                    return $"permissions = {OnOff(pick)}";
+                }
 
             case "plan_mode":
-            {
-                if (!TrySelectBool("plan_mode", session.PlanMode, out var pick))
-                    return null;
-                session.PlanMode = pick;
-                return $"plan_mode = {OnOff(pick)}";
-            }
+                {
+                    if (!TrySelectBool("plan_mode", session.PlanMode, out var pick))
+                        return null;
+                    session.PlanMode = pick;
+                    return $"plan_mode = {OnOff(pick)}";
+                }
 
             case "motd_url":
-            {
-                var url = PromptString("MoTD URL [dim](enter blank to clear)[/]", welcome.MotdUrl ?? "");
-                if (url is null) return null;
-                var cleaned = string.IsNullOrWhiteSpace(url) ? null : url.Trim();
-                saveSettings(settings with { Welcome = welcome with { MotdUrl = cleaned } });
-                return $"motd_url = {cleaned ?? "(none)"}";
-            }
+                {
+                    var url = PromptString("MoTD URL [dim](enter blank to clear)[/]", welcome.MotdUrl ?? "");
+                    if (url is null) return null;
+                    var cleaned = string.IsNullOrWhiteSpace(url) ? null : url.Trim();
+                    saveSettings(settings with { Welcome = welcome with { MotdUrl = cleaned } });
+                    return $"motd_url = {cleaned ?? "(none)"}";
+                }
 
             case "motd_timeout_ms":
-            {
-                var ms = PromptInt("MoTD timeout [dim](100–5000 ms)[/]", welcome.MotdTimeoutMs, 100, 5000);
-                if (ms is null) return null;
-                saveSettings(settings with { Welcome = welcome with { MotdTimeoutMs = ms.Value } });
-                return $"motd_timeout_ms = {ms.Value}ms";
-            }
+                {
+                    var ms = PromptInt("MoTD timeout [dim](100–5000 ms)[/]", welcome.MotdTimeoutMs, 100, 5000);
+                    if (ms is null) return null;
+                    saveSettings(settings with { Welcome = welcome with { MotdTimeoutMs = ms.Value } });
+                    return $"motd_timeout_ms = {ms.Value}ms";
+                }
 
             case "motd_max_length":
-            {
-                var len = PromptInt("MoTD max length [dim](40–1000 chars)[/]", welcome.MotdMaxLength, 40, 1000);
-                if (len is null) return null;
-                saveSettings(settings with { Welcome = welcome with { MotdMaxLength = len.Value } });
-                return $"motd_max_length = {len.Value}";
-            }
+                {
+                    var len = PromptInt("MoTD max length [dim](40–1000 chars)[/]", welcome.MotdMaxLength, 40, 1000);
+                    if (len is null) return null;
+                    saveSettings(settings with { Welcome = welcome with { MotdMaxLength = len.Value } });
+                    return $"motd_max_length = {len.Value}";
+                }
 
             default:
                 return null;
@@ -490,29 +490,29 @@ internal static class ConfigEditor
 
     private static int CountEnabledWelcome(WelcomePanelSettings w) =>
         (w.ShowModelSummary ? 1 : 0) +
-        (w.ShowServices     ? 1 : 0) +
+        (w.ShowServices ? 1 : 0) +
         (w.ShowWorkingDirectory ? 1 : 0) +
-        (w.ShowVersion      ? 1 : 0) +
-        (w.ShowMotd         ? 1 : 0);
+        (w.ShowVersion ? 1 : 0) +
+        (w.ShowMotd ? 1 : 0);
 
     private static string ThemeToken(TuiTheme theme) => theme switch
     {
-        TuiTheme.DefaultDark    => "default-dark",
-        TuiTheme.SolarizedDark  => "solarized-dark",
+        TuiTheme.DefaultDark => "default-dark",
+        TuiTheme.SolarizedDark => "solarized-dark",
         TuiTheme.SolarizedLight => "solarized-light",
-        TuiTheme.OneDark        => "one-dark",
+        TuiTheme.OneDark => "one-dark",
         TuiTheme.CatppuccinMocha => "catppuccin-mocha",
-        TuiTheme.HighContrast   => "high-contrast",
+        TuiTheme.HighContrast => "high-contrast",
         _ => theme.ToString().ToLowerInvariant(),
     };
 
     private static string SpinnerDesc(SpinnerStyle s) => s switch
     {
-        SpinnerStyle.None    => "none    — no animation",
+        SpinnerStyle.None => "none    — no animation",
         SpinnerStyle.Minimal => "minimal — dot + elapsed time",
-        SpinnerStyle.Normal  => "normal  — braille spinner (default)",
-        SpinnerStyle.Rich    => "rich    — spinner + progress bar + stats",
-        SpinnerStyle.Nerdy   => "nerdy   — all stats including TTFT",
+        SpinnerStyle.Normal => "normal  — braille spinner (default)",
+        SpinnerStyle.Rich => "rich    — spinner + progress bar + stats",
+        SpinnerStyle.Nerdy => "nerdy   — all stats including TTFT",
         _ => s.ToString().ToLowerInvariant(),
     };
 }
