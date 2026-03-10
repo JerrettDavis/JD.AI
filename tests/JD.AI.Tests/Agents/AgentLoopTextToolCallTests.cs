@@ -133,6 +133,19 @@ public sealed class AgentLoopTextToolCallTests
         result.Should().Contain("\"parameters\"");
     }
 
+    [Fact]
+    public void ExtractFirstToolCallJson_BareJsonArray_ReturnsJson()
+    {
+        const string Response = """
+            [{"name":"file-read_file","arguments":{"path":"package.json"}}]
+            """;
+
+        var result = AgentLoop.ExtractFirstToolCallJson(Response);
+
+        result.Should().NotBeNull();
+        result.Should().Contain("\"file-read_file\"");
+    }
+
     // ── Not a tool call ──────────────────────────────────────────────────
 
     [Fact]
@@ -206,5 +219,26 @@ public sealed class AgentLoopTextToolCallTests
 
         result.Should().NotBeNull();
         result.Should().Contain("\"fs-read_file\"");
+    }
+
+    [Fact]
+    public void IsStandaloneToolCallPayload_BareArray_ReturnsTrue()
+    {
+        const string Response = """
+            [{"name":"file-read_file","arguments":{"path":"package.json"}}]
+            """;
+
+        AgentLoop.IsStandaloneToolCallPayload(Response).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsStandaloneToolCallPayload_ProsePlusTaggedCall_ReturnsFalse()
+    {
+        const string Response = """
+            Let me check.
+            <tool_call> {"name": "run_command", "arguments": {"command": "pwd"}} </tool_call>
+            """;
+
+        AgentLoop.IsStandaloneToolCallPayload(Response).Should().BeFalse();
     }
 }

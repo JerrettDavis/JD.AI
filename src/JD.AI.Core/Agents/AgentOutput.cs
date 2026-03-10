@@ -37,6 +37,13 @@ public interface IAgentOutput
     void RenderToolCall(string toolName, string? args, string result) { }
 
     /// <summary>
+    /// True when output is configured for strict JSON emission.
+    /// Agent fallback logic can use this to avoid interpreting model JSON
+    /// responses as executable tool call envelopes.
+    /// </summary>
+    bool IsJsonOutputMode => false;
+
+    /// <summary>
     /// Render a tool confirmation prompt. Returns true if the user approves.
     /// Pauses any active spinner/progress indicator to avoid interleaved output.
     /// </summary>

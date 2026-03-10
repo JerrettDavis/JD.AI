@@ -1051,9 +1051,14 @@ public sealed class AgentLoop
         if (string.IsNullOrWhiteSpace(response))
             return null;
 
-        // Tool-capable models must use SK's structured tool-calling channel so
-        // confirmations, policy checks, and auditing always run through filters.
-        if (ShouldEnforceStructuredToolChannel())
+        if (AgentOutput.Current.IsJsonOutputMode)
+            return null;
+
+        // Tool-capable models should use SK's structured tool-calling channel.
+        // However, some providers/models occasionally emit orphan tool JSON as
+        // plain text. Allow a strict fallback only for standalone payloads.
+        if (ShouldEnforceStructuredToolChannel() &&
+            !IsStandaloneToolCallPayload(response))
             return null;
 
         var jsonText = ExtractFirstToolCallJson(response);
@@ -1063,9 +1068,10 @@ public sealed class AgentLoop
         try
         {
             using var doc = JsonDocument.Parse(jsonText);
-            var root = doc.RootElement;
+            if (!TrySelectToolCallElement(doc.RootElement, out var toolCall))
+                return null;
 
-            if (!root.TryGetProperty("name", out var nameEl) ||
+            if (!toolCall.TryGetProperty("name", out var nameEl) ||
                 nameEl.ValueKind != JsonValueKind.String)
                 return null;
 
@@ -1105,7 +1111,7 @@ public sealed class AgentLoop
 
             // Build arguments from the "arguments" property
             var args = new KernelArguments();
-            if (TryGetToolCallArguments(root, out var argsEl) &&
+            if (TryGetToolCallArguments(toolCall, out var argsEl) &&
                 argsEl.ValueKind == JsonValueKind.Object)
             {
                 foreach (var prop in argsEl.EnumerateObject())
@@ -1158,13 +1164,21 @@ public sealed class AgentLoop
 
     // Compiled regex for fenced JSON blocks (e.g. ```json\n{...}\n```)
     private static readonly Regex FencedJsonRegex = new(
-        @"```(?:json)?\s*\r?\n(?<json>\{[\s\S]*?\})\s*\r?\n```",
+        @"```(?:json)?\s*\r?\n(?<json>(?:\{[\s\S]*?\}|\[[\s\S]*?\]))\s*\r?\n```",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     // Small models sometimes emit XML-like wrappers:
     // <tool_call>{...}</tool_call>
     private static readonly Regex TaggedToolCallRegex = new(
-        @"<tool_call>\s*(?<json>\{[\s\S]*?\})\s*</tool_call>",
+        @"<tool_call>\s*(?<json>(?:\{[\s\S]*?\}|\[[\s\S]*?\]))\s*</tool_call>",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly Regex EntireFencedJsonRegex = new(
+        @"\A```(?:json)?\s*\r?\n(?<json>(?:\{[\s\S]*?\}|\[[\s\S]*?\]))\s*\r?\n```\z",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly Regex EntireTaggedToolCallRegex = new(
+        @"\A<tool_call>\s*(?<json>(?:\{[\s\S]*?\}|\[[\s\S]*?\]))\s*</tool_call>\z",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     /// <summary>
@@ -1175,8 +1189,9 @@ public sealed class AgentLoop
     {
         var text = response.Trim();
 
-        // Strategy 1: Whole response is bare JSON
-        if (text.StartsWith('{') && text.EndsWith('}'))
+        // Strategy 1: Whole response is bare JSON object or array
+        if ((text.StartsWith('{') && text.EndsWith('}')) ||
+            (text.StartsWith('[') && text.EndsWith(']')))
         {
             if (LooksLikeToolCall(text))
                 return text;
@@ -1248,14 +1263,83 @@ public sealed class AgentLoop
         {
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
-            return root.TryGetProperty("name", out var n) &&
-                   n.ValueKind == JsonValueKind.String &&
-                   TryGetToolCallArguments(root, out _);
+
+            if (root.ValueKind == JsonValueKind.Object)
+                return LooksLikeToolCallObject(root);
+
+            if (root.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in root.EnumerateArray())
+                {
+                    if (item.ValueKind == JsonValueKind.Object &&
+                        LooksLikeToolCallObject(item))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
         catch (JsonException)
         {
             return false;
         }
+    }
+
+    private static bool LooksLikeToolCallObject(JsonElement root) =>
+        root.TryGetProperty("name", out var n) &&
+        n.ValueKind == JsonValueKind.String &&
+        TryGetToolCallArguments(root, out _);
+
+    private static bool TrySelectToolCallElement(
+        JsonElement root, out JsonElement toolCallElement)
+    {
+        if (root.ValueKind == JsonValueKind.Object &&
+            LooksLikeToolCallObject(root))
+        {
+            toolCallElement = root;
+            return true;
+        }
+
+        if (root.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in root.EnumerateArray())
+            {
+                if (item.ValueKind == JsonValueKind.Object &&
+                    LooksLikeToolCallObject(item))
+                {
+                    toolCallElement = item;
+                    return true;
+                }
+            }
+        }
+
+        toolCallElement = default;
+        return false;
+    }
+
+    internal static bool IsStandaloneToolCallPayload(string response)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+            return false;
+
+        var text = response.Trim();
+        if ((text.StartsWith('{') && text.EndsWith('}')) ||
+            (text.StartsWith('[') && text.EndsWith(']')))
+        {
+            return LooksLikeToolCall(text);
+        }
+
+        var taggedMatch = EntireTaggedToolCallRegex.Match(text);
+        if (taggedMatch.Success)
+            return LooksLikeToolCall(taggedMatch.Groups["json"].Value.Trim());
+
+        var fencedMatch = EntireFencedJsonRegex.Match(text);
+        if (fencedMatch.Success)
+            return LooksLikeToolCall(fencedMatch.Groups["json"].Value.Trim());
+
+        return false;
     }
 
     private static bool TryGetToolCallArguments(

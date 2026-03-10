@@ -151,6 +151,141 @@ public sealed class AgentLoopTextToolExecutionTests
             .Should().BeFalse();
     }
 
+    [Fact]
+    public async Task RunTurnStreamingAsync_ToolCapableModel_BareJsonArray_ExecutesFallbackToolCall()
+    {
+        var registry = Substitute.For<IProviderRegistry>();
+        var model = new ProviderModelInfo(
+            "test-model",
+            "Test",
+            "TestProvider",
+            Capabilities: ModelCapabilities.Chat | ModelCapabilities.ToolCalling);
+
+        const string Response = """
+            [{"name":"run_command","arguments":{"command":"cd"}}]
+            """;
+        const string FollowUpResponse = "Current directory resolved.";
+
+        var chatService = Substitute.For<IChatCompletionService>();
+        chatService
+            .GetStreamingChatMessageContentsAsync(
+                Arg.Any<ChatHistory>(),
+                Arg.Any<PromptExecutionSettings>(),
+                Arg.Any<Kernel>(),
+                Arg.Any<CancellationToken>())
+            .Returns(StreamOnce(Response));
+
+        chatService
+            .GetChatMessageContentsAsync(
+                Arg.Any<ChatHistory>(),
+                Arg.Any<PromptExecutionSettings?>(),
+                Arg.Any<Kernel?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new List<ChatMessageContent>
+            {
+                new(AuthorRole.Assistant, FollowUpResponse),
+            });
+
+        var executedCommands = new List<string>();
+        var builder = Kernel.CreateBuilder();
+        builder.Services.AddSingleton<IChatCompletionService>(chatService);
+        var kernel = builder.Build();
+        kernel.Plugins.AddFromFunctions("shell", [
+            KernelFunctionFactory.CreateFromMethod(
+                (string command) =>
+                {
+                    executedCommands.Add(command);
+                    return "Exit code: 0\n--- stdout ---\nC:\\Users\\jd";
+                },
+                "run_command",
+                "Execute command")
+        ]);
+
+        var session = new AgentSession(registry, kernel, model);
+        var loop = new AgentLoop(session);
+
+        var previousOutput = AgentOutput.Current;
+        var output = new NullOutput();
+        AgentOutput.Current = output;
+        try
+        {
+            var result = await loop.RunTurnStreamingAsync("What folder are we running in?");
+            result.Should().Be(FollowUpResponse);
+        }
+        finally
+        {
+            AgentOutput.Current = previousOutput;
+        }
+
+        output.ConfirmCalled.Should().BeTrue();
+        executedCommands.Should().ContainSingle().Which.Should().Be("cd");
+        session.History.Any(m =>
+            m.Role == AuthorRole.User &&
+            m.Content is not null &&
+            m.Content.Contains("Tool result for run_command", StringComparison.Ordinal))
+            .Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RunTurnStreamingAsync_JsonOutputMode_DoesNotExecuteBareJsonArrayFallback()
+    {
+        var registry = Substitute.For<IProviderRegistry>();
+        var model = new ProviderModelInfo(
+            "test-model",
+            "Test",
+            "TestProvider",
+            Capabilities: ModelCapabilities.Chat | ModelCapabilities.ToolCalling);
+
+        const string Response = """
+            [{"name":"run_command","arguments":{"command":"cd"}}]
+            """;
+
+        var chatService = Substitute.For<IChatCompletionService>();
+        chatService
+            .GetStreamingChatMessageContentsAsync(
+                Arg.Any<ChatHistory>(),
+                Arg.Any<PromptExecutionSettings>(),
+                Arg.Any<Kernel>(),
+                Arg.Any<CancellationToken>())
+            .Returns(StreamOnce(Response));
+
+        var executedCommands = new List<string>();
+        var builder = Kernel.CreateBuilder();
+        builder.Services.AddSingleton<IChatCompletionService>(chatService);
+        var kernel = builder.Build();
+        kernel.Plugins.AddFromFunctions("shell", [
+            KernelFunctionFactory.CreateFromMethod(
+                (string command) =>
+                {
+                    executedCommands.Add(command);
+                    return "Exit code: 0\n--- stdout ---\nC:\\Users\\jd";
+                },
+                "run_command",
+                "Execute command")
+        ]);
+
+        var session = new AgentSession(registry, kernel, model);
+        var loop = new AgentLoop(session);
+
+        var previousOutput = AgentOutput.Current;
+        AgentOutput.Current = new NullOutput { JsonOutputMode = true };
+        try
+        {
+            _ = await loop.RunTurnStreamingAsync("What folder are we running in?");
+        }
+        finally
+        {
+            AgentOutput.Current = previousOutput;
+        }
+
+        executedCommands.Should().BeEmpty();
+        session.History.Any(m =>
+            m.Role == AuthorRole.User &&
+            m.Content is not null &&
+            m.Content.Contains("Tool result for run_command", StringComparison.Ordinal))
+            .Should().BeFalse();
+    }
+
     private static async IAsyncEnumerable<StreamingChatMessageContent> StreamOnce(string text)
     {
         yield return new StreamingChatMessageContent(AuthorRole.Assistant, text);
@@ -159,6 +294,9 @@ public sealed class AgentLoopTextToolExecutionTests
 
     private sealed class NullOutput : IAgentOutput
     {
+        public bool ConfirmCalled { get; private set; }
+        public bool JsonOutputMode { get; init; }
+
         public void RenderInfo(string message) { }
         public void RenderWarning(string message) { }
         public void RenderError(string message) { }
@@ -170,5 +308,11 @@ public sealed class AgentLoopTextToolExecutionTests
         public void EndStreaming() { }
         public void BeginTurn() { }
         public void EndTurn(TurnMetrics metrics) { }
+        public bool IsJsonOutputMode => JsonOutputMode;
+        public bool ConfirmToolCall(string toolName, string? args)
+        {
+            ConfirmCalled = true;
+            return true;
+        }
     }
 }
