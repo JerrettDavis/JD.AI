@@ -1,6 +1,7 @@
 using JD.AI.Core.Agents;
 using JD.AI.Core.Providers;
 using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.Connectors.MistralAI;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 
 namespace JD.AI.Tests.Agents;
@@ -174,10 +175,10 @@ public sealed class BuildExecutionSettingsTests
         Assert.IsType<AutoFunctionChoiceBehavior>(settings.FunctionChoiceBehavior);
     }
 
-    // ── Never uses deprecated ToolCallBehavior ─────────────
+    // ── Connector-specific tool settings ────────────────────
 
     [Fact]
-    public void Settings_NeverUsesDeprecatedToolCallBehavior()
+    public void Settings_NonMistralModel_NeverUsesDeprecatedToolCallBehavior()
     {
         var model = new ProviderModelInfo(
             "qwen2.5-coder-14b-instruct-generic-cpu:4",
@@ -188,6 +189,40 @@ public sealed class BuildExecutionSettingsTests
 
         var openAiSettings = Assert.IsType<OpenAIPromptExecutionSettings>(settings);
         Assert.Null(openAiSettings.ToolCallBehavior);
+    }
+
+    [Fact]
+    public void Settings_MistralToolCapableModel_UsesMistralToolCallBehavior()
+    {
+        var model = new ProviderModelInfo(
+            "mistral-large-pixtral-2411",
+            "Mistral Large Pixtral 2411",
+            "Mistral",
+            Capabilities: ModelCapabilities.Chat | ModelCapabilities.ToolCalling);
+
+        var settings = Build(CreateLoop(model));
+
+#pragma warning disable SKEXP0070
+        var mistralSettings = Assert.IsType<MistralAIPromptExecutionSettings>(settings);
+        Assert.NotNull(mistralSettings.ToolCallBehavior);
+#pragma warning restore SKEXP0070
+    }
+
+    [Fact]
+    public void Settings_MistralChatOnlyModel_DisablesMistralToolCallBehavior()
+    {
+        var model = new ProviderModelInfo(
+            "mistral-medium-2508",
+            "Mistral Medium 2508",
+            "Mistral",
+            Capabilities: ModelCapabilities.Chat);
+
+        var settings = Build(CreateLoop(model));
+
+#pragma warning disable SKEXP0070
+        var mistralSettings = Assert.IsType<MistralAIPromptExecutionSettings>(settings);
+        Assert.Null(mistralSettings.ToolCallBehavior);
+#pragma warning restore SKEXP0070
     }
 
     [Fact]
