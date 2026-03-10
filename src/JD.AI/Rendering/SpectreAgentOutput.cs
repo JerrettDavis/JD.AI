@@ -32,6 +32,8 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
     /// <summary>Update the model name (e.g. after a /model switch).</summary>
     public string? ModelName { get; set; }
 
+    public bool IsJsonOutputMode => ChatRenderer.CurrentOutputStyle == OutputStyle.Json;
+
     public void RenderInfo(string message)
     {
         PauseProgress();
