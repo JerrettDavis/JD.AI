@@ -1,0 +1,34 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.telemetry
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define telemetry capability as part of the canonical capability map (#325).
+name: Telemetry
+description: >-
+  Instrument the platform with OpenTelemetry tracing, metrics, and health checks
+  including GenAI-specific attributes, provider health monitoring, disk space,
+  and memory utilization checks.
+maturity: beta
+actors:
+  - persona.platform-engineer
+  - persona.governance-admin
+dependencies: []
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/decisions/ADR-001-otel-instrumentation.md
+    testing:
+      - tests/JD.AI.Tests/Telemetry/OtelInstrumentationTests.cs

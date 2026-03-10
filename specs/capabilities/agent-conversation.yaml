@@ -1,0 +1,33 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.agent-conversation
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define agent conversation capability as part of the canonical capability map (#325).
+name: Agent Conversation
+description: >-
+  Manage interactive agent conversations including the agent loop, tool calling,
+  streaming responses, fallback handling, and fork-point checkpointing.
+maturity: beta
+actors:
+  - persona.terminal-operator
+  - persona.autonomous-agent
+dependencies: []
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/README.md
+    testing:
+      - tests/JD.AI.Tests/Agents/AgentLoopTextToolCallTests.cs
