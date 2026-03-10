@@ -1,0 +1,38 @@
+apiVersion: jdai.upss/v1
+kind: UseCase
+id: usecase.transform-context
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-usecase-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define the transform-context use case for session lifecycle specification (#326).
+actor: persona.terminal-operator
+capabilityRef: capability.context-transformation
+preconditions:
+  - An active session exists with conversation history.
+  - The operator triggers a provider or model switch.
+workflowSteps:
+  - The operator selects a new provider or model via the /model command or API.
+  - ConversationTransformer is invoked with the selected SwitchMode.
+  - For Compact or Transform modes, the current LLM summarizes or creates a handoff briefing.
+  - ChatHistory is replaced with the transformed context.
+  - The kernel is rebuilt for the new provider.
+expectedOutcomes:
+  - Context is adapted to the new model capabilities.
+  - For Transform mode, key decisions, file paths, and pending work are preserved in a briefing.
+failureScenarios:
+  - The summarization LLM call fails or times out.
+  - The operator cancels the switch via Cancel mode.
+trace:
+  upstream:
+    - specs/capabilities/context-transformation.yaml
+  downstream:
+    behavior:
+      - specs/behavior/context-transformation.yaml
+    testing:
+      - specs/testing/agent-conversation.yaml
+    interfaces: []

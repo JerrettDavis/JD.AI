@@ -1,0 +1,49 @@
+apiVersion: jdai.upss/v1
+kind: Quality
+id: quality.streaming-latency
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-quality-nfr-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define streaming latency quality requirements for agent conversation specification (#326).
+category: performance
+slos:
+  - name: Time to First Token
+    target: "<=200ms framework overhead from user input to first streaming chunk rendered"
+    description: Measures framework processing latency excluding LLM provider response time.
+  - name: Streaming Chunk Processing
+    target: "<=5ms per chunk processing latency in StreamingContentParser and output rendering"
+    description: Individual chunk processing must not introduce perceptible delay.
+  - name: Fallback Recovery Time
+    target: "<=2s to detect streaming failure and begin non-streaming retry"
+    description: Streaming failures are detected and recovered from within two seconds.
+slis:
+  - name: First Token Latency
+    metric: streaming_first_token_ms
+    unit: milliseconds
+  - name: Chunk Processing Time
+    metric: streaming_chunk_process_ms
+    unit: milliseconds
+  - name: Fallback Detection Latency
+    metric: streaming_fallback_detect_ms
+    unit: milliseconds
+errorBudgets:
+  - sloRef: Time to First Token
+    budget: "1%"
+    window: 7d
+scalabilityExpectations:
+  - dimension: response-length
+    current: "4096 tokens"
+    target: "32768 tokens"
+trace:
+  upstream:
+    - specs/capabilities/agent-conversation.yaml
+  downstream:
+    testing:
+      - specs/testing/agent-conversation.yaml
+    observability: []
+    operations: []

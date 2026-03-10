@@ -1,0 +1,52 @@
+apiVersion: jdai.upss/v1
+kind: Quality
+id: quality.session-reliability
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-quality-nfr-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define session reliability quality requirements for session lifecycle specification (#326).
+category: reliability
+slos:
+  - name: Zero Turn Data Loss
+    target: "0 turns lost on process crash after RecordUserTurnAsync completes"
+    description: No completed turn is ever lost due to process termination after the transactional save.
+  - name: Session Resume Success Rate
+    target: ">=99.9% of resume attempts succeed for non-corrupted sessions"
+    description: Resuming a previously closed session restores full conversation context.
+  - name: Integrity Check Accuracy
+    target: "100% of SQLite-to-JSON mismatches detected by SessionIntegrity"
+    description: The integrity checker identifies all divergences between SQLite and JSON exports.
+slis:
+  - name: Turn Persistence Confirmation
+    metric: session_turn_save_success_total
+    unit: count
+  - name: Resume Attempt Outcome
+    metric: session_resume_result
+    unit: boolean
+  - name: Integrity Mismatch Rate
+    metric: session_integrity_mismatch_total
+    unit: count
+errorBudgets:
+  - sloRef: Zero Turn Data Loss
+    budget: "0%"
+    window: 30d
+scalabilityExpectations:
+  - dimension: session-turn-count
+    current: "500"
+    target: "5000"
+  - dimension: concurrent-sessions
+    current: "1"
+    target: "10"
+trace:
+  upstream:
+    - specs/capabilities/session-management.yaml
+  downstream:
+    testing:
+      - specs/testing/session-lifecycle.yaml
+    observability: []
+    operations: []
