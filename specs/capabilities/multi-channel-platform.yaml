@@ -1,0 +1,35 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.multi-channel-platform
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define multi-channel interaction as a core product capability.
+name: Multi-Channel Interaction Platform
+description: Receive and route messages across channel adapters, map identities, persist context, and return consistent responses.
+maturity: beta
+actors:
+  - persona.channel-adapter
+  - persona.platform-engineer
+  - persona.terminal-operator
+dependencies:
+  - capability.provider-model-management
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - specs/architecture/multi-channel-platform-architecture.yaml
+      - src/JD.AI.Gateway/Services/ChannelFactory.cs
+    testing:
+      - tests/JD.AI.Gateway.Tests/ChannelEndpointTests.cs
+      - tests/JD.AI.IntegrationTests/OpenClawBridgeIntegrationTests.cs

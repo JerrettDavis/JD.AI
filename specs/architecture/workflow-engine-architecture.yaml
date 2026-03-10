@@ -1,0 +1,57 @@
+apiVersion: jdai.upss/v1
+kind: Architecture
+id: architecture.workflow-engine-architecture
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-architecture-c4-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define workflow engine architecture for authoring, execution, checkpointing, and consensus.
+architectureStyle: event-driven
+systems:
+  - name: JD.AI Workflow Engine
+    description: Executes and coordinates workflow graphs and persistence.
+    type: backend
+containers:
+  - name: Workflow Runtime Library
+    technology: .NET 10 / C#
+    system: JD.AI Workflow Engine
+  - name: Workflow Store Adapter
+    technology: File and git-backed storage
+    system: JD.AI Workflow Engine
+components:
+  - name: WorkflowGenerator
+    container: Workflow Runtime Library
+    responsibility: Builds and refines workflow definitions from task intent.
+  - name: ExecutionCapture
+    container: Workflow Runtime Library
+    responsibility: Persists execution state for resume and retry flows.
+  - name: ConsensusCoordinator
+    container: Workflow Runtime Library
+    responsibility: Handles locks, conflict detection, and run history for concurrent execution.
+  - name: WorkflowStore
+    container: Workflow Store Adapter
+    responsibility: Stores workflow definitions and run metadata across versions.
+dependencyRules:
+  - from: WorkflowGenerator
+    to: ExecutionCapture
+    allowed: true
+  - from: ExecutionCapture
+    to: WorkflowStore
+    allowed: true
+  - from: WorkflowStore
+    to: WorkflowGenerator
+    allowed: false
+trace:
+  upstream:
+    - specs/capabilities/workflow-authoring-execution.yaml
+  downstream:
+    deployment:
+      - specs/deployment/jdai-deployment-topologies.yaml
+    security:
+      - specs/security/product-security-architecture.yaml
+    operations:
+      - specs/operations/platform-operations-runbooks.yaml

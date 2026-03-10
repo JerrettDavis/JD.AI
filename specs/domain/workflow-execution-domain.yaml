@@ -1,0 +1,65 @@
+apiVersion: jdai.upss/v1
+kind: Domain
+id: domain.workflow-execution-domain
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-domain-model-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define core workflow entities for authoring, execution, branching, and retry management.
+boundedContext: workflow-execution
+entities:
+  - name: WorkflowDefinition
+    description: Versioned graph of executable workflow steps and transitions.
+    properties:
+      - workflowId
+      - version
+      - steps
+      - tags
+  - name: WorkflowExecution
+    description: Runtime state for a workflow run, including checkpoints and outcomes.
+    properties:
+      - executionId
+      - workflowId
+      - status
+      - startedAt
+      - completedAt
+  - name: WorkflowStepExecution
+    description: State and output for a single step inside an execution.
+    properties:
+      - stepId
+      - status
+      - attemptCount
+      - output
+valueObjects:
+  - name: WorkflowCheckpoint
+    description: Immutable snapshot used to resume execution after interruption.
+    properties:
+      - checkpointId
+      - sequence
+      - persistedAt
+aggregates:
+  - name: WorkflowExecutionAggregate
+    rootEntity: WorkflowExecution
+    members:
+      - WorkflowDefinition
+      - WorkflowStepExecution
+      - WorkflowCheckpoint
+invariants:
+  - A workflow execution must reference an existing workflow definition version.
+  - Step retries must increment attempt count without mutating prior attempt history.
+  - Branch lineage must preserve parent execution identifiers.
+trace:
+  upstream:
+    - specs/capabilities/workflow-authoring-execution.yaml
+  downstream:
+    data:
+      - src/JD.AI.Workflows/Models.cs
+      - tests/JD.AI.Tests/Workflows/WorkflowExecutionStateTests.cs
+    interfaces:
+      - src/JD.AI.Workflows/Interfaces.cs
+    architecture:
+      - specs/architecture/workflow-engine-architecture.yaml

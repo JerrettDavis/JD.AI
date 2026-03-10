@@ -1,0 +1,60 @@
+apiVersion: jdai.upss/v1
+kind: Architecture
+id: architecture.control-plane-architecture
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-architecture-c4-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define architecture for gateway, daemon, dashboard, telemetry, and workflow control components.
+architectureStyle: layered
+systems:
+  - name: JD.AI Control Plane
+    description: Unified system for runtime control, administration, and observability.
+    type: backend
+containers:
+  - name: Gateway Service
+    technology: ASP.NET Core / SignalR
+    system: JD.AI Control Plane
+  - name: Daemon Service
+    technology: .NET Worker Service
+    system: JD.AI Control Plane
+  - name: Dashboard UI
+    technology: Blazor WebAssembly
+    system: JD.AI Control Plane
+components:
+  - name: RoutingControl
+    container: Gateway Service
+    responsibility: Manages provider, model, and channel routing policies.
+  - name: WorkflowControl
+    container: Gateway Service
+    responsibility: Coordinates workflow execution commands and lifecycle updates.
+  - name: ServiceSupervisor
+    container: Daemon Service
+    responsibility: Manages background runtime processes and update checks.
+  - name: OperatorDashboard
+    container: Dashboard UI
+    responsibility: Presents operational state, settings, and control actions to administrators.
+dependencyRules:
+  - from: OperatorDashboard
+    to: Gateway Service
+    allowed: true
+  - from: Gateway Service
+    to: Daemon Service
+    allowed: true
+  - from: Daemon Service
+    to: OperatorDashboard
+    allowed: false
+trace:
+  upstream:
+    - specs/capabilities/control-plane-management.yaml
+  downstream:
+    deployment:
+      - specs/deployment/control-plane-deployment.yaml
+    security:
+      - specs/security/product-security-architecture.yaml
+    operations:
+      - specs/operations/platform-operations-runbooks.yaml

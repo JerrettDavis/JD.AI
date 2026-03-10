@@ -1,0 +1,41 @@
+apiVersion: jdai.upss/v1
+kind: Policy
+id: policy.mcp-server-governance
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-policy-rules-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define governance policy for MCP server registration and remote tool execution.
+policyType: security
+severity: high
+scope:
+  - src/JD.AI.Core/Mcp
+  - src/JD.AI.Core/Tools
+rules:
+  - id: require-approved-mcp-registration
+    description: MCP servers must match approved registration policy before activation.
+    expression: mcpServer.approvalState == "approved"
+  - id: enforce-mcp-revocation-block
+    description: Revoked MCP servers must be blocked from subsequent tool execution.
+    expression: mcpServer.status != "revoked"
+  - id: require-mcp-tool-scope
+    description: Remote MCP tool invocations must run inside defined capability scopes.
+    expression: invocation.scope in policy.allowedMcpScopes
+exceptions: []
+enforcement:
+  mode: enforce
+trace:
+  upstream:
+    - specs/security/mcp-integration-security.yaml
+  downstream:
+    ci:
+      - tests/JD.AI.Tests/Specifications/PolicySpecificationRepositoryTests.cs
+    enforcement:
+      - src/JD.AI.Core/Mcp/McpManager.cs
+      - src/JD.AI.Core/Mcp/JdAiMcpDiscoveryProvider.cs
+    operations:
+      - specs/operations/mcp-integration-operations.yaml

@@ -1,0 +1,55 @@
+apiVersion: jdai.upss/v1
+kind: Interface
+id: interface.control-plane-api-contract
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-interface-contract-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define control-plane APIs for gateway management, daemon actions, and dashboard integrations.
+interfaceType: rest
+operations:
+  - name: GetGatewayStatus
+    method: GET
+    path: /api/gateway/status
+    description: Returns gateway runtime health, routing, and telemetry summaries.
+  - name: UpdateGatewayConfiguration
+    method: POST
+    path: /api/gateway/config
+    description: Applies validated control-plane configuration changes.
+  - name: ListAgentSessions
+    method: GET
+    path: /api/sessions
+    description: Retrieves active session and workflow execution state.
+  - name: TriggerDaemonAction
+    method: POST
+    path: /api/daemon/actions
+    description: Executes daemon-level operational actions.
+messageSchemas:
+  - name: GatewayStatusResponse
+    format: application/json
+    description: Health summary, routing state, and queue depth metrics.
+  - name: GatewayConfigUpdateRequest
+    format: application/json
+    description: Versioned config payload with validation metadata.
+  - name: DaemonActionRequest
+    format: application/json
+    description: Requested daemon operation and execution constraints.
+compatibilityRules:
+  - Existing control-plane endpoints require additive evolution and deprecation windows.
+  - Dashboard-facing response fields must remain backward-compatible across patch releases.
+trace:
+  upstream:
+    - specs/capabilities/control-plane-management.yaml
+  downstream:
+    code:
+      - src/JD.AI.Gateway/Endpoints/GatewayConfigEndpoints.cs
+      - src/JD.AI.Dashboard.Wasm/Services/GatewayApiClient.cs
+    testing:
+      - tests/JD.AI.Gateway.Tests/GatewayConfigEndpointTests.cs
+      - tests/JD.AI.Gateway.Tests/DashboardModelIntegrationTests.cs
+    deployment:
+      - specs/deployment/control-plane-deployment.yaml

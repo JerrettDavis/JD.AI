@@ -1,0 +1,62 @@
+apiVersion: jdai.upss/v1
+kind: Security
+id: security.mcp-integration-security
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-security-architecture-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define trust zones and controls for MCP server isolation and remote tool execution.
+authnModel: api-key
+authzModel: rbac
+trustZones:
+  - name: operator-session
+    level: public
+  - name: mcp-client-runtime
+    level: internal
+  - name: remote-mcp-server
+    level: dmz
+  - name: local-secrets-and-policy
+    level: restricted
+threats:
+  - id: threat.untrusted-mcp-server-registration
+    description: A malicious MCP server is registered and gains access to tool execution paths.
+    severity: critical
+    mitigatedBy:
+      - ctrl.server-allowlist
+      - ctrl.registration-approval
+  - id: threat.remote-tool-data-exfiltration
+    description: Remote MCP tool calls exfiltrate sensitive data from runtime context.
+    severity: high
+    mitigatedBy:
+      - ctrl.input-output-filtering
+      - ctrl.mcp-scope-boundaries
+controls:
+  - id: ctrl.server-allowlist
+    description: MCP registrations are restricted to approved hosts and transport policies.
+    type: preventive
+  - id: ctrl.registration-approval
+    description: MCP server activation requires explicit approval workflow.
+    type: preventive
+  - id: ctrl.input-output-filtering
+    description: Tool arguments and outputs are filtered for secret and policy violations.
+    type: detective
+  - id: ctrl.mcp-scope-boundaries
+    description: MCP tool calls execute with scoped capabilities and isolated context.
+    type: preventive
+residualRisks:
+  - threatId: threat.remote-tool-data-exfiltration
+    justification: Allowlisted servers still carry supply-chain risk if compromised upstream.
+trace:
+  upstream:
+    - specs/capabilities/mcp-integration.yaml
+  downstream:
+    deployment:
+      - docs/operations/deployment.md
+    operations:
+      - specs/operations/mcp-integration-operations.yaml
+    testing:
+      - tests/JD.AI.Tests/Mcp/McpServerStatusTests.cs

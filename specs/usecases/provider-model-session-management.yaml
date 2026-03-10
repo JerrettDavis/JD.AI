@@ -1,0 +1,41 @@
+apiVersion: jdai.upss/v1
+kind: UseCase
+id: usecase.provider-model-session-management
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-usecase-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define the operator workflow for provider onboarding and model switching in-session.
+actor: persona.terminal-operator
+capabilityRef: capability.provider-model-management
+preconditions:
+  - The operator has access to provider credentials or OAuth authorization.
+  - A JD.AI session is active.
+workflowSteps:
+  - Add or select a provider configuration.
+  - Authenticate the selected provider.
+  - Discover available models for that provider.
+  - Select a model for the active session.
+  - Switch to another model mid-session when task requirements change.
+expectedOutcomes:
+  - Provider auth state is persisted and reused.
+  - Model discovery returns provider-compatible options.
+  - Session model switches preserve conversation continuity.
+failureScenarios:
+  - Authentication fails due to invalid or expired credentials.
+  - Provider catalog retrieval fails or returns no tool-capable models.
+  - Mid-session switch selects a model without required capabilities.
+trace:
+  upstream:
+    - specs/capabilities/provider-model-management.yaml
+  downstream:
+    behavior:
+      - specs/behavior/provider-tool-calling-execution.yaml
+    testing:
+      - specs/testing/provider-model-management.yaml
+    interfaces:
+      - specs/interfaces/provider-abstraction-contract.yaml

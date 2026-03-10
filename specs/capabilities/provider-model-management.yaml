@@ -1,0 +1,35 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.provider-model-management
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define provider and model lifecycle management as a core platform capability.
+name: Provider and Model Management
+description: Manage provider onboarding, authentication, model discovery, and per-session model selection across supported backends.
+maturity: beta
+actors:
+  - persona.platform-engineer
+  - persona.terminal-operator
+dependencies: []
+relatedUseCases:
+  - usecase.provider-model-session-management
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases:
+      - usecase.provider-model-session-management
+    architecture:
+      - specs/interfaces/provider-abstraction-contract.yaml
+      - src/JD.AI.Core/Providers/ProviderRegistry.cs
+    testing:
+      - specs/testing/provider-model-management.yaml
+      - tests/JD.AI.Tests/Providers/MistralDetectorTests.cs

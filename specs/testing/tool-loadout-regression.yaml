@@ -1,0 +1,40 @@
+apiVersion: jdai.upss/v1
+kind: Testing
+id: testing.tool-loadout-regression
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-testing-strategy-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define regression coverage for tool loadout inheritance and execution policy behavior.
+verificationLevels:
+  - unit
+  - integration
+  - security
+behaviorRefs:
+  - behavior.tool-loadout-execution
+qualityRefs:
+  - quality.product-quality-targets
+coverageTargets:
+  - scope: JD.AI.Core.Tools.ToolLoadoutRegistry
+    target: "90%"
+    metric: line
+  - scope: JD.AI.Core.Tools loadout resolution scenarios
+    target: inheritance + disable + plugin-path coverage
+    metric: scenario
+generationRules:
+  - source: specs/behavior/tool-loadout-execution.yaml
+    strategy: hybrid
+trace:
+  upstream:
+    - specs/behavior/tool-loadout-execution.yaml
+    - specs/domain/tool-loadout-management.yaml
+  downstream:
+    ci:
+      - .github/workflows/ci.yml
+      - tests/JD.AI.Tests/Tools/LoadoutResolutionExtendedTests.cs
+    release:
+      - docs/operations/deployment.md

@@ -1,7 +1,31 @@
 apiVersion: jdai.upss/v1
 kind: ArchitectureIndex
 entries:
+  - id: architecture.control-plane-architecture
+    title: Control Plane Architecture
+    path: specs/architecture/control-plane-architecture.yaml
+    status: draft
   - id: architecture.jdai-gateway
     title: JD.AI Gateway Architecture
     path: specs/architecture/examples/architecture.example.yaml
+    status: draft
+  - id: architecture.multi-channel-platform-architecture
+    title: Multi-Channel Platform Architecture
+    path: specs/architecture/multi-channel-platform-architecture.yaml
+    status: draft
+  - id: architecture.product-wide-system-architecture
+    title: Product-Wide System Architecture
+    path: specs/architecture/product-wide-system-architecture.yaml
+    status: draft
+  - id: architecture.subagent-orchestration-architecture
+    title: Subagent Orchestration Architecture
+    path: specs/architecture/subagent-orchestration-architecture.yaml
+    status: draft
+  - id: architecture.tool-loadout-architecture
+    title: Tool Loadout Architecture
+    path: specs/architecture/tool-loadout-architecture.yaml
+    status: draft
+  - id: architecture.workflow-engine-architecture
+    title: Workflow Engine Architecture
+    path: specs/architecture/workflow-engine-architecture.yaml
     status: draft
