@@ -152,3 +152,11 @@ entries:
     title: Installation and Updates
     path: specs/capabilities/installation-updates.yaml
     status: draft
+  - id: capability.multi-tenancy
+    title: Multi-Tenancy
+    path: specs/capabilities/multi-tenancy.yaml
+    status: draft
+  - id: capability.skill-management
+    title: Skill Management
+    path: specs/capabilities/skill-management.yaml
+    status: draft
