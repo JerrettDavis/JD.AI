@@ -1,0 +1,34 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.installation-updates
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Add installation and updates capability to the canonical capability map (#325).
+name: Installation and Updates
+description: >-
+  Detect installation method, check for available updates from GitHub releases
+  and package managers, and manage the upgrade lifecycle with detached updater
+  support and cross-platform service management for systemd and Windows services.
+maturity: beta
+actors:
+  - persona.terminal-operator
+  - persona.platform-engineer
+dependencies: []
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/README.md
+    testing:
+      - tests/JD.AI.Tests/Installation/InstallationDetectorTests.cs
