@@ -22,13 +22,13 @@ public sealed class AgentLoopTextToolExecutionTests
             "TestProvider",
             Capabilities: ModelCapabilities.Chat);
 
-        const string firstResponse = """
+        const string FirstResponse = """
             Looks like we're on Windows. Let me try again:
             <tool_call> {"name": "run_command", "arguments": {"command": "cd"}} </tool_call>
             <tool_response> Exit code: 0 --- stdout --- C:\Users\user\project </tool_response>
             We're running in C:\Users\user\project.
             """;
-        const string followUpResponse = "We're running in C:\\Users\\jd.";
+        const string FollowUpResponse = "We're running in C:\\Users\\jd.";
 
         var chatService = Substitute.For<IChatCompletionService>();
         chatService
@@ -37,7 +37,7 @@ public sealed class AgentLoopTextToolExecutionTests
                 Arg.Any<PromptExecutionSettings>(),
                 Arg.Any<Kernel>(),
                 Arg.Any<CancellationToken>())
-            .Returns(StreamOnce(firstResponse));
+            .Returns(StreamOnce(FirstResponse));
 
         chatService
             .GetChatMessageContentsAsync(
@@ -47,7 +47,7 @@ public sealed class AgentLoopTextToolExecutionTests
                 Arg.Any<CancellationToken>())
             .Returns(new List<ChatMessageContent>
             {
-                new(AuthorRole.Assistant, followUpResponse),
+                new(AuthorRole.Assistant, FollowUpResponse),
             });
 
         var executedCommands = new List<string>();
@@ -73,7 +73,7 @@ public sealed class AgentLoopTextToolExecutionTests
         try
         {
             var result = await loop.RunTurnStreamingAsync("What folder are we running in?");
-            result.Should().Be(followUpResponse);
+            result.Should().Be(FollowUpResponse);
         }
         finally
         {
@@ -82,7 +82,7 @@ public sealed class AgentLoopTextToolExecutionTests
 
         executedCommands.Should().ContainSingle().Which.Should().Be("cd");
         session.History.Last().Role.Should().Be(AuthorRole.Assistant);
-        session.History.Last().Content.Should().Be(followUpResponse);
+        session.History.Last().Content.Should().Be(FollowUpResponse);
         session.History.Any(m =>
             m.Role == AuthorRole.User &&
             m.Content is not null &&
@@ -100,7 +100,7 @@ public sealed class AgentLoopTextToolExecutionTests
             "TestProvider",
             Capabilities: ModelCapabilities.Chat | ModelCapabilities.ToolCalling);
 
-        const string response = """
+        const string Response = """
             Let me check.
             <tool_call> {"name": "run_command", "arguments": {"command": "cd"}} </tool_call>
             """;
@@ -112,7 +112,7 @@ public sealed class AgentLoopTextToolExecutionTests
                 Arg.Any<PromptExecutionSettings>(),
                 Arg.Any<Kernel>(),
                 Arg.Any<CancellationToken>())
-            .Returns(StreamOnce(response));
+            .Returns(StreamOnce(Response));
 
         var executedCommands = new List<string>();
         var builder = Kernel.CreateBuilder();
