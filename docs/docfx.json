@@ -33,6 +33,8 @@
           "operations/**/toc.yml",
           "reference/**/*.md",
           "reference/**/toc.yml",
+          "specs/generated/**/*.md",
+          "specs/generated/**/toc.yml",
           "toc.yml",
           "*.md"
         ]

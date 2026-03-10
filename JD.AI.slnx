@@ -18,6 +18,7 @@
     <Project Path="src/JD.AI.Channels.OpenClaw/JD.AI.Channels.OpenClaw.csproj" />
     <Project Path="src/JD.AI.Workflows.Distributed/JD.AI.Workflows.Distributed.csproj" />
     <Project Path="src/JD.AI.Workflows/JD.AI.Workflows.csproj" />
+    <Project Path="src/JD.AI.SpecSite/JD.AI.SpecSite.csproj" />
     <Project Path="src/JD.AI/JD.AI.csproj" />
   </Folder>
   <Folder Name="/tests/">

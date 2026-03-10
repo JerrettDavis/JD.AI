@@ -1,0 +1,93 @@
+- name: UPSS Specifications
+  href: index.md
+  items:
+  - name: 'ADRs'
+    href: 'adrs/index.md'
+    items:
+    - name: 'Modular Monolith Architecture'
+      href: 'adrs/adr.modular-monolith-architecture.md'
+  - name: 'Architecture'
+    href: 'architecture/index.md'
+    items:
+    - name: 'JD.AI Gateway Architecture'
+      href: 'architecture/architecture.jdai-gateway.md'
+  - name: 'Behavior'
+    href: 'behavior/index.md'
+    items:
+    - name: 'Validate Pull Request Behavior'
+      href: 'behavior/behavior.validate-pull-request.md'
+  - name: 'Capabilities'
+    href: 'capabilities/index.md'
+    items:
+    - name: 'Specification Validation'
+      href: 'capabilities/capability.spec-validation.md'
+  - name: 'Data'
+    href: 'data/index.md'
+    items:
+    - name: 'Session Store Data Model'
+      href: 'data/data.session-store.md'
+  - name: 'Deployment'
+    href: 'deployment/index.md'
+    items:
+    - name: 'JD.AI Gateway Deployment'
+      href: 'deployment/deployment.jdai-gateway.md'
+  - name: 'Domain'
+    href: 'domain/index.md'
+    items:
+    - name: 'Session Management Domain Model'
+      href: 'domain/domain.session-management.md'
+  - name: 'Governance'
+    href: 'governance/index.md'
+    items:
+    - name: 'Specification Lifecycle Governance'
+      href: 'governance/governance.specification-lifecycle.md'
+  - name: 'Interfaces'
+    href: 'interfaces/index.md'
+    items:
+    - name: 'Agent Chat API'
+      href: 'interfaces/interface.agent-chat-api.md'
+  - name: 'Observability'
+    href: 'observability/index.md'
+    items:
+    - name: 'JD.AI Gateway Observability'
+      href: 'observability/observability.jdai-gateway.md'
+  - name: 'Operations'
+    href: 'operations/index.md'
+    items:
+    - name: 'JD.AI Gateway Operations'
+      href: 'operations/operations.jdai-gateway.md'
+  - name: 'Personas'
+    href: 'personas/index.md'
+    items:
+    - name: 'Platform Administrator'
+      href: 'personas/persona.platform-admin.md'
+  - name: 'Policies'
+    href: 'policies/index.md'
+    items:
+    - name: 'API Security Baseline Policy'
+      href: 'policies/policy.api-security-baseline.md'
+  - name: 'Quality'
+    href: 'quality/index.md'
+    items:
+    - name: 'API Response Time Quality'
+      href: 'quality/quality.api-response-time.md'
+  - name: 'Security'
+    href: 'security/index.md'
+    items:
+    - name: 'API Gateway Security'
+      href: 'security/security.api-gateway.md'
+  - name: 'Testing'
+    href: 'testing/index.md'
+    items:
+    - name: 'Specification Validation Testing'
+      href: 'testing/testing.specification-validation.md'
+  - name: 'Use Cases'
+    href: 'usecases/index.md'
+    items:
+    - name: 'Validate Pull Request'
+      href: 'usecases/usecase.validate-pull-request.md'
+  - name: 'Vision'
+    href: 'vision/index.md'
+    items:
+    - name: 'JD.AI Product Vision'
+      href: 'vision/vision.jdai.product.md'
