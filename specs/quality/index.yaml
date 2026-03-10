@@ -5,3 +5,11 @@ entries:
     title: API Response Time Quality
     path: specs/quality/examples/quality.example.yaml
     status: draft
+  - id: quality.product-quality-targets
+    title: Product Quality Targets
+    path: specs/quality/product-quality-targets.yaml
+    status: draft
+  - id: quality.subagent-orchestration-quality
+    title: Subagent Orchestration Quality
+    path: specs/quality/subagent-orchestration-quality.yaml
+    status: draft

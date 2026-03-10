@@ -1,0 +1,35 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.subagent-team-orchestration
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define multi-agent team orchestration strategies as a first-class capability.
+name: Subagent and Team Orchestration
+description: Coordinate supervisor, debate, voting, pipeline, and parallel subagent strategies with delegation and failure isolation.
+maturity: beta
+actors:
+  - persona.autonomous-agent
+  - persona.platform-engineer
+  - persona.terminal-operator
+dependencies: []
+relatedUseCases:
+  - usecase.subagent-team-orchestration
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases:
+      - usecase.subagent-team-orchestration
+    architecture:
+      - specs/architecture/subagent-orchestration-architecture.yaml
+      - src/JD.AI.Core/Agents/Orchestration/TeamOrchestrator.cs
+    testing:
+      - tests/JD.AI.Tests/Agents/Orchestration/TeamOrchestratorTests.cs

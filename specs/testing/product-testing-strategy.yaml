@@ -1,0 +1,50 @@
+apiVersion: jdai.upss/v1
+kind: Testing
+id: testing.product-testing-strategy
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-testing-strategy-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define product testing strategy across unit, integration, workflow, provider compatibility, and orchestration coverage.
+verificationLevels:
+  - unit
+  - integration
+  - performance
+  - e2e
+behaviorRefs:
+  - behavior.provider-tool-calling-execution
+  - behavior.tool-loadout-execution
+  - behavior.workflow-execution-lifecycle
+  - behavior.subagent-team-orchestration
+qualityRefs:
+  - quality.product-quality-targets
+  - quality.subagent-orchestration-quality
+coverageTargets:
+  - scope: tests/JD.AI.Tests
+    target: "85%"
+    metric: line
+  - scope: Provider compatibility matrix (OpenAI, Anthropic, Mistral, local)
+    target: critical-path pass on every PR
+    metric: scenario
+  - scope: Workflow and orchestration regression suites
+    target: run + resume + retry + multi-strategy parity
+    metric: scenario
+generationRules:
+  - source: specs/behavior/workflow-execution-lifecycle.yaml
+    strategy: hybrid
+  - source: specs/behavior/subagent-team-orchestration.yaml
+    strategy: generated
+trace:
+  upstream:
+    - specs/quality/product-quality-targets.yaml
+    - specs/security/product-security-architecture.yaml
+  downstream:
+    ci:
+      - .github/workflows/ci.yml
+      - .github/workflows/pr-validation.yml
+    release:
+      - docs/operations/deployment.md

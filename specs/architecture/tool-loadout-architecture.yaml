@@ -1,0 +1,57 @@
+apiVersion: jdai.upss/v1
+kind: Architecture
+id: architecture.tool-loadout-architecture
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-architecture-c4-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define structural boundaries for tool registry, loadout resolution, and plugin tool integration.
+architectureStyle: modular-monolith
+systems:
+  - name: JD.AI Runtime
+    description: Core runtime executing prompts, tools, and orchestration.
+    type: backend
+containers:
+  - name: Core Tools Library
+    technology: .NET 10 / C#
+    system: JD.AI Runtime
+  - name: Plugin Extension Surface
+    technology: .NET plugin contracts
+    system: JD.AI Runtime
+components:
+  - name: ToolRegistry
+    container: Core Tools Library
+    responsibility: Registers built-in and plugin tools with metadata and categories.
+  - name: LoadoutResolver
+    container: Core Tools Library
+    responsibility: Resolves inheritance and disabled tool filters into an effective tool set.
+  - name: PolicyGuard
+    container: Core Tools Library
+    responsibility: Applies loadout and safety policies before tool invocation.
+  - name: PluginResolver
+    container: Plugin Extension Surface
+    responsibility: Maps plugin exports to callable tool contracts.
+dependencyRules:
+  - from: LoadoutResolver
+    to: ToolRegistry
+    allowed: true
+  - from: ToolRegistry
+    to: LoadoutResolver
+    allowed: false
+  - from: PluginResolver
+    to: ToolRegistry
+    allowed: true
+trace:
+  upstream:
+    - specs/capabilities/tool-execution-loadouts.yaml
+  downstream:
+    deployment:
+      - specs/deployment/jdai-deployment-topologies.yaml
+    security:
+      - specs/security/product-security-architecture.yaml
+    operations:
+      - specs/operations/platform-operations-runbooks.yaml

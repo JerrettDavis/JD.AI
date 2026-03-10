@@ -1,0 +1,57 @@
+apiVersion: jdai.upss/v1
+kind: Architecture
+id: architecture.multi-channel-platform-architecture
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-architecture-c4-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define architecture for inbound channel messaging, identity mapping, context persistence, and response dispatch.
+architectureStyle: event-driven
+systems:
+  - name: JD.AI Multi-Channel Platform
+    description: Connects gateway message ingress to channel adapters and runtime orchestration.
+    type: backend
+containers:
+  - name: Gateway Routing Surface
+    technology: ASP.NET Core / SignalR
+    system: JD.AI Multi-Channel Platform
+  - name: Channel Adapter Layer
+    technology: .NET channel adapter projects
+    system: JD.AI Multi-Channel Platform
+components:
+  - name: ChannelIngressRouter
+    container: Gateway Routing Surface
+    responsibility: Accepts inbound events and routes to normalized channel pipelines.
+  - name: IdentityMapper
+    container: Gateway Routing Surface
+    responsibility: Resolves channel user identity to JD.AI session identity.
+  - name: ContextStoreBridge
+    container: Gateway Routing Surface
+    responsibility: Persists and loads conversation context across channels.
+  - name: AdapterDispatch
+    container: Channel Adapter Layer
+    responsibility: Sends normalized responses to channel-specific transports.
+dependencyRules:
+  - from: ChannelIngressRouter
+    to: IdentityMapper
+    allowed: true
+  - from: IdentityMapper
+    to: ContextStoreBridge
+    allowed: true
+  - from: AdapterDispatch
+    to: ChannelIngressRouter
+    allowed: false
+trace:
+  upstream:
+    - specs/capabilities/multi-channel-platform.yaml
+  downstream:
+    deployment:
+      - specs/deployment/jdai-deployment-topologies.yaml
+    security:
+      - specs/security/multi-channel-platform-security.yaml
+    operations:
+      - specs/operations/multi-channel-platform-operations.yaml

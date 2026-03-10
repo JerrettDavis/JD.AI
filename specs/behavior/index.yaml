@@ -5,3 +5,15 @@ entries:
     title: Provider Tool-Calling Execution Behavior
     path: specs/behavior/provider-tool-calling-execution.yaml
     status: draft
+  - id: behavior.subagent-team-orchestration
+    title: Subagent Team Orchestration Behavior
+    path: specs/behavior/subagent-team-orchestration.yaml
+    status: draft
+  - id: behavior.tool-loadout-execution
+    title: Tool Loadout Execution Behavior
+    path: specs/behavior/tool-loadout-execution.yaml
+    status: draft
+  - id: behavior.workflow-execution-lifecycle
+    title: Workflow Execution Lifecycle Behavior
+    path: specs/behavior/workflow-execution-lifecycle.yaml
+    status: draft

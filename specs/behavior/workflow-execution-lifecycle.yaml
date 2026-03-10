@@ -1,0 +1,88 @@
+apiVersion: jdai.upss/v1
+kind: Behavior
+id: behavior.workflow-execution-lifecycle
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-behavioral-spec-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Specify behavior for create/run/resume/branch/retry workflow lifecycle operations.
+useCaseRef: usecase.workflow-lifecycle-execution
+bddScenarios:
+  - title: Workflow resumes from persisted execution state
+    given:
+      - A workflow has completed at least one step and persisted checkpoints.
+      - The process is interrupted before completion.
+    when:
+      - The operator runs a resume operation.
+    then:
+      - The engine reloads execution state from the latest checkpoint.
+      - Remaining steps continue without duplicating completed work.
+  - title: Retry failed step does not invalidate successful sibling steps
+    given:
+      - A workflow branch has one failed step and one successful step.
+    when:
+      - The operator retries only the failed step.
+    then:
+      - The successful step state remains intact.
+      - The retried step emits updated output and merge metadata.
+stateMachine:
+  initialState: Draft
+  states:
+    - id: Draft
+      description: Workflow definition is being authored or refined.
+    - id: Running
+      description: Workflow steps are actively executing.
+    - id: Paused
+      description: Execution is interrupted but recoverable from checkpoint.
+    - id: Completed
+      description: Workflow run completed successfully.
+      terminal: true
+    - id: Failed
+      description: Execution failed and requires retry or branch intervention.
+      terminal: true
+  transitions:
+    - from: Draft
+      to: Running
+      on: run_requested
+      actions:
+        - Validate workflow graph and dependencies.
+    - from: Running
+      to: Paused
+      on: interruption_detected
+      actions:
+        - Persist checkpoint and execution metadata.
+    - from: Paused
+      to: Running
+      on: resume_requested
+      actions:
+        - Restore workflow state from persisted checkpoint.
+    - from: Running
+      to: Failed
+      on: step_failed
+      actions:
+        - Emit failure metadata for targeted retry.
+    - from: Running
+      to: Completed
+      on: all_steps_succeeded
+      actions:
+        - Publish final workflow result.
+assertions:
+  - Resume must restart from the latest valid checkpoint, not from step zero.
+  - Step retry must be scoped to failed steps unless explicit full rerun is requested.
+  - Branch operations must preserve parent execution lineage.
+trace:
+  upstream:
+    - specs/usecases/workflow-lifecycle-execution.yaml
+  downstream:
+    testing:
+      - specs/testing/workflow-execution-strategy.yaml
+    interfaces:
+      - src/JD.AI.Workflows/Interfaces.cs
+    code:
+      - src/JD.AI.Workflows/WorkflowGenerator.cs
+      - src/JD.AI.Workflows/WorkflowExecutionCapture.cs
+      - src/JD.AI.Workflows/Consensus/WorkflowExecutionState.cs

@@ -1,0 +1,69 @@
+apiVersion: jdai.upss/v1
+kind: Operations
+id: operations.platform-operations-runbooks
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-operations-runbook-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define platform-wide runbooks for telemetry, health checks, alert response, and escalation.
+service: jdai-platform
+runbooks:
+  - name: Platform Health Degradation
+    description: Restore service health when core runtime or gateway checks fail.
+    triggerCondition: Health endpoint reports degraded or unhealthy for 5 minutes.
+    steps:
+      - Identify failing subsystem from health checks.
+      - Verify provider connectivity and storage dependencies.
+      - Check recent deployments and configuration changes.
+      - Apply rollback or targeted restart where needed.
+      - Confirm health recovery and close incident notes.
+  - name: Alert Storm Mitigation
+    description: Stabilize the platform when high-volume alerts indicate cascading failure.
+    triggerCondition: Alert volume exceeds baseline by 3x within 10 minutes.
+    steps:
+      - Correlate alerts by service and failure domain.
+      - Suppress duplicate noise and prioritize sev1 signals.
+      - Engage owning team and assign incident commander.
+      - Apply containment actions and monitor recovery.
+incidentLevels:
+  - level: sev1
+    description: Full platform outage or severe data/control-plane impact.
+    responseTime: 5 minutes
+  - level: sev2
+    description: Degraded performance or partial feature outage.
+    responseTime: 15 minutes
+  - level: sev3
+    description: Localized fault with workaround available.
+    responseTime: 30 minutes
+responseSlos:
+  - level: sev1
+    acknowledgeWithin: 5 minutes
+    resolveWithin: 1 hour
+  - level: sev2
+    acknowledgeWithin: 15 minutes
+    resolveWithin: 4 hours
+  - level: sev3
+    acknowledgeWithin: 30 minutes
+    resolveWithin: 1 business day
+escalationPaths:
+  - level: sev1
+    contacts:
+      - on-call-platform
+      - engineering-lead
+      - governance-admin
+  - level: sev2
+    contacts:
+      - on-call-platform
+      - area-owner
+trace:
+  upstream:
+    - specs/deployment/jdai-deployment-topologies.yaml
+  downstream:
+    governance:
+      - specs/governance/product-governance-model.yaml
+    audits:
+      - docs/operations/governance.md

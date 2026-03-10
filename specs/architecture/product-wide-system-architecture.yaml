@@ -1,0 +1,73 @@
+apiVersion: jdai.upss/v1
+kind: Architecture
+id: architecture.product-wide-system-architecture
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-architecture-c4-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define product-wide system context, container architecture, module boundaries, and dependency rules.
+architectureStyle: modular-monolith
+systems:
+  - name: JD.AI Platform
+    description: End-to-end platform spanning TUI, gateway control plane, workflows, tools, and channel adapters.
+    type: backend
+containers:
+  - name: TUI Client
+    technology: .NET 10 / Spectre.Console
+    system: JD.AI Platform
+  - name: Core Runtime
+    technology: .NET 10 / C# libraries
+    system: JD.AI Platform
+  - name: Gateway Control Plane
+    technology: ASP.NET Core / SignalR
+    system: JD.AI Platform
+  - name: Dashboard UI
+    technology: Blazor WebAssembly
+    system: JD.AI Platform
+components:
+  - name: ProviderAndModelSubsystem
+    container: Core Runtime
+    responsibility: Provider discovery, authentication, capability metadata, and model switching.
+  - name: ToolingSubsystem
+    container: Core Runtime
+    responsibility: Tool registry, loadouts, policy checks, and execution dispatch.
+  - name: WorkflowSubsystem
+    container: Core Runtime
+    responsibility: Workflow authoring, execution capture, branching, and retry.
+  - name: OrchestrationSubsystem
+    container: Core Runtime
+    responsibility: Subagent team strategies, arbitration, and merge coordination.
+  - name: ControlPlaneSubsystem
+    container: Gateway Control Plane
+    responsibility: Operational APIs, channel routing, telemetry integration, and lifecycle control.
+dependencyRules:
+  - from: TUI Client
+    to: Core Runtime
+    allowed: true
+  - from: Dashboard UI
+    to: Gateway Control Plane
+    allowed: true
+  - from: Gateway Control Plane
+    to: Core Runtime
+    allowed: true
+  - from: Core Runtime
+    to: TUI Client
+    allowed: false
+  - from: Core Runtime
+    to: Dashboard UI
+    allowed: false
+trace:
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    deployment:
+      - specs/deployment/jdai-deployment-topologies.yaml
+      - specs/deployment/control-plane-deployment.yaml
+    security:
+      - specs/security/product-security-architecture.yaml
+    operations:
+      - specs/operations/platform-operations-runbooks.yaml

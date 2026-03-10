@@ -1,0 +1,40 @@
+apiVersion: jdai.upss/v1
+kind: Policy
+id: policy.tool-loadout-policy
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-policy-rules-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define policy guarantees for loadout inheritance and safe tool execution.
+policyType: operational
+severity: high
+scope:
+  - src/JD.AI.Core/Tools
+rules:
+  - id: disabled-tools-override-inheritance
+    description: Disabled tool declarations must override inherited enabled entries.
+    expression: loadout.disabledTools.intersect(loadout.effectiveTools).count == 0
+  - id: require-loadout-validation-before-execution
+    description: Tool execution requires a validated effective loadout.
+    expression: execution.loadoutState == "validated"
+  - id: block-unknown-plugin-tools
+    description: Tools not resolved through registry or approved plugin metadata must be rejected.
+    expression: tool.source in ["builtin", "approved-plugin"]
+exceptions: []
+enforcement:
+  mode: enforce
+trace:
+  upstream:
+    - specs/domain/tool-loadout-management.yaml
+  downstream:
+    ci:
+      - tests/JD.AI.Tests/Specifications/PolicySpecificationRepositoryTests.cs
+    enforcement:
+      - src/JD.AI.Core/Tools/LoadoutValidator.cs
+      - src/JD.AI.Core/Tools/LoadoutResolutionHelper.cs
+    operations:
+      - docs/operations/governance.md

@@ -1,0 +1,40 @@
+apiVersion: jdai.upss/v1
+kind: Policy
+id: policy.subagent-orchestration-policy
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-policy-rules-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define governance rules for delegation safety, retry ceilings, and failure isolation in team orchestration.
+policyType: operational
+severity: high
+scope:
+  - src/JD.AI.Core/Agents/Orchestration
+rules:
+  - id: require-delegation-attribution
+    description: Every delegated task must include owning subagent identity and strategy context.
+    expression: delegatedTask.owner != null && delegatedTask.strategy != null
+  - id: enforce-retry-ceiling
+    description: Subagent retries must not exceed configured retry ceiling.
+    expression: subagent.retryCount <= policy.maxRetries
+  - id: isolate-failed-subagent-results
+    description: Failed subagent outputs must be excluded from final merge unless explicitly overridden.
+    expression: merge.inputs.none(r => r.status == "failed")
+exceptions: []
+enforcement:
+  mode: enforce
+trace:
+  upstream:
+    - specs/behavior/subagent-team-orchestration.yaml
+  downstream:
+    ci:
+      - tests/JD.AI.Tests/Specifications/PolicySpecificationRepositoryTests.cs
+    enforcement:
+      - src/JD.AI.Core/Agents/Orchestration/TeamOrchestrator.cs
+      - src/JD.AI.Core/Agents/Orchestration/Strategies/SupervisorStrategy.cs
+    operations:
+      - docs/operations/governance.md

@@ -1,0 +1,42 @@
+apiVersion: jdai.upss/v1
+kind: Governance
+id: governance.control-plane-governance
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-governance-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define ownership and approval gates for control-plane changes and releases.
+ownershipModel: team-based
+changeProcess:
+  - name: Control-plane change proposal
+    description: Control-plane modifications require scoped impact analysis and trace updates.
+    requiredApprovals: 2
+approvalGates:
+  - name: Control-plane CI Gate
+    type: automated
+    criteria:
+      - Gateway and dashboard test suites pass.
+      - Spec repository validation passes.
+  - name: Control-plane operations review
+    type: manual
+    criteria:
+      - On-call owner approves rollout window and rollback plan.
+releasePolicy:
+  cadence: continuous
+  branchStrategy: trunk-based
+  hotfixProcess: Emergency fix branch with governance-admin approval and post-incident review.
+auditRequirements:
+  - All control-plane endpoint and config changes must emit audit events.
+  - Deployment promotions must include approver identity and gate evidence.
+trace:
+  upstream:
+    - specs/capabilities/control-plane-management.yaml
+  downstream:
+    allSpecTypes:
+      - specs/architecture/control-plane-architecture.yaml
+      - specs/deployment/control-plane-deployment.yaml
+      - specs/observability/control-plane-observability.yaml

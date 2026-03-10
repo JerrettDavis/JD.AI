@@ -1,0 +1,40 @@
+apiVersion: jdai.upss/v1
+kind: Testing
+id: testing.provider-model-management
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-testing-strategy-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define verification for provider auth, model discovery, and model switching behavior.
+verificationLevels:
+  - unit
+  - integration
+  - acceptance
+behaviorRefs:
+  - behavior.provider-tool-calling-execution
+qualityRefs:
+  - quality.product-quality-targets
+coverageTargets:
+  - scope: JD.AI.Core.Providers
+    target: "85%"
+    metric: line
+  - scope: JD.AI.Core provider/model lifecycle scenarios
+    target: authentication + discovery + switch regression coverage
+    metric: scenario
+generationRules:
+  - source: specs/usecases/provider-model-session-management.yaml
+    strategy: hybrid
+trace:
+  upstream:
+    - specs/usecases/provider-model-session-management.yaml
+    - specs/interfaces/provider-abstraction-contract.yaml
+  downstream:
+    ci:
+      - .github/workflows/ci.yml
+      - .github/workflows/pr-validation.yml
+    release:
+      - docs/operations/deployment.md

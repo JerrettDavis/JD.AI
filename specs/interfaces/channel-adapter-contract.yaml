@@ -1,0 +1,55 @@
+apiVersion: jdai.upss/v1
+kind: Interface
+id: interface.channel-adapter-contract
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-interface-contract-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define the adapter contract for receiving messages, identity mapping, and returning responses.
+interfaceType: event
+operations:
+  - name: ReceiveChannelMessage
+    method: INTERNAL
+    path: /runtime/channels/messages/receive
+    description: Accepts normalized inbound channel message payloads.
+  - name: MapChannelIdentity
+    method: INTERNAL
+    path: /runtime/channels/identity/map
+    description: Maps channel-specific user identity to JD.AI session identity.
+  - name: PersistChannelContext
+    method: INTERNAL
+    path: /runtime/channels/context/persist
+    description: Stores channel context state for resume and continuity.
+  - name: DispatchChannelResponse
+    method: INTERNAL
+    path: /runtime/channels/messages/respond
+    description: Sends response payloads via channel-specific adapter transport.
+messageSchemas:
+  - name: ChannelMessageEnvelope
+    format: application/json
+    description: Source channel metadata, normalized message body, and correlation id.
+  - name: ChannelIdentityMapRequest
+    format: application/json
+    description: Channel user id, tenant scope, and session lookup inputs.
+  - name: ChannelResponseEnvelope
+    format: application/json
+    description: Outbound response payload with adapter routing metadata.
+compatibilityRules:
+  - Channel adapters must preserve core envelope fields across transport implementations.
+  - Identity mapping failures must return actionable error payloads, not silent drops.
+trace:
+  upstream:
+    - specs/capabilities/multi-channel-platform.yaml
+  downstream:
+    code:
+      - src/JD.AI.Gateway/Services/ChannelFactory.cs
+      - src/JD.AI.Channels.Web/WebChannel.cs
+    testing:
+      - tests/JD.AI.Gateway.Tests/ChannelEndpointTests.cs
+      - tests/JD.AI.Tests/Tools/ChannelOpsToolsTests.cs
+    deployment:
+      - docs/operations/deployment.md

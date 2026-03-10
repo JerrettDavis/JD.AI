@@ -1,0 +1,41 @@
+apiVersion: jdai.upss/v1
+kind: UseCase
+id: usecase.workflow-lifecycle-execution
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-usecase-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define end-to-end lifecycle operations for workflow authoring and execution.
+actor: persona.workflow-author
+capabilityRef: capability.workflow-authoring-execution
+preconditions:
+  - Workflow storage is configured for the active workspace.
+  - Required provider and tool permissions are available.
+workflowSteps:
+  - Create or refine a workflow definition.
+  - Run the workflow and persist execution checkpoints.
+  - Resume an interrupted workflow from stored state.
+  - Branch a workflow into an alternate execution path.
+  - Retry failed steps with adjusted inputs or model selection.
+expectedOutcomes:
+  - Workflow definitions are versioned and reusable.
+  - Execution state is recoverable across interruptions.
+  - Failed steps can be retried without re-running successful branches.
+failureScenarios:
+  - Workflow generation produces invalid step contracts.
+  - Resume cannot recover due to missing or corrupted execution state.
+  - Branch merge conflicts produce unresolved output state.
+trace:
+  upstream:
+    - specs/capabilities/workflow-authoring-execution.yaml
+  downstream:
+    behavior:
+      - specs/behavior/workflow-execution-lifecycle.yaml
+    testing:
+      - specs/testing/workflow-execution-strategy.yaml
+    interfaces:
+      - src/JD.AI.Workflows/Interfaces.cs

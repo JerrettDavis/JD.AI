@@ -1,0 +1,59 @@
+apiVersion: jdai.upss/v1
+kind: Deployment
+id: deployment.jdai-deployment-topologies
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-deployment-topology-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define supported JD.AI deployment topologies for local CLI, daemon, container, and distributed clusters.
+environments:
+  - name: local-cli
+    type: development
+    region: workstation
+  - name: daemon-mode
+    type: staging
+    region: edge-host
+  - name: docker-self-hosted
+    type: production
+    region: self-hosted
+  - name: distributed-cluster
+    type: dr
+    region: multi-region
+pipelineStages:
+  - name: Validate and Build
+    order: 1
+    automated: true
+  - name: Package Artifacts
+    order: 2
+    automated: true
+  - name: Topology Deployment
+    order: 3
+    automated: false
+promotionGates:
+  - fromEnv: daemon-mode
+    toEnv: docker-self-hosted
+    criteria:
+      - Integration tests pass in daemon and gateway modes.
+      - Observability baselines are present for deployment target.
+  - fromEnv: docker-self-hosted
+    toEnv: distributed-cluster
+    criteria:
+      - Horizontal scaling and failover tests pass.
+      - Disaster-recovery runbook validation is complete.
+infrastructureRefs:
+  - deploy/docker-compose.yml
+  - deploy/k8s
+  - Dockerfile
+rollbackStrategy: canary
+trace:
+  upstream:
+    - specs/architecture/product-wide-system-architecture.yaml
+  downstream:
+    operations:
+      - specs/operations/platform-operations-runbooks.yaml
+    observability:
+      - specs/observability/platform-observability-baseline.yaml

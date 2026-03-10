@@ -1,0 +1,40 @@
+apiVersion: jdai.upss/v1
+kind: UseCase
+id: usecase.subagent-team-orchestration
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-usecase-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define operator-driven orchestration of subagent teams and merge arbitration.
+actor: persona.platform-engineer
+capabilityRef: capability.subagent-team-orchestration
+preconditions:
+  - Subagent definitions are available for selected strategy.
+  - Team orchestration strategy is selected for the task.
+workflowSteps:
+  - Delegate task shards to subagents based on strategy.
+  - Execute subagent turns with retry policies.
+  - Arbitrate or vote on candidate responses.
+  - Merge responses into a final result.
+  - Isolate failed agents and continue when policy allows.
+expectedOutcomes:
+  - Team strategy produces deterministic merge metadata.
+  - Failed agents do not corrupt successful subagent outputs.
+failureScenarios:
+  - Arbitration cannot select a winner due to malformed candidate outputs.
+  - Retry budget is exhausted for critical subagent tasks.
+  - Merge step fails because response contracts are incompatible.
+trace:
+  upstream:
+    - specs/capabilities/subagent-team-orchestration.yaml
+  downstream:
+    behavior:
+      - specs/behavior/subagent-team-orchestration.yaml
+    testing:
+      - tests/JD.AI.Tests/Agents/Orchestration/TeamOrchestratorTests.cs
+    interfaces:
+      - src/JD.AI.Core/Agents/Orchestration/TeamContext.cs

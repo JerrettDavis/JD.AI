@@ -1,7 +1,23 @@
 apiVersion: jdai.upss/v1
 kind: TestingIndex
 entries:
+  - id: testing.product-testing-strategy
+    title: Product Testing Strategy
+    path: specs/testing/product-testing-strategy.yaml
+    status: draft
+  - id: testing.provider-model-management
+    title: Provider Model Management Testing
+    path: specs/testing/provider-model-management.yaml
+    status: draft
   - id: testing.provider-tool-calling-regression
     title: Provider Tool-Calling Regression
     path: specs/testing/provider-tool-calling-regression.yaml
+    status: draft
+  - id: testing.tool-loadout-regression
+    title: Tool Loadout Regression
+    path: specs/testing/tool-loadout-regression.yaml
+    status: draft
+  - id: testing.workflow-execution-strategy
+    title: Workflow Execution Strategy
+    path: specs/testing/workflow-execution-strategy.yaml
     status: draft

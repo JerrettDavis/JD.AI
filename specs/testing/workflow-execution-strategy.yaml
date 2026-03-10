@@ -1,0 +1,40 @@
+apiVersion: jdai.upss/v1
+kind: Testing
+id: testing.workflow-execution-strategy
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-testing-strategy-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define workflow lifecycle verification coverage for run, resume, branch, and retry.
+verificationLevels:
+  - unit
+  - integration
+  - e2e
+behaviorRefs:
+  - behavior.workflow-execution-lifecycle
+qualityRefs:
+  - quality.product-quality-targets
+coverageTargets:
+  - scope: JD.AI.Workflows
+    target: "85%"
+    metric: line
+  - scope: workflow lifecycle scenarios
+    target: create + run + resume + branch + retry parity
+    metric: scenario
+generationRules:
+  - source: specs/behavior/workflow-execution-lifecycle.yaml
+    strategy: generated
+trace:
+  upstream:
+    - specs/behavior/workflow-execution-lifecycle.yaml
+    - specs/usecases/workflow-lifecycle-execution.yaml
+  downstream:
+    ci:
+      - .github/workflows/ci.yml
+      - tests/JD.AI.Tests/Workflows/WorkflowCoverageExpansionTests.cs
+    release:
+      - docs/operations/deployment.md

@@ -1,0 +1,57 @@
+apiVersion: jdai.upss/v1
+kind: Architecture
+id: architecture.subagent-orchestration-architecture
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-architecture-c4-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define architecture for subagent team orchestration and strategy execution.
+architectureStyle: modular-monolith
+systems:
+  - name: JD.AI Agent Runtime
+    description: Coordinates single-agent and multi-agent execution.
+    type: backend
+containers:
+  - name: Orchestration Engine
+    technology: .NET 10 / C#
+    system: JD.AI Agent Runtime
+  - name: Strategy Library
+    technology: .NET 10 / C#
+    system: JD.AI Agent Runtime
+components:
+  - name: TeamOrchestrator
+    container: Orchestration Engine
+    responsibility: Coordinates delegation, retries, arbitration, and response merging.
+  - name: SubagentRunner
+    container: Orchestration Engine
+    responsibility: Executes individual subagent turns.
+  - name: StrategyResolver
+    container: Strategy Library
+    responsibility: Selects strategy implementation for supervisor, debate, voting, pipeline, and fan-out flows.
+  - name: MergeCoordinator
+    container: Orchestration Engine
+    responsibility: Produces deterministic merged outputs from candidate responses.
+dependencyRules:
+  - from: TeamOrchestrator
+    to: StrategyResolver
+    allowed: true
+  - from: StrategyResolver
+    to: TeamOrchestrator
+    allowed: false
+  - from: SubagentRunner
+    to: MergeCoordinator
+    allowed: true
+trace:
+  upstream:
+    - specs/capabilities/subagent-team-orchestration.yaml
+  downstream:
+    deployment:
+      - specs/deployment/jdai-deployment-topologies.yaml
+    security:
+      - specs/security/product-security-architecture.yaml
+    operations:
+      - specs/operations/platform-operations-runbooks.yaml

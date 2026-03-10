@@ -1,0 +1,61 @@
+apiVersion: jdai.upss/v1
+kind: Operations
+id: operations.mcp-integration-operations
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-operations-runbook-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define MCP operational runbooks for registration issues, remote execution failures, and revocation handling.
+service: jdai-mcp-runtime
+runbooks:
+  - name: MCP Server Registration Failure
+    description: Diagnose and recover failed MCP server registration or handshake.
+    triggerCondition: MCP registration requests fail repeatedly for a target server.
+    steps:
+      - Verify server endpoint reachability and transport settings.
+      - Validate registration policy and approval status.
+      - Inspect runtime logs for handshake or schema errors.
+      - Retry registration with corrected config.
+      - Escalate if failure persists across three retries.
+  - name: Remote MCP Tool Timeout
+    description: Handle timeouts and degraded latency for MCP tool execution.
+    triggerCondition: MCP tool latency exceeds timeout threshold for 5 consecutive calls.
+    steps:
+      - Inspect MCP server health and resource utilization.
+      - Check network path and retry backoff settings.
+      - Fail over to local or alternate tool where available.
+      - Mark server degraded and notify on-call.
+incidentLevels:
+  - level: sev1
+    description: MCP subsystem outage affecting all external tool execution.
+    responseTime: 5 minutes
+  - level: sev2
+    description: Partial MCP degradation affecting one or more servers.
+    responseTime: 15 minutes
+responseSlos:
+  - level: sev1
+    acknowledgeWithin: 5 minutes
+    resolveWithin: 1 hour
+  - level: sev2
+    acknowledgeWithin: 15 minutes
+    resolveWithin: 4 hours
+escalationPaths:
+  - level: sev1
+    contacts:
+      - on-call-platform
+      - security-on-call
+  - level: sev2
+    contacts:
+      - on-call-platform
+trace:
+  upstream:
+    - specs/capabilities/mcp-integration.yaml
+  downstream:
+    governance:
+      - specs/governance/product-governance-model.yaml
+    audits:
+      - docs/operations/governance.md

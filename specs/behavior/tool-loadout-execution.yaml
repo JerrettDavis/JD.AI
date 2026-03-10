@@ -1,0 +1,84 @@
+apiVersion: jdai.upss/v1
+kind: Behavior
+id: behavior.tool-loadout-execution
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-behavioral-spec-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Capture expected behavior for loadout inheritance, disabled tools, and plugin resolution.
+useCaseRef: usecase.provider-tool-calling-execution
+bddScenarios:
+  - title: Inherited loadout resolves available tools for a prompt
+    given:
+      - A base loadout defines default tools for coding tasks.
+      - A child loadout inherits from the base and adds workflow tools.
+    when:
+      - The runtime resolves the active loadout for an execution turn.
+    then:
+      - Inherited and local tools are both available in discovery output.
+      - Duplicate tool ids are resolved deterministically.
+  - title: Disabled tools are not callable even when inherited
+    given:
+      - A tool is enabled in a parent loadout.
+      - The same tool is listed in the child loadout disabled set.
+    when:
+      - A prompt attempts to invoke that tool.
+    then:
+      - The runtime blocks execution of the disabled tool.
+      - The rejection explains loadout policy constraints.
+stateMachine:
+  initialState: AwaitingResolution
+  states:
+    - id: AwaitingResolution
+      description: Waiting for loadout selection and merge.
+    - id: Resolved
+      description: Effective tool set has been computed.
+    - id: Executing
+      description: Runtime is invoking an allowed tool.
+    - id: Completed
+      description: Tool execution completed successfully.
+      terminal: true
+    - id: Failed
+      description: Resolution or policy enforcement failed.
+      terminal: true
+  transitions:
+    - from: AwaitingResolution
+      to: Resolved
+      on: loadout_merged
+      actions:
+        - Compose inherited and local tool declarations.
+    - from: Resolved
+      to: Executing
+      on: tool_call_requested
+      actions:
+        - Validate tool enablement and safety tier.
+    - from: Executing
+      to: Completed
+      on: tool_call_succeeded
+      actions:
+        - Return tool output to orchestrator.
+    - from: Resolved
+      to: Failed
+      on: disabled_tool_requested
+      actions:
+        - Emit policy denial.
+assertions:
+  - Disabled tool entries must take precedence over inherited enablement.
+  - Tool resolution order must remain deterministic for the same loadout graph.
+  - Plugin tool declarations must be validated before execution.
+trace:
+  upstream:
+    - specs/domain/tool-loadout-management.yaml
+  downstream:
+    testing:
+      - specs/testing/tool-loadout-regression.yaml
+    interfaces:
+      - specs/interfaces/provider-tool-calling-contract.yaml
+    code:
+      - src/JD.AI.Core/Tools/ToolLoadoutRegistry.cs
+      - src/JD.AI.Core/Tools/LoadoutResolutionHelper.cs
+      - src/JD.AI.Core/Tools/LoadoutValidator.cs

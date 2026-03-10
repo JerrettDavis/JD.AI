@@ -1,0 +1,65 @@
+apiVersion: jdai.upss/v1
+kind: Observability
+id: observability.platform-observability-baseline
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-observability-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define baseline telemetry, metrics, traces, alerts, and health signals for JD.AI platform operations.
+serviceRefs:
+  - jdai-platform
+  - jdai-gateway
+  - jdai-daemon
+metrics:
+  - name: jdai_requests_total
+    type: counter
+    description: Total inbound requests and command executions across platform services.
+  - name: jdai_request_duration_ms
+    type: histogram
+    description: Request duration histogram across command and API paths.
+  - name: jdai_active_sessions
+    type: gauge
+    description: Number of concurrently active sessions.
+logs:
+  - name: jdai_structured_event
+    level: info
+    format: service={service} event={event} status={status} correlation={correlationId}
+  - name: jdai_error_event
+    level: error
+    format: service={service} error={errorCode} detail={detail} correlation={correlationId}
+traces:
+  - name: jdai_turn_execution
+    spanKind: server
+    attributes:
+      - service.name
+      - operation.name
+      - provider.id
+      - model.id
+  - name: jdai_tool_execution
+    spanKind: internal
+    attributes:
+      - tool.id
+      - tool.category
+      - tool.result
+alerts:
+  - name: jdai_high_error_rate
+    condition: rate(jdai_requests_total{status=~"5.."}[5m]) > 0.05
+    severity: critical
+  - name: jdai_latency_degradation
+    condition: histogram_quantile(0.95, jdai_request_duration_ms) > 2000
+    severity: warning
+  - name: jdai_session_spike
+    condition: jdai_active_sessions > 500
+    severity: info
+trace:
+  upstream:
+    - specs/operations/platform-operations-runbooks.yaml
+  downstream:
+    operations:
+      - specs/operations/platform-operations-runbooks.yaml
+    governance:
+      - specs/governance/product-governance-model.yaml

@@ -1,6 +1,14 @@
 apiVersion: jdai.upss/v1
 kind: GovernanceIndex
 entries:
+  - id: governance.control-plane-governance
+    title: Control Plane Governance
+    path: specs/governance/control-plane-governance.yaml
+    status: draft
+  - id: governance.product-governance-model
+    title: Product Governance Model
+    path: specs/governance/product-governance-model.yaml
+    status: draft
   - id: governance.specification-lifecycle
     title: Specification Lifecycle Governance
     path: specs/governance/examples/governance.example.yaml

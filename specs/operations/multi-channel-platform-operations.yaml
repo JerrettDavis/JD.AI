@@ -1,0 +1,61 @@
+apiVersion: jdai.upss/v1
+kind: Operations
+id: operations.multi-channel-platform-operations
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-operations-runbook-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define operational runbooks and incident handling for multi-channel platform behavior.
+service: jdai-multi-channel
+runbooks:
+  - name: Channel Ingress Backlog
+    description: Recover from sustained inbound backlog on one or more channel adapters.
+    triggerCondition: Ingress queue depth exceeds threshold for 10 minutes.
+    steps:
+      - Identify affected channels and current message lag.
+      - Validate gateway and adapter health endpoints.
+      - Scale gateway workers or adapter instances.
+      - Drain backlog and monitor response latency.
+      - Escalate if backlog growth persists.
+  - name: Identity Mapping Failures
+    description: Restore channel message flow when identity mapping errors spike.
+    triggerCondition: Identity mapping failures exceed 5% over 15 minutes.
+    steps:
+      - Inspect mapping configuration and recent policy changes.
+      - Validate tenant/session lookup availability.
+      - Replay failed mappings for sample requests.
+      - Apply hotfix mapping rule or rollback recent config.
+incidentLevels:
+  - level: sev1
+    description: Multi-channel routing outage impacting all adapters.
+    responseTime: 5 minutes
+  - level: sev2
+    description: Single-channel degradation or elevated error rate.
+    responseTime: 15 minutes
+responseSlos:
+  - level: sev1
+    acknowledgeWithin: 5 minutes
+    resolveWithin: 1 hour
+  - level: sev2
+    acknowledgeWithin: 15 minutes
+    resolveWithin: 4 hours
+escalationPaths:
+  - level: sev1
+    contacts:
+      - on-call-platform
+      - channel-on-call
+  - level: sev2
+    contacts:
+      - channel-on-call
+trace:
+  upstream:
+    - specs/capabilities/multi-channel-platform.yaml
+  downstream:
+    governance:
+      - specs/governance/product-governance-model.yaml
+    audits:
+      - docs/operations/observability.md

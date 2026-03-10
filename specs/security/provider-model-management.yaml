@@ -1,0 +1,62 @@
+apiVersion: jdai.upss/v1
+kind: Security
+id: security.provider-model-management
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-security-architecture-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define trust boundaries and controls for provider credentials and model routing metadata.
+authnModel: api-key
+authzModel: rbac
+trustZones:
+  - name: operator-terminal
+    level: public
+  - name: provider-control-surface
+    level: dmz
+  - name: runtime-provider-registry
+    level: internal
+  - name: credential-store
+    level: restricted
+threats:
+  - id: threat.provider-credential-exfiltration
+    description: Provider credentials are leaked through logs, tool output, or local config files.
+    severity: critical
+    mitigatedBy:
+      - ctrl.encrypted-credential-storage
+      - ctrl.secret-redaction
+  - id: threat.model-capability-spoofing
+    description: A forged model capability payload causes unsafe model selection.
+    severity: high
+    mitigatedBy:
+      - ctrl.capability-verification
+      - ctrl.trusted-provider-resolution
+controls:
+  - id: ctrl.encrypted-credential-storage
+    description: Provider credentials are stored encrypted and scoped by tenant or profile.
+    type: preventive
+  - id: ctrl.secret-redaction
+    description: Secrets are redacted from diagnostic, trace, and chat-visible output.
+    type: detective
+  - id: ctrl.capability-verification
+    description: Capability metadata is validated before model selection is accepted.
+    type: preventive
+  - id: ctrl.trusted-provider-resolution
+    description: Provider registrations are accepted only from trusted detector and config sources.
+    type: preventive
+residualRisks:
+  - threatId: threat.provider-credential-exfiltration
+    justification: Human copy/paste and shell history still represent residual local exposure risk.
+trace:
+  upstream:
+    - specs/capabilities/provider-model-management.yaml
+  downstream:
+    deployment:
+      - docs/operations/deployment.md
+    operations:
+      - docs/operations/security.md
+    testing:
+      - tests/JD.AI.Tests/Providers/Credentials/EncryptedFileStoreTests.cs

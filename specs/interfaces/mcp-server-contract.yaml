@@ -1,0 +1,55 @@
+apiVersion: jdai.upss/v1
+kind: Interface
+id: interface.mcp-server-contract
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-interface-contract-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define MCP server lifecycle and remote tool execution contract.
+interfaceType: event
+operations:
+  - name: RegisterMcpServer
+    method: INTERNAL
+    path: /runtime/mcp/servers/register
+    description: Registers a new MCP server endpoint and transport configuration.
+  - name: DiscoverMcpTools
+    method: INTERNAL
+    path: /runtime/mcp/tools/discover
+    description: Discovers tools exported by a registered MCP server.
+  - name: ExecuteRemoteMcpTool
+    method: INTERNAL
+    path: /runtime/mcp/tools/execute
+    description: Executes a remote MCP tool with validated input arguments.
+  - name: RevokeMcpServer
+    method: INTERNAL
+    path: /runtime/mcp/servers/revoke
+    description: Revokes a server registration and blocks further tool calls.
+messageSchemas:
+  - name: McpServerRegistration
+    format: application/json
+    description: Server id, endpoint, transport, auth metadata, and trust settings.
+  - name: McpToolDescriptor
+    format: application/json
+    description: Discovered MCP tool schema and invocation metadata.
+  - name: McpToolInvocation
+    format: application/json
+    description: Tool id, argument payload, correlation id, and timeout policy.
+compatibilityRules:
+  - Transport defaults must remain backward-compatible for existing stdio and HTTP registrations.
+  - Server revocation must be enforced before new execution attempts are accepted.
+trace:
+  upstream:
+    - specs/capabilities/mcp-integration.yaml
+  downstream:
+    code:
+      - src/JD.AI.Core/Mcp/McpManager.cs
+      - src/JD.AI.Core/Mcp/JdAiMcpDiscoveryProvider.cs
+    testing:
+      - tests/JD.AI.Tests/Mcp/McpSlashCommandTests.cs
+      - tests/JD.AI.Tests/Mcp/McpManagerMergeTests.cs
+    deployment:
+      - docs/operations/deployment.md

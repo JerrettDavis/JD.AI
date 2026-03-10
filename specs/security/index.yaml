@@ -5,3 +5,19 @@ entries:
     title: API Gateway Security
     path: specs/security/examples/security.example.yaml
     status: draft
+  - id: security.mcp-integration-security
+    title: MCP Integration Security
+    path: specs/security/mcp-integration-security.yaml
+    status: draft
+  - id: security.multi-channel-platform-security
+    title: Multi-Channel Platform Security
+    path: specs/security/multi-channel-platform-security.yaml
+    status: draft
+  - id: security.product-security-architecture
+    title: Product Security Architecture
+    path: specs/security/product-security-architecture.yaml
+    status: draft
+  - id: security.provider-model-management
+    title: Provider Model Management Security
+    path: specs/security/provider-model-management.yaml
+    status: draft
