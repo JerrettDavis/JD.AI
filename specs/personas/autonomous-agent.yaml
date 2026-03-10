@@ -1,0 +1,55 @@
+apiVersion: jdai.upss/v1
+kind: Persona
+id: persona.autonomous-agent
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-persona-role-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define canonical persona for automated agents acting within JD.AI workflows.
+actorType: automated_agent
+roleName: AutonomousAgent
+description: >-
+  Represents AI agents that operate autonomously within JD.AI workflows —
+  invoking tools, composing subagent swarms, and making decisions within
+  governed boundaries. Motivated by completing delegated tasks reliably while
+  respecting policy constraints, tool sandboxes, and human approval gates.
+permissions:
+  allowed:
+    - tool.invoke
+    - agent.delegate
+    - context.read
+    - context.write
+    - output.emit
+  denied:
+    - policy.modify
+    - deployment.promote
+    - audit_log.delete
+    - configuration.edit
+    - approval.bypass
+trustBoundaries:
+  - boundary: agent-sandbox
+    accessLevel: restricted
+    justification: Agents execute within sandboxed environments with tool access limited to their granted scope.
+  - boundary: workflow-scope
+    accessLevel: restricted
+    justification: Agent actions are confined to the workflow that spawned them and cannot escape its permission boundary.
+  - boundary: human-approval-gate
+    accessLevel: restricted
+    justification: High-risk or irreversible actions require human approval before the agent can proceed.
+responsibilities:
+  - Execute delegated tasks within the boundaries defined by the invoking workflow.
+  - Invoke tools and compose subagent swarms according to the assigned orchestration strategy.
+  - Respect policy constraints, rate limits, and approval gates during execution.
+  - Report results, errors, and tool-use traces back to the supervising context.
+trace:
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    capabilities: []
+    policies: []
+    security: []
+    useCases: []

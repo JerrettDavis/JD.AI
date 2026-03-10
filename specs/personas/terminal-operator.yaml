@@ -1,0 +1,49 @@
+apiVersion: jdai.upss/v1
+kind: Persona
+id: persona.terminal-operator
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-persona-role-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define canonical persona for interactive CLI/TUI users of JD.AI.
+actorType: user
+roleName: TerminalOperator
+description: >-
+  Interacts with JD.AI through the CLI or TUI to run agents, switch models,
+  execute commands, and inspect results. Motivated by fast iteration, direct
+  control over agent behavior, and transparent visibility into system actions.
+permissions:
+  allowed:
+    - agent.invoke
+    - model.select
+    - command.execute
+    - conversation.manage
+    - output.inspect
+  denied:
+    - policy.modify
+    - deployment.promote
+    - audit_log.delete
+trustBoundaries:
+  - boundary: cli-session
+    accessLevel: standard
+    justification: Interactive sessions operate within standard user permissions scoped to the active workspace.
+  - boundary: agent-execution
+    accessLevel: standard
+    justification: Agent invocations run within sandboxed execution boundaries defined by the platform.
+responsibilities:
+  - Invoke and orchestrate agents through CLI/TUI interactions.
+  - Select and switch between available models for agent tasks.
+  - Review and act on agent output, errors, and tool-use results.
+  - Manage conversation context and session state.
+trace:
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    capabilities: []
+    policies: []
+    security: []
+    useCases: []

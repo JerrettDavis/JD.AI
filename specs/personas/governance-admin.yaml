@@ -1,0 +1,49 @@
+apiVersion: jdai.upss/v1
+kind: Persona
+id: persona.governance-admin
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-persona-role-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define canonical persona for governance and security administrators.
+actorType: administrator
+roleName: GovernanceAdmin
+description: >-
+  Defines and enforces policies, restrictions, and auditing rules across JD.AI.
+  Motivated by ensuring compliance, controlling agent behavior within safe
+  boundaries, and maintaining an auditable trail of privileged actions.
+permissions:
+  allowed:
+    - policy.author
+    - policy.enforce
+    - audit_log.read
+    - restriction.manage
+    - compliance.report
+  denied:
+    - audit_log.delete
+    - policy.override_without_approval
+    - deployment.promote
+trustBoundaries:
+  - boundary: governance-policy-layer
+    accessLevel: elevated
+    justification: Policy authoring and enforcement require elevated access to configure system-wide behavioral constraints.
+  - boundary: audit-trail
+    accessLevel: read_only
+    justification: Audit logs must be immutable; governance administrators can read but never delete audit records.
+responsibilities:
+  - Author and maintain governance policies that constrain agent and user behavior.
+  - Configure restrictions and approval workflows for privileged operations.
+  - Review audit trails and generate compliance reports.
+  - Define trust boundaries and permission scopes for other personas.
+trace:
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    capabilities: []
+    policies: []
+    security: []
+    useCases: []
