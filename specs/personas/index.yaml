@@ -1,7 +1,27 @@
 apiVersion: jdai.upss/v1
 kind: PersonaIndex
 entries:
-  - id: persona.platform-admin
-    title: Platform Administrator
-    path: specs/personas/examples/personas.example.yaml
+  - id: persona.terminal-operator
+    title: Terminal Operator
+    path: specs/personas/terminal-operator.yaml
+    status: draft
+  - id: persona.platform-engineer
+    title: Platform Engineer
+    path: specs/personas/platform-engineer.yaml
+    status: draft
+  - id: persona.workflow-author
+    title: Workflow Author
+    path: specs/personas/workflow-author.yaml
+    status: draft
+  - id: persona.tool-developer
+    title: Tool / Plugin Developer
+    path: specs/personas/tool-developer.yaml
+    status: draft
+  - id: persona.governance-admin
+    title: Governance / Security Administrator
+    path: specs/personas/governance-admin.yaml
+    status: draft
+  - id: persona.channel-adapter
+    title: External System / Channel Adapter
+    path: specs/personas/channel-adapter.yaml
     status: draft

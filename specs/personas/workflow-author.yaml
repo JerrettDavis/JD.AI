@@ -1,0 +1,49 @@
+apiVersion: jdai.upss/v1
+kind: Persona
+id: persona.workflow-author
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-persona-role-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define canonical persona for workflow and automation pipeline designers.
+actorType: user
+roleName: WorkflowAuthor
+description: >-
+  Designs, composes, and publishes reusable workflows and automation pipelines
+  within JD.AI. Motivated by creating reliable, repeatable agent orchestrations
+  that other users and systems can invoke without deep technical knowledge.
+permissions:
+  allowed:
+    - workflow.create
+    - workflow.publish
+    - workflow.test
+    - agent.compose
+    - template.manage
+  denied:
+    - deployment.promote
+    - policy.modify
+    - audit_log.delete
+trustBoundaries:
+  - boundary: workflow-authoring
+    accessLevel: standard
+    justification: Workflow creation and testing operate within the user's workspace without requiring elevated access.
+  - boundary: agent-composition
+    accessLevel: standard
+    justification: Composing multi-agent pipelines uses standard agent invocation permissions scoped to available tools.
+responsibilities:
+  - Design and build reusable automation workflows from available agents and tools.
+  - Test and validate workflow behavior before publishing.
+  - Maintain workflow templates and versioned pipeline definitions.
+  - Document workflow inputs, outputs, and expected behavior for consumers.
+trace:
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    capabilities: []
+    policies: []
+    security: []
+    useCases: []
