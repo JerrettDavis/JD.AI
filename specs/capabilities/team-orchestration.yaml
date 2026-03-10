@@ -1,0 +1,34 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.team-orchestration
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define team orchestration capability as part of the canonical capability map (#325).
+name: Team Orchestration
+description: >-
+  Coordinate multi-agent teams using pluggable orchestration strategies including
+  sequential, fan-out, pipeline, supervisor, debate, blackboard, map-reduce, relay, and voting patterns.
+maturity: emerging
+actors:
+  - persona.workflow-author
+  - persona.platform-engineer
+dependencies:
+  - capability.subagents
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/README.md
+    testing:
+      - tests/JD.AI.Tests/Orchestration/CoordinationStrategyTests.cs

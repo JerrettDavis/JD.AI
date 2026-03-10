@@ -1,0 +1,34 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.tool-execution
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define tool execution capability as part of the canonical capability map (#325).
+name: Tool Execution
+description: >-
+  Invoke tools within agent conversations including built-in tool suites,
+  process execution, file operations, git integration, and MCP tool proxying.
+maturity: beta
+actors:
+  - persona.autonomous-agent
+  - persona.terminal-operator
+dependencies:
+  - capability.tool-registry
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/README.md
+    testing:
+      - tests/JD.AI.Tests/Agents/AgentLoopTextToolExecutionTests.cs

@@ -1,0 +1,34 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.governance
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define governance capability as part of the canonical capability map (#325).
+name: Governance
+description: >-
+  Enforce policies, approval workflows, budget tracking, data classification and
+  redaction, RBAC role resolution, compliance profiles, and auditable event logging
+  with pluggable sinks including SQLite, Elasticsearch, file, and webhook backends.
+maturity: beta
+actors:
+  - persona.governance-admin
+  - persona.platform-engineer
+dependencies: []
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/decisions/ADR-003-policy-rbac.md
+    testing:
+      - tests/JD.AI.Tests/Governance/PolicyEvaluatorTests.cs

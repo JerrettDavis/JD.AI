@@ -1,0 +1,34 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.dashboard-ui
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define dashboard UI capability as part of the canonical capability map (#325).
+name: Dashboard UI
+description: >-
+  Provide a Blazor WebAssembly dashboard for visualizing agent status, session history,
+  provider health, channel mappings, routing configuration, and gateway status.
+maturity: emerging
+actors:
+  - persona.platform-engineer
+  - persona.terminal-operator
+dependencies:
+  - capability.gateway-control-plane
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/README.md
+    testing:
+      - tests/JD.AI.Gateway.Tests/DashboardModelIntegrationTests.cs

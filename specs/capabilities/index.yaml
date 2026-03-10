@@ -1,7 +1,118 @@
 apiVersion: jdai.upss/v1
 kind: CapabilityIndex
 entries:
+  # Existing
+  - id: capability.spec-validation
+    title: Specification Validation
+    path: specs/capabilities/examples/capabilities.example.yaml
+    status: draft
   - id: capability.provider-tool-calling
     title: Provider-Aware Tool Calling
     path: specs/capabilities/provider-tool-calling.yaml
+    status: draft
+
+  # Core Runtime
+  - id: capability.agent-conversation
+    title: Agent Conversation
+    path: specs/capabilities/agent-conversation.yaml
+    status: draft
+  - id: capability.session-management
+    title: Session Management
+    path: specs/capabilities/session-management.yaml
+    status: draft
+  - id: capability.context-transformation
+    title: Context Transformation
+    path: specs/capabilities/context-transformation.yaml
+    status: draft
+
+  # AI Infrastructure
+  - id: capability.provider-management
+    title: Provider Management
+    path: specs/capabilities/provider-management.yaml
+    status: draft
+  - id: capability.model-selection
+    title: Model Selection
+    path: specs/capabilities/model-selection.yaml
+    status: draft
+  - id: capability.prompt-execution
+    title: Prompt Execution
+    path: specs/capabilities/prompt-execution.yaml
+    status: draft
+
+  # Tool Ecosystem
+  - id: capability.tool-execution
+    title: Tool Execution
+    path: specs/capabilities/tool-execution.yaml
+    status: draft
+  - id: capability.tool-registry
+    title: Tool Registry
+    path: specs/capabilities/tool-registry.yaml
+    status: draft
+  - id: capability.tool-loadouts
+    title: Tool Loadouts
+    path: specs/capabilities/tool-loadouts.yaml
+    status: draft
+
+  # Automation
+  - id: capability.workflow-authoring
+    title: Workflow Authoring
+    path: specs/capabilities/workflow-authoring.yaml
+    status: draft
+  - id: capability.workflow-execution
+    title: Workflow Execution
+    path: specs/capabilities/workflow-execution.yaml
+    status: draft
+
+  # Orchestration
+  - id: capability.subagents
+    title: Subagents
+    path: specs/capabilities/subagents.yaml
+    status: draft
+  - id: capability.team-orchestration
+    title: Team Orchestration
+    path: specs/capabilities/team-orchestration.yaml
+    status: draft
+
+  # Integrations
+  - id: capability.mcp-integration
+    title: MCP Integration
+    path: specs/capabilities/mcp-integration.yaml
+    status: draft
+  - id: capability.plugin-system
+    title: Plugin System
+    path: specs/capabilities/plugin-system.yaml
+    status: draft
+
+  # Communication
+  - id: capability.multi-channel-interaction
+    title: Multi-Channel Interaction
+    path: specs/capabilities/multi-channel-interaction.yaml
+    status: draft
+  - id: capability.messaging-adapters
+    title: Messaging Adapters
+    path: specs/capabilities/messaging-adapters.yaml
+    status: draft
+
+  # Platform
+  - id: capability.gateway-control-plane
+    title: Gateway Control Plane
+    path: specs/capabilities/gateway-control-plane.yaml
+    status: draft
+  - id: capability.dashboard-ui
+    title: Dashboard UI
+    path: specs/capabilities/dashboard-ui.yaml
+    status: draft
+  - id: capability.telemetry
+    title: Telemetry
+    path: specs/capabilities/telemetry.yaml
+    status: draft
+
+  # Cross-cutting
+  - id: capability.governance
+    title: Governance
+    path: specs/capabilities/governance.yaml
+    status: draft
+  - id: capability.memory
+    title: Memory
+    path: specs/capabilities/memory.yaml
     status: draft

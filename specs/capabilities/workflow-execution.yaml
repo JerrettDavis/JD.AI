@@ -1,0 +1,35 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.workflow-execution
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define workflow execution capability as part of the canonical capability map (#325).
+name: Workflow Execution
+description: >-
+  Execute multi-step workflows with consensus, conflict detection, distributed locking,
+  run history tracking, and pluggable transports including in-memory, Redis, and Azure Service Bus.
+maturity: emerging
+actors:
+  - persona.workflow-author
+  - persona.autonomous-agent
+dependencies:
+  - capability.workflow-authoring
+  - capability.agent-conversation
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/decisions/ADR-011-distributed-workflow-execution.md
+    testing:
+      - tests/JD.AI.Tests/Workflows/WorkflowConsensusTests.cs
