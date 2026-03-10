@@ -142,3 +142,5 @@ trace:
       - capability.tool-result-caching
       - capability.execution-tracing
       - capability.installation-updates
+      - capability.multi-tenancy
+      - capability.skill-management
