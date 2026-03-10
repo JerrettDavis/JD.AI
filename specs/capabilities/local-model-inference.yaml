@@ -1,0 +1,35 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.local-model-inference
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Add local model inference capability to the canonical capability map (#325).
+name: Local Model Inference
+description: >-
+  Detect, download, and execute local LLM inference using LLamaSharp with GPU
+  acceleration support, model registry management, and pluggable model sources
+  including HuggingFace, directory scanning, and remote URLs.
+maturity: emerging
+actors:
+  - persona.terminal-operator
+  - persona.platform-engineer
+dependencies:
+  - capability.provider-management
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/README.md
+    testing:
+      - tests/JD.AI.Tests/LocalModels/LocalModelDetectorTests.cs
