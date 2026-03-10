@@ -1,0 +1,33 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.memory
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define memory capability as part of the canonical capability map (#325).
+name: Memory
+description: >-
+  Store and retrieve agent knowledge using vector stores, batch embedding pipelines,
+  text chunking, and semantic search with in-memory and SQLite backends.
+maturity: emerging
+actors:
+  - persona.autonomous-agent
+  - persona.terminal-operator
+dependencies: []
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/README.md
+    testing:
+      - tests/JD.AI.Tests/Memory/MemoryManagerTests.cs

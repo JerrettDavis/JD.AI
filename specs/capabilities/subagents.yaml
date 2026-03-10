@@ -1,0 +1,35 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.subagents
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define subagents capability as part of the canonical capability map (#325).
+name: Subagents
+description: >-
+  Spawn and manage subordinate agent instances with single-turn and multi-turn executors,
+  subagent prompt generation, and event-driven communication.
+maturity: beta
+actors:
+  - persona.autonomous-agent
+  - persona.workflow-author
+dependencies:
+  - capability.agent-conversation
+  - capability.prompt-execution
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/README.md
+    testing:
+      - tests/JD.AI.Tests/Orchestration/StrategyIntegrationTests.cs
