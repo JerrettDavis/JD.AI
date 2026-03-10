@@ -1,5 +1,6 @@
 using FluentAssertions;
 using JD.AI.Agent;
+using JD.AI.Core.Tools;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Tests.Agent;
@@ -135,5 +136,12 @@ public sealed class ToolConfirmationFilterTests
         preview.Should().NotBeNull();
         preview!.Length.Should().Be(50);
         preview.Should().EndWith("...");
+    }
+
+    [Fact]
+    public void ToolTierMap_FileReadAndList_RequirePrompting()
+    {
+        ToolConfirmationFilter.ToolTierMap["read_file"].Should().NotBe(SafetyTier.AutoApprove);
+        ToolConfirmationFilter.ToolTierMap["list_directory"].Should().NotBe(SafetyTier.AutoApprove);
     }
 }
