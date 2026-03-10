@@ -1,0 +1,50 @@
+apiVersion: jdai.upss/v1
+kind: Testing
+id: testing.agent-conversation
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-testing-strategy-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define testing strategy for agent conversation behaviors (#326).
+verificationLevels:
+  - unit
+  - integration
+  - e2e
+behaviorRefs:
+  - behavior.streaming-responses
+  - behavior.slash-command-routing
+  - behavior.context-transformation
+qualityRefs:
+  - quality.streaming-latency
+coverageTargets:
+  - scope: JD.AI.Core.Agents.AgentLoop
+    target: "80%"
+    metric: line
+  - scope: JD.AI.Core.Agents.ConversationTransformer
+    target: "90%"
+    metric: line
+  - scope: JD.AI.Commands.SlashCommandCatalog
+    target: "95%"
+    metric: line
+generationRules:
+  - source: specs/behavior/streaming-responses.yaml
+    strategy: hybrid
+  - source: specs/behavior/slash-command-routing.yaml
+    strategy: manual
+  - source: specs/behavior/context-transformation.yaml
+    strategy: hybrid
+trace:
+  upstream:
+    - specs/behavior/streaming-responses.yaml
+    - specs/behavior/slash-command-routing.yaml
+    - specs/behavior/context-transformation.yaml
+  downstream:
+    ci:
+      - .github/workflows/ci.yml
+      - .github/workflows/pr-validation.yml
+    release:
+      - docs/operations/deployment.md

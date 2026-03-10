@@ -17,3 +17,19 @@ entries:
     title: Workflow Execution Lifecycle Behavior
     path: specs/behavior/workflow-execution-lifecycle.yaml
     status: draft
+  - id: behavior.session-persistence
+    title: Session Persistence
+    path: specs/behavior/session-persistence.yaml
+    status: draft
+  - id: behavior.streaming-responses
+    title: Streaming Responses
+    path: specs/behavior/streaming-responses.yaml
+    status: draft
+  - id: behavior.slash-command-routing
+    title: Slash Command Routing
+    path: specs/behavior/slash-command-routing.yaml
+    status: draft
+  - id: behavior.context-transformation
+    title: Context Transformation
+    path: specs/behavior/context-transformation.yaml
+    status: draft

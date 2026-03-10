@@ -1,0 +1,37 @@
+apiVersion: jdai.upss/v1
+kind: Testing
+id: testing.session-lifecycle
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-testing-strategy-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define testing strategy for session lifecycle behavior (#326).
+verificationLevels:
+  - unit
+  - integration
+behaviorRefs:
+  - behavior.session-persistence
+qualityRefs:
+  - quality.session-reliability
+coverageTargets:
+  - scope: JD.AI.Core.Sessions
+    target: "85%"
+    metric: line
+  - scope: JD.AI.Core.Agents.Checkpointing
+    target: "80%"
+    metric: line
+generationRules:
+  - source: specs/behavior/session-persistence.yaml
+    strategy: hybrid
+trace:
+  upstream:
+    - specs/behavior/session-persistence.yaml
+  downstream:
+    ci:
+      - .github/workflows/ci.yml
+    release:
+      - docs/operations/deployment.md

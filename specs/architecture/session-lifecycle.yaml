@@ -1,0 +1,86 @@
+apiVersion: jdai.upss/v1
+kind: Architecture
+id: architecture.session-lifecycle
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-architecture-c4-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define the session lifecycle architecture for agent conversation and session management (#326).
+architectureStyle: modular-monolith
+systems:
+  - name: JD.AI Agent Runtime
+    description: The interactive agent runtime managing sessions, conversations, and command dispatch.
+    type: backend
+containers:
+  - name: Core Library
+    technology: .NET 10 / C#
+    system: JD.AI Agent Runtime
+  - name: CLI Host
+    technology: .NET 10 / C#
+    system: JD.AI Agent Runtime
+  - name: Session Database
+    technology: SQLite
+    system: JD.AI Agent Runtime
+components:
+  - name: SessionStore
+    container: Core Library
+    responsibility: SQLite-backed CRUD for session records with transactional turn persistence.
+  - name: SessionExporter
+    container: Core Library
+    responsibility: JSON export and import for human-readable session snapshots.
+  - name: SessionIntegrity
+    container: Core Library
+    responsibility: Cross-check SQLite store versus JSON exports with optional auto-repair.
+  - name: AgentSession
+    container: Core Library
+    responsibility: Central state container holding ChatHistory, Kernel, turn tracking, and model switch history.
+  - name: AgentLoop
+    container: Core Library
+    responsibility: Turn executor with streaming, tool calling, fallback, and error recovery.
+  - name: ConversationTransformer
+    container: Core Library
+    responsibility: Context adaptation for provider and model switches using Preserve, Compact, Transform, and Fresh modes.
+  - name: StreamingContentParser
+    container: Core Library
+    responsibility: Chunk-boundary-safe parser for thinking tags in streamed responses.
+  - name: SlashCommandRouter
+    container: CLI Host
+    responsibility: Dispatch slash commands to handler methods based on catalog lookup.
+  - name: SlashCommandCatalog
+    container: CLI Host
+    responsibility: Static registry of all command definitions, aliases, and dispatch mappings.
+  - name: InteractiveLoop
+    container: CLI Host
+    responsibility: Main REPL loop wiring user input to AgentLoop and SlashCommandRouter.
+  - name: SessionConfigurator
+    container: CLI Host
+    responsibility: Startup orchestrator creating AgentSession from CLI arguments and flags.
+  - name: CheckpointStrategy
+    container: Core Library
+    responsibility: File-system checkpointing via commit, stash, or directory-copy strategies.
+dependencyRules:
+  - from: CLI Host
+    to: Core Library
+    allowed: true
+  - from: Core Library
+    to: CLI Host
+    allowed: false
+  - from: Core Library
+    to: Session Database
+    allowed: true
+  - from: CLI Host
+    to: Session Database
+    allowed: false
+trace:
+  upstream:
+    - specs/capabilities/session-management.yaml
+    - specs/capabilities/agent-conversation.yaml
+    - specs/capabilities/context-transformation.yaml
+  downstream:
+    deployment: []
+    security: []
+    operations: []

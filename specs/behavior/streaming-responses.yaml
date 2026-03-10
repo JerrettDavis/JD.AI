@@ -1,0 +1,99 @@
+apiVersion: jdai.upss/v1
+kind: Behavior
+id: behavior.streaming-responses
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-behavioral-spec-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Specify streaming response behavior for agent conversation specification (#326).
+useCaseRef: usecase.start-session
+bddScenarios:
+  - title: Streaming chunks are rendered in real time
+    given:
+      - An active conversation turn is in progress.
+    when:
+      - The model emits streaming chunks via GetStreamingChatMessageContentsAsync.
+    then:
+      - Each chunk is passed to IAgentOutput.WriteStreamingChunk and rendered immediately.
+  - title: Thinking content is parsed from stream
+    given:
+      - A model emits think tags or ReasoningContent metadata in streaming chunks.
+    when:
+      - StreamingContentParser processes the chunks.
+    then:
+      - Thinking segments are routed to WriteThinkingChunk.
+      - Content segments are routed to WriteStreamingChunk.
+  - title: Streaming failure falls back to non-streaming
+    given:
+      - A streaming request terminates prematurely.
+    when:
+      - AgentLoop detects the premature termination.
+    then:
+      - The same request is retried using GetChatMessageContentAsync in non-streaming mode.
+stateMachine:
+  initialState: Idle
+  states:
+    - id: Idle
+      description: No streaming in progress.
+    - id: Streaming
+      description: Chunks are being received and rendered.
+    - id: StreamFailed
+      description: Streaming terminated prematurely.
+    - id: FallingBack
+      description: Retrying request in non-streaming mode.
+    - id: Completed
+      description: Response fully received and rendered.
+      terminal: true
+    - id: Failed
+      description: Both streaming and fallback failed.
+      terminal: true
+  transitions:
+    - from: Idle
+      to: Streaming
+      on: turn_started
+      actions:
+        - Begin streaming request to the model.
+    - from: Streaming
+      to: Completed
+      on: stream_finished
+      actions:
+        - Record assistant turn with full response content.
+    - from: Streaming
+      to: StreamFailed
+      on: stream_error
+      actions:
+        - Log the streaming failure.
+    - from: StreamFailed
+      to: FallingBack
+      on: retry_non_streaming
+      actions:
+        - Reissue the request using GetChatMessageContentAsync.
+    - from: FallingBack
+      to: Completed
+      on: fallback_succeeded
+      actions:
+        - Record assistant turn with the non-streaming response.
+    - from: FallingBack
+      to: Failed
+      on: fallback_failed
+      actions:
+        - Report the error to the operator.
+assertions:
+  - Partial think tags spanning chunk boundaries are buffered correctly by StreamingContentParser.
+  - Streaming and thinking content are never interleaved in rendered output.
+  - Fallback to non-streaming preserves the original user message.
+trace:
+  upstream:
+    - specs/usecases/start-session.yaml
+  downstream:
+    testing:
+      - specs/testing/agent-conversation.yaml
+    interfaces: []
+    code:
+      - src/JD.AI.Core/Agents/AgentLoop.cs
+      - src/JD.AI.Core/Agents/AgentOutput.cs
+      - src/JD.AI.Core/Agents/StreamingContentParser.cs

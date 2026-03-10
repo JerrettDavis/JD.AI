@@ -13,3 +13,11 @@ entries:
     title: Subagent Orchestration Quality
     path: specs/quality/subagent-orchestration-quality.yaml
     status: draft
+  - id: quality.session-reliability
+    title: Session Reliability
+    path: specs/quality/session-reliability.yaml
+    status: draft
+  - id: quality.streaming-latency
+    title: Streaming Latency
+    path: specs/quality/streaming-latency.yaml
+    status: draft

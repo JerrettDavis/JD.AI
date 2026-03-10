@@ -1,0 +1,39 @@
+apiVersion: jdai.upss/v1
+kind: UseCase
+id: usecase.resume-session
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-usecase-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define the resume-session use case for session lifecycle specification (#326).
+actor: persona.terminal-operator
+capabilityRef: capability.session-management
+preconditions:
+  - A prior session exists in SessionStore for the current project hash.
+  - The operator supplies a --resume or --continue flag.
+workflowSteps:
+  - CLI resolves the session ID from the explicit argument or most-recent via --continue.
+  - SessionStore.GetSessionAsync loads the full session tree including turns, tool calls, and file touches.
+  - ChatHistory is rebuilt from persisted turns.
+  - Model switch history and fork points are restored.
+  - The interactive loop resumes from the restored context.
+expectedOutcomes:
+  - Conversation context is restored to the state at session close.
+  - The operator can continue the conversation without re-explaining context.
+failureScenarios:
+  - The specified session ID does not exist in SessionStore.
+  - Session data is corrupted or incomplete.
+  - The model used in the prior session is no longer available.
+trace:
+  upstream:
+    - specs/capabilities/session-management.yaml
+  downstream:
+    behavior:
+      - specs/behavior/session-persistence.yaml
+    testing:
+      - specs/testing/session-lifecycle.yaml
+    interfaces: []
