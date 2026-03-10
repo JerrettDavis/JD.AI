@@ -1,0 +1,50 @@
+apiVersion: jdai.upss/v1
+kind: Persona
+id: persona.platform-engineer
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-persona-role-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define canonical persona for JD.AI infrastructure operators.
+actorType: administrator
+roleName: PlatformEngineer
+description: >-
+  Deploys, configures, and maintains JD.AI infrastructure. Manages provider
+  registrations, model routing, environment configuration, and operational
+  health. Motivated by system reliability, secure deployments, and efficient
+  resource utilization.
+permissions:
+  allowed:
+    - deployment.promote
+    - provider.manage
+    - configuration.edit
+    - environment.manage
+    - observability.dashboard_admin
+  denied:
+    - policy.author
+    - audit_log.delete
+    - governance.override
+trustBoundaries:
+  - boundary: prod-environment
+    accessLevel: elevated
+    justification: Production deployments and provider configuration require privileged but auditable access.
+  - boundary: configuration-layer
+    accessLevel: elevated
+    justification: Infrastructure configuration changes affect system-wide behavior and require operator-level access.
+responsibilities:
+  - Deploy and maintain JD.AI runtime environments.
+  - Register, configure, and monitor AI provider integrations.
+  - Manage model routing, fallback strategies, and rate-limit configurations.
+  - Ensure infrastructure health through monitoring and incident response.
+trace:
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    capabilities: []
+    policies: []
+    security: []
+    useCases: []

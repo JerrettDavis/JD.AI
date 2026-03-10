@@ -1,0 +1,49 @@
+apiVersion: jdai.upss/v1
+kind: Persona
+id: persona.tool-developer
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-persona-role-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define canonical persona for tool and plugin extension developers.
+actorType: user
+roleName: ToolDeveloper
+description: >-
+  Extends JD.AI by building custom tools, plugins, and MCP servers that agents
+  can invoke. Motivated by expanding platform capabilities, integrating external
+  services, and creating reusable extensions for the broader user community.
+permissions:
+  allowed:
+    - tool.register
+    - tool.test
+    - plugin.publish
+    - mcp.server.manage
+    - sandbox.execute
+  denied:
+    - deployment.promote
+    - policy.modify
+    - audit_log.delete
+trustBoundaries:
+  - boundary: tool-sandbox
+    accessLevel: standard
+    justification: Tool development and testing run in sandboxed environments to prevent unintended side effects.
+  - boundary: plugin-registry
+    accessLevel: standard
+    justification: Publishing plugins requires standard authentication but not elevated platform access.
+responsibilities:
+  - Develop and register custom tools and plugins for agent use.
+  - Build and maintain MCP server integrations.
+  - Test tool behavior in sandboxed environments before publication.
+  - Document tool interfaces, inputs, and expected outputs.
+trace:
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    capabilities: []
+    policies: []
+    security: []
+    useCases: []

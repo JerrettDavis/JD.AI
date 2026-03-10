@@ -1,0 +1,51 @@
+apiVersion: jdai.upss/v1
+kind: Persona
+id: persona.channel-adapter
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-persona-role-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define canonical persona for external systems interacting with JD.AI via APIs or messaging.
+actorType: external_system
+roleName: ChannelAdapter
+description: >-
+  Represents external systems that interact with JD.AI through APIs or messaging
+  channels such as Discord, Slack, or webhooks. Motivated by delivering agent
+  capabilities to end users through familiar platforms while respecting
+  rate limits, authentication boundaries, and message format constraints.
+permissions:
+  allowed:
+    - api.invoke
+    - agent.request
+    - message.send
+    - message.receive
+    - webhook.register
+  denied:
+    - policy.modify
+    - deployment.promote
+    - audit_log.delete
+    - configuration.edit
+trustBoundaries:
+  - boundary: api-gateway
+    accessLevel: restricted
+    justification: External systems authenticate via API keys or tokens and are restricted to their authorized scope.
+  - boundary: message-channel
+    accessLevel: restricted
+    justification: Channel adapters operate within rate-limited, format-constrained messaging boundaries.
+responsibilities:
+  - Relay user requests from external platforms to JD.AI agents.
+  - Transform agent responses into platform-appropriate message formats.
+  - Manage authentication tokens and respect API rate limits.
+  - Handle channel-specific constraints such as message length and attachment rules.
+trace:
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    capabilities: []
+    policies: []
+    security: []
+    useCases: []
