@@ -1,0 +1,35 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.agent-checkpointing
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Add agent checkpointing capability to the canonical capability map (#325).
+name: Agent Checkpointing
+description: >-
+  Create and manage agent execution checkpoints for state recovery and rollback
+  using pluggable strategies including git commit, directory snapshot, and git
+  stash based approaches.
+maturity: beta
+actors:
+  - persona.terminal-operator
+  - persona.autonomous-agent
+dependencies:
+  - capability.agent-conversation
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/README.md
+    testing:
+      - tests/JD.AI.Tests/Agents/Checkpointing/CommitCheckpointStrategyTests.cs

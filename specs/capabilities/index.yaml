@@ -116,3 +116,39 @@ entries:
     title: Memory
     path: specs/capabilities/memory.yaml
     status: draft
+  - id: capability.safety
+    title: Safety
+    path: specs/capabilities/safety.yaml
+    status: draft
+  - id: capability.security
+    title: Security
+    path: specs/capabilities/security.yaml
+    status: draft
+  - id: capability.usage-tracking
+    title: Usage Tracking
+    path: specs/capabilities/usage-tracking.yaml
+    status: draft
+  - id: capability.local-model-inference
+    title: Local Model Inference
+    path: specs/capabilities/local-model-inference.yaml
+    status: draft
+  - id: capability.agent-checkpointing
+    title: Agent Checkpointing
+    path: specs/capabilities/agent-checkpointing.yaml
+    status: draft
+  - id: capability.model-routing
+    title: Model Routing
+    path: specs/capabilities/model-routing.yaml
+    status: draft
+  - id: capability.tool-result-caching
+    title: Tool Result Caching
+    path: specs/capabilities/tool-result-caching.yaml
+    status: draft
+  - id: capability.execution-tracing
+    title: Execution Tracing
+    path: specs/capabilities/execution-tracing.yaml
+    status: draft
+  - id: capability.installation-updates
+    title: Installation and Updates
+    path: specs/capabilities/installation-updates.yaml
+    status: draft

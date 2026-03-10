@@ -1,0 +1,35 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.usage-tracking
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Add usage tracking capability to the canonical capability map (#325).
+name: Usage Tracking
+description: >-
+  Track API usage by provider, model, and tenant with persistent metering in SQLite
+  and in-memory stores, estimate costs using provider-specific rate cards, and
+  provide usage analytics for budget and allocation decisions.
+maturity: beta
+actors:
+  - persona.platform-engineer
+  - persona.governance-admin
+dependencies:
+  - capability.provider-management
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/README.md
+    testing:
+      - tests/JD.AI.Tests/Usage/SqliteUsageMeterTests.cs

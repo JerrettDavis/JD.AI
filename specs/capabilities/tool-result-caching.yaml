@@ -1,0 +1,35 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.tool-result-caching
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Add tool result caching capability to the canonical capability map (#325).
+name: Tool Result Caching
+description: >-
+  Cache deterministic tool results with TTL management to reduce redundant
+  invocations, providing in-memory and distributed cache backends with
+  hit/miss metrics for performance optimization.
+maturity: emerging
+actors:
+  - persona.autonomous-agent
+  - persona.platform-engineer
+dependencies:
+  - capability.tool-execution
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/README.md
+    testing:
+      - tests/JD.AI.Tests/Caching/ToolResultCacheTests.cs

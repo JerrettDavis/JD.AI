@@ -1,0 +1,35 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.safety
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Add safety capability to the canonical capability map (#325).
+name: Safety
+description: >-
+  Protect agent execution with adaptive circuit breakers for tool invocations
+  and tool loop detection using fingerprinting to prevent runaway agent behavior
+  and infinite execution cycles.
+maturity: beta
+actors:
+  - persona.autonomous-agent
+  - persona.platform-engineer
+dependencies:
+  - capability.tool-execution
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/README.md
+    testing:
+      - tests/JD.AI.Tests/Safety/CircuitBreakerTests.cs
