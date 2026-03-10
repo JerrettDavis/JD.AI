@@ -1,0 +1,38 @@
+apiVersion: jdai.upss/v1
+kind: UseCase
+id: usecase.provider-tool-calling-execution
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-usecase-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Capture how operator requests must trigger real tool execution across provider backends.
+actor: persona.terminal-operator
+capabilityRef: capability.provider-tool-calling
+preconditions:
+  - A provider/model is selected for the current session.
+  - The loaded prompt includes one or more callable tools.
+workflowSteps:
+  - The operator asks the assistant to perform an action requiring a tool.
+  - The orchestrator builds provider-specific prompt execution settings.
+  - The model emits a tool invocation and the runtime executes the mapped tool.
+  - The assistant returns a response grounded in the tool result.
+expectedOutcomes:
+  - Tool invocations execute for supported providers, including Mistral.
+  - No fabricated command output is shown when a tool call did not execute.
+failureScenarios:
+  - Provider-specific settings are not applied, so the model returns only narrative text.
+  - Tool invocation metadata is malformed and the runtime rejects execution.
+trace:
+  upstream:
+    - specs/capabilities/provider-tool-calling.yaml
+  downstream:
+    behavior:
+      - specs/behavior/provider-tool-calling-execution.yaml
+    testing:
+      - specs/testing/provider-tool-calling-regression.yaml
+    interfaces:
+      - specs/interfaces/provider-tool-calling-contract.yaml

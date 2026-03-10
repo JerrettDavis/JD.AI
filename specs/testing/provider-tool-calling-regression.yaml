@@ -1,0 +1,38 @@
+apiVersion: jdai.upss/v1
+kind: Testing
+id: testing.provider-tool-calling-regression
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-testing-strategy-agent
+  lastReviewed: "2026-03-09"
+  changeReason: Define regression coverage for provider-aware tool-calling behavior.
+verificationLevels:
+  - unit
+  - integration
+behaviorRefs:
+  - behavior.provider-tool-calling-execution
+qualityRefs: []
+coverageTargets:
+  - scope: JD.AI.Core.Agents.AgentExecutionSettingsFactory
+    target: "90%"
+    metric: line
+  - scope: JD.AI.Core.Agents.Orchestration
+    target: "provider-specific tool-call path coverage"
+    metric: scenario
+generationRules:
+  - source: specs/behavior/provider-tool-calling-execution.yaml
+    strategy: hybrid
+trace:
+  upstream:
+    - specs/behavior/provider-tool-calling-execution.yaml
+    - specs/interfaces/provider-tool-calling-contract.yaml
+  downstream:
+    ci:
+      - .github/workflows/ci.yml
+      - .github/workflows/pr-validation.yml
+    release:
+      - docs/operations/deployment.md
