@@ -8,8 +8,8 @@ metadata:
     - JerrettDavis
   reviewers:
     - upss-interface-contract-architect
-  lastReviewed: "2026-03-09"
-  changeReason: Define the provider-facing execution contract for tool-calling requests.
+  lastReviewed: "2026-03-10"
+  changeReason: Define the provider-facing execution contract for tool-calling requests, including Claude tagged tool payload fallback handling.
 interfaceType: event
 operations:
   - name: BuildExecutionSettings
@@ -20,6 +20,10 @@ operations:
     method: INTERNAL
     path: /runtime/agents/turns/dispatch
     description: Sends a tool-capable turn using the resolved provider settings.
+  - name: EvaluateTaggedToolPayloadFallback
+    method: INTERNAL
+    path: /runtime/agents/turns/text-tool-fallback
+    description: Validates and executes explicit tagged tool payloads (including `<tool_use>`) when structured tool protocol is not used.
 messageSchemas:
   - name: AgentExecutionSettingsRequest
     format: application/json
@@ -30,6 +34,7 @@ messageSchemas:
 compatibilityRules:
   - New provider mappings must preserve behavior for existing OpenAI-compatible providers.
   - Provider-specific setting selection must remain deterministic for the same provider id and inputs.
+  - Anthropic/Claude tagged tool payload fallback must not change non-Claude provider behavior.
 trace:
   upstream:
     - specs/usecases/provider-tool-calling-execution.yaml

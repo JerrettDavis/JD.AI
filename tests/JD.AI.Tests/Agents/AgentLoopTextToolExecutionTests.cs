@@ -152,6 +152,149 @@ public sealed class AgentLoopTextToolExecutionTests
     }
 
     [Fact]
+    public async Task RunTurnStreamingAsync_ToolCapableClaudeModel_ExecutesTaggedToolUseFallback()
+    {
+        var registry = Substitute.For<IProviderRegistry>();
+        var model = new ProviderModelInfo(
+            "claude-sonnet-4-6",
+            "Claude Sonnet 4.6",
+            "Claude Code",
+            Capabilities: ModelCapabilities.Chat | ModelCapabilities.ToolCalling);
+
+        const string Response = """
+            I'll run ls for you.
+            <tool_use>
+            {"name":"run_command","arguments":{"command":"cd"}}
+            </tool_use>
+            <tool_response>{"output":""}</tool_response>
+            The directory appears to be empty.
+            """;
+        const string FollowUpResponse = "Current directory resolved.";
+
+        var chatService = Substitute.For<IChatCompletionService>();
+        chatService
+            .GetStreamingChatMessageContentsAsync(
+                Arg.Any<ChatHistory>(),
+                Arg.Any<PromptExecutionSettings>(),
+                Arg.Any<Kernel>(),
+                Arg.Any<CancellationToken>())
+            .Returns(StreamOnce(Response));
+
+        chatService
+            .GetChatMessageContentsAsync(
+                Arg.Any<ChatHistory>(),
+                Arg.Any<PromptExecutionSettings?>(),
+                Arg.Any<Kernel?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new List<ChatMessageContent>
+            {
+                new(AuthorRole.Assistant, FollowUpResponse),
+            });
+
+        var executedCommands = new List<string>();
+        var builder = Kernel.CreateBuilder();
+        builder.Services.AddSingleton<IChatCompletionService>(chatService);
+        var kernel = builder.Build();
+        kernel.Plugins.AddFromFunctions("shell", [
+            KernelFunctionFactory.CreateFromMethod(
+                (string command) =>
+                {
+                    executedCommands.Add(command);
+                    return "Exit code: 0\n--- stdout ---\nC:\\Users\\jd";
+                },
+                "run_command",
+                "Execute command")
+        ]);
+
+        var session = new AgentSession(registry, kernel, model);
+        var loop = new AgentLoop(session);
+
+        var previousOutput = AgentOutput.Current;
+        var output = new NullOutput();
+        AgentOutput.Current = output;
+        try
+        {
+            var result = await loop.RunTurnStreamingAsync("Run ls");
+            result.Should().Be(FollowUpResponse);
+        }
+        finally
+        {
+            AgentOutput.Current = previousOutput;
+        }
+
+        output.ConfirmCalled.Should().BeTrue();
+        executedCommands.Should().ContainSingle().Which.Should().Be("cd");
+        session.History.Any(m =>
+            m.Role == AuthorRole.User &&
+            m.Content is not null &&
+            m.Content.Contains("Tool result for run_command", StringComparison.Ordinal))
+            .Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RunTurnStreamingAsync_ToolCapableNonClaudeModel_DoesNotExecuteTaggedToolUseFallback()
+    {
+        var registry = Substitute.For<IProviderRegistry>();
+        var model = new ProviderModelInfo(
+            "test-model",
+            "Test",
+            "TestProvider",
+            Capabilities: ModelCapabilities.Chat | ModelCapabilities.ToolCalling);
+
+        const string Response = """
+            I'll run ls for you.
+            <tool_use>
+            {"name":"run_command","arguments":{"command":"cd"}}
+            </tool_use>
+            """;
+
+        var chatService = Substitute.For<IChatCompletionService>();
+        chatService
+            .GetStreamingChatMessageContentsAsync(
+                Arg.Any<ChatHistory>(),
+                Arg.Any<PromptExecutionSettings>(),
+                Arg.Any<Kernel>(),
+                Arg.Any<CancellationToken>())
+            .Returns(StreamOnce(Response));
+
+        var executedCommands = new List<string>();
+        var builder = Kernel.CreateBuilder();
+        builder.Services.AddSingleton<IChatCompletionService>(chatService);
+        var kernel = builder.Build();
+        kernel.Plugins.AddFromFunctions("shell", [
+            KernelFunctionFactory.CreateFromMethod(
+                (string command) =>
+                {
+                    executedCommands.Add(command);
+                    return "Exit code: 0\n--- stdout ---\nC:\\Users\\jd";
+                },
+                "run_command",
+                "Execute command")
+        ]);
+
+        var session = new AgentSession(registry, kernel, model);
+        var loop = new AgentLoop(session);
+
+        var previousOutput = AgentOutput.Current;
+        AgentOutput.Current = new NullOutput();
+        try
+        {
+            _ = await loop.RunTurnStreamingAsync("Run ls");
+        }
+        finally
+        {
+            AgentOutput.Current = previousOutput;
+        }
+
+        executedCommands.Should().BeEmpty();
+        session.History.Any(m =>
+            m.Role == AuthorRole.User &&
+            m.Content is not null &&
+            m.Content.Contains("Tool result for run_command", StringComparison.Ordinal))
+            .Should().BeFalse();
+    }
+
+    [Fact]
     public async Task RunTurnStreamingAsync_ToolCapableModel_BareJsonArray_ExecutesFallbackToolCall()
     {
         var registry = Substitute.For<IProviderRegistry>();

@@ -8,8 +8,8 @@ metadata:
     - JerrettDavis
   reviewers:
     - upss-behavioral-spec-architect
-  lastReviewed: "2026-03-09"
-  changeReason: Specify the expected runtime behavior for provider-aware tool calling.
+  lastReviewed: "2026-03-10"
+  changeReason: Specify expected runtime behavior for provider-aware tool calling, including Claude Code tagged tool payload fallback.
 useCaseRef: usecase.provider-tool-calling-execution
 bddScenarios:
   - title: Mistral executes tools when provider-specific settings are used
@@ -29,6 +29,16 @@ bddScenarios:
     then:
       - No tool invocation is executed.
       - The response is flagged as non-compliant with expected behavior.
+  - title: Claude tagged tool payload executes when wrapped in prose
+    given:
+      - A Claude Code or Anthropic model is selected.
+      - The model emits `<tool_use>` JSON payloads with prose in the same response.
+    when:
+      - The agent evaluates text fallback tool execution.
+    then:
+      - The tagged tool payload is executed through the runtime tool pipeline.
+      - Safety confirmation is enforced before command execution.
+      - The final response is grounded in the actual tool result, not the echoed `<tool_response>`.
 stateMachine:
   initialState: AwaitingRequest
   states:
@@ -61,6 +71,7 @@ stateMachine:
 assertions:
   - Provider-specific execution settings must be selected before dispatching tool-capable prompts.
   - Executed tool calls must be reflected in the final assistant message.
+  - Anthropic/Claude tagged tool payloads must execute when emitted as explicit `<tool_use>` JSON blocks.
   - Non-executed tool calls must not be represented as completed shell output.
 trace:
   upstream:

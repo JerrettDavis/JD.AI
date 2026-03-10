@@ -8,8 +8,8 @@ metadata:
     - JerrettDavis
   reviewers:
     - upss-usecase-architect
-  lastReviewed: "2026-03-09"
-  changeReason: Capture how operator requests must trigger real tool execution across provider backends.
+  lastReviewed: "2026-03-10"
+  changeReason: Capture how operator requests must trigger real tool execution across provider backends, including Claude tool_use-tag fallbacks.
 actor: persona.terminal-operator
 capabilityRef: capability.provider-tool-calling
 preconditions:
@@ -21,10 +21,11 @@ workflowSteps:
   - The model emits a tool invocation and the runtime executes the mapped tool.
   - The assistant returns a response grounded in the tool result.
 expectedOutcomes:
-  - Tool invocations execute for supported providers, including Mistral.
+  - Tool invocations execute for supported providers, including Mistral and Claude Code.
   - No fabricated command output is shown when a tool call did not execute.
 failureScenarios:
   - Provider-specific settings are not applied, so the model returns only narrative text.
+  - Claude/Anthropic-style `<tool_use>` payloads are emitted in prose and runtime fallback does not execute them.
   - Tool invocation metadata is malformed and the runtime rejects execution.
 trace:
   upstream:
