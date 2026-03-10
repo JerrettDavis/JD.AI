@@ -1,0 +1,34 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.messaging-adapters
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define messaging adapters capability as part of the canonical capability map (#325).
+name: Messaging Adapters
+description: >-
+  Implement channel-specific adapters for Discord, Slack, Telegram, Signal, Web,
+  and OpenClaw bridge providing protocol translation and platform-native interactions.
+maturity: beta
+actors:
+  - persona.channel-adapter
+  - persona.platform-engineer
+dependencies:
+  - capability.multi-channel-interaction
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/decisions/ADR-010-connector-sdk.md
+    testing:
+      - tests/JD.AI.Tests/Channels/Discord/DiscordChannelTests.cs

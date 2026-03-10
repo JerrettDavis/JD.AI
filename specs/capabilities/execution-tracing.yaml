@@ -1,0 +1,35 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.execution-tracing
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Add execution tracing capability to the canonical capability map (#325).
+name: Execution Tracing
+description: >-
+  Record detailed agent execution timelines with timestamped events, maintain
+  distributed trace contexts, and provide structured debug logging for
+  diagnostics and replay analysis.
+maturity: emerging
+actors:
+  - persona.platform-engineer
+  - persona.terminal-operator
+dependencies:
+  - capability.agent-conversation
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/README.md
+    testing:
+      - tests/JD.AI.Tests/Tracing/TraceContextTests.cs

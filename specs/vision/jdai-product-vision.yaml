@@ -108,4 +108,39 @@ trace:
     - docs/index.md
     - docs/architecture/index.md
   downstream:
-    capabilities: []
+    capabilities:
+      - capability.spec-validation
+      - capability.provider-tool-calling
+      - capability.agent-conversation
+      - capability.session-management
+      - capability.context-transformation
+      - capability.provider-management
+      - capability.model-selection
+      - capability.prompt-execution
+      - capability.tool-execution
+      - capability.tool-registry
+      - capability.tool-loadouts
+      - capability.workflow-authoring
+      - capability.workflow-execution
+      - capability.subagents
+      - capability.team-orchestration
+      - capability.mcp-integration
+      - capability.plugin-system
+      - capability.multi-channel-interaction
+      - capability.messaging-adapters
+      - capability.gateway-control-plane
+      - capability.dashboard-ui
+      - capability.telemetry
+      - capability.governance
+      - capability.memory
+      - capability.safety
+      - capability.security
+      - capability.usage-tracking
+      - capability.local-model-inference
+      - capability.agent-checkpointing
+      - capability.model-routing
+      - capability.tool-result-caching
+      - capability.execution-tracing
+      - capability.installation-updates
+      - capability.multi-tenancy
+      - capability.skill-management

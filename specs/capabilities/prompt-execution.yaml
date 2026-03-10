@@ -1,0 +1,35 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.prompt-execution
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define prompt execution capability as part of the canonical capability map (#325).
+name: Prompt Execution
+description: >-
+  Execute prompts against AI providers with streaming, prompt caching,
+  token budgeting, and provider-agnostic request/response handling.
+maturity: beta
+actors:
+  - persona.terminal-operator
+  - persona.autonomous-agent
+dependencies:
+  - capability.provider-management
+  - capability.model-selection
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/README.md
+    testing:
+      - tests/JD.AI.Tests/Providers/AnthropicPromptCachingChatClientTests.cs

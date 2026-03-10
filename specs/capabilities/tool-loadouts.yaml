@@ -1,0 +1,34 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.tool-loadouts
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define tool loadouts capability as part of the canonical capability map (#325).
+name: Tool Loadouts
+description: >-
+  Define, validate, and resolve named tool loadout profiles that scope which tools
+  are available to agents in different contexts and environments.
+maturity: beta
+actors:
+  - persona.platform-engineer
+  - persona.workflow-author
+dependencies:
+  - capability.tool-registry
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/decisions/ADR-002-tool-loadout-yaml.md
+    testing:
+      - tests/JD.AI.Tests/Tools/FileToolLoadoutRegistryTests.cs
