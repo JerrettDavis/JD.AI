@@ -1,9 +1,12 @@
+using System.Runtime.InteropServices;
+
 namespace JD.AI.Rendering;
 
 /// <summary>
 /// Computes the visible slice of a dropdown list that keeps the selected item in view.
 /// Pure value type with no side effects — all rendering state is derived from inputs.
 /// </summary>
+[StructLayout(LayoutKind.Auto)]
 public readonly record struct DropdownWindow(int StartIndex, int VisibleCount)
 {
     /// <summary>
