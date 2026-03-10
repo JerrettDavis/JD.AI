@@ -1,0 +1,101 @@
+apiVersion: jdai.upss/v1
+kind: Behavior
+id: behavior.slash-command-routing
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-behavioral-spec-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Specify slash command routing behavior for agent conversation specification (#326).
+useCaseRef: usecase.execute-slash-command
+bddScenarios:
+  - title: Known command dispatches to handler
+    given:
+      - The operator types /model gpt-4 in the interactive loop.
+    when:
+      - SlashCommandRouter.ExecuteAsync processes the input.
+    then:
+      - The model-switch handler is invoked with argument gpt-4.
+  - title: Alias resolves to canonical command
+    given:
+      - The operator types /sp in the interactive loop.
+    when:
+      - TryResolveDispatch normalizes and looks up the input.
+    then:
+      - The dispatch resolves to the /system-prompt handler.
+  - title: Unknown command returns error
+    given:
+      - The operator types /nonexistent in the interactive loop.
+    when:
+      - TryResolveDispatch fails to find a matching entry.
+    then:
+      - The router returns an error message indicating the command is unknown.
+  - title: Quit command signals session exit
+    given:
+      - The operator types /quit in the interactive loop.
+    when:
+      - The quit handler executes.
+    then:
+      - ExecuteAsync returns null, signaling InteractiveLoop to exit.
+stateMachine:
+  initialState: AwaitingInput
+  states:
+    - id: AwaitingInput
+      description: Waiting for user input in the interactive loop.
+    - id: Parsing
+      description: Input is being normalized and looked up in the dispatch map.
+    - id: Dispatching
+      description: The matched handler is being invoked.
+    - id: Executed
+      description: The command handler completed successfully.
+      terminal: true
+    - id: UnknownCommand
+      description: No matching dispatch entry was found.
+      terminal: true
+    - id: HandlerError
+      description: The handler threw an unhandled exception.
+      terminal: true
+  transitions:
+    - from: AwaitingInput
+      to: Parsing
+      on: slash_input_detected
+      actions:
+        - Trim input, ensure leading slash, normalize case.
+    - from: Parsing
+      to: Dispatching
+      on: command_resolved
+      actions:
+        - Look up handler in DispatchMap.
+    - from: Parsing
+      to: UnknownCommand
+      on: command_not_found
+      actions:
+        - Return error message with available commands.
+    - from: Dispatching
+      to: Executed
+      on: handler_completed
+      actions:
+        - Return handler result to InteractiveLoop.
+    - from: Dispatching
+      to: HandlerError
+      on: handler_exception
+      actions:
+        - Log exception and return error message.
+assertions:
+  - Command matching is case-insensitive after normalization.
+  - The /jdai- prefix is stripped for compatibility with legacy command formats.
+  - Static field init order ensures DispatchMap is built after Definitions.
+  - /quit and /exit are aliases that both signal session exit.
+trace:
+  upstream:
+    - specs/usecases/execute-slash-command.yaml
+  downstream:
+    testing:
+      - specs/testing/agent-conversation.yaml
+    interfaces: []
+    code:
+      - src/JD.AI/Commands/SlashCommandRouter.cs
+      - src/JD.AI/Commands/SlashCommandCatalog.cs

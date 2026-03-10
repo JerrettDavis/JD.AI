@@ -29,3 +29,7 @@ entries:
     title: Workflow Engine Architecture
     path: specs/architecture/workflow-engine-architecture.yaml
     status: draft
+  - id: architecture.session-lifecycle
+    title: Session Lifecycle Architecture
+    path: specs/architecture/session-lifecycle.yaml
+    status: draft

@@ -1,0 +1,39 @@
+apiVersion: jdai.upss/v1
+kind: UseCase
+id: usecase.execute-slash-command
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-usecase-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define the execute-slash-command use case for session lifecycle specification (#326).
+actor: persona.terminal-operator
+capabilityRef: capability.agent-conversation
+preconditions:
+  - An active session exists in the interactive loop.
+  - The operator enters input beginning with a forward slash.
+workflowSteps:
+  - InteractiveLoop detects the / prefix in user input.
+  - SlashCommandRouter.IsSlashCommand confirms the input is a command.
+  - SlashCommandCatalog.TryResolveDispatch normalizes and looks up the command including aliases.
+  - The router dispatches to the matching handler method with the session and arguments.
+  - The handler executes and returns a result or null for /quit.
+expectedOutcomes:
+  - The command executes its side effect such as switching model, listing sessions, or compacting history.
+  - Non-existent commands produce an error message listing available commands.
+  - The /quit command signals session exit by returning null.
+failureScenarios:
+  - The command token does not match any registered dispatch entry.
+  - The handler throws an unhandled exception during execution.
+trace:
+  upstream:
+    - specs/capabilities/agent-conversation.yaml
+  downstream:
+    behavior:
+      - specs/behavior/slash-command-routing.yaml
+    testing:
+      - specs/testing/agent-conversation.yaml
+    interfaces: []
