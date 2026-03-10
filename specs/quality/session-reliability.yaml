@@ -46,6 +46,7 @@ trace:
   upstream:
     - specs/capabilities/session-management.yaml
   downstream:
-    testing: []
+    testing:
+      - specs/testing/session-lifecycle.yaml
     observability: []
     operations: []

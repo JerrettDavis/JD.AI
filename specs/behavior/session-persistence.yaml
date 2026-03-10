@@ -90,6 +90,8 @@ assertions:
 trace:
   upstream:
     - specs/usecases/start-session.yaml
+    - specs/usecases/resume-session.yaml
+    - specs/usecases/recover-interrupted-conversation.yaml
   downstream:
     testing:
       - specs/testing/session-lifecycle.yaml

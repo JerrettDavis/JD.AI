@@ -43,6 +43,7 @@ trace:
   upstream:
     - specs/capabilities/agent-conversation.yaml
   downstream:
-    testing: []
+    testing:
+      - specs/testing/agent-conversation.yaml
     observability: []
     operations: []
