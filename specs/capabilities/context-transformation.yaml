@@ -20,14 +20,16 @@ actors:
   - persona.autonomous-agent
 dependencies:
   - capability.agent-conversation
-relatedUseCases: []
+relatedUseCases:
+  - usecase.transform-context
 trace:
   visionRefs:
     - vision.jdai.product
   upstream:
     - specs/vision/jdai-product-vision.yaml
   downstream:
-    useCases: []
+    useCases:
+      - usecase.transform-context
     architecture:
       - docs/architecture/README.md
     testing:

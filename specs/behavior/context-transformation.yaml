@@ -1,0 +1,114 @@
+apiVersion: jdai.upss/v1
+kind: Behavior
+id: behavior.context-transformation
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-behavioral-spec-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Specify context transformation behavior for session lifecycle specification (#326).
+useCaseRef: usecase.transform-context
+bddScenarios:
+  - title: Preserve mode keeps history unchanged
+    given:
+      - An active conversation with 10 turns exists.
+    when:
+      - SwitchProviderAsync is called with SwitchMode.Preserve.
+    then:
+      - ChatHistory retains all 10 turns unchanged.
+  - title: Compact mode summarizes conversation
+    given:
+      - An active conversation with multiple turns exists.
+    when:
+      - SwitchProviderAsync is called with SwitchMode.Compact.
+    then:
+      - The current LLM produces a summary of the conversation.
+      - ChatHistory is replaced with a single system message containing the summary.
+  - title: Transform mode creates handoff briefing
+    given:
+      - An active conversation with decisions and file changes exists.
+    when:
+      - SwitchProviderAsync is called with SwitchMode.Transform.
+    then:
+      - A briefing covering key decisions, file paths, code changes, pending questions, and user style is generated.
+      - The briefing is injected as both a system message and an assistant message.
+  - title: Fresh mode clears history
+    given:
+      - Any conversation state exists.
+    when:
+      - SwitchProviderAsync is called with SwitchMode.Fresh.
+    then:
+      - ChatHistory is replaced with a new empty instance.
+  - title: Cancel mode aborts the switch
+    given:
+      - A provider switch is in progress.
+    when:
+      - SwitchProviderAsync is called with SwitchMode.Cancel.
+    then:
+      - An OperationCanceledException is thrown and no changes are made to ChatHistory.
+stateMachine:
+  initialState: Active
+  states:
+    - id: Active
+      description: Normal conversation state before any transformation.
+    - id: TransformRequested
+      description: A context transformation has been requested.
+    - id: Transforming
+      description: The LLM is generating a summary or briefing.
+    - id: Transformed
+      description: Context has been successfully transformed.
+      terminal: true
+    - id: Cancelled
+      description: The transformation was cancelled by the operator.
+      terminal: true
+    - id: TransformFailed
+      description: The LLM summarization or briefing call failed.
+      terminal: true
+  transitions:
+    - from: Active
+      to: TransformRequested
+      on: switch_mode_selected
+      actions:
+        - Determine the SwitchMode and prepare the transformer.
+    - from: TransformRequested
+      to: Transforming
+      on: transform_started
+      actions:
+        - Invoke ConversationTransformer.TransformAsync with the selected mode.
+    - from: TransformRequested
+      to: Cancelled
+      on: cancel_selected
+      actions:
+        - Throw OperationCanceledException.
+    - from: TransformRequested
+      to: Transformed
+      on: preserve_or_fresh_selected
+      actions:
+        - Return history as-is or create new empty history.
+    - from: Transforming
+      to: Transformed
+      on: transform_complete
+      actions:
+        - Replace ChatHistory and rebuild kernel for new provider.
+    - from: Transforming
+      to: TransformFailed
+      on: transform_error
+      actions:
+        - Report the LLM failure to the operator.
+assertions:
+  - A ForkPoint is recorded before every model switch capturing the turn index and message count.
+  - The kernel is rebuilt with the new provider plugins and filters after transformation.
+  - The original system prompt is preserved or re-applied after context replacement.
+trace:
+  upstream:
+    - specs/usecases/transform-context.yaml
+  downstream:
+    testing:
+      - specs/testing/agent-conversation.yaml
+    interfaces: []
+    code:
+      - src/JD.AI.Core/Agents/ConversationTransformer.cs
+      - src/JD.AI.Core/Agents/AgentSession.cs

@@ -17,3 +17,23 @@ entries:
     title: Workflow Lifecycle Execution
     path: specs/usecases/workflow-lifecycle-execution.yaml
     status: draft
+  - id: usecase.start-session
+    title: Start Session
+    path: specs/usecases/start-session.yaml
+    status: draft
+  - id: usecase.resume-session
+    title: Resume Session
+    path: specs/usecases/resume-session.yaml
+    status: draft
+  - id: usecase.transform-context
+    title: Transform Context
+    path: specs/usecases/transform-context.yaml
+    status: draft
+  - id: usecase.execute-slash-command
+    title: Execute Slash Command
+    path: specs/usecases/execute-slash-command.yaml
+    status: draft
+  - id: usecase.recover-interrupted-conversation
+    title: Recover Interrupted Conversation
+    path: specs/usecases/recover-interrupted-conversation.yaml
+    status: draft
