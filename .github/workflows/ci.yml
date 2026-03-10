@@ -70,7 +70,7 @@ jobs:
             -assemblyfilters:"+JD.AI*;-*Tests*" \
             -filefilters:"-**/*.Tests/*;-**/*Tests*/**"
           echo "COVERAGE_SUMMARY<<EOF" >> $GITHUB_ENV
-          cat coverage-report/Summary.txt >> $GITHUB_ENV
+          awk '/^[^ ]/ && NR>1 {exit} {print}' coverage-report/Summary.txt >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
       - name: Upload coverage report
