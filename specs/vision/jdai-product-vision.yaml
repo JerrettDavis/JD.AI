@@ -133,3 +133,12 @@ trace:
       - capability.telemetry
       - capability.governance
       - capability.memory
+      - capability.safety
+      - capability.security
+      - capability.usage-tracking
+      - capability.local-model-inference
+      - capability.agent-checkpointing
+      - capability.model-routing
+      - capability.tool-result-caching
+      - capability.execution-tracing
+      - capability.installation-updates
