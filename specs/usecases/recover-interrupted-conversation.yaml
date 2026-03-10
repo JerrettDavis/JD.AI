@@ -1,0 +1,39 @@
+apiVersion: jdai.upss/v1
+kind: UseCase
+id: usecase.recover-interrupted-conversation
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-usecase-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define the recover-interrupted-conversation use case for session lifecycle specification (#326).
+actor: persona.terminal-operator
+capabilityRef: capability.session-management
+preconditions:
+  - A session was interrupted by process crash, network failure, or manual kill.
+  - The session has is_active=1 but the process is no longer running.
+workflowSteps:
+  - The operator restarts JD.AI with --continue or uses /resume.
+  - The system identifies the interrupted session by project hash and active status.
+  - SessionStore.GetSessionAsync loads the full session with all persisted turns.
+  - ChatHistory is rebuilt from the persisted turns.
+  - A checkpoint strategy may be used to restore file-system state if needed.
+expectedOutcomes:
+  - The conversation resumes from the last persisted turn.
+  - No data loss occurs for completed turns that were saved transactionally.
+  - The operator is informed of the recovery.
+failureScenarios:
+  - The SQLite WAL file is corrupted from the crash.
+  - File-system state has diverged from the last checkpoint.
+trace:
+  upstream:
+    - specs/capabilities/session-management.yaml
+  downstream:
+    behavior:
+      - specs/behavior/session-persistence.yaml
+    testing:
+      - specs/testing/session-lifecycle.yaml
+    interfaces: []

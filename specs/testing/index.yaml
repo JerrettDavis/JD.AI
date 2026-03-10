@@ -21,3 +21,11 @@ entries:
     title: Workflow Execution Strategy
     path: specs/testing/workflow-execution-strategy.yaml
     status: draft
+  - id: testing.session-lifecycle
+    title: Session Lifecycle Testing
+    path: specs/testing/session-lifecycle.yaml
+    status: draft
+  - id: testing.agent-conversation
+    title: Agent Conversation Testing
+    path: specs/testing/agent-conversation.yaml
+    status: draft

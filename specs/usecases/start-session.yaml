@@ -1,0 +1,37 @@
+apiVersion: jdai.upss/v1
+kind: UseCase
+id: usecase.start-session
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-usecase-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define the start-session use case for session lifecycle specification (#326).
+actor: persona.terminal-operator
+capabilityRef: capability.session-management
+preconditions:
+  - The operator launches the JD.AI CLI in a project directory.
+  - The SQLite session database is accessible at ~/.jdai/sessions.db.
+workflowSteps:
+  - CLI parses arguments and resolves the project path.
+  - SessionConfigurator creates an AgentSession with a new SessionInfo.
+  - SessionStore persists the session row with project hash, model ID, and timestamps.
+  - The interactive loop begins accepting user input.
+expectedOutcomes:
+  - A new session record exists in SQLite with is_active=1.
+  - The session ID (16-char hex) is available for future resume.
+failureScenarios:
+  - SQLite database is locked or corrupted, preventing session creation.
+  - Project path cannot be resolved to a valid directory.
+trace:
+  upstream:
+    - specs/capabilities/session-management.yaml
+  downstream:
+    behavior:
+      - specs/behavior/session-persistence.yaml
+    testing:
+      - specs/testing/session-lifecycle.yaml
+    interfaces: []

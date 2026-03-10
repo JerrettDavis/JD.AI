@@ -19,14 +19,18 @@ actors:
   - persona.terminal-operator
   - persona.autonomous-agent
 dependencies: []
-relatedUseCases: []
+relatedUseCases:
+  - usecase.start-session
+  - usecase.execute-slash-command
 trace:
   visionRefs:
     - vision.jdai.product
   upstream:
     - specs/vision/jdai-product-vision.yaml
   downstream:
-    useCases: []
+    useCases:
+      - usecase.start-session
+      - usecase.execute-slash-command
     architecture:
       - docs/architecture/README.md
     testing:
