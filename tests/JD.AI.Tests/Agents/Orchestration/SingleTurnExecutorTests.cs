@@ -5,6 +5,7 @@ using JD.AI.Core.Providers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.MistralAI;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Xunit;
@@ -636,6 +637,64 @@ public sealed class SingleTurnExecutorTests
         var openAiSettings = capturedSettings as Microsoft.SemanticKernel.Connectors.OpenAI.OpenAIPromptExecutionSettings;
         openAiSettings.Should().NotBeNull();
         openAiSettings!.FunctionChoiceBehavior.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_MistralModelWithToolCalling_UsesMistralToolCallBehavior()
+    {
+        PromptExecutionSettings? capturedSettings = null;
+        var svc = Substitute.For<IChatCompletionService>();
+        svc.GetStreamingChatMessageContentsAsync(
+                Arg.Any<ChatHistory>(),
+                Arg.Do<PromptExecutionSettings>(s => capturedSettings = s),
+                Arg.Any<Kernel>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Chunks("ok"));
+
+        var model = new ProviderModelInfo(
+            "mistral-large-pixtral-2411",
+            "Mistral Large Pixtral 2411",
+            "Mistral",
+            Capabilities: ModelCapabilities.Chat | ModelCapabilities.ToolCalling);
+        var session = SessionWithChatService(svc, model);
+        var sut = new SingleTurnExecutor();
+
+        await sut.ExecuteAsync(Cfg(), session);
+
+#pragma warning disable SKEXP0070
+        var mistralSettings = capturedSettings as MistralAIPromptExecutionSettings;
+        mistralSettings.Should().NotBeNull();
+        mistralSettings!.ToolCallBehavior.Should().NotBeNull();
+#pragma warning restore SKEXP0070
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_MistralChatOnlyModel_DisablesMistralToolCallBehavior()
+    {
+        PromptExecutionSettings? capturedSettings = null;
+        var svc = Substitute.For<IChatCompletionService>();
+        svc.GetStreamingChatMessageContentsAsync(
+                Arg.Any<ChatHistory>(),
+                Arg.Do<PromptExecutionSettings>(s => capturedSettings = s),
+                Arg.Any<Kernel>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Chunks("ok"));
+
+        var model = new ProviderModelInfo(
+            "mistral-medium-2508",
+            "Mistral Medium 2508",
+            "Mistral",
+            Capabilities: ModelCapabilities.Chat);
+        var session = SessionWithChatService(svc, model);
+        var sut = new SingleTurnExecutor();
+
+        await sut.ExecuteAsync(Cfg(), session);
+
+#pragma warning disable SKEXP0070
+        var mistralSettings = capturedSettings as MistralAIPromptExecutionSettings;
+        mistralSettings.Should().NotBeNull();
+        mistralSettings!.ToolCallBehavior.Should().BeNull();
+#pragma warning restore SKEXP0070
     }
 
     [Fact]
