@@ -13,7 +13,7 @@ namespace JD.AI.Core.Tools;
 public sealed class FileTools
 {
     [KernelFunction("read_file")]
-    [ToolSafetyTier(SafetyTier.AutoApprove)]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("Read the contents of a file. Returns the text content with line numbers.")]
     public static string ReadFile(
         [Description("Absolute or relative file path")] string path,
@@ -88,7 +88,7 @@ public sealed class FileTools
     }
 
     [KernelFunction("list_directory")]
-    [ToolSafetyTier(SafetyTier.AutoApprove)]
+    [ToolSafetyTier(SafetyTier.ConfirmOnce)]
     [Description("List files and directories. Returns a tree-like listing.")]
     public static string ListDirectory(
         [Description("Directory path (defaults to current directory)")] string? path = null,
