@@ -1,0 +1,33 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.plugin-system
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define plugin system capability as part of the canonical capability map (#325).
+name: Plugin System
+description: >-
+  Load, install, verify, and manage plugins with integrity checking, permission-scoped
+  contexts, lifecycle management, and service-provider integration.
+maturity: beta
+actors:
+  - persona.tool-developer
+  - persona.platform-engineer
+dependencies: []
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/README.md
+    testing:
+      - tests/JD.AI.Tests/Plugins/PluginLoaderTests.cs

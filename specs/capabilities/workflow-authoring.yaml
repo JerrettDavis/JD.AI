@@ -1,0 +1,33 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.workflow-authoring
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define workflow authoring capability as part of the canonical capability map (#325).
+name: Workflow Authoring
+description: >-
+  Create, detect, and validate multi-step agent workflows using a fluent builder API,
+  YAML-based definitions, and a file-backed workflow catalog.
+maturity: beta
+actors:
+  - persona.workflow-author
+  - persona.platform-engineer
+dependencies: []
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/README.md
+    testing:
+      - tests/JD.AI.Tests/Workflows/AgentWorkflowDetectorTests.cs

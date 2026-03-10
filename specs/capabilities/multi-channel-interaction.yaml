@@ -1,0 +1,35 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.multi-channel-interaction
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define multi-channel interaction capability as part of the canonical capability map (#325).
+name: Multi-Channel Interaction
+description: >-
+  Deliver agent capabilities across multiple communication channels with a unified
+  channel abstraction, routing, and feature-parity management across terminal,
+  Discord, Slack, Signal, Telegram, and web interfaces.
+maturity: beta
+actors:
+  - persona.terminal-operator
+  - persona.channel-adapter
+dependencies:
+  - capability.agent-conversation
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/README.md
+    testing:
+      - tests/JD.AI.Tests/Channels/ChannelRegistryTests.cs

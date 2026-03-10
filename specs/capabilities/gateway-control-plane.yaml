@@ -1,0 +1,37 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.gateway-control-plane
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define gateway control plane capability as part of the canonical capability map (#325).
+name: Gateway Control Plane
+description: >-
+  Expose REST API endpoints and real-time SignalR hubs for managing agents, sessions,
+  providers, channels, plugins, routing, audit logs, and platform configuration
+  with API key authentication and versioned routing.
+maturity: beta
+actors:
+  - persona.platform-engineer
+  - persona.terminal-operator
+dependencies:
+  - capability.agent-conversation
+  - capability.session-management
+  - capability.provider-management
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/README.md
+    testing:
+      - tests/JD.AI.Gateway.Tests/AgentEndpointTests.cs

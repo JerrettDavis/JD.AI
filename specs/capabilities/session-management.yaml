@@ -1,0 +1,34 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.session-management
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define session management capability as part of the canonical capability map (#325).
+name: Session Management
+description: >-
+  Persist, retrieve, replay, and verify integrity of agent sessions including
+  session records, export, and checkpointing strategies.
+maturity: beta
+actors:
+  - persona.terminal-operator
+  - persona.platform-engineer
+dependencies:
+  - capability.agent-conversation
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - docs/architecture/README.md
+    testing:
+      - tests/JD.AI.Tests/Sessions/SessionRecordTests.cs
