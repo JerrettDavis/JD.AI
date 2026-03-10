@@ -8,8 +8,8 @@ metadata:
     - JerrettDavis
   reviewers:
     - upss-testing-strategy-agent
-  lastReviewed: "2026-03-09"
-  changeReason: Define regression coverage for provider-aware tool-calling behavior.
+  lastReviewed: "2026-03-10"
+  changeReason: Define regression coverage for provider-aware tool-calling behavior, including Claude tagged tool payload fallback.
 verificationLevels:
   - unit
   - integration
@@ -20,6 +20,9 @@ coverageTargets:
   - scope: JD.AI.Core.Agents.AgentExecutionSettingsFactory
     target: "90%"
     metric: line
+  - scope: JD.AI.Core.Agents.AgentLoop text-tool fallback
+    target: "Claude tagged `<tool_use>` execution and safety confirmation covered"
+    metric: scenario
   - scope: JD.AI.Core.Agents.Orchestration
     target: "provider-specific tool-call path coverage"
     metric: scenario

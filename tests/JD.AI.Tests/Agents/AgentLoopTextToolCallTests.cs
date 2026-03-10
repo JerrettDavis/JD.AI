@@ -120,6 +120,24 @@ public sealed class AgentLoopTextToolCallTests
     }
 
     [Fact]
+    public void ExtractFirstToolCallJson_TaggedToolUseBlock_ReturnsJson()
+    {
+        const string Response = """
+            I'll run ls for you.
+            <tool_use>
+            {"name":"run_command","arguments":{"command":"ls"}}
+            </tool_use>
+            <tool_response>{"output":""}</tool_response>
+            """;
+
+        var result = AgentLoop.ExtractFirstToolCallJson(Response);
+
+        result.Should().NotBeNull();
+        result.Should().Contain("\"run_command\"");
+        result.Should().Contain("\"arguments\"");
+    }
+
+    [Fact]
     public void ExtractFirstToolCallJson_BareJsonWithParameters_ReturnsJson()
     {
         const string Response = """
@@ -226,6 +244,18 @@ public sealed class AgentLoopTextToolCallTests
     {
         const string Response = """
             [{"name":"file-read_file","arguments":{"path":"package.json"}}]
+            """;
+
+        AgentLoop.IsStandaloneToolCallPayload(Response).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsStandaloneToolCallPayload_EntireTaggedToolUse_ReturnsTrue()
+    {
+        const string Response = """
+            <tool_use>
+            {"name":"run_command","arguments":{"command":"pwd"}}
+            </tool_use>
             """;
 
         AgentLoop.IsStandaloneToolCallPayload(Response).Should().BeTrue();
