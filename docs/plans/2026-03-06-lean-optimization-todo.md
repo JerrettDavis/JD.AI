@@ -111,3 +111,7 @@
 - [ ] Phase 2: Command/config single-source generation.
 - [ ] Phase 3: Constants/identity centralization + provider orchestration cleanup.
 - [ ] Phase 4: Analyzer/generator guardrails + docs consolidation.
+
+## Newly Logged Bugs
+
+- [ ] Fix TUI rendering glitch when switching permission modes (`Normal` / `Plan (read-only)` / `Auto-edit`), where mode bars can overlap or render inconsistently.

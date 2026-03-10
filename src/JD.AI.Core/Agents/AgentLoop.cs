@@ -8,7 +8,6 @@ using JD.AI.Core.Tools;
 using JD.AI.Core.Tracing;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
-using Microsoft.SemanticKernel.Connectors.OpenAI;
 
 namespace JD.AI.Core.Agents;
 
@@ -129,7 +128,7 @@ public sealed class AgentLoop
         }
         catch (Exception ex) when (!ct.IsCancellationRequested &&
             (IsToolCallingError(ex) ||
-             IsToolsRejectedError(ex, settings.FunctionChoiceBehavior is not null)))
+             IsToolsRejectedError(ex, AgentExecutionSettingsFactory.HasToolsEnabled(settings))))
         {
             sw.Stop();
 
@@ -143,11 +142,9 @@ public sealed class AgentLoop
             sw.Restart();
             try
             {
-                var retrySettings = new OpenAIPromptExecutionSettings
-                {
-                    MaxTokens = _session.CurrentModel?.MaxOutputTokens is > 0
-                        ? _session.CurrentModel.MaxOutputTokens : 4096,
-                };
+                var retrySettings = AgentExecutionSettingsFactory.Create(
+                    _session.CurrentModel,
+                    enableTools: false);
                 ApplyReasoningEffort(
                     retrySettings,
                     _session.CurrentModel,
@@ -521,7 +518,7 @@ public sealed class AgentLoop
         }
         catch (Exception ex) when (!ct.IsCancellationRequested &&
             (IsToolCallingError(ex) ||
-             IsToolsRejectedError(ex, settings.FunctionChoiceBehavior is not null)))
+             IsToolsRejectedError(ex, AgentExecutionSettingsFactory.HasToolsEnabled(settings))))
         {
             if (contentStarted) output.EndStreaming();
             sw.Stop();
@@ -536,11 +533,9 @@ public sealed class AgentLoop
             sw.Restart();
             try
             {
-                var retrySettings = new OpenAIPromptExecutionSettings
-                {
-                    MaxTokens = _session.CurrentModel?.MaxOutputTokens is > 0
-                        ? _session.CurrentModel.MaxOutputTokens : 4096,
-                };
+                var retrySettings = AgentExecutionSettingsFactory.Create(
+                    _session.CurrentModel,
+                    enableTools: false);
                 ApplyReasoningEffort(
                     retrySettings,
                     _session.CurrentModel,
@@ -726,13 +721,10 @@ public sealed class AgentLoop
 
     /// <summary>
     /// Builds provider-appropriate execution settings for the current model.
-    /// Uses <see cref="OpenAIPromptExecutionSettings"/> for <c>MaxTokens</c> support
-    /// with SK's unified <see cref="FunctionChoiceBehavior"/> (not the deprecated
-    /// <c>ToolCallBehavior</c>) so tool calling works across all connector types.
-    /// MEAI adapters read <c>FunctionChoiceBehavior</c> and <c>ModelId</c> from the
-    /// base <see cref="PromptExecutionSettings"/> class.
+    /// Uses provider-native tool-call settings (OpenAI-style function choice
+    /// for most providers, Mistral tool-call behavior for Mistral connector).
     /// </summary>
-    private OpenAIPromptExecutionSettings BuildExecutionSettings()
+    private PromptExecutionSettings BuildExecutionSettings()
     {
         var supportsTools = _session.CurrentModel?.Capabilities
             .HasFlag(ModelCapabilities.ToolCalling) ?? false;
@@ -780,26 +772,15 @@ public sealed class AgentLoop
             }
         }
 
-        var maxTokens = _session.CurrentModel?.MaxOutputTokens;
-        if (maxTokens is null or <= 0)
-        {
-            maxTokens = 4096;
-        }
-
-        var settings = new OpenAIPromptExecutionSettings
-        {
-            ModelId = _session.CurrentModel?.Id,
-            MaxTokens = maxTokens,
-            FunctionChoiceBehavior = supportsTools
-                ? FunctionChoiceBehavior.Auto(autoInvoke: true)
-                : null,
-        };
+        var settings = AgentExecutionSettingsFactory.Create(
+            _session.CurrentModel,
+            supportsTools);
         ApplyReasoningEffort(settings, _session.CurrentModel, _session.ReasoningEffortOverride);
         return settings;
     }
 
     public static void ApplyReasoningEffort(
-        OpenAIPromptExecutionSettings settings,
+        PromptExecutionSettings settings,
         ProviderModelInfo? model,
         ReasoningEffort? effort)
     {
