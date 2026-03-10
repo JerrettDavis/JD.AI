@@ -1,0 +1,37 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.provider-tool-calling
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define provider-aware tool-calling as a first-class platform capability.
+name: Provider-Aware Tool Calling
+description: Ensure JD.AI invokes tools reliably across providers by translating execution settings to provider-specific contracts.
+maturity: beta
+actors:
+  - persona.terminal-operator
+  - persona.platform-engineer
+dependencies: []
+relatedUseCases:
+  - usecase.provider-tool-calling-execution
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases:
+      - usecase.provider-tool-calling-execution
+    architecture:
+      - src/JD.AI.Core/Agents/AgentExecutionSettingsFactory.cs
+      - src/JD.AI.Core/Agents/Orchestration/SingleTurnExecutor.cs
+      - src/JD.AI.Core/Agents/Orchestration/MultiTurnExecutor.cs
+    testing:
+      - tests/JD.AI.Tests/Agents/AgentExecutionSettingsFactoryTests.cs
+      - tests/JD.AI.Tests/Agents/Orchestration/MultiTurnExecutorSettingsTests.cs
+      - tests/JD.AI.Tests/Agents/Orchestration/SingleTurnExecutorTests.cs

@@ -1,0 +1,42 @@
+apiVersion: jdai.upss/v1
+kind: Interface
+id: interface.provider-tool-calling-contract
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-interface-contract-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Define the provider-facing execution contract for tool-calling requests.
+interfaceType: event
+operations:
+  - name: BuildExecutionSettings
+    method: INTERNAL
+    path: /runtime/agents/execution-settings
+    description: Resolves provider-specific prompt execution settings for tool-capable turns.
+  - name: DispatchToolCapableTurn
+    method: INTERNAL
+    path: /runtime/agents/turns/dispatch
+    description: Sends a tool-capable turn using the resolved provider settings.
+messageSchemas:
+  - name: AgentExecutionSettingsRequest
+    format: application/json
+    description: Contains provider id, model id, and whether tool dispatch is required for the turn.
+  - name: AgentExecutionSettingsEnvelope
+    format: application/json
+    description: Encapsulates provider-specific execution settings used by orchestration executors.
+compatibilityRules:
+  - New provider mappings must preserve behavior for existing OpenAI-compatible providers.
+  - Provider-specific setting selection must remain deterministic for the same provider id and inputs.
+trace:
+  upstream:
+    - specs/usecases/provider-tool-calling-execution.yaml
+  downstream:
+    code:
+      - src/JD.AI.Core/Agents/AgentExecutionSettingsFactory.cs
+    testing:
+      - tests/JD.AI.Tests/Agents/AgentExecutionSettingsFactoryTests.cs
+    deployment:
+      - docs/operations/deployment.md

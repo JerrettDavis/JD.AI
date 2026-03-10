@@ -1,7 +1,7 @@
 apiVersion: jdai.upss/v1
 kind: CapabilityIndex
 entries:
-  - id: capability.spec-validation
-    title: Specification Validation
-    path: specs/capabilities/examples/capabilities.example.yaml
+  - id: capability.provider-tool-calling
+    title: Provider-Aware Tool Calling
+    path: specs/capabilities/provider-tool-calling.yaml
     status: draft

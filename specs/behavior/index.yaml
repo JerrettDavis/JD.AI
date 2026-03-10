@@ -1,7 +1,7 @@
 apiVersion: jdai.upss/v1
 kind: BehaviorIndex
 entries:
-  - id: behavior.validate-pull-request
-    title: Validate Pull Request Behavior
-    path: specs/behavior/examples/behavior.example.yaml
+  - id: behavior.provider-tool-calling-execution
+    title: Provider Tool-Calling Execution Behavior
+    path: specs/behavior/provider-tool-calling-execution.yaml
     status: draft

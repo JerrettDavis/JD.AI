@@ -1,0 +1,78 @@
+apiVersion: jdai.upss/v1
+kind: Behavior
+id: behavior.provider-tool-calling-execution
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-behavioral-spec-architect
+  lastReviewed: "2026-03-09"
+  changeReason: Specify the expected runtime behavior for provider-aware tool calling.
+useCaseRef: usecase.provider-tool-calling-execution
+bddScenarios:
+  - title: Mistral executes tools when provider-specific settings are used
+    given:
+      - A Mistral model is selected.
+      - The active prompt includes callable tools.
+    when:
+      - The agent constructs prompt execution settings and sends the request.
+    then:
+      - The model emits a tool call that the runtime executes.
+      - The assistant response includes tool-grounded output.
+  - title: Missing provider mapping prevents tool execution
+    given:
+      - A provider requires a non-default tool-calling setting contract.
+    when:
+      - The request is sent with incompatible settings.
+    then:
+      - No tool invocation is executed.
+      - The response is flagged as non-compliant with expected behavior.
+stateMachine:
+  initialState: AwaitingRequest
+  states:
+    - id: AwaitingRequest
+      description: Waiting for a user prompt that may require tools.
+    - id: ToolDispatch
+      description: Provider-specific execution settings are resolved and tool calls are dispatched.
+    - id: Completed
+      description: A tool-backed response is returned to the operator.
+      terminal: true
+    - id: Failed
+      description: Tool invocation did not execute or failed validation.
+      terminal: true
+  transitions:
+    - from: AwaitingRequest
+      to: ToolDispatch
+      on: prompt_requires_tool
+      actions:
+        - Resolve provider-specific prompt execution settings.
+    - from: ToolDispatch
+      to: Completed
+      on: tool_call_executed
+      actions:
+        - Render tool result in assistant response.
+    - from: ToolDispatch
+      to: Failed
+      on: tool_call_missing_or_invalid
+      actions:
+        - Emit diagnostics for provider tool-calling mismatch.
+assertions:
+  - Provider-specific execution settings must be selected before dispatching tool-capable prompts.
+  - Executed tool calls must be reflected in the final assistant message.
+  - Non-executed tool calls must not be represented as completed shell output.
+trace:
+  upstream:
+    - specs/usecases/provider-tool-calling-execution.yaml
+  downstream:
+    testing:
+      - specs/testing/provider-tool-calling-regression.yaml
+    interfaces:
+      - specs/interfaces/provider-tool-calling-contract.yaml
+    code:
+      - src/JD.AI.Core/Agents/AgentExecutionSettingsFactory.cs
+      - src/JD.AI.Core/Agents/AgentLoop.cs
+      - src/JD.AI.Core/Agents/SubagentRunner.cs
+      - src/JD.AI.Core/Agents/Orchestration/SingleTurnExecutor.cs
+      - src/JD.AI.Core/Agents/Orchestration/MultiTurnExecutor.cs
