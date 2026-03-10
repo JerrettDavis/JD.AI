@@ -893,14 +893,14 @@ public sealed class InteractiveInput
                 return;
             }
 
-            var itemCount = Math.Min(matches.Count, MaxDropdownItems);
+            var window = DropdownWindow.Compute(matches.Count, MaxDropdownItems, selected);
             var dropdownStart = inputRow + inputLineCount;
 
             var windowHeight = Console.WindowHeight;
             var available = windowHeight - dropdownStart;
-            if (available < itemCount)
+            if (available < window.VisibleCount)
             {
-                var scrollNeeded = itemCount - available;
+                var scrollNeeded = window.VisibleCount - available;
                 Console.SetCursorPosition(0, windowHeight - 1);
                 for (var i = 0; i < scrollNeeded; i++)
                     Console.WriteLine();
@@ -908,16 +908,17 @@ public sealed class InteractiveInput
                 dropdownStart = inputRow + inputLineCount;
             }
 
-            for (var i = 0; i < itemCount; i++)
+            for (var i = 0; i < window.VisibleCount; i++)
             {
                 var row = dropdownStart + i;
                 if (row >= Console.BufferHeight) break;
                 Console.SetCursorPosition(1, row);
 
-                var item = matches[i];
-                var marker = i == selected ? "▸" : " ";
+                var itemIndex = window.StartIndex + i;
+                var item = matches[itemIndex];
+                var marker = itemIndex == selected ? "▸" : " ";
 
-                if (i == selected)
+                if (itemIndex == selected)
                 {
                     Console.BackgroundColor = ConsoleColor.DarkBlue;
                     Console.ForegroundColor = ConsoleColor.White;
@@ -934,7 +935,7 @@ public sealed class InteractiveInput
                 Console.ResetColor();
             }
 
-            dropdownLines = itemCount;
+            dropdownLines = window.VisibleCount;
         }
 
         void ClearDropdown()
