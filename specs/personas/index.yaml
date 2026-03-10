@@ -25,3 +25,7 @@ entries:
     title: External System / Channel Adapter
     path: specs/personas/channel-adapter.yaml
     status: draft
+  - id: persona.autonomous-agent
+    title: Autonomous Agent
+    path: specs/personas/autonomous-agent.yaml
+    status: draft
