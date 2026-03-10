@@ -1058,7 +1058,8 @@ public sealed class AgentLoop
         // However, some providers/models occasionally emit orphan tool JSON as
         // plain text. Allow a strict fallback only for standalone payloads.
         if (ShouldEnforceStructuredToolChannel() &&
-            !IsStandaloneToolCallPayload(response))
+            !IsStandaloneToolCallPayload(response) &&
+            !ShouldAllowTaggedToolUseFallback(response))
             return null;
 
         var jsonText = ExtractFirstToolCallJson(response);
@@ -1162,6 +1163,18 @@ public sealed class AgentLoop
     private bool ShouldEnforceStructuredToolChannel() =>
         _session.CurrentModel?.Capabilities.HasFlag(ModelCapabilities.ToolCalling) ?? false;
 
+    private bool ShouldAllowTaggedToolUseFallback(string response)
+    {
+        var provider = _session.CurrentModel?.ProviderName ?? string.Empty;
+        if (!provider.Contains("anthropic", StringComparison.OrdinalIgnoreCase) &&
+            !provider.Contains("claude", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return ContainsTaggedToolUsePayload(response);
+    }
+
     // Compiled regex for fenced JSON blocks (e.g. ```json\n{...}\n```)
     private static readonly Regex FencedJsonRegex = new(
         @"```(?:json)?\s*\r?\n(?<json>(?:\{[\s\S]*?\}|\[[\s\S]*?\]))\s*\r?\n```",
@@ -1173,12 +1186,21 @@ public sealed class AgentLoop
         @"<tool_call>\s*(?<json>(?:\{[\s\S]*?\}|\[[\s\S]*?\]))\s*</tool_call>",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+    // Anthropic/Claude models may emit <tool_use> wrappers with JSON payloads.
+    private static readonly Regex TaggedToolUseRegex = new(
+        @"<tool_use(?:\s+[^>]*)?>\s*(?<json>(?:\{[\s\S]*?\}|\[[\s\S]*?\]))\s*</tool_use>",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
     private static readonly Regex EntireFencedJsonRegex = new(
         @"\A```(?:json)?\s*\r?\n(?<json>(?:\{[\s\S]*?\}|\[[\s\S]*?\]))\s*\r?\n```\z",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private static readonly Regex EntireTaggedToolCallRegex = new(
         @"\A<tool_call>\s*(?<json>(?:\{[\s\S]*?\}|\[[\s\S]*?\]))\s*</tool_call>\z",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly Regex EntireTaggedToolUseRegex = new(
+        @"\A<tool_use(?:\s+[^>]*)?>\s*(?<json>(?:\{[\s\S]*?\}|\[[\s\S]*?\]))\s*</tool_use>\z",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     /// <summary>
@@ -1197,7 +1219,15 @@ public sealed class AgentLoop
                 return text;
         }
 
-        // Strategy 2: Tagged tool-call blocks (<tool_call> ... </tool_call>)
+        // Strategy 2: Anthropic-style tagged blocks (<tool_use> ... </tool_use>)
+        foreach (Match m in TaggedToolUseRegex.Matches(text))
+        {
+            var candidate = m.Groups["json"].Value.Trim();
+            if (LooksLikeToolCall(candidate))
+                return candidate;
+        }
+
+        // Strategy 3: Tagged tool-call blocks (<tool_call> ... </tool_call>)
         foreach (Match m in TaggedToolCallRegex.Matches(text))
         {
             var candidate = m.Groups["json"].Value.Trim();
@@ -1205,7 +1235,7 @@ public sealed class AgentLoop
                 return candidate;
         }
 
-        // Strategy 3: Fenced code blocks (```json ... ```)
+        // Strategy 4: Fenced code blocks (```json ... ```)
         foreach (Match m in FencedJsonRegex.Matches(text))
         {
             var candidate = m.Groups["json"].Value.Trim();
@@ -1213,7 +1243,7 @@ public sealed class AgentLoop
                 return candidate;
         }
 
-        // Strategy 4: Scan for first { ... } block with balanced braces
+        // Strategy 5: Scan for first { ... } block with balanced braces
         var pos = 0;
         while (pos < text.Length)
         {
@@ -1335,9 +1365,28 @@ public sealed class AgentLoop
         if (taggedMatch.Success)
             return LooksLikeToolCall(taggedMatch.Groups["json"].Value.Trim());
 
+        var taggedToolUseMatch = EntireTaggedToolUseRegex.Match(text);
+        if (taggedToolUseMatch.Success)
+            return LooksLikeToolCall(taggedToolUseMatch.Groups["json"].Value.Trim());
+
         var fencedMatch = EntireFencedJsonRegex.Match(text);
         if (fencedMatch.Success)
             return LooksLikeToolCall(fencedMatch.Groups["json"].Value.Trim());
+
+        return false;
+    }
+
+    private static bool ContainsTaggedToolUsePayload(string response)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+            return false;
+
+        foreach (Match m in TaggedToolUseRegex.Matches(response))
+        {
+            var candidate = m.Groups["json"].Value.Trim();
+            if (LooksLikeToolCall(candidate))
+                return true;
+        }
 
         return false;
     }
