@@ -8,5 +8,7 @@
   href: operations/
 - name: Reference
   href: reference/
+- name: Specifications
+  href: specs/generated/
 - name: API Reference
   href: api/

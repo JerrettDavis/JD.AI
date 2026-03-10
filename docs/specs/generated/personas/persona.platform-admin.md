@@ -1,0 +1,53 @@
+# Platform Administrator
+
+- **Type:** `personas`
+- **Kind:** `PersonaIndex`
+- **ID:** `persona.platform-admin`
+- **Status:** `draft`
+- **Source:** `specs/personas/examples/personas.example.yaml`
+
+## YAML
+
+```yaml
+apiVersion: jdai.upss/v1
+kind: Persona
+id: persona.platform-admin
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-persona-role-architect
+  lastReviewed: 2026-03-07
+  changeReason: Define the first canonical actor specification for JD.AI governance and operations.
+actorType: administrator
+roleName: PlatformAdmin
+description: Operates JD.AI environments, administers privileged workflows, and enforces approval controls.
+permissions:
+  allowed:
+    - deployment.promote
+    - policy.override_with_approval
+    - observability.dashboard_admin
+  denied:
+    - audit_log.delete
+trustBoundaries:
+  - boundary: prod-environment
+    accessLevel: elevated
+    justification: Production promotion and incident response require privileged but auditable operator access.
+  - boundary: governance-policy-layer
+    accessLevel: restricted
+    justification: Policy override is permitted only within explicit approval controls.
+responsibilities:
+  - Maintain deployment health and controlled promotion flows.
+  - Enforce governance and approval policy for privileged actions.
+  - Coordinate incident response without bypassing audit requirements.
+trace:
+  upstream:
+    - specs/vision/examples/vision.example.yaml
+  downstream:
+    capabilities: []
+    policies: []
+    security: []
+    useCases: []
+```

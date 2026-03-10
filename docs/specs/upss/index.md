@@ -200,3 +200,4 @@ Each spec type has an assigned AI agent role (e.g., `upss-vision-architect`, `up
 
 - [Authoring Guide](authoring.md) — How to create and maintain UPSS specs
 - [Specification Catalog](catalog.md) — Complete reference for all 18 spec types
+- [Generated Spec Views](../generated/index.md) — Rendered UPSS pages integrated into DocFX navigation

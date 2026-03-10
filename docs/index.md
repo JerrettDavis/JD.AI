@@ -89,6 +89,7 @@ The Unified Product Specification System — 18 machine-verifiable spec types co
 - [UPSS Overview](specs/upss/index.md) — What UPSS is, the dependency graph, and why it matters
 - [Authoring Guide](specs/upss/authoring.md) — How to create, validate, and maintain specs
 - [Specification Catalog](specs/upss/catalog.md) — Complete reference for all 18 spec types
+- [Generated Spec Views](specs/generated/index.md) — Rendered per-spec pages for review and navigation
 
 ### [Operations](operations/index.md) — Deploy, monitor, govern
 
