@@ -1,0 +1,34 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.control-plane-management
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define control-plane capability across gateway, daemon, dashboard, and workflow control surfaces.
+name: Gateway, Daemon, and Dashboard Control Plane
+description: Provide unified control and observability surfaces for runtime routing, agent lifecycle, and workflow operations.
+maturity: beta
+actors:
+  - persona.platform-engineer
+  - persona.governance-admin
+dependencies:
+  - capability.multi-channel-platform
+relatedUseCases: []
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases: []
+    architecture:
+      - specs/architecture/control-plane-architecture.yaml
+      - src/JD.AI.Gateway/Program.cs
+    testing:
+      - tests/JD.AI.Gateway.Tests/GatewayOrchestratorTests.cs
+      - tests/JD.AI.Gateway.Tests/GatewayConfigEndpointTests.cs

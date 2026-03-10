@@ -5,3 +5,19 @@ entries:
     title: API Security Baseline Policy
     path: specs/policies/examples/policies.example.yaml
     status: draft
+  - id: policy.mcp-server-governance
+    title: MCP Server Governance Policy
+    path: specs/policies/mcp-server-governance.yaml
+    status: draft
+  - id: policy.provider-model-governance
+    title: Provider Model Governance Policy
+    path: specs/policies/provider-model-governance.yaml
+    status: draft
+  - id: policy.subagent-orchestration-policy
+    title: Subagent Orchestration Policy
+    path: specs/policies/subagent-orchestration-policy.yaml
+    status: draft
+  - id: policy.tool-loadout-policy
+    title: Tool Loadout Policy
+    path: specs/policies/tool-loadout-policy.yaml
+    status: draft

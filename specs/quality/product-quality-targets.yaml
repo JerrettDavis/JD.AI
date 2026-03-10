@@ -1,0 +1,54 @@
+apiVersion: jdai.upss/v1
+kind: Quality
+id: quality.product-quality-targets
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-quality-nfr-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define product-level quality targets for latency, reliability, scaling, and cost efficiency.
+category: performance
+slos:
+  - name: Interactive Turn Latency P95
+    target: "<=2.5s"
+    description: P95 latency for interactive assistant turns across supported providers.
+  - name: Platform Availability
+    target: ">=99.5%"
+    description: Availability target for core runtime and control-plane operations.
+  - name: Cost Budget Variance
+    target: "<=10%"
+    description: Monthly token and infrastructure cost variance versus approved budget.
+slis:
+  - name: Turn Latency P95
+    metric: jdai_turn_latency_ms_p95
+    unit: milliseconds
+  - name: Availability Ratio
+    metric: jdai_availability_ratio
+    unit: ratio
+  - name: Monthly Cost Variance
+    metric: jdai_cost_variance_percent
+    unit: percentage
+errorBudgets:
+  - sloRef: Platform Availability
+    budget: "0.5%"
+    window: 30d
+scalabilityExpectations:
+  - dimension: concurrent-sessions
+    current: "100"
+    target: "1000"
+  - dimension: tool-executions-per-minute
+    current: "500"
+    target: "5000"
+trace:
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    testing:
+      - specs/testing/product-testing-strategy.yaml
+    observability:
+      - specs/observability/platform-observability-baseline.yaml
+    operations:
+      - specs/operations/platform-operations-runbooks.yaml

@@ -1,0 +1,59 @@
+apiVersion: jdai.upss/v1
+kind: Interface
+id: interface.provider-abstraction-contract
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-interface-contract-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define the internal provider abstraction contract for auth, model discovery, and model switching.
+interfaceType: event
+operations:
+  - name: RegisterProvider
+    method: INTERNAL
+    path: /runtime/providers/register
+    description: Registers provider metadata and credentials for JD.AI runtime usage.
+  - name: AuthenticateProvider
+    method: INTERNAL
+    path: /runtime/providers/authenticate
+    description: Validates provider credentials and stores auth state.
+  - name: DiscoverProviderModels
+    method: INTERNAL
+    path: /runtime/providers/models/discover
+    description: Enumerates discoverable models and capabilities for the selected provider.
+  - name: SelectSessionModel
+    method: INTERNAL
+    path: /runtime/sessions/model/select
+    description: Sets the active model for the current session.
+  - name: SwitchSessionModel
+    method: INTERNAL
+    path: /runtime/sessions/model/switch
+    description: Switches the active model during an in-progress session.
+messageSchemas:
+  - name: ProviderRegistrationRequest
+    format: application/json
+    description: Provider identity, endpoint metadata, and credential source.
+  - name: ProviderModelCatalog
+    format: application/json
+    description: Model list with capability and tool-calling metadata.
+  - name: SessionModelSwitchRequest
+    format: application/json
+    description: Session id, current model id, target model id, and switch reason.
+compatibilityRules:
+  - Provider detector implementations must preserve contract field names across minor versions.
+  - Session model switch must return deterministic capability flags for downstream routing.
+trace:
+  upstream:
+    - specs/usecases/provider-model-session-management.yaml
+  downstream:
+    code:
+      - src/JD.AI.Core/Providers/ProviderRegistry.cs
+      - src/JD.AI.Core/Agents/AgentExecutionSettingsFactory.cs
+    testing:
+      - tests/JD.AI.Tests/Providers/ModelCapabilitiesTests.cs
+      - tests/JD.AI.Tests/Providers/MistralDetectorTests.cs
+    deployment:
+      - docs/operations/deployment.md

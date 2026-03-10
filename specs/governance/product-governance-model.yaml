@@ -1,0 +1,48 @@
+apiVersion: jdai.upss/v1
+kind: Governance
+id: governance.product-governance-model
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-governance-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define product-wide governance model for ownership, review policy, release approvals, and spec validation requirements.
+ownershipModel: codeowners
+changeProcess:
+  - name: Spec-first change proposal
+    description: Product changes must update or reference impacted UPSS specs before merge.
+    requiredApprovals: 1
+  - name: Runtime-impact review
+    description: Changes touching runtime behavior require owner and reviewer sign-off.
+    requiredApprovals: 2
+approvalGates:
+  - name: Specification Validation Gate
+    type: automated
+    criteria:
+      - All UPSS repository validators pass.
+      - Trace links resolve to existing artifacts.
+  - name: Release Approval Gate
+    type: hybrid
+    criteria:
+      - CI and smoke checks are green.
+      - Release approver signs off rollback and incident readiness.
+releasePolicy:
+  cadence: continuous
+  branchStrategy: trunk-based
+  hotfixProcess: Hotfixes require governance-admin acknowledgment and post-release retro within 24 hours.
+auditRequirements:
+  - Every release must include linked spec, test, and operational evidence.
+  - Governance exceptions must include expiry and explicit approver identity.
+  - Control-plane and policy changes must be captured in audit logs.
+trace:
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    allSpecTypes:
+      - specs/capabilities/control-plane-management.yaml
+      - specs/security/product-security-architecture.yaml
+      - specs/testing/product-testing-strategy.yaml
+      - specs/operations/platform-operations-runbooks.yaml

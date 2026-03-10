@@ -1,0 +1,63 @@
+apiVersion: jdai.upss/v1
+kind: Domain
+id: domain.tool-loadout-management
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-domain-model-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define domain entities for tool registry, loadout inheritance, and disable overrides.
+boundedContext: tool-loadout-management
+entities:
+  - name: ToolRegistryEntry
+    description: Describes a callable tool, category, safety tier, and discovery metadata.
+    properties:
+      - toolId
+      - displayName
+      - category
+      - safetyTier
+      - source
+  - name: ToolLoadout
+    description: Named set of tools and resolution rules selected for a task profile.
+    properties:
+      - loadoutId
+      - inheritsFrom
+      - enabledTools
+      - disabledTools
+      - contextBudget
+  - name: PluginResolutionRecord
+    description: Captures plugin-provided tool mappings for deterministic runtime resolution.
+    properties:
+      - pluginId
+      - exportedTools
+      - version
+valueObjects:
+  - name: ToolSelector
+    description: Immutable selector syntax for include/exclude and category matching.
+    properties:
+      - pattern
+      - mode
+aggregates:
+  - name: ToolLoadoutAggregate
+    rootEntity: ToolLoadout
+    members:
+      - ToolRegistryEntry
+      - PluginResolutionRecord
+invariants:
+  - Disabled tools must override inherited enabled tool declarations.
+  - Loadout inheritance chains must resolve without cycles.
+  - Plugin resolution must produce deterministic tool identifiers.
+trace:
+  upstream:
+    - specs/capabilities/tool-execution-loadouts.yaml
+  downstream:
+    data:
+      - tests/JD.AI.Tests/Tools/ToolLoadoutTests.cs
+      - tests/JD.AI.Tests/Tools/LoadoutYamlTests.cs
+    interfaces:
+      - specs/interfaces/provider-tool-calling-contract.yaml
+    architecture:
+      - specs/architecture/tool-loadout-architecture.yaml

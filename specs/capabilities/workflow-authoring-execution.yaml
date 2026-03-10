@@ -1,0 +1,36 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.workflow-authoring-execution
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define workflow authoring and resilient execution as a canonical platform capability.
+name: Workflow Authoring and Execution
+description: Enable operators and agents to create, execute, resume, branch, and retry workflows with deterministic state handling.
+maturity: beta
+actors:
+  - persona.workflow-author
+  - persona.autonomous-agent
+  - persona.platform-engineer
+dependencies: []
+relatedUseCases:
+  - usecase.workflow-lifecycle-execution
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+  downstream:
+    useCases:
+      - usecase.workflow-lifecycle-execution
+    architecture:
+      - specs/architecture/workflow-engine-architecture.yaml
+      - src/JD.AI.Workflows/WorkflowGenerator.cs
+    testing:
+      - specs/testing/workflow-execution-strategy.yaml
+      - tests/JD.AI.Tests/Workflows/WorkflowCoverageExpansionTests.cs

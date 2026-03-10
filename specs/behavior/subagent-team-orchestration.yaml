@@ -1,0 +1,91 @@
+apiVersion: jdai.upss/v1
+kind: Behavior
+id: behavior.subagent-team-orchestration
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-behavioral-spec-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Specify delegation, arbitration, merge, retry, and failure isolation behaviors for team orchestration.
+useCaseRef: usecase.subagent-team-orchestration
+bddScenarios:
+  - title: Supervisor strategy delegates and merges successful subagent outputs
+    given:
+      - A supervisor strategy is selected with multiple subagents.
+      - Each subagent has clear task partition instructions.
+    when:
+      - The orchestration engine executes the team plan.
+    then:
+      - Work is delegated to each subagent.
+      - A merged response is produced with source attribution.
+  - title: Failed subagent is isolated and retry logic is applied
+    given:
+      - One subagent returns an execution failure.
+      - Retry budget allows one additional attempt.
+    when:
+      - The orchestrator evaluates retry and isolation rules.
+    then:
+      - The failing subagent is retried within configured limits.
+      - Other successful subagents continue without rollback.
+stateMachine:
+  initialState: Planning
+  states:
+    - id: Planning
+      description: Strategy and delegation plan are prepared.
+    - id: Delegating
+      description: Tasks are assigned to subagents.
+    - id: Arbitrating
+      description: Candidate outputs are evaluated and ranked.
+    - id: Merging
+      description: Selected outputs are merged into final response.
+    - id: Completed
+      description: Final orchestration output is delivered.
+      terminal: true
+    - id: Failed
+      description: Orchestration failed after retry or merge exhaustion.
+      terminal: true
+  transitions:
+    - from: Planning
+      to: Delegating
+      on: strategy_validated
+      actions:
+        - Build delegation plan.
+    - from: Delegating
+      to: Arbitrating
+      on: subagent_results_collected
+      actions:
+        - Score candidate outputs.
+    - from: Arbitrating
+      to: Merging
+      on: winner_or_merge_set_selected
+      actions:
+        - Prepare merge context.
+    - from: Merging
+      to: Completed
+      on: merge_succeeded
+      actions:
+        - Emit final output with provenance.
+    - from: Delegating
+      to: Failed
+      on: retry_budget_exhausted
+      actions:
+        - Emit failure isolation report.
+assertions:
+  - Delegation must include explicit task ownership for each subagent.
+  - Arbitration decisions must be logged for traceability.
+  - Merge output must retain provenance of contributing subagent responses.
+trace:
+  upstream:
+    - specs/usecases/subagent-team-orchestration.yaml
+  downstream:
+    testing:
+      - tests/JD.AI.Tests/Agents/Orchestration/TeamOrchestratorTests.cs
+    interfaces:
+      - src/JD.AI.Core/Agents/Orchestration/TeamContext.cs
+    code:
+      - src/JD.AI.Core/Agents/Orchestration/TeamOrchestrator.cs
+      - src/JD.AI.Core/Agents/Orchestration/Strategies/SupervisorStrategy.cs
+      - src/JD.AI.Core/Agents/Orchestration/Strategies/VotingStrategy.cs

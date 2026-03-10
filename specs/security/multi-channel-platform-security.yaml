@@ -1,0 +1,62 @@
+apiVersion: jdai.upss/v1
+kind: Security
+id: security.multi-channel-platform-security
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-security-architecture-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define security architecture for channel ingress, identity mapping, and cross-channel context handling.
+authnModel: oidc
+authzModel: rbac
+trustZones:
+  - name: public-channel-edge
+    level: public
+  - name: gateway-channel-ingress
+    level: dmz
+  - name: channel-context-runtime
+    level: internal
+  - name: credential-and-policy-store
+    level: restricted
+threats:
+  - id: threat.cross-channel-identity-spoofing
+    description: Attackers impersonate identities across adapters to gain session access.
+    severity: critical
+    mitigatedBy:
+      - ctrl.identity-binding
+      - ctrl.channel-signature-validation
+  - id: threat.channel-context-leakage
+    description: Context from one channel is exposed to unauthorized users on another channel.
+    severity: high
+    mitigatedBy:
+      - ctrl.context-partitioning
+      - ctrl-response-sanitization
+controls:
+  - id: ctrl.identity-binding
+    description: Channel identities are bound to tenant/session scopes with strict mapping validation.
+    type: preventive
+  - id: ctrl.channel-signature-validation
+    description: Adapter webhooks and message envelopes require signature validation.
+    type: preventive
+  - id: ctrl.context-partitioning
+    description: Conversation context is partitioned by channel, tenant, and user identity.
+    type: preventive
+  - id: ctrl-response-sanitization
+    description: Outbound payloads are filtered for secrets and unauthorized context segments.
+    type: detective
+residualRisks:
+  - threatId: threat.channel-context-leakage
+    justification: External channel platform vulnerabilities remain partially outside JD.AI control.
+trace:
+  upstream:
+    - specs/capabilities/multi-channel-platform.yaml
+  downstream:
+    deployment:
+      - docs/operations/deployment.md
+    operations:
+      - specs/operations/multi-channel-platform-operations.yaml
+    testing:
+      - tests/JD.AI.Gateway.Tests/ChannelEndpointTests.cs

@@ -1,0 +1,76 @@
+apiVersion: jdai.upss/v1
+kind: Security
+id: security.product-security-architecture
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-security-architecture-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define product-wide security architecture for credential storage, trust zones, provider boundaries, MCP isolation, and safe tool execution.
+authnModel: oidc
+authzModel: rbac
+trustZones:
+  - name: user-and-channel-edge
+    level: public
+  - name: gateway-api-surface
+    level: dmz
+  - name: core-runtime
+    level: internal
+  - name: secrets-and-policy-store
+    level: restricted
+threats:
+  - id: threat.credential-compromise
+    description: Provider or service credentials are compromised through storage or process leakage.
+    severity: critical
+    mitigatedBy:
+      - ctrl.encrypted-secret-storage
+      - ctrl.secret-rotation-policy
+  - id: threat.cross-zone-escalation
+    description: Untrusted channel or plugin input escalates into privileged runtime operations.
+    severity: high
+    mitigatedBy:
+      - ctrl.trust-zone-enforcement
+      - ctrl.policy-gated-tool-execution
+  - id: threat.mcp-isolation-break
+    description: MCP server execution escapes defined isolation boundaries.
+    severity: high
+    mitigatedBy:
+      - ctrl.mcp-sandboxing
+      - ctrl.scoped-mcp-permissions
+controls:
+  - id: ctrl.encrypted-secret-storage
+    description: Secrets are encrypted at rest and in transit with scoped access controls.
+    type: preventive
+  - id: ctrl.secret-rotation-policy
+    description: Credential rotation and expiration policies are enforced across providers and services.
+    type: detective
+  - id: ctrl.trust-zone-enforcement
+    description: Runtime actions are restricted by declared trust zone boundaries.
+    type: preventive
+  - id: ctrl.policy-gated-tool-execution
+    description: Tool calls require policy evaluation before execution is allowed.
+    type: preventive
+  - id: ctrl.mcp-sandboxing
+    description: MCP execution runs in isolated context with constrained capabilities.
+    type: preventive
+  - id: ctrl.scoped-mcp-permissions
+    description: MCP servers receive least-privilege execution scopes.
+    type: corrective
+residualRisks:
+  - threatId: threat.credential-compromise
+    justification: Compromised local developer endpoints may still expose active session material.
+  - threatId: threat.mcp-isolation-break
+    justification: Third-party MCP server supply-chain risk cannot be fully eliminated.
+trace:
+  upstream:
+    - specs/architecture/product-wide-system-architecture.yaml
+  downstream:
+    deployment:
+      - specs/deployment/jdai-deployment-topologies.yaml
+    operations:
+      - specs/operations/platform-operations-runbooks.yaml
+    testing:
+      - specs/testing/product-testing-strategy.yaml

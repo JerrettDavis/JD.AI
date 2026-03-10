@@ -1,0 +1,50 @@
+apiVersion: jdai.upss/v1
+kind: Observability
+id: observability.control-plane-observability
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-observability-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define control-plane telemetry, metrics, tracing, and alerts for gateway, daemon, and dashboard services.
+serviceRefs:
+  - jdai-gateway
+  - jdai-daemon
+  - jdai-dashboard
+metrics:
+  - name: control_plane_requests_total
+    type: counter
+    description: Total number of control-plane API requests.
+  - name: control_plane_request_duration_ms
+    type: histogram
+    description: Duration distribution for control-plane operations.
+logs:
+  - name: control_plane_audit_log
+    level: info
+    format: event={event} actor={actor} result={result} correlation={correlationId}
+traces:
+  - name: control_plane_request
+    spanKind: server
+    attributes:
+      - service.name
+      - endpoint.route
+      - request.id
+      - response.status
+alerts:
+  - name: control_plane_high_error_rate
+    condition: rate(control_plane_requests_total{status=~"5.."}[5m]) > 0.03
+    severity: critical
+  - name: control_plane_latency_regression
+    condition: histogram_quantile(0.95, control_plane_request_duration_ms) > 1500
+    severity: warning
+trace:
+  upstream:
+    - specs/deployment/control-plane-deployment.yaml
+  downstream:
+    operations:
+      - specs/operations/platform-operations-runbooks.yaml
+    governance:
+      - specs/governance/control-plane-governance.yaml

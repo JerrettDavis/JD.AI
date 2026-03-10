@@ -1,0 +1,120 @@
+apiVersion: jdai.upss/v1
+kind: Domain
+id: domain.product-core-domain-model
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-domain-model-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define product-wide core domain entities across sessions, providers, tools, workflows, channels, and policies.
+boundedContext: product-core
+entities:
+  - name: Session
+    description: Tracks an active conversation and runtime model context.
+    properties:
+      - sessionId
+      - actorId
+      - providerId
+      - modelId
+      - startedAt
+  - name: Message
+    description: Represents a user, assistant, or tool message in a session timeline.
+    properties:
+      - messageId
+      - sessionId
+      - role
+      - content
+      - createdAt
+  - name: Provider
+    description: Configured AI backend endpoint with auth metadata and capabilities.
+    properties:
+      - providerId
+      - type
+      - authState
+      - endpoint
+  - name: Model
+    description: Provider model metadata and capability flags.
+    properties:
+      - modelId
+      - providerId
+      - supportsTools
+      - supportsStreaming
+  - name: Tool
+    description: Callable runtime action exposed to the agent.
+    properties:
+      - toolId
+      - category
+      - safetyTier
+  - name: Loadout
+    description: Named tool selection profile with inheritance and disable rules.
+    properties:
+      - loadoutId
+      - inheritsFrom
+      - enabledTools
+      - disabledTools
+  - name: Workflow
+    description: Versioned workflow definition used by automation and orchestration.
+    properties:
+      - workflowId
+      - version
+      - steps
+  - name: Execution
+    description: Runtime workflow or orchestration execution record.
+    properties:
+      - executionId
+      - workflowId
+      - status
+      - attempts
+  - name: Channel
+    description: External messaging channel adapter configuration.
+    properties:
+      - channelId
+      - adapterType
+      - identityMapMode
+  - name: Policy
+    description: Governance policy document defining enforceable rules.
+    properties:
+      - policyId
+      - type
+      - severity
+      - mode
+valueObjects:
+  - name: CapabilitySet
+    description: Immutable capability flags associated with a model or tool.
+    properties:
+      - capabilities
+  - name: IdentityBinding
+    description: Mapping between external channel identity and internal session actor.
+    properties:
+      - externalId
+      - internalActorId
+aggregates:
+  - name: SessionAggregate
+    rootEntity: Session
+    members:
+      - Message
+      - Model
+  - name: ExecutionAggregate
+    rootEntity: Execution
+    members:
+      - Workflow
+      - Loadout
+      - Policy
+invariants:
+  - Every message must belong to exactly one session.
+  - Workflow executions must reference existing workflow definitions.
+  - Model references must resolve to a configured provider.
+  - Channel identity bindings must map to a valid actor scope.
+trace:
+  upstream:
+    - specs/architecture/product-wide-system-architecture.yaml
+  downstream:
+    data:
+      - specs/data/examples/data.example.yaml
+    interfaces:
+      - specs/interfaces/interface-catalog-spec.yaml
+    architecture:
+      - specs/architecture/product-wide-system-architecture.yaml

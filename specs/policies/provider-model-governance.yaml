@@ -1,0 +1,41 @@
+apiVersion: jdai.upss/v1
+kind: Policy
+id: policy.provider-model-governance
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-policy-rules-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Define policy constraints for provider onboarding, authentication handling, and model selection.
+policyType: security
+severity: high
+scope:
+  - src/JD.AI.Core/Providers
+  - src/JD.AI.Core/Agents
+rules:
+  - id: require-provider-auth-before-model-discovery
+    description: Model discovery must require a valid provider authentication state.
+    expression: provider.authenticated == true
+  - id: disallow-plaintext-provider-secrets
+    description: Provider credentials must never be persisted as plaintext values.
+    expression: credentialStore.values.none(v => v.isPlainTextSecret)
+  - id: enforce-capability-check-on-model-switch
+    description: Session model switching must verify required capabilities before activation.
+    expression: targetModel.capabilities.containsAll(session.requiredCapabilities)
+exceptions: []
+enforcement:
+  mode: enforce
+trace:
+  upstream:
+    - specs/security/provider-model-management.yaml
+  downstream:
+    ci:
+      - tests/JD.AI.Tests/Specifications/PolicySpecificationRepositoryTests.cs
+    enforcement:
+      - src/JD.AI.Core/Providers/Credentials/ProviderConfigurationManager.cs
+      - src/JD.AI.Core/Providers/ModelCapabilityRegistry.cs
+    operations:
+      - docs/operations/security.md

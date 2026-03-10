@@ -1,0 +1,45 @@
+apiVersion: jdai.upss/v1
+kind: Quality
+id: quality.subagent-orchestration-quality
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-quality-nfr-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define quality targets for reliability and latency of multi-agent orchestration.
+category: reliability
+slos:
+  - name: Team Orchestration Completion Success
+    target: ">=99.0%"
+    description: Percentage of orchestration runs that complete without unhandled failure.
+  - name: Orchestration Merge Latency P95
+    target: "<=2s"
+    description: P95 time to merge candidate subagent outputs after arbitration.
+slis:
+  - name: Orchestration Success Ratio
+    metric: orchestration_runs_success_total / orchestration_runs_total
+    unit: ratio
+  - name: Merge Duration P95
+    metric: orchestration_merge_duration_ms_p95
+    unit: milliseconds
+errorBudgets:
+  - sloRef: Team Orchestration Completion Success
+    budget: "1.0%"
+    window: 30d
+scalabilityExpectations:
+  - dimension: concurrent-subagents-per-run
+    current: "5"
+    target: "20"
+trace:
+  upstream:
+    - specs/capabilities/subagent-team-orchestration.yaml
+  downstream:
+    testing:
+      - specs/testing/product-testing-strategy.yaml
+    observability:
+      - specs/observability/platform-observability-baseline.yaml
+    operations:
+      - specs/operations/platform-operations-runbooks.yaml

@@ -8,18 +8,16 @@ metadata:
     - JerrettDavis
   reviewers:
     - upss-capability-map-architect
-  lastReviewed: "2026-03-09"
-  changeReason: Define MCP integration capability as part of the canonical capability map (#325).
+  lastReviewed: "2026-03-10"
+  changeReason: Define MCP integration capability for external tool ecosystems.
 name: MCP Integration
-description: >-
-  Manage Model Context Protocol server lifecycle including discovery, connection,
-  status tracking, and curated MCP catalog with tool proxying into the agent runtime.
+description: Register, discover, execute, and revoke external MCP servers while preserving JD.AI safety and governance controls.
 maturity: beta
 actors:
-  - persona.tool-developer
   - persona.platform-engineer
+  - persona.tool-developer
 dependencies:
-  - capability.tool-registry
+  - capability.tool-execution-loadouts
 relatedUseCases: []
 trace:
   visionRefs:
@@ -29,6 +27,8 @@ trace:
   downstream:
     useCases: []
     architecture:
-      - docs/architecture/README.md
+      - specs/interfaces/mcp-server-contract.yaml
+      - src/JD.AI.Core/Mcp/McpManager.cs
     testing:
       - tests/JD.AI.Tests/Mcp/McpManagerMergeTests.cs
+      - tests/JD.AI.Tests/Mcp/McpCliHandlerTests.cs

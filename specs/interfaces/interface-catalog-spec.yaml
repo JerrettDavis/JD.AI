@@ -1,0 +1,60 @@
+apiVersion: jdai.upss/v1
+kind: Interface
+id: interface.interface-catalog-spec
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-interface-contract-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Catalog JD.AI command, API, workflow, gateway, and plugin interface surfaces.
+interfaceType: event
+operations:
+  - name: ListCliCommands
+    method: INTERNAL
+    path: /catalog/interfaces/cli
+    description: Enumerates top-level CLI command handlers and command ids.
+  - name: ListSlashCommands
+    method: INTERNAL
+    path: /catalog/interfaces/slash
+    description: Enumerates slash command dispatch entries and aliases.
+  - name: ListRestApis
+    method: INTERNAL
+    path: /catalog/interfaces/rest
+    description: Enumerates REST API endpoints and operation metadata.
+  - name: ListGatewayApis
+    method: INTERNAL
+    path: /catalog/interfaces/gateway
+    description: Enumerates gateway-specific endpoint and hub contracts.
+  - name: ListWorkflowContracts
+    method: INTERNAL
+    path: /catalog/interfaces/workflows
+    description: Enumerates workflow authoring and execution contracts.
+  - name: ListPluginInterfaces
+    method: INTERNAL
+    path: /catalog/interfaces/plugins
+    description: Enumerates plugin and MCP extension interfaces.
+messageSchemas:
+  - name: InterfaceCatalogEntry
+    format: application/json
+    description: Interface id, type, operation set, and compatibility metadata.
+  - name: CommandCatalogEntry
+    format: application/json
+    description: Command id, syntax, aliases, and dispatch target.
+compatibilityRules:
+  - Catalog entries must keep stable interface ids for existing public contracts.
+  - Removed interfaces require deprecation window and replacement metadata.
+trace:
+  upstream:
+    - specs/domain/product-core-domain-model.yaml
+  downstream:
+    code:
+      - src/JD.AI/Commands/SlashCommandCatalog.cs
+      - src/JD.AI.Gateway/Endpoints/GatewayConfigEndpoints.cs
+    testing:
+      - tests/JD.AI.Tests/Commands/SlashCommandCatalogTests.cs
+      - tests/JD.AI.Gateway.Tests/Commands/GatewayCommandTests.cs
+    deployment:
+      - docs/operations/deployment.md

@@ -1,0 +1,50 @@
+apiVersion: jdai.upss/v1
+kind: Deployment
+id: deployment.control-plane-deployment
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-deployment-topology-agent
+  lastReviewed: "2026-03-10"
+  changeReason: Define deployment strategy for gateway, daemon, and dashboard control-plane components.
+environments:
+  - name: control-plane-dev
+    type: development
+    region: local
+  - name: control-plane-staging
+    type: staging
+    region: us-central
+  - name: control-plane-prod
+    type: production
+    region: us-central
+pipelineStages:
+  - name: Build and Test Control Plane
+    order: 1
+    automated: true
+  - name: Deploy Staging Control Plane
+    order: 2
+    automated: true
+  - name: Promote to Production Control Plane
+    order: 3
+    automated: false
+promotionGates:
+  - fromEnv: control-plane-staging
+    toEnv: control-plane-prod
+    criteria:
+      - Gateway endpoint, daemon health, and dashboard smoke tests pass.
+      - Critical control-plane alerts are clear for at least 30 minutes.
+infrastructureRefs:
+  - deploy/docker-compose.control-plane.yml
+  - deploy/k8s/control-plane
+rollbackStrategy: rolling
+trace:
+  upstream:
+    - specs/architecture/control-plane-architecture.yaml
+  downstream:
+    operations:
+      - specs/operations/platform-operations-runbooks.yaml
+    observability:
+      - specs/observability/control-plane-observability.yaml
