@@ -1,7 +1,7 @@
 apiVersion: jdai.upss/v1
 kind: InterfaceIndex
 entries:
-  - id: interface.agent-chat-api
-    title: Agent Chat API
-    path: specs/interfaces/examples/interfaces.example.yaml
+  - id: interface.provider-tool-calling-contract
+    title: Provider Tool-Calling Contract
+    path: specs/interfaces/provider-tool-calling-contract.yaml
     status: draft
