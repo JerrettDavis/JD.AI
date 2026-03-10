@@ -176,6 +176,7 @@ src/
 ├── JD.AI.Daemon               # Background service host (Windows/Linux)
 ├── JD.AI.Plugins.SDK          # Plugin interface library
 ├── JD.AI.Workflows            # Workflow engine (run/list/refine)
+├── JD.AI.SpecSite             # UPSS static-site generator (HTML + DocFX content)
 ├── JD.AI.Telemetry            # OpenTelemetry tracing, metrics, health checks
 ├── JD.AI.Dashboard.Wasm       # Blazor WASM dashboard (MudBlazor)
 ├── JD.AI.Channels.Discord     # Discord adapter
@@ -214,6 +215,7 @@ Full documentation is built with [docfx](https://dotnet.github.io/docfx/) and pu
 - [Developer Guide](docs/developer-guide/) — Architecture, custom tools, plugins, gateway API
 - [Operations](docs/operations/) — Deployment, observability, security, governance
 - [Reference](docs/reference/) — CLI flags, commands, tools, providers, environment variables
+- [Specifications](docs/specs/generated/) — Generated UPSS portal content
 
 ## Contributing
 
