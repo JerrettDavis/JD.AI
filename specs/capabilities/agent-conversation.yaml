@@ -20,7 +20,6 @@ actors:
   - persona.autonomous-agent
 dependencies: []
 relatedUseCases:
-  - usecase.start-session
   - usecase.execute-slash-command
 trace:
   visionRefs:
@@ -29,7 +28,6 @@ trace:
     - specs/vision/jdai-product-vision.yaml
   downstream:
     useCases:
-      - usecase.start-session
       - usecase.execute-slash-command
     architecture:
       - docs/architecture/README.md
