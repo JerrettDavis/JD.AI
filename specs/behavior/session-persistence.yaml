@@ -1,0 +1,103 @@
+apiVersion: jdai.upss/v1
+kind: Behavior
+id: behavior.session-persistence
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-behavioral-spec-architect
+  lastReviewed: "2026-03-10"
+  changeReason: Specify session persistence behavior for session lifecycle specification (#326).
+useCaseRef: usecase.start-session
+bddScenarios:
+  - title: New session is persisted to SQLite on creation
+    given:
+      - The operator starts JD.AI in a project directory.
+    when:
+      - SessionStore.CreateSessionAsync is called.
+    then:
+      - A session row exists in sessions.db with is_active=1, project_hash, and timestamps.
+  - title: Turn is saved transactionally with tool calls and file touches
+    given:
+      - An active session exists with at least one user turn.
+    when:
+      - RecordAssistantTurnAsync completes after the LLM response.
+    then:
+      - The turn, tool_calls, and files_touched rows are committed in a single SQLite transaction.
+  - title: Session is exported to JSON on close
+    given:
+      - An active session with persisted turns exists.
+    when:
+      - CloseSessionAsync is called.
+    then:
+      - A JSON file is written to ~/.jdai/projects/{hash}/sessions/{id}.json.
+      - The is_active column is set to 0.
+  - title: Integrity check detects mismatches between SQLite and JSON exports
+    given:
+      - A session has differing turn counts between SQLite and JSON.
+    when:
+      - SessionIntegrity.CheckAsync runs.
+    then:
+      - The mismatch is reported in the integrity result.
+      - If autoRepair is enabled, the JSON is re-exported from SQLite.
+stateMachine:
+  initialState: New
+  states:
+    - id: New
+      description: Session record is being created.
+    - id: Active
+      description: Session is open and accepting turns.
+    - id: Interrupted
+      description: Session process terminated unexpectedly.
+    - id: Closing
+      description: Session is being finalized and exported.
+    - id: Closed
+      description: Session is closed and exported.
+      terminal: true
+  transitions:
+    - from: New
+      to: Active
+      on: session_created
+      actions:
+        - Persist session row to SQLite with is_active=1.
+    - from: Active
+      to: Closing
+      on: close_requested
+      actions:
+        - Export session to JSON.
+    - from: Active
+      to: Interrupted
+      on: process_crash
+      actions:
+        - No action; SQLite WAL ensures committed data is preserved.
+    - from: Interrupted
+      to: Active
+      on: session_resumed
+      actions:
+        - Load session from SQLite and rebuild ChatHistory.
+    - from: Closing
+      to: Closed
+      on: export_complete
+      actions:
+        - Set is_active=0 in SQLite.
+assertions:
+  - Turns are never lost if the process exits after RecordUserTurnAsync completes.
+  - SQLite WAL mode ensures crash-safe writes for all session data.
+  - Session IDs are unique 16-character hexadecimal strings.
+  - Project hashes are deterministic SHA-256 truncations of the project path.
+trace:
+  upstream:
+    - specs/usecases/start-session.yaml
+    - specs/usecases/resume-session.yaml
+    - specs/usecases/recover-interrupted-conversation.yaml
+  downstream:
+    testing:
+      - specs/testing/session-lifecycle.yaml
+    interfaces: []
+    code:
+      - src/JD.AI.Core/Sessions/SessionStore.cs
+      - src/JD.AI.Core/Sessions/SessionRecord.cs
+      - src/JD.AI.Core/Sessions/SessionExporter.cs
+      - src/JD.AI.Core/Sessions/SessionIntegrity.cs
