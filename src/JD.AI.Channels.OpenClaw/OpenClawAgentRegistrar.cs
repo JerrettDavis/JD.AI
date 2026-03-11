@@ -123,6 +123,9 @@ public sealed class OpenClawAgentRegistrar
                 return;
             }
 
+            // Snapshot before mutation for backup
+            var preModificationRaw = configNode.ToJsonString(IndentedJson);
+
             // Ensure agents.list exists
             EnsureAgentsList(configNode);
             var list = configNode["agents"]!["list"]!.AsArray();
@@ -151,7 +154,7 @@ public sealed class OpenClawAgentRegistrar
                 return;
             }
 
-            await WriteConfigAsync(configNode, baseHash, ct);
+            await WriteConfigAsync(configNode, baseHash, preModificationRaw, ct);
 
             // Only track as registered AFTER successful write
             _registeredAgentIds.AddRange(successfulIds);
@@ -188,6 +191,9 @@ public sealed class OpenClawAgentRegistrar
             var (configNode, baseHash) = await ReadConfigAsync(ct);
             if (configNode is null)
                 return;
+
+            // Snapshot before mutation for backup
+            var preModificationRaw = configNode.ToJsonString(IndentedJson);
 
             var list = configNode["agents"]?["list"]?.AsArray();
             if (list is null)
@@ -229,7 +235,7 @@ public sealed class OpenClawAgentRegistrar
                 configNode["agents"]!.AsObject().Remove("list");
 
             if (baseHash is not null && removed > 0)
-                await WriteConfigAsync(configNode, baseHash, ct);
+                await WriteConfigAsync(configNode, baseHash, preModificationRaw, ct);
         }
         catch (Exception ex)
         {
@@ -260,6 +266,9 @@ public sealed class OpenClawAgentRegistrar
         var (configNode, baseHash) = await ReadConfigAsync(ct);
         if (configNode is null)
             return;
+
+        // Snapshot before mutation for backup
+        var preModificationRaw = configNode.ToJsonString(IndentedJson);
 
         // Ensure top-level bindings array
         if (configNode["bindings"] is null)
@@ -305,7 +314,7 @@ public sealed class OpenClawAgentRegistrar
         if (baseHash is null)
             return;
 
-        await WriteConfigAsync(configNode, baseHash, ct);
+        await WriteConfigAsync(configNode, baseHash, preModificationRaw, ct);
     }
 
     /// <summary>
@@ -331,20 +340,26 @@ public sealed class OpenClawAgentRegistrar
     /// <summary>
     /// Writes the full config back to OpenClaw with optimistic concurrency.
     /// </summary>
-    internal async Task WriteConfigAsync(JsonNode config, string baseHash, CancellationToken ct)
+    /// <param name="config">The modified config to write.</param>
+    /// <param name="baseHash">Hash from the original <c>config.get</c> for optimistic concurrency.</param>
+    /// <param name="preModificationRaw">
+    /// Serialized JSON of the config <b>before</b> mutation, used for backup.
+    /// Callers should serialize the config immediately after reading it, before any changes.
+    /// </param>
+    /// <param name="ct">Cancellation token.</param>
+    internal async Task WriteConfigAsync(
+        JsonNode config, string baseHash, string? preModificationRaw, CancellationToken ct)
     {
-        // Backup current config before overwriting
-        try
+        // Backup the pre-modification config (no extra RPC needed)
+        if (preModificationRaw is not null)
         {
-            var (currentConfig, _) = await ReadConfigAsync(ct);
-            if (currentConfig is not null)
+            try
             {
                 var backupDir = ConfigBackupDirectory;
                 Directory.CreateDirectory(backupDir);
                 var backupFile = Path.Combine(backupDir,
                     $"config-{DateTime.UtcNow:yyyyMMdd-HHmmss-fff}.json");
-                await File.WriteAllTextAsync(backupFile,
-                    currentConfig.ToJsonString(IndentedJson), ct);
+                await File.WriteAllTextAsync(backupFile, preModificationRaw, ct);
 
                 // Keep only last 10 backups
                 var backups = Directory.GetFiles(backupDir, "config-*.json")
@@ -354,10 +369,10 @@ public sealed class OpenClawAgentRegistrar
                 foreach (var old in backups)
                     File.Delete(old);
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to backup config before write — proceeding anyway");
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to backup config before write — proceeding anyway");
+            }
         }
 
         var raw = config.ToJsonString(IndentedJson);

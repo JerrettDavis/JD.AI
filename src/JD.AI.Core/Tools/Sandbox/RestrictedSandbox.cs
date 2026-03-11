@@ -29,29 +29,6 @@ public sealed class RestrictedSandbox : ISandbox
         "reboot",
     ];
 
-    private static string[] BuildProtectedPathPatterns()
-    {
-        var patterns = new List<string>
-        {
-            "~/.openclaw",
-            ".openclaw/",
-            ".openclaw\\",
-        };
-
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        if (!string.IsNullOrEmpty(home))
-        {
-            var ocDir = Path.Combine(home, ".openclaw");
-            patterns.Add(ocDir.Replace('\\', '/'));
-            if (OperatingSystem.IsWindows())
-                patterns.Add(ocDir); // Backslash version
-        }
-
-        return patterns.ToArray();
-    }
-
-    private static readonly string[] ProtectedPathPatterns = BuildProtectedPathPatterns();
-
     public string ModeName => "restricted";
 
     public async Task<SandboxResult> ExecuteAsync(
@@ -69,7 +46,7 @@ public sealed class RestrictedSandbox : ISandbox
             }
         }
 
-        foreach (var pattern in ProtectedPathPatterns)
+        foreach (var pattern in PathGuard.ProtectedCommandPatterns.Value)
         {
             if (lowerCmd.Contains(pattern, StringComparison.OrdinalIgnoreCase))
             {
