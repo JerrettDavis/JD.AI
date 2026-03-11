@@ -23,10 +23,12 @@ workflowSteps:
   - The handler executes and returns a result or null for /quit.
 expectedOutcomes:
   - The command executes its side effect such as switching model, listing sessions, or compacting history.
+  - Shell defaults can be configured globally and per-project via `/default shell <value>` and `/default project shell <value>`.
   - Non-existent commands produce an error message listing available commands.
   - The /quit command signals session exit by returning null.
 failureScenarios:
   - The command token does not match any registered dispatch entry.
+  - A shell default command is issued without a valid shell value.
   - The handler throws an unhandled exception during execution.
 trace:
   upstream:
