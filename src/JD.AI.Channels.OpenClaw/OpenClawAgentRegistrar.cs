@@ -80,6 +80,10 @@ public sealed class OpenClawAgentRegistrar
     /// <summary>Prefix used to identify JD.AI-managed agents in OpenClaw config.</summary>
     public const string AgentIdPrefix = "jdai-";
 
+    /// <summary>Directory for config backups before writes.</summary>
+    public static string ConfigBackupDirectory =>
+        Path.Combine(DataDirectories.Root, "openclaw-config-backups");
+
     private static readonly JsonSerializerOptions IndentedJson = JsonDefaults.Indented;
 
     private readonly OpenClawRpcClient _rpc;
@@ -329,6 +333,33 @@ public sealed class OpenClawAgentRegistrar
     /// </summary>
     internal async Task WriteConfigAsync(JsonNode config, string baseHash, CancellationToken ct)
     {
+        // Backup current config before overwriting
+        try
+        {
+            var (currentConfig, _) = await ReadConfigAsync(ct);
+            if (currentConfig is not null)
+            {
+                var backupDir = ConfigBackupDirectory;
+                Directory.CreateDirectory(backupDir);
+                var backupFile = Path.Combine(backupDir,
+                    $"config-{DateTime.UtcNow:yyyyMMdd-HHmmss}.json");
+                await File.WriteAllTextAsync(backupFile,
+                    currentConfig.ToJsonString(IndentedJson), ct);
+
+                // Keep only last 10 backups
+                var backups = Directory.GetFiles(backupDir, "config-*.json")
+                    .OrderByDescending(f => f)
+                    .Skip(10)
+                    .ToArray();
+                foreach (var old in backups)
+                    File.Delete(old);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to backup config before write — proceeding anyway");
+        }
+
         var raw = config.ToJsonString(IndentedJson);
         var response = await _rpc.RequestAsync("config.set", new { raw, baseHash }, ct);
 
