@@ -342,7 +342,7 @@ public sealed class OpenClawAgentRegistrar
                 var backupDir = ConfigBackupDirectory;
                 Directory.CreateDirectory(backupDir);
                 var backupFile = Path.Combine(backupDir,
-                    $"config-{DateTime.UtcNow:yyyyMMdd-HHmmss}.json");
+                    $"config-{DateTime.UtcNow:yyyyMMdd-HHmmss-fff}.json");
                 await File.WriteAllTextAsync(backupFile,
                     currentConfig.ToJsonString(IndentedJson), ct);
 
