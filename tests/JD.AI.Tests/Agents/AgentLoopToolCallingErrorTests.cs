@@ -504,6 +504,113 @@ public sealed class AgentLoopToolCallingErrorTests : TinyBddXunitBase
         }
     }
 
+    [Fact]
+    public async Task RunTurnAsync_UnpairedFunctionCallWithNonEmptyContent_RetriesWithoutTools()
+    {
+        var registry = Substitute.For<IProviderRegistry>();
+        var model = new ProviderModelInfo("test-model", "Test", "TestProvider");
+
+        var chatService = Substitute.For<IChatCompletionService>();
+        chatService
+            .GetChatMessageContentsAsync(
+                Arg.Any<ChatHistory>(),
+                Arg.Any<PromptExecutionSettings?>(),
+                Arg.Any<Kernel?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(
+                callInfo =>
+                {
+                    var history = callInfo.ArgAt<ChatHistory>(0);
+                    history.Add(new ChatMessageContent(AuthorRole.Assistant, [
+                        new FunctionCallContent(
+                            functionName: "run_command",
+                            pluginName: "shell",
+                            id: "toolu_nonempty_01",
+                            arguments: new KernelArguments()),
+                    ]));
+
+                    return new List<ChatMessageContent>
+                    {
+                        new(AuthorRole.Assistant, "Sure!"),
+                    };
+                },
+                _ => new List<ChatMessageContent>
+                {
+                    new(AuthorRole.Assistant, "Recovered response without tools"),
+                });
+
+        var builder = Kernel.CreateBuilder();
+        builder.Services.AddSingleton<IChatCompletionService>(chatService);
+        var kernel = builder.Build();
+
+        var session = new AgentSession(registry, kernel, model);
+        var loop = new AgentLoop(session);
+
+        var result = await loop.RunTurnAsync("maybe try pwsh ls?");
+
+        result.Should().Be("Recovered response without tools");
+        session.History.Should().HaveCount(2);
+        session.History[0].Role.Should().Be(AuthorRole.User);
+        session.History[1].Role.Should().Be(AuthorRole.Assistant);
+        session.History.SelectMany(m => m.Items ?? [])
+            .Should().NotContain(i => i is FunctionCallContent);
+    }
+
+    [Fact]
+    public async Task RunTurnAsync_StaleUnpairedFunctionCallFromPriorTurn_IsPrunedBeforeRequest()
+    {
+        var registry = Substitute.For<IProviderRegistry>();
+        var model = new ProviderModelInfo("test-model", "Test", "TestProvider");
+        const string StaleCallId = "toolu_stale_01";
+
+        var chatService = Substitute.For<IChatCompletionService>();
+        chatService
+            .GetChatMessageContentsAsync(
+                Arg.Any<ChatHistory>(),
+                Arg.Any<PromptExecutionSettings?>(),
+                Arg.Any<Kernel?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var history = callInfo.ArgAt<ChatHistory>(0);
+                var hasStaleCall = history
+                    .SelectMany(m => m.Items ?? [])
+                    .OfType<FunctionCallContent>()
+                    .Any(c => string.Equals(c.Id, StaleCallId, StringComparison.Ordinal));
+
+                if (hasStaleCall)
+                {
+                    throw new HttpRequestException(
+                        "messages.5: `tool_use` ids were found without `tool_result` blocks immediately after");
+                }
+
+                return new List<ChatMessageContent>
+                {
+                    new(AuthorRole.Assistant, "History sanitized"),
+                };
+            });
+
+        var builder = Kernel.CreateBuilder();
+        builder.Services.AddSingleton<IChatCompletionService>(chatService);
+        var kernel = builder.Build();
+
+        var session = new AgentSession(registry, kernel, model);
+        session.History.Add(new ChatMessageContent(AuthorRole.Assistant, [
+            new FunctionCallContent(
+                functionName: "run_command",
+                pluginName: "shell",
+                id: StaleCallId,
+                arguments: new KernelArguments()),
+        ]));
+
+        var loop = new AgentLoop(session);
+        var result = await loop.RunTurnAsync("Let's try again?");
+
+        result.Should().Be("History sanitized");
+        session.History.SelectMany(m => m.Items ?? [])
+            .Should().NotContain(i => i is FunctionCallContent);
+    }
+
     private sealed class SpyAgentOutput : IAgentOutput
     {
         public bool BeginStreamingCalled { get; private set; }
