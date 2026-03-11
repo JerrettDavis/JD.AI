@@ -26,6 +26,15 @@ coverageTargets:
   - scope: JD.AI.Core.Agents.Orchestration
     target: "provider-specific tool-call path coverage"
     metric: scenario
+  - scope: JD.AI.Commands.SlashCommandRouter
+    target: "/default shell and /default project shell command coverage"
+    metric: scenario
+  - scope: JD.AI.Core.Tools.ShellTools
+    target: "configured default shell resolution (env, project, global, fallback) coverage"
+    metric: scenario
+  - scope: JD.AI.Core.Agents.AgentLoop text-tool fallback
+    target: "orphaned tagged tool-use history is sanitized before next turn dispatch"
+    metric: scenario
 generationRules:
   - source: specs/behavior/provider-tool-calling-execution.yaml
     strategy: hybrid
