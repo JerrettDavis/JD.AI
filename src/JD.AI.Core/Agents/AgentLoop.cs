@@ -36,6 +36,7 @@ public sealed class AgentLoop
         DebugLogger.Log(DebugCategory.Agents, "turn={0} traceId={1}", traceCtx.TurnIndex, traceCtx.TraceId);
 
         _session.ResetTurnState();
+        PruneUnpairedFunctionCalls(_session.History);
         await _session.RecordUserTurnAsync(userMessage).ConfigureAwait(false);
         _session.History.AddUserMessage(userMessage);
         var historySnapshot = _session.History.Count;
@@ -72,8 +73,7 @@ public sealed class AgentLoop
             sw.Stop();
 
             var response = result.Content ?? "(no response)";
-            if (string.IsNullOrWhiteSpace(result.Content) &&
-                HasUnpairedFunctionCalls(_session.History, historySnapshot))
+            if (HasUnpairedFunctionCalls(_session.History, historySnapshot))
             {
                 throw new InvalidOperationException(
                     "Each `tool_use` block must have a corresponding `tool_result` block");
@@ -135,6 +135,7 @@ public sealed class AgentLoop
             // Remove intermediate messages SK added during failed auto-function-calling
             while (_session.History.Count > historySnapshot)
                 _session.History.RemoveAt(_session.History.Count - 1);
+            PruneUnpairedFunctionCalls(_session.History);
 
             DebugLogger.Log(DebugCategory.Agents,
                 "Tool calling format error, retrying without tools: {0}", ex.Message);
@@ -228,6 +229,7 @@ public sealed class AgentLoop
         DebugLogger.Log(DebugCategory.Agents, "turn={0} traceId={1} streaming=true", traceCtx.TurnIndex, traceCtx.TraceId);
 
         _session.ResetTurnState();
+        PruneUnpairedFunctionCalls(_session.History);
         await _session.RecordUserTurnAsync(userMessage).ConfigureAwait(false);
         _session.History.AddUserMessage(userMessage);
         var historySnapshot = _session.History.Count;
@@ -354,8 +356,7 @@ public sealed class AgentLoop
 
             if (thinkingActive) output.EndThinking();
 
-            if (!contentStarted &&
-                HasUnpairedFunctionCalls(_session.History, historySnapshot))
+            if (HasUnpairedFunctionCalls(_session.History, historySnapshot))
             {
                 throw new InvalidOperationException(
                     "Each `tool_use` block must have a corresponding `tool_result` block");
@@ -526,6 +527,7 @@ public sealed class AgentLoop
             // Remove intermediate messages SK added during failed auto-function-calling
             while (_session.History.Count > historySnapshot)
                 _session.History.RemoveAt(_session.History.Count - 1);
+            PruneUnpairedFunctionCalls(_session.History);
 
             DebugLogger.Log(DebugCategory.Agents,
                 "Tool calling format error, retrying without tools: {0}", ex.Message);
@@ -686,6 +688,119 @@ public sealed class AgentLoop
         }
 
         return seenCallWithoutId || pendingIds.Count > 0;
+    }
+
+    private static void PruneUnpairedFunctionCalls(ChatHistory history)
+    {
+        if (history.Count == 0)
+            return;
+
+        var pendingIds = new HashSet<string>(StringComparer.Ordinal);
+        var resolvedIds = new HashSet<string>(StringComparer.Ordinal);
+        var callsById = new Dictionary<string, List<(int MessageIndex, int ItemIndex)>>(StringComparer.Ordinal);
+        var callsWithoutId = new List<(int MessageIndex, int ItemIndex)>();
+        var orphanedResults = new List<(int MessageIndex, int ItemIndex)>();
+
+        for (var i = 0; i < history.Count; i++)
+        {
+            var items = history[i].Items;
+            if (items is null || items.Count == 0)
+                continue;
+
+            for (var j = 0; j < items.Count; j++)
+            {
+                var item = items[j];
+                if (item is FunctionCallContent call)
+                {
+                    if (string.IsNullOrWhiteSpace(call.Id))
+                    {
+                        callsWithoutId.Add((i, j));
+                        continue;
+                    }
+
+                    pendingIds.Add(call.Id);
+                    if (!callsById.TryGetValue(call.Id, out var calls))
+                    {
+                        calls = [];
+                        callsById[call.Id] = calls;
+                    }
+
+                    calls.Add((i, j));
+                }
+                else if (item is FunctionResultContent result &&
+                         !string.IsNullOrWhiteSpace(result.CallId))
+                {
+                    resolvedIds.Add(result.CallId);
+                    orphanedResults.Add((i, j));
+                }
+            }
+        }
+
+        var indexesByMessage = new Dictionary<int, HashSet<int>>();
+
+        foreach (var (messageIndex, itemIndex) in callsWithoutId)
+            AddRemovalIndex(indexesByMessage, messageIndex, itemIndex);
+
+        foreach (var id in pendingIds)
+        {
+            if (resolvedIds.Contains(id))
+                continue;
+
+            if (callsById.TryGetValue(id, out var entries))
+            {
+                foreach (var (messageIndex, itemIndex) in entries)
+                    AddRemovalIndex(indexesByMessage, messageIndex, itemIndex);
+            }
+        }
+
+        foreach (var (messageIndex, itemIndex) in orphanedResults)
+        {
+            var items = history[messageIndex].Items;
+            if (items is not null &&
+                itemIndex >= 0 &&
+                itemIndex < items.Count &&
+                items[itemIndex] is FunctionResultContent result &&
+                (string.IsNullOrWhiteSpace(result.CallId) ||
+                 !pendingIds.Contains(result.CallId)))
+            {
+                AddRemovalIndex(indexesByMessage, messageIndex, itemIndex);
+            }
+        }
+
+        if (indexesByMessage.Count == 0)
+            return;
+
+        foreach (var kvp in indexesByMessage.OrderByDescending(k => k.Key))
+        {
+            var messageIndex = kvp.Key;
+            var message = history[messageIndex];
+            var items = message.Items;
+            if (items is null || items.Count == 0)
+                continue;
+
+            foreach (var itemIndex in kvp.Value.OrderByDescending(i => i))
+            {
+                if (itemIndex >= 0 && itemIndex < items.Count)
+                    items.RemoveAt(itemIndex);
+            }
+
+            if (items.Count == 0 && string.IsNullOrWhiteSpace(message.Content))
+                history.RemoveAt(messageIndex);
+        }
+    }
+
+    private static void AddRemovalIndex(
+        IDictionary<int, HashSet<int>> indexesByMessage,
+        int messageIndex,
+        int itemIndex)
+    {
+        if (!indexesByMessage.TryGetValue(messageIndex, out var itemIndexes))
+        {
+            itemIndexes = [];
+            indexesByMessage[messageIndex] = itemIndexes;
+        }
+
+        itemIndexes.Add(itemIndex);
     }
 
     /// <summary>
