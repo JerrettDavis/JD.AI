@@ -60,4 +60,31 @@ public sealed class SandboxTests
         var sandbox = new RestrictedSandbox();
         Assert.Equal("restricted", sandbox.ModeName);
     }
+
+    [Theory]
+    [InlineData("rm -rf ~/.openclaw")]
+    [InlineData("rm -rf ~/.openclaw/")]
+    [InlineData("cat ~/.openclaw/config.json | something")]
+    [InlineData("echo bad > ~/.openclaw/config.json")]
+    public async Task RestrictedSandbox_BlocksOpenClawPathCommands(string command)
+    {
+        var sandbox = new RestrictedSandbox();
+
+        var result = await sandbox.ExecuteAsync(command, Directory.GetCurrentDirectory());
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("Blocked", result.Error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("echo hello")]
+    public async Task RestrictedSandbox_AllowsNonProtectedCommands(string command)
+    {
+        var sandbox = new RestrictedSandbox();
+
+        var result = await sandbox.ExecuteAsync(command, Directory.GetCurrentDirectory());
+
+        if (!string.IsNullOrEmpty(result.Error))
+            Assert.DoesNotContain("Blocked", result.Error, StringComparison.OrdinalIgnoreCase);
+    }
 }

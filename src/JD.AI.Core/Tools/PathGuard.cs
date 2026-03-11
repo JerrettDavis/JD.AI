@@ -37,6 +37,30 @@ public static class PathGuard
     }
 
     /// <summary>
+    /// Returns <c>true</c> if the command string contains references to any protected directory.
+    /// Used by ShellTools to reject commands that target protected paths.
+    /// </summary>
+    public static bool ContainsProtectedPath(string commandText)
+    {
+        var lower = commandText.ToLowerInvariant();
+
+        // Check tilde-based paths
+        if (lower.Contains("~/.openclaw"))
+            return true;
+
+        // Check absolute paths
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (!string.IsNullOrEmpty(home))
+        {
+            var ocDir = Path.Combine(home, ".openclaw").ToLowerInvariant();
+            if (lower.Contains(ocDir.Replace('\\', '/')) || lower.Contains(ocDir))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Returns <c>true</c> if the given path resolves into a protected directory.
     /// </summary>
     public static bool IsProtected(string path)
