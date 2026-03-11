@@ -124,6 +124,20 @@ public sealed class AtomicConfigStore : IDisposable
         return config.Defaults.Model;
     }
 
+    /// <summary>Gets the default shell, optionally scoped to a project path.</summary>
+    public async Task<string?> GetDefaultShellAsync(string? projectPath = null, CancellationToken ct = default)
+    {
+        var config = await ReadAsync(ct).ConfigureAwait(false);
+        if (projectPath is not null
+            && config.ProjectDefaults.TryGetValue(projectPath, out var proj)
+            && proj.Shell is not null)
+        {
+            return proj.Shell;
+        }
+
+        return config.Defaults.Shell;
+    }
+
     /// <summary>Sets the default provider, optionally scoped to a project path.</summary>
     public async Task SetDefaultProviderAsync(string provider, string? projectPath = null, CancellationToken ct = default)
     {
@@ -164,6 +178,28 @@ public sealed class AtomicConfigStore : IDisposable
                 }
 
                 proj.Model = model;
+            }
+        }, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Sets the default shell, optionally scoped to a project path.</summary>
+    public async Task SetDefaultShellAsync(string shell, string? projectPath = null, CancellationToken ct = default)
+    {
+        await WriteAsync(cfg =>
+        {
+            if (projectPath is null)
+            {
+                cfg.Defaults.Shell = shell;
+            }
+            else
+            {
+                if (!cfg.ProjectDefaults.TryGetValue(projectPath, out var proj))
+                {
+                    proj = new DefaultsConfig();
+                    cfg.ProjectDefaults[projectPath] = proj;
+                }
+
+                proj.Shell = shell;
             }
         }, ct).ConfigureAwait(false);
     }
@@ -249,4 +285,10 @@ public sealed class DefaultsConfig
 
     /// <summary>Model identifier (e.g. "gpt-4o").</summary>
     public string? Model { get; set; }
+
+    /// <summary>
+    /// Default shell command or alias for shell tool execution (e.g. "pwsh",
+    /// "powershell", "cmd", "bash", or a custom template with {command}).
+    /// </summary>
+    public string? Shell { get; set; }
 }

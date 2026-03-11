@@ -127,6 +127,59 @@ public sealed class SlashCommandRouterTests
     }
 
     [Fact]
+    public async Task Default_Shell_PersistsGlobalShell_WhenConfigStoreIsProvided()
+    {
+        var tempDirectory = Path.Combine(Path.GetTempPath(), $"jdai-default-shell-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDirectory);
+
+        try
+        {
+            var configPath = Path.Combine(tempDirectory, "config.json");
+            using var configStore = new AtomicConfigStore(configPath);
+            var router = new SlashCommandRouter(_session, _registry, configStore: configStore);
+
+            var result = await router.ExecuteAsync("/default shell pwsh");
+            var persisted = await configStore.GetDefaultShellAsync();
+
+            Assert.NotNull(result);
+            Assert.Contains("Global default shell set", result);
+            Assert.Equal("pwsh", persisted);
+        }
+        finally
+        {
+            Directory.Delete(tempDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Default_ProjectShell_PersistsProjectShell_WhenConfigStoreIsProvided()
+    {
+        var tempDirectory = Path.Combine(Path.GetTempPath(), $"jdai-default-project-shell-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDirectory);
+        var originalDirectory = Directory.GetCurrentDirectory();
+
+        try
+        {
+            Directory.SetCurrentDirectory(tempDirectory);
+            var configPath = Path.Combine(tempDirectory, "config.json");
+            using var configStore = new AtomicConfigStore(configPath);
+            var router = new SlashCommandRouter(_session, _registry, configStore: configStore);
+
+            var result = await router.ExecuteAsync("/default project shell bash");
+            var persisted = await configStore.GetDefaultShellAsync(tempDirectory);
+
+            Assert.NotNull(result);
+            Assert.Contains("Project default shell set", result);
+            Assert.Equal("bash", persisted);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(originalDirectory);
+            Directory.Delete(tempDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Model_ReportsNotFound()
     {
         _registry.GetModelsAsync(Arg.Any<CancellationToken>())
