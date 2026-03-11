@@ -39,6 +39,11 @@ public static class PathGuard
     /// <summary>
     /// Returns <c>true</c> if the command string contains references to any protected directory.
     /// Used by ShellTools to reject commands that target protected paths.
+    /// <para>
+    /// <b>Known limitation:</b> This is a best-effort heuristic based on substring matching.
+    /// It can be bypassed via shell variable expansion, backtick substitution, or encoding.
+    /// The primary security boundary is <see cref="IsProtected"/> on direct file operations.
+    /// </para>
     /// </summary>
     public static bool ContainsProtectedPath(string commandText)
     {
