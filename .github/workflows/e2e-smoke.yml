@@ -139,12 +139,7 @@ jobs:
           sudo chmod +x /usr/local/bin/ttyd
 
       - name: Render VHS smoke tape
-        run: >
-          docker run --rm
-          -v "${PWD}:/vhs"
-          -w /vhs
-          ghcr.io/charmbracelet/vhs
-          docs/tapes/ci-cli-smoke.tape
+        run: vhs docs/tapes/ci-cli-smoke.tape
 
       - name: Verify generated VHS outputs
         run: |
