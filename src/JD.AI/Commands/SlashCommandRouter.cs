@@ -4626,11 +4626,13 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             var config = await _configStore.ReadAsync(ct).ConfigureAwait(false);
             var globalProvider = config.Defaults.Provider ?? "(not set)";
             var globalModel = config.Defaults.Model ?? "(not set)";
+            var globalShell = config.Defaults.Shell ?? "(not set)";
 
             var sb = new System.Text.StringBuilder();
             sb.AppendLine("Global defaults:");
             sb.AppendLine($"  Provider: {globalProvider}");
             sb.AppendLine($"  Model:    {globalModel}");
+            sb.AppendLine($"  Shell:    {globalShell}");
 
             if (config.ProjectDefaults.TryGetValue(projectPath, out var proj))
             {
@@ -4638,6 +4640,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                 sb.AppendLine($"Project defaults ({projectPath}):");
                 sb.AppendLine($"  Provider: {proj.Provider ?? "(not set)"}");
                 sb.AppendLine($"  Model:    {proj.Model ?? "(not set)"}");
+                sb.AppendLine($"  Shell:    {proj.Shell ?? "(not set)"}");
             }
             else
             {
@@ -4650,7 +4653,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
         var tokens = arg.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-        // /default project provider <name> | /default project model <id>
+        // /default project provider <name> | /default project model <id> | /default project shell <value>
         if (tokens.Length >= 3
             && string.Equals(tokens[0], "project", StringComparison.OrdinalIgnoreCase))
         {
@@ -4669,10 +4672,16 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                 return $"Project default model set to '{value}' for {projectPath}.";
             }
 
-            return "Usage: /default project provider <name> | /default project model <id>";
+            if (string.Equals(subCmd, "shell", StringComparison.OrdinalIgnoreCase))
+            {
+                await _configStore.SetDefaultShellAsync(value, projectPath, ct).ConfigureAwait(false);
+                return $"Project default shell set to '{value}' for {projectPath}.";
+            }
+
+            return "Usage: /default project provider <name> | /default project model <id> | /default project shell <value>";
         }
 
-        // /default provider <name> | /default model <id>
+        // /default provider <name> | /default model <id> | /default shell <value>
         if (tokens.Length >= 2)
         {
             var subCmd = tokens[0];
@@ -4689,6 +4698,12 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                 await _configStore.SetDefaultModelAsync(value, ct: ct).ConfigureAwait(false);
                 return $"Global default model set to '{value}'.";
             }
+
+            if (string.Equals(subCmd, "shell", StringComparison.OrdinalIgnoreCase))
+            {
+                await _configStore.SetDefaultShellAsync(value, ct: ct).ConfigureAwait(false);
+                return $"Global default shell set to '{value}'.";
+            }
         }
 
         return """
@@ -4696,8 +4711,10 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
               /default                        — Show current defaults
               /default provider <name>        — Set global default provider
               /default model <id>             — Set global default model
+              /default shell <value>          — Set global default shell (e.g. pwsh, powershell, cmd, bash, or custom template)
               /default project provider <name> — Set project default provider
               /default project model <id>     — Set project default model
+              /default project shell <value>  — Set project default shell
             """;
     }
 }

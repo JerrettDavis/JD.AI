@@ -234,13 +234,15 @@ public static class SlashCommandCatalog
             SlashCommandId.Default,
             "/default",
             "/default",
-            "Manage default provider/model (global & per-project)",
+            "Manage default provider/model/shell (global & per-project)",
             AdditionalCompletions:
             [
                 new SlashCommandDescriptor("/default provider", "Set global default provider"),
                 new SlashCommandDescriptor("/default model", "Set global default model"),
+                new SlashCommandDescriptor("/default shell", "Set global default shell"),
                 new SlashCommandDescriptor("/default project provider", "Set project default provider"),
-                new SlashCommandDescriptor("/default project model", "Set project default model")
+                new SlashCommandDescriptor("/default project model", "Set project default model"),
+                new SlashCommandDescriptor("/default project shell", "Set project default shell")
             ]),
         new(
             SlashCommandId.ModelInfo,

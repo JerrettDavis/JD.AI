@@ -5,6 +5,28 @@ namespace JD.AI.Tests;
 public sealed class ShellToolsTests
 {
     [Fact]
+    public void ResolveShellInvocation_PwshAlias_UsesPowerShellCommandSwitch()
+    {
+        var (file, args) = ShellTools.ResolveShellInvocation("Get-ChildItem", "pwsh");
+
+        Assert.Equal("pwsh", file);
+        Assert.Contains("-NoProfile -Command", args);
+        Assert.Contains("Get-ChildItem", args);
+    }
+
+    [Fact]
+    public void ResolveShellInvocation_CustomTemplate_ReplacesCommandPlaceholder()
+    {
+        var (file, args) = ShellTools.ResolveShellInvocation(
+            "ls -la",
+            "\"C:\\Program Files\\Git\\bin\\bash.exe\" -lc \"{command}\"");
+
+        Assert.Equal("C:\\Program Files\\Git\\bin\\bash.exe", file);
+        Assert.Contains("-lc", args);
+        Assert.Contains("ls -la", args);
+    }
+
+    [Fact]
     public async Task RunCommand_ReturnsOutput()
     {
         var result = await ShellTools.RunCommandAsync("echo hello");
