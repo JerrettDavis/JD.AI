@@ -130,4 +130,13 @@ public sealed class OpenClawAgentRegistrarTests : IDisposable
     {
         Assert.Equal("jdai-", OpenClawAgentRegistrar.AgentIdPrefix);
     }
+
+    [Fact]
+    public void BackupPath_IsInJdaiDirectory()
+    {
+        var backupDir = OpenClawAgentRegistrar.ConfigBackupDirectory;
+
+        Assert.Contains(".jdai", backupDir);
+        Assert.Contains("openclaw-config-backups", backupDir);
+    }
 }
