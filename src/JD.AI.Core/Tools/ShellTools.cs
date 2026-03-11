@@ -24,6 +24,19 @@ public sealed class ShellTools
         [Description("Timeout in seconds (default 60)")] int timeoutSeconds = 60)
     {
         var workDir = cwd ?? Directory.GetCurrentDirectory();
+
+        // Check for commands targeting protected directories
+        if (PathGuard.ContainsProtectedPath(command))
+        {
+            return "Access denied: command references a protected directory. " +
+                "AI tools cannot execute commands that target protected user data.";
+        }
+
+        if (PathGuard.IsProtected(workDir))
+        {
+            return "Error: Access denied: working directory is inside a protected directory.";
+        }
+
         var configuredShell = await ResolveConfiguredShellAsync(workDir).ConfigureAwait(false);
         var (fileName, arguments) = ResolveShellInvocation(command, configuredShell);
 
