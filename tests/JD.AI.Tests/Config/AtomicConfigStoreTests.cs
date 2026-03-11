@@ -156,4 +156,34 @@ public class AtomicConfigStoreTests : IDisposable
         project.Should().Be("claude-3");
         unknown.Should().Be("gpt-4o"); // falls back to global
     }
+
+    [Fact]
+    public async Task GetDefaultShell_WithProjectPath_ReturnsProjectOverride()
+    {
+        var store = new AtomicConfigStore(_configPath);
+
+        await store.SetDefaultShellAsync("pwsh", projectPath: null);
+        await store.SetDefaultShellAsync("bash", projectPath: "/my/project");
+
+        var global = await store.GetDefaultShellAsync();
+        var project = await store.GetDefaultShellAsync("/my/project");
+        var unknown = await store.GetDefaultShellAsync("/other/project");
+
+        global.Should().Be("pwsh");
+        project.Should().Be("bash");
+        unknown.Should().Be("pwsh"); // falls back to global
+    }
+
+    [Fact]
+    public async Task ReadAsync_AfterSettingShell_PersistsShellDefaults()
+    {
+        var store = new AtomicConfigStore(_configPath);
+
+        await store.SetDefaultShellAsync("pwsh");
+        await store.SetDefaultShellAsync("bash", "/project");
+
+        var config = await store.ReadAsync();
+        config.Defaults.Shell.Should().Be("pwsh");
+        config.ProjectDefaults["/project"].Shell.Should().Be("bash");
+    }
 }
