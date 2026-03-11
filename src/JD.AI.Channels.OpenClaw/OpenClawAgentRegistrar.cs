@@ -123,12 +123,13 @@ public sealed class OpenClawAgentRegistrar
             EnsureAgentsList(configNode);
             var list = configNode["agents"]!["list"]!.AsArray();
 
+            var successfulIds = new List<string>();
             foreach (var agent in agentList)
             {
                 try
                 {
                     AddOrUpdateAgent(list, agent);
-                    _registeredAgentIds.Add(agent.Id);
+                    successfulIds.Add(agent.Id);
                     _logger.LogInformation(
                         "Prepared JD.AI agent '{Id}' ({Name}) for registration",
                         agent.Id, agent.Name);
@@ -140,7 +141,16 @@ public sealed class OpenClawAgentRegistrar
             }
 
             // Write the updated config atomically
-            await WriteConfigAsync(configNode, baseHash!, ct);
+            if (baseHash is null)
+            {
+                _logger.LogError("OpenClaw config hash is null — cannot write safely");
+                return;
+            }
+
+            await WriteConfigAsync(configNode, baseHash, ct);
+
+            // Only track as registered AFTER successful write
+            _registeredAgentIds.AddRange(successfulIds);
 
             // Register channel bindings for the agents
             await RegisterBindingsAsync(agentList, ct);
@@ -214,8 +224,8 @@ public sealed class OpenClawAgentRegistrar
             if (list.Count == 0)
                 configNode["agents"]!.AsObject().Remove("list");
 
-            if (removed > 0)
-                await WriteConfigAsync(configNode, baseHash!, ct);
+            if (baseHash is not null && removed > 0)
+                await WriteConfigAsync(configNode, baseHash, ct);
         }
         catch (Exception ex)
         {
@@ -288,7 +298,10 @@ public sealed class OpenClawAgentRegistrar
                 binding.Channel, agentId);
         }
 
-        await WriteConfigAsync(configNode, baseHash!, ct);
+        if (baseHash is null)
+            return;
+
+        await WriteConfigAsync(configNode, baseHash, ct);
     }
 
     /// <summary>
@@ -338,18 +351,7 @@ public sealed class OpenClawAgentRegistrar
 
     private void AddOrUpdateAgent(JsonArray list, JdAiAgentDefinition agent)
     {
-        // Remove existing entry if present (for update)
-        for (var i = list.Count - 1; i >= 0; i--)
-        {
-            if (string.Equals(list[i]?["id"]?.GetValue<string>(), agent.Id, StringComparison.Ordinal))
-            {
-                list.RemoveAt(i);
-                _logger.LogDebug("Replacing existing agent '{Id}' in OpenClaw", agent.Id);
-                break;
-            }
-        }
-
-        // Build the agent entry matching OpenClaw's strict schema
+        // Build the new entry FIRST — if this throws, the list is untouched
         var entry = new JsonObject
         {
             ["id"] = agent.Id,
@@ -369,6 +371,18 @@ public sealed class OpenClawAgentRegistrar
             entry["model"] = agent.Model;
         }
 
+        // Now that entry is fully built, replace in-place or append
+        for (var i = list.Count - 1; i >= 0; i--)
+        {
+            if (string.Equals(list[i]?["id"]?.GetValue<string>(), agent.Id, StringComparison.Ordinal))
+            {
+                list[i] = entry; // Atomic replace — no window where entry is missing
+                _logger.LogDebug("Replaced existing agent '{Id}' in OpenClaw", agent.Id);
+                return;
+            }
+        }
+
+        // No existing entry — append
         list.Add(entry);
     }
 
