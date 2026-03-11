@@ -37,6 +37,32 @@ public static class PathGuard
     }
 
     /// <summary>
+    /// Command-text patterns that reference protected directories.
+    /// Built once and cached. Used by <see cref="ContainsProtectedPath"/> and
+    /// <see cref="Sandbox.RestrictedSandbox"/> for a single source of truth.
+    /// </summary>
+    internal static readonly Lazy<string[]> ProtectedCommandPatterns = new(() =>
+    {
+        var patterns = new List<string>
+        {
+            "~/.openclaw",
+            ".openclaw/",
+            ".openclaw\\",
+        };
+
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (!string.IsNullOrEmpty(home))
+        {
+            var ocDir = Path.Combine(home, ".openclaw");
+            patterns.Add(ocDir.Replace('\\', '/').ToLowerInvariant());
+            if (OperatingSystem.IsWindows())
+                patterns.Add(ocDir.ToLowerInvariant());
+        }
+
+        return patterns.ToArray();
+    });
+
+    /// <summary>
     /// Returns <c>true</c> if the command string contains references to any protected directory.
     /// Used by ShellTools to reject commands that target protected paths.
     /// <para>
@@ -49,16 +75,9 @@ public static class PathGuard
     {
         var lower = commandText.ToLowerInvariant();
 
-        // Check tilde-based paths
-        if (lower.Contains("~/.openclaw"))
-            return true;
-
-        // Check absolute paths
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        if (!string.IsNullOrEmpty(home))
+        foreach (var pattern in ProtectedCommandPatterns.Value)
         {
-            var ocDir = Path.Combine(home, ".openclaw").ToLowerInvariant();
-            if (lower.Contains(ocDir.Replace('\\', '/')) || lower.Contains(ocDir))
+            if (lower.Contains(pattern, StringComparison.OrdinalIgnoreCase))
                 return true;
         }
 
