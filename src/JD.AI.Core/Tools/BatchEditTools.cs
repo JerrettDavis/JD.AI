@@ -40,6 +40,11 @@ public sealed class BatchEditTools
                 return OutputFormatter.Error("edit missing 'path' field.");
             }
 
+            if (PathGuard.IsProtected(edit.Path))
+            {
+                return OutputFormatter.Error($"Access denied: '{edit.Path}' is inside a protected directory.");
+            }
+
             if (!File.Exists(edit.Path))
             {
                 return OutputFormatter.Error($"file not found — {edit.Path}");

@@ -72,7 +72,7 @@ public static class PathGuard
         }
         catch
         {
-            return false; // Malformed path — let caller handle
+            return true; // Fail-closed: deny access to unresolvable paths
         }
 
         var comparison = OperatingSystem.IsWindows()

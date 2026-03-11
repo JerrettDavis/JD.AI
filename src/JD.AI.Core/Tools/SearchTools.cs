@@ -25,6 +25,11 @@ public sealed class SearchTools
         [Description("Maximum results to return")] int maxResults = 50)
     {
         var dir = path ?? Directory.GetCurrentDirectory();
+        if (PathGuard.IsProtected(dir))
+        {
+            return OutputFormatter.Error($"Access denied: '{dir}' is inside a protected directory.");
+        }
+
         if (!Directory.Exists(dir))
         {
             return OutputFormatter.Error($"Directory not found: {dir}");
@@ -107,6 +112,11 @@ public sealed class SearchTools
         [Description("Directory to search in (defaults to cwd)")] string? path = null)
     {
         var dir = path ?? Directory.GetCurrentDirectory();
+        if (PathGuard.IsProtected(dir))
+        {
+            return OutputFormatter.Error($"Access denied: '{dir}' is inside a protected directory.");
+        }
+
         if (!Directory.Exists(dir))
         {
             return OutputFormatter.Error($"Directory not found: {dir}");
