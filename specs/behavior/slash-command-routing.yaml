@@ -40,6 +40,23 @@ bddScenarios:
       - The quit handler executes.
     then:
       - ExecuteAsync returns null, signaling InteractiveLoop to exit.
+  - title: Global default shell command persists shell preference
+    given:
+      - The operator types /default shell pwsh in the interactive loop.
+    when:
+      - SlashCommandRouter executes the default-shell handler.
+    then:
+      - The global default shell is persisted as pwsh.
+      - Subsequent shell tool execution resolves through the configured shell.
+  - title: Project default shell command persists project override
+    given:
+      - The operator runs in a project workspace.
+      - The operator types /default project shell bash.
+    when:
+      - SlashCommandRouter executes the project default-shell handler.
+    then:
+      - The workspace-specific shell default is persisted as bash.
+      - The project shell overrides the global default for that workspace.
 stateMachine:
   initialState: AwaitingInput
   states:
@@ -89,6 +106,7 @@ assertions:
   - The /jdai- prefix is stripped for compatibility with legacy command formats.
   - Static field init order ensures DispatchMap is built after Definitions.
   - /quit and /exit are aliases that both signal session exit.
+  - /default shell and /default project shell update shell defaults through AtomicConfigStore.
 trace:
   upstream:
     - specs/usecases/execute-slash-command.yaml

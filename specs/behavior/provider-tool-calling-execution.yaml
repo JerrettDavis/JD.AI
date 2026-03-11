@@ -39,6 +39,17 @@ bddScenarios:
       - The tagged tool payload is executed through the runtime tool pipeline.
       - Safety confirmation is enforced before command execution.
       - The final response is grounded in the actual tool result, not the echoed `<tool_response>`.
+  - title: Shell tool execution requires confirmation and honors configured shell
+    given:
+      - The active tool call requests run_command.
+      - Permissions mode requires confirmation for shell commands.
+      - A default shell is configured for the active scope.
+    when:
+      - The runtime evaluates safety policy and executes the approved call.
+    then:
+      - Execution is blocked until confirmation is granted.
+      - The command is launched with the configured shell invocation.
+      - The response reflects real command output from the executed shell process.
 stateMachine:
   initialState: AwaitingRequest
   states:
@@ -73,6 +84,7 @@ assertions:
   - Executed tool calls must be reflected in the final assistant message.
   - Anthropic/Claude tagged tool payloads must execute when emitted as explicit `<tool_use>` JSON blocks.
   - Non-executed tool calls must not be represented as completed shell output.
+  - Shell tool calls requiring approval must not execute before explicit confirmation.
 trace:
   upstream:
     - specs/usecases/provider-tool-calling-execution.yaml
