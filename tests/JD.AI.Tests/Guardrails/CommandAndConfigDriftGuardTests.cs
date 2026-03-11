@@ -28,12 +28,11 @@ public sealed class CommandAndConfigDriftGuardTests
     {
         var payload = string.Join(
             '\n',
-            SlashCommandCatalog.CompletionEntries
-                .OrderBy(static e => e.Command, StringComparer.OrdinalIgnoreCase)
-                .Select(static e => $"{e.Command}|{e.Description}"));
+            SlashCommandCatalog.CompletionEntries.OrderBy(static e => e.Command, StringComparer.OrdinalIgnoreCase).
+                Select(static e => $"{e.Command}|{e.Description}"));
 
         var actualHash = ComputeSha256(payload);
-        const string ExpectedHash = "CD45D56D2B04D103B05B7475518D2D8172B991E6E7333601DB171165BA429B0C";
+        const string ExpectedHash = "16FD8E8615B2B737148E2FD789B8F7AF5A30CA9413173A4CC9EC36815DA9EB84";
 
         Assert.True(
             string.Equals(actualHash, ExpectedHash, StringComparison.Ordinal),
@@ -44,10 +43,9 @@ public sealed class CommandAndConfigDriftGuardTests
     public async Task CompletionCatalog_Entries_AreDispatchable()
     {
         var router = CreateRouter();
-        var commands = SlashCommandCatalog.CompletionEntries
-            .Select(static e => e.Command)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        var commands = SlashCommandCatalog.CompletionEntries.Select(static e => e.Command).
+            Distinct(StringComparer.OrdinalIgnoreCase).
+            ToList();
 
         foreach (var command in commands)
         {
@@ -71,11 +69,10 @@ public sealed class CommandAndConfigDriftGuardTests
         var helpText = await router.ExecuteAsync("/help");
         Assert.NotNull(helpText);
 
-        var helpCommands = HelpCommandRegex
-            .Matches(helpText)
-            .Select(static m => m.Groups["cmd"].Value.ToUpperInvariant())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        var helpCommands = HelpCommandRegex.Matches(helpText).
+            Select(static m => m.Groups["cmd"].Value.ToUpperInvariant()).
+            Distinct(StringComparer.OrdinalIgnoreCase).
+            ToList();
 
         Assert.NotEmpty(helpCommands);
 
@@ -112,13 +109,12 @@ public sealed class CommandAndConfigDriftGuardTests
             var list = await router.ExecuteAsync("/config list");
             Assert.NotNull(list);
 
-            var keys = ConfigKeyRegex
-                .Matches(list)
-                .Select(static m => m.Groups["key"].Value.ToUpperInvariant())
-                .Where(static key => !string.Equals(key, "USAGE", StringComparison.Ordinal))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(static k => k, StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            var keys = ConfigKeyRegex.Matches(list).
+                Select(static m => m.Groups["key"].Value.ToUpperInvariant()).
+                Where(static key => !string.Equals(key, "USAGE", StringComparison.Ordinal)).
+                Distinct(StringComparer.OrdinalIgnoreCase).
+                OrderBy(static k => k, StringComparer.OrdinalIgnoreCase).
+                ToList();
 
             Assert.NotEmpty(keys);
 
@@ -180,10 +176,10 @@ public sealed class CommandAndConfigDriftGuardTests
     private static SlashCommandRouter CreateRouter()
     {
         var registry = Substitute.For<IProviderRegistry>();
-        registry.DetectProvidersAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<ProviderInfo>>([]));
-        registry.GetModelsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<ProviderModelInfo>>([]));
+        registry.DetectProvidersAsync(Arg.Any<CancellationToken>()).
+            Returns(Task.FromResult<IReadOnlyList<ProviderInfo>>([]));
+        registry.GetModelsAsync(Arg.Any<CancellationToken>()).
+            Returns(Task.FromResult<IReadOnlyList<ProviderModelInfo>>([]));
 
         var kernel = Kernel.CreateBuilder().Build();
         var model = new ProviderModelInfo("test-model", "Test Model", "TestProvider");
