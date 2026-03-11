@@ -38,6 +38,12 @@ public sealed class DiffTools
                 continue;
             }
 
+            if (PathGuard.IsProtected(edit.Path))
+            {
+                sb.AppendLine($"# Skipped edit: access denied — '{edit.Path}' is inside a protected directory");
+                continue;
+            }
+
             if (!File.Exists(edit.Path))
             {
                 sb.AppendLine($"# Skipped edit: file not found — {edit.Path}");
@@ -85,6 +91,11 @@ public sealed class DiffTools
             if (string.IsNullOrEmpty(edit.Path))
             {
                 return OutputFormatter.Error("edit missing 'path' field.");
+            }
+
+            if (PathGuard.IsProtected(edit.Path))
+            {
+                return OutputFormatter.Error($"Access denied: '{edit.Path}' is inside a protected directory.");
             }
 
             if (!File.Exists(edit.Path))
