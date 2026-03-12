@@ -18,7 +18,7 @@ public sealed class ProviderOrchestratorBddTests : TinyBddXunitBase
 {
     public ProviderOrchestratorBddTests(ITestOutputHelper output) : base(output) { }
 
-    [Scenario("Startup uses saved defaults and probes only the preferred provider"), Fact]
+    [Scenario("Startup uses saved defaults without probing providers"), Fact]
     public async Task DetectAndSelectAsync_UsesSavedDefaultFastPath()
     {
         ProviderSetup? setup = null;
@@ -59,13 +59,13 @@ public sealed class ProviderOrchestratorBddTests : TinyBddXunitBase
                 {
                     setup = await ProviderOrchestrator.DetectAndSelectAsync(opts, configStore).ConfigureAwait(false);
                 })
-                .Then("the saved provider/model are reused without probing other providers", _ =>
+                .Then("the saved provider/model are reused without probing providers", _ =>
                 {
                     setup.Should().NotBeNull();
                     setup!.SelectedModel.ProviderName.Should().Be("Preferred");
                     setup.SelectedModel.Id.Should().Be("preferred-model");
 
-                    preferredDetector!.DetectCount.Should().Be(1);
+                    preferredDetector!.DetectCount.Should().Be(0);
                     secondaryDetector!.DetectCount.Should().Be(0);
                     return true;
                 })
