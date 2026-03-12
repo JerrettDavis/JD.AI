@@ -112,6 +112,9 @@ public sealed class MultimodalTools
             }
 
             // For other files, show basic file info
+            if (PathGuard.IsProtected(source))
+                return OutputFormatter.Error($"Access denied: '{source}' is inside a protected directory.");
+
             if (File.Exists(source))
             {
                 var fi = new FileInfo(source);
@@ -137,6 +140,9 @@ public sealed class MultimodalTools
 
     private static string AnalyzeLocalImage(string path, bool includeData, int maxDimension)
     {
+        if (PathGuard.IsProtected(path))
+            return OutputFormatter.Error($"Access denied: '{path}' is inside a protected directory.");
+
         if (!File.Exists(path))
             return OutputFormatter.Error($"File not found: {path}");
 
@@ -228,6 +234,9 @@ public sealed class MultimodalTools
 
     private static string AnalyzeLocalPdf(string path, int startPage, int endPage, int maxChars)
     {
+        if (PathGuard.IsProtected(path))
+            return OutputFormatter.Error($"Access denied: '{path}' is inside a protected directory.");
+
         if (!File.Exists(path))
             return OutputFormatter.Error($"File not found: {path}");
 

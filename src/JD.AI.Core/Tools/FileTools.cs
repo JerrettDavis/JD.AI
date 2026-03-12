@@ -20,6 +20,9 @@ public sealed class FileTools
         [Description("Optional start line (1-based)")] int? startLine = null,
         [Description("Optional end line (1-based, -1 for end of file)")] int? endLine = null)
     {
+        if (PathGuard.IsProtected(path))
+            return OutputFormatter.Error($"Access denied: '{path}' is inside a protected directory.");
+
         if (!File.Exists(path))
         {
             return OutputFormatter.Error($"File not found: {path}");
@@ -45,6 +48,9 @@ public sealed class FileTools
         [Description("Absolute or relative file path")] string path,
         [Description("Content to write")] string content)
     {
+        if (PathGuard.IsProtected(path))
+            return OutputFormatter.Error($"Access denied: '{path}' is inside a protected directory.");
+
         var dir = Path.GetDirectoryName(path);
         if (!string.IsNullOrEmpty(dir))
         {
@@ -63,6 +69,9 @@ public sealed class FileTools
         [Description("The exact string to find and replace")] string oldStr,
         [Description("The replacement string")] string newStr)
     {
+        if (PathGuard.IsProtected(path))
+            return OutputFormatter.Error($"Access denied: '{path}' is inside a protected directory.");
+
         if (!File.Exists(path))
         {
             return OutputFormatter.Error($"File not found: {path}");
@@ -95,6 +104,9 @@ public sealed class FileTools
         [Description("Maximum depth to recurse (default 2)")] int maxDepth = 2)
     {
         var dir = path ?? Directory.GetCurrentDirectory();
+        if (PathGuard.IsProtected(dir))
+            return OutputFormatter.Error($"Access denied: '{dir}' is inside a protected directory.");
+
         if (!Directory.Exists(dir))
         {
             return OutputFormatter.Error($"Directory not found: {dir}");

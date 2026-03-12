@@ -25,6 +25,11 @@ public sealed class SearchTools
         [Description("Maximum results to return")] int maxResults = 50)
     {
         var dir = path ?? Directory.GetCurrentDirectory();
+        if (PathGuard.IsProtected(dir))
+        {
+            return OutputFormatter.Error($"Access denied: '{dir}' is inside a protected directory.");
+        }
+
         if (!Directory.Exists(dir))
         {
             return OutputFormatter.Error($"Directory not found: {dir}");
@@ -54,7 +59,12 @@ public sealed class SearchTools
                 break;
             }
 
-            // Skip binary/hidden
+            // Skip protected/binary/hidden
+            if (PathGuard.IsProtected(file))
+            {
+                continue;
+            }
+
             var name = Path.GetFileName(file);
             if (name.StartsWith('.') || IsBinaryExtension(Path.GetExtension(file)))
             {
@@ -107,6 +117,11 @@ public sealed class SearchTools
         [Description("Directory to search in (defaults to cwd)")] string? path = null)
     {
         var dir = path ?? Directory.GetCurrentDirectory();
+        if (PathGuard.IsProtected(dir))
+        {
+            return OutputFormatter.Error($"Access denied: '{dir}' is inside a protected directory.");
+        }
+
         if (!Directory.Exists(dir))
         {
             return OutputFormatter.Error($"Directory not found: {dir}");
@@ -114,6 +129,7 @@ public sealed class SearchTools
 
         // Simple glob implementation— convert ** and * to search patterns
         var files = Directory.GetFiles(dir, "*", SearchOption.AllDirectories)
+            .Where(f => !PathGuard.IsProtected(f))
             .Select(f => Path.GetRelativePath(dir, f))
             .Where(f => MatchGlob(f, pattern))
             .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)

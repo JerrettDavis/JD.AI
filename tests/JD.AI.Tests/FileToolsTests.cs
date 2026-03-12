@@ -155,4 +155,53 @@ public sealed class FileToolsTests : IDisposable
 
         Assert.StartsWith("Error:", result);
     }
+
+    [Fact]
+    public void ReadFile_RejectsProtectedPath()
+    {
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var protectedPath = Path.Combine(home, ".openclaw", "config.json");
+
+        var result = FileTools.ReadFile(protectedPath);
+
+        Assert.StartsWith("Error:", result);
+        Assert.Contains("protected", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void WriteFile_RejectsProtectedPath()
+    {
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var protectedPath = Path.Combine(home, ".openclaw", "test.txt");
+
+        var result = FileTools.WriteFile(protectedPath, "evil content");
+
+        Assert.StartsWith("Error:", result);
+        Assert.Contains("protected", result, StringComparison.OrdinalIgnoreCase);
+        Assert.False(File.Exists(protectedPath));
+    }
+
+    [Fact]
+    public void EditFile_RejectsProtectedPath()
+    {
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var protectedPath = Path.Combine(home, ".openclaw", "config.json");
+
+        var result = FileTools.EditFile(protectedPath, "old", "new");
+
+        Assert.StartsWith("Error:", result);
+        Assert.Contains("protected", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ListDirectory_RejectsProtectedPath()
+    {
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var protectedPath = Path.Combine(home, ".openclaw");
+
+        var result = FileTools.ListDirectory(protectedPath);
+
+        Assert.StartsWith("Error:", result);
+        Assert.Contains("protected", result, StringComparison.OrdinalIgnoreCase);
+    }
 }

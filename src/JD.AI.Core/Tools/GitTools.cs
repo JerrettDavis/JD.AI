@@ -129,6 +129,9 @@ public sealed class GitTools
     private static async Task<string> RunGitAsync(string args, string? path)
     {
         var workDir = path ?? Directory.GetCurrentDirectory();
+        if (PathGuard.IsProtected(workDir))
+            return OutputFormatter.Error($"Access denied: '{workDir}' is inside a protected directory.");
+
         var result = await ProcessExecutor.RunAsync("git", $"--no-pager {args}", workDir).ConfigureAwait(false);
 
         var sb = new StringBuilder();
