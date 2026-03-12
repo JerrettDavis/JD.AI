@@ -74,6 +74,32 @@ public sealed class ShellToolsTests
     }
 
     [Fact]
+    public void ResolveShellInvocation_Ls_MapsToDirForCmdOnWindows()
+    {
+        var (_, args) = ShellTools.ResolveShellInvocation("ls", "cmd");
+
+        if (OperatingSystem.IsWindows())
+            Assert.Contains("/c dir", args, StringComparison.OrdinalIgnoreCase);
+        else
+            Assert.Contains("/c ls", args, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ResolveShellInvocation_LsWithFlags_MapsToDirSwitchesForCmdOnWindows()
+    {
+        var (_, args) = ShellTools.ResolveShellInvocation("ls -la .", "cmd");
+
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Contains("/c dir", args, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("/a", args, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains(".", args, StringComparison.Ordinal);
+        }
+        else
+            Assert.Contains("/c ls -la .", args, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task RunCommand_TimesOut()
     {
         var cmd = OperatingSystem.IsWindows()
