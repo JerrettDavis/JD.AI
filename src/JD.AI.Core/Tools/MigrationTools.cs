@@ -28,6 +28,9 @@ public sealed class MigrationTools
         claudePath ??= Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude");
 
+        if (PathGuard.IsProtected(claudePath))
+            return OutputFormatter.Error($"Access denied: '{claudePath}' is inside a protected directory.");
+
         if (!Directory.Exists(claudePath))
             return $"Claude directory not found at: {claudePath}";
 
@@ -100,6 +103,9 @@ public sealed class MigrationTools
     {
         claudePath ??= Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude");
+
+        if (PathGuard.IsProtected(claudePath))
+            return OutputFormatter.Error($"Access denied: '{claudePath}' is inside a protected directory.");
 
         var sb = new StringBuilder();
         sb.AppendLine($"## Migration Analysis: {name}");
@@ -228,6 +234,9 @@ public sealed class MigrationTools
         string content;
         if (File.Exists(input))
         {
+            if (PathGuard.IsProtected(input))
+                return OutputFormatter.Error($"Access denied: '{input}' is inside a protected directory.");
+
             content = File.ReadAllText(input);
         }
         else
@@ -303,6 +312,9 @@ public sealed class MigrationTools
     {
         claudePath ??= Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude");
+
+        if (PathGuard.IsProtected(claudePath))
+            return OutputFormatter.Error($"Access denied: '{claudePath}' is inside a protected directory.");
 
         var skills = ScanSkills(Path.Combine(claudePath, "skills"));
         var plugins = ScanPlugins(Path.Combine(claudePath, "plugins"));

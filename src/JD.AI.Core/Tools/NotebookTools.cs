@@ -23,6 +23,9 @@ public sealed class NotebookTools
         [Description("The code to execute")] string code,
         [Description("Timeout in seconds (default 30)")] int timeoutSeconds = 30)
     {
+        if (PathGuard.ContainsProtectedPath(code))
+            return "Error: Access denied: code references a protected directory.";
+
         var (command, args, tempFile) = ResolveRuntime(language, code);
         if (command is null)
         {
