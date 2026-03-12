@@ -77,7 +77,7 @@ entries:
   - id: capability.mcp-integration
     title: MCP Integration
     path: specs/capabilities/mcp-integration.yaml
-    status: draft
+    status: active
   - id: capability.plugin-system
     title: Plugin System
     path: specs/capabilities/plugin-system.yaml
@@ -161,28 +161,28 @@ entries:
     path: specs/capabilities/skill-management.yaml
     status: draft
 
-  # UPSS 327-342 Draft Set
+  # UPSS 327-342 Composite Capability Set
   - id: capability.control-plane-management
     title: Gateway, Daemon, and Dashboard Control Plane
     path: specs/capabilities/control-plane-management.yaml
-    status: draft
+    status: active
   - id: capability.multi-channel-platform
     title: Multi-Channel Interaction Platform
     path: specs/capabilities/multi-channel-platform.yaml
-    status: draft
+    status: active
   - id: capability.provider-model-management
     title: Provider and Model Management
     path: specs/capabilities/provider-model-management.yaml
-    status: draft
+    status: active
   - id: capability.subagent-team-orchestration
     title: Subagent and Team Orchestration
     path: specs/capabilities/subagent-team-orchestration.yaml
-    status: draft
+    status: active
   - id: capability.tool-execution-loadouts
     title: Tool Execution and Loadouts
     path: specs/capabilities/tool-execution-loadouts.yaml
-    status: draft
+    status: active
   - id: capability.workflow-authoring-execution
     title: Workflow Authoring and Execution
     path: specs/capabilities/workflow-authoring-execution.yaml
-    status: draft
+    status: active

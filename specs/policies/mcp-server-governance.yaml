@@ -2,7 +2,7 @@ apiVersion: jdai.upss/v1
 kind: Policy
 id: policy.mcp-server-governance
 version: 1
-status: draft
+status: active
 metadata:
   owners:
     - JerrettDavis

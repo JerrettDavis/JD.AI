@@ -2,7 +2,7 @@ apiVersion: jdai.upss/v1
 kind: Testing
 id: testing.provider-model-management
 version: 1
-status: draft
+status: active
 metadata:
   owners:
     - JerrettDavis

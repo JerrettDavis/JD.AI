@@ -2,7 +2,7 @@ apiVersion: jdai.upss/v1
 kind: Capability
 id: capability.provider-model-management
 version: 1
-status: draft
+status: active
 metadata:
   owners:
     - JerrettDavis
@@ -16,7 +16,10 @@ maturity: beta
 actors:
   - persona.platform-engineer
   - persona.terminal-operator
-dependencies: []
+dependencies:
+  - capability.provider-management
+  - capability.model-selection
+  - capability.model-routing
 relatedUseCases:
   - usecase.provider-model-session-management
 trace:

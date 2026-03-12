@@ -8,12 +8,12 @@ entries:
   - id: operations.mcp-integration-operations
     title: MCP Integration Operations
     path: specs/operations/mcp-integration-operations.yaml
-    status: draft
+    status: active
   - id: operations.multi-channel-platform-operations
     title: Multi-Channel Platform Operations
     path: specs/operations/multi-channel-platform-operations.yaml
-    status: draft
+    status: active
   - id: operations.platform-operations-runbooks
     title: Platform Operations Runbooks
     path: specs/operations/platform-operations-runbooks.yaml
-    status: draft
+    status: active

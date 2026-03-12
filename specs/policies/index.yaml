@@ -8,16 +8,16 @@ entries:
   - id: policy.mcp-server-governance
     title: MCP Server Governance Policy
     path: specs/policies/mcp-server-governance.yaml
-    status: draft
+    status: active
   - id: policy.provider-model-governance
     title: Provider Model Governance Policy
     path: specs/policies/provider-model-governance.yaml
-    status: draft
+    status: active
   - id: policy.subagent-orchestration-policy
     title: Subagent Orchestration Policy
     path: specs/policies/subagent-orchestration-policy.yaml
-    status: draft
+    status: active
   - id: policy.tool-loadout-policy
     title: Tool Loadout Policy
     path: specs/policies/tool-loadout-policy.yaml
-    status: draft
+    status: active

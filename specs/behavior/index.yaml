@@ -8,15 +8,15 @@ entries:
   - id: behavior.subagent-team-orchestration
     title: Subagent Team Orchestration Behavior
     path: specs/behavior/subagent-team-orchestration.yaml
-    status: draft
+    status: active
   - id: behavior.tool-loadout-execution
     title: Tool Loadout Execution Behavior
     path: specs/behavior/tool-loadout-execution.yaml
-    status: draft
+    status: active
   - id: behavior.workflow-execution-lifecycle
     title: Workflow Execution Lifecycle Behavior
     path: specs/behavior/workflow-execution-lifecycle.yaml
-    status: draft
+    status: active
   - id: behavior.session-persistence
     title: Session Persistence
     path: specs/behavior/session-persistence.yaml

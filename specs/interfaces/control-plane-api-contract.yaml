@@ -2,7 +2,7 @@ apiVersion: jdai.upss/v1
 kind: Interface
 id: interface.control-plane-api-contract
 version: 1
-status: draft
+status: active
 metadata:
   owners:
     - JerrettDavis

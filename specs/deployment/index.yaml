@@ -4,11 +4,11 @@ entries:
   - id: deployment.control-plane-deployment
     title: Control Plane Deployment
     path: specs/deployment/control-plane-deployment.yaml
-    status: draft
+    status: active
   - id: deployment.jdai-deployment-topologies
     title: JD.AI Deployment Topologies
     path: specs/deployment/jdai-deployment-topologies.yaml
-    status: draft
+    status: active
   - id: deployment.jdai-gateway
     title: JD.AI Gateway Deployment
     path: specs/deployment/examples/deployment.example.yaml

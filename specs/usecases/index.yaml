@@ -4,7 +4,7 @@ entries:
   - id: usecase.provider-model-session-management
     title: Provider and Session Model Management
     path: specs/usecases/provider-model-session-management.yaml
-    status: draft
+    status: active
   - id: usecase.provider-tool-calling-execution
     title: Execute Provider Tool Calls
     path: specs/usecases/provider-tool-calling-execution.yaml
@@ -12,11 +12,11 @@ entries:
   - id: usecase.subagent-team-orchestration
     title: Subagent Team Orchestration
     path: specs/usecases/subagent-team-orchestration.yaml
-    status: draft
+    status: active
   - id: usecase.workflow-lifecycle-execution
     title: Workflow Lifecycle Execution
     path: specs/usecases/workflow-lifecycle-execution.yaml
-    status: draft
+    status: active
   - id: usecase.start-session
     title: Start Session
     path: specs/usecases/start-session.yaml

@@ -2,7 +2,7 @@ apiVersion: jdai.upss/v1
 kind: Capability
 id: capability.workflow-authoring-execution
 version: 1
-status: draft
+status: active
 metadata:
   owners:
     - JerrettDavis
@@ -17,7 +17,9 @@ actors:
   - persona.workflow-author
   - persona.autonomous-agent
   - persona.platform-engineer
-dependencies: []
+dependencies:
+  - capability.workflow-authoring
+  - capability.workflow-execution
 relatedUseCases:
   - usecase.workflow-lifecycle-execution
 trace:

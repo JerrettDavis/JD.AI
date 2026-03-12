@@ -4,23 +4,23 @@ entries:
   - id: interface.channel-adapter-contract
     title: Channel Adapter Contract
     path: specs/interfaces/channel-adapter-contract.yaml
-    status: draft
+    status: active
   - id: interface.control-plane-api-contract
     title: Control Plane API Contract
     path: specs/interfaces/control-plane-api-contract.yaml
-    status: draft
+    status: active
   - id: interface.interface-catalog-spec
     title: Interface Catalog Specification
     path: specs/interfaces/interface-catalog-spec.yaml
-    status: draft
+    status: active
   - id: interface.mcp-server-contract
     title: MCP Server Contract
     path: specs/interfaces/mcp-server-contract.yaml
-    status: draft
+    status: active
   - id: interface.provider-abstraction-contract
     title: Provider Abstraction Contract
     path: specs/interfaces/provider-abstraction-contract.yaml
-    status: draft
+    status: active
   - id: interface.provider-tool-calling-contract
     title: Provider Tool-Calling Contract
     path: specs/interfaces/provider-tool-calling-contract.yaml

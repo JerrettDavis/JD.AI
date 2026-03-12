@@ -4,7 +4,7 @@ entries:
   - id: domain.product-core-domain-model
     title: Product Core Domain Model
     path: specs/domain/product-core-domain-model.yaml
-    status: draft
+    status: active
   - id: domain.session-management
     title: Session Management Domain Model
     path: specs/domain/examples/domain.example.yaml
@@ -12,8 +12,8 @@ entries:
   - id: domain.tool-loadout-management
     title: Tool Loadout Management Domain Model
     path: specs/domain/tool-loadout-management.yaml
-    status: draft
+    status: active
   - id: domain.workflow-execution-domain
     title: Workflow Execution Domain Model
     path: specs/domain/workflow-execution-domain.yaml
-    status: draft
+    status: active

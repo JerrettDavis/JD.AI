@@ -2,7 +2,7 @@ apiVersion: jdai.upss/v1
 kind: Behavior
 id: behavior.tool-loadout-execution
 version: 1
-status: draft
+status: active
 metadata:
   owners:
     - JerrettDavis

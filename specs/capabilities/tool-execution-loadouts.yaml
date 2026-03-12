@@ -2,7 +2,7 @@ apiVersion: jdai.upss/v1
 kind: Capability
 id: capability.tool-execution-loadouts
 version: 1
-status: draft
+status: active
 metadata:
   owners:
     - JerrettDavis
@@ -18,6 +18,9 @@ actors:
   - persona.tool-developer
   - persona.platform-engineer
 dependencies:
+  - capability.tool-execution
+  - capability.tool-loadouts
+  - capability.tool-registry
   - capability.provider-tool-calling
 relatedUseCases:
   - usecase.provider-tool-calling-execution

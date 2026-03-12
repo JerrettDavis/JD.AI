@@ -2,7 +2,7 @@ apiVersion: jdai.upss/v1
 kind: Quality
 id: quality.subagent-orchestration-quality
 version: 1
-status: draft
+status: active
 metadata:
   owners:
     - JerrettDavis

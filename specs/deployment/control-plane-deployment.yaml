@@ -2,7 +2,7 @@ apiVersion: jdai.upss/v1
 kind: Deployment
 id: deployment.control-plane-deployment
 version: 1
-status: draft
+status: active
 metadata:
   owners:
     - JerrettDavis

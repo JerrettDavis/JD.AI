@@ -2,7 +2,7 @@ apiVersion: jdai.upss/v1
 kind: Operations
 id: operations.multi-channel-platform-operations
 version: 1
-status: draft
+status: active
 metadata:
   owners:
     - JerrettDavis
