@@ -143,9 +143,35 @@ jobs:
 
       - name: Verify generated VHS outputs
         run: |
-          test -f docs/images/ci-cli-smoke.gif
-          test -f docs/images/ci-mcp-help.png
-          test -f docs/images/ci-plugin-help.png
+          expected=(
+            "docs/images/ci-cli-smoke.gif"
+            "docs/images/ci-mcp-help.png"
+            "docs/images/ci-plugin-help.png"
+          )
+
+          for attempt in $(seq 1 10); do
+            missing=()
+            for file in "${expected[@]}"; do
+              if [ ! -f "$file" ]; then
+                missing+=("$file")
+              fi
+            done
+
+            if [ ${#missing[@]} -eq 0 ]; then
+              echo "All VHS outputs found."
+              exit 0
+            fi
+
+            echo "Waiting for VHS outputs (attempt ${attempt}/10): ${missing[*]}"
+            sleep 1
+          done
+
+          echo "Missing VHS outputs after retries:"
+          for file in "${missing[@]}"; do
+            echo " - $file"
+          done
+          ls -la docs/images || true
+          exit 1
 
       - name: Upload VHS artifacts
         uses: actions/upload-artifact@v7
