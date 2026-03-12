@@ -1,0 +1,36 @@
+apiVersion: jdai.upss/v1
+kind: UseCase
+id: usecase.view-context-usage
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-usecase-architect
+  lastReviewed: "2026-03-12"
+  changeReason: Define use case for viewing context window usage in the TUI footer.
+actor: persona.terminal-operator
+capabilityRef: capability.tui-status-bar
+preconditions:
+  - The operator has an active JD.AI TUI session.
+  - The footer is enabled with the context segment visible.
+workflowSteps:
+  - FooterStateProvider reads ContextTokensUsed and ContextWindowSize from AgentSession.
+  - The context segment renders as a ratio (e.g., "12k/200k").
+  - When remaining context drops below warnThresholdPercent, a warning indicator appears.
+  - The context segment updates after each turn completes.
+expectedOutcomes:
+  - The operator can see current context usage at a glance without running a command.
+  - A visual warning appears when context is nearly exhausted, before auto-compaction triggers.
+failureScenarios:
+  - Context window size is unknown (model metadata missing) — segment shows token count only.
+trace:
+  upstream:
+    - specs/capabilities/tui-status-bar.yaml
+    - specs/capabilities/session-management.yaml
+  downstream:
+    behavior:
+      - specs/behavior/status-bar-rendering.yaml
+    testing:
+      - tests/JD.AI.Tests/Rendering/FooterStateProviderTests.cs

@@ -1,0 +1,185 @@
+apiVersion: jdai.upss/v1
+kind: Behavior
+id: behavior.status-bar-rendering
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-behavioral-spec-architect
+  lastReviewed: "2026-03-12"
+  changeReason: Specify status bar rendering behavior for the customizable footer feature.
+useCaseRef: usecase.customize-status-bar
+bddScenarios:
+  - title: Footer renders default segments on startup
+    given:
+      - The TUI session has started with default footer settings.
+    when:
+      - The terminal layout performs its first render.
+    then:
+      - The footer bar displays folder, context usage, provider, model, and turn count.
+      - The footer is fixed at the bottom of the terminal.
+
+  - title: Git branch appears when inside a git repository
+    given:
+      - The working directory is inside a git repository.
+      - The footer template includes "{branch?}".
+    when:
+      - FooterStateProvider refreshes git state.
+    then:
+      - The current branch name appears in the footer.
+
+  - title: Git branch is omitted outside a git repository
+    given:
+      - The working directory is not inside a git repository.
+      - The footer template includes "{branch?}".
+    when:
+      - FooterStateProvider refreshes git state.
+    then:
+      - The branch segment is omitted and adjacent separators collapse.
+
+  - title: PR link appears when an open PR exists
+    given:
+      - The current branch has an open pull request.
+      - The footer template includes "{pr?}".
+    when:
+      - FooterStateProvider refreshes PR state.
+    then:
+      - The PR identifier appears in the footer.
+
+  - title: Compression warning appears at threshold
+    given:
+      - Context usage exceeds (100 - warnThresholdPercent)% of the context window.
+      - The footer template includes "{compact?}".
+    when:
+      - FooterStateProvider computes context usage.
+    then:
+      - A warning indicator appears in the context segment.
+
+  - title: Custom template overrides default layout
+    given:
+      - The user has configured a custom footer template in tui-settings.json.
+    when:
+      - The footer renders.
+    then:
+      - Segments are rendered in the order and format specified by the template.
+      - Unrecognized segment keys are silently omitted.
+
+  - title: Plugin segments are rendered via hook
+    given:
+      - A plugin has registered a StatusLineUpdate hook providing a custom segment.
+    when:
+      - FooterStateProvider collects plugin segments.
+    then:
+      - The plugin segment appears in the footer at its declared position.
+
+  - title: Footer respects visibility overrides
+    given:
+      - A segment is configured with visible set to "never" in tui-settings.json.
+    when:
+      - The footer renders.
+    then:
+      - That segment is omitted regardless of template or data availability.
+
+  - title: Footer is hidden when disabled in settings
+    given:
+      - The footer.enabled setting is false in tui-settings.json.
+    when:
+      - The TUI session starts.
+    then:
+      - The footer region is not rendered.
+      - The layout allocates no space for the footer.
+
+  - title: Footer re-renders correctly after terminal resize
+    given:
+      - The footer is active and visible.
+    when:
+      - The terminal window is resized.
+    then:
+      - The layout recalculates dimensions.
+      - The footer re-renders at the new width without artifacts.
+
+  - title: Malformed template falls back to default
+    given:
+      - The user has configured a malformed footer template (e.g., unclosed braces).
+    when:
+      - FooterTemplate attempts to parse the template.
+    then:
+      - The default template is used instead.
+      - A warning is logged describing the parse failure.
+
+stateMachine:
+  initialState: Uninitialized
+  states:
+    - id: Uninitialized
+      description: Footer has not yet been rendered.
+    - id: Active
+      description: Footer is visible and updating on each refresh cycle.
+    - id: Updating
+      description: A state refresh is in progress (git, PR, plugin polling).
+    - id: Disabled
+      description: Footer is disabled via configuration.
+  transitions:
+    - from: Uninitialized
+      to: Active
+      on: layout_initialized
+      actions:
+        - Parse footer template from TuiSettings.
+        - Build initial FooterState from session and environment.
+        - Render footer bar into the layout footer region.
+    - from: Uninitialized
+      to: Disabled
+      on: footer_disabled
+      actions:
+        - Skip footer region in layout.
+    - from: Active
+      to: Updating
+      on: refresh_tick
+      actions:
+        - Rebuild FooterState from current session, git cache, and plugin hooks.
+    - from: Updating
+      to: Active
+      on: state_refreshed
+      actions:
+        - Render updated footer bar via Live.Refresh().
+    - from: Updating
+      to: Active
+      on: refresh_failed
+      actions:
+        - Log the refresh failure.
+        - Retain the previous FooterState (stale data displayed, not missing).
+    - from: Active
+      to: Disabled
+      on: footer_disabled_at_runtime
+      actions:
+        - Remove footer region from layout.
+        - Release any cached git/PR state.
+    - from: Disabled
+      to: Active
+      on: footer_enabled_at_runtime
+      actions:
+        - Re-initialize footer region in layout.
+        - Parse template and build initial FooterState.
+assertions:
+  - Conditional segments with no data are omitted without leaving orphaned separators.
+  - Footer template parsing failures fall back to the default template with a warning log.
+  - Git and PR state are cached and refreshed on configurable intervals, not on every render tick.
+  - Plugin-contributed segments cannot override built-in segment keys.
+  - Footer rendering completes within 2ms to avoid impacting the 60ms refresh cadence.
+trace:
+  upstream:
+    - specs/capabilities/tui-status-bar.yaml
+  downstream:
+    testing:
+      - tests/JD.AI.Tests/Rendering/FooterTemplateTests.cs
+      - tests/JD.AI.Tests/Rendering/FooterBarTests.cs
+      - tests/JD.AI.Tests/Rendering/FooterStateProviderTests.cs
+      - tests/JD.AI.Tests/Rendering/TerminalLayoutTests.cs
+    interfaces: []
+    code:
+      - src/JD.AI/Rendering/FooterBar.cs
+      - src/JD.AI/Rendering/FooterState.cs
+      - src/JD.AI/Rendering/FooterStateProvider.cs
+      - src/JD.AI/Rendering/FooterTemplate.cs
+      - src/JD.AI/Rendering/TerminalLayout.cs

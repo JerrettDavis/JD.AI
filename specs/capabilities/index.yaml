@@ -161,6 +161,12 @@ entries:
     path: specs/capabilities/skill-management.yaml
     status: draft
 
+  # TUI
+  - id: capability.tui-status-bar
+    title: TUI Status Bar
+    path: specs/capabilities/tui-status-bar.yaml
+    status: draft
+
   # UPSS 327-342 Composite Capability Set
   - id: capability.control-plane-management
     title: Gateway, Daemon, and Dashboard Control Plane
