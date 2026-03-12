@@ -1174,26 +1174,53 @@ public sealed class AgentLoop
         // plain text. Allow a strict fallback only for standalone payloads.
         if (ShouldEnforceStructuredToolChannel() &&
             !IsStandaloneToolCallPayload(response) &&
-            !ContainsTaggedToolPayload(response))
-            return null;
-
-        var jsonText = ExtractFirstToolCallJson(response);
-        if (jsonText is null)
+            !ContainsTaggedToolPayload(response) &&
+            !ContainsFencedShellCommandPayload(response))
             return null;
 
         try
         {
-            using var doc = JsonDocument.Parse(jsonText);
-            if (!TrySelectToolCallElement(doc.RootElement, out var toolCall))
-                return null;
+            var args = new KernelArguments();
+            var fullName = string.Empty;
 
-            if (!toolCall.TryGetProperty("name", out var nameEl) ||
-                nameEl.ValueKind != JsonValueKind.String)
-                return null;
+            var jsonText = ExtractFirstToolCallJson(response);
+            if (jsonText is not null)
+            {
+                using var doc = JsonDocument.Parse(jsonText);
+                if (!TrySelectToolCallElement(doc.RootElement, out var toolCall))
+                    return null;
 
-            var fullName = nameEl.GetString();
-            if (string.IsNullOrEmpty(fullName))
-                return null;
+                if (!toolCall.TryGetProperty("name", out var nameEl) ||
+                    nameEl.ValueKind != JsonValueKind.String)
+                    return null;
+
+                fullName = nameEl.GetString() ?? string.Empty;
+                if (string.IsNullOrEmpty(fullName))
+                    return null;
+
+                // Build arguments from the "arguments" property
+                if (TryGetToolCallArguments(toolCall, out var argsEl) &&
+                    argsEl.ValueKind == JsonValueKind.Object)
+                {
+                    foreach (var prop in argsEl.EnumerateObject())
+                    {
+                        args[prop.Name] = prop.Value.ValueKind == JsonValueKind.String
+                            ? prop.Value.GetString()
+                            : prop.Value.GetRawText();
+                    }
+                }
+            }
+            else
+            {
+                var command = ExtractFirstFencedShellCommand(response);
+                if (string.IsNullOrWhiteSpace(command))
+                    return null;
+
+                // Claude/Copilot-style fenced shell command fallback:
+                // route through canonical run_command alias + safety checks.
+                fullName = "bash";
+                args["command"] = command;
+            }
 
             // Parse "pluginName-functionName", "pluginName.functionName",
             // "pluginName/functionName", or just "functionName".
@@ -1224,19 +1251,6 @@ public sealed class AgentLoop
 
             if (func is null)
                 return null;
-
-            // Build arguments from the "arguments" property
-            var args = new KernelArguments();
-            if (TryGetToolCallArguments(toolCall, out var argsEl) &&
-                argsEl.ValueKind == JsonValueKind.Object)
-            {
-                foreach (var prop in argsEl.EnumerateObject())
-                {
-                    args[prop.Name] = prop.Value.ValueKind == JsonValueKind.String
-                        ? prop.Value.GetString()
-                        : prop.Value.GetRawText();
-                }
-            }
 
             DebugLogger.Log(DebugCategory.Agents,
                 "Intercepted text-based tool call: {0} with {1} args", fullName, args.Count);
@@ -1292,6 +1306,14 @@ public sealed class AgentLoop
     // Anthropic/Claude models may emit <tool_use> wrappers with JSON payloads.
     private static readonly Regex TaggedToolUseRegex = new(
         @"<tool_use(?:\s+[^>]*)?>\s*(?<json>(?:\{[\s\S]*?\}|\[[\s\S]*?\]))\s*</tool_use>",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    // Claude/Copilot-style shell tool blocks:
+    // ```bash
+    // ls
+    // ```
+    private static readonly Regex FencedShellCommandRegex = new(
+        @"```(?:bash|sh|shell|zsh|pwsh|powershell|ps1|cmd|bat)\s*\r?\n(?<command>[\s\S]*?)\r?\n```",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private static readonly Regex EntireFencedJsonRegex = new(
@@ -1511,6 +1533,37 @@ public sealed class AgentLoop
 
     private static bool ContainsTaggedToolPayload(string response) =>
         ContainsTaggedToolUsePayload(response) || ContainsTaggedToolCallPayload(response);
+
+    private static bool ContainsFencedShellCommandPayload(string response) =>
+        ExtractFirstFencedShellCommand(response) is not null;
+
+    internal static string? ExtractFirstFencedShellCommand(string response)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+            return null;
+
+        foreach (Match match in FencedShellCommandRegex.Matches(response))
+        {
+            var command = match.Groups["command"].Value.Trim();
+            if (string.IsNullOrWhiteSpace(command))
+                continue;
+
+            if (command.StartsWith("$ ", StringComparison.Ordinal))
+                command = command[2..].TrimStart();
+            else if (command.StartsWith("> ", StringComparison.Ordinal))
+                command = command[2..].TrimStart();
+
+            if (command.Length > 2_000)
+                continue;
+
+            if (command.Contains("```", StringComparison.Ordinal))
+                continue;
+
+            return command;
+        }
+
+        return null;
+    }
 
     private static bool TryGetToolCallArguments(
         JsonElement root, out JsonElement argumentsElement)

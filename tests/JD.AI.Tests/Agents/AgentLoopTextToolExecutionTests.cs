@@ -516,6 +516,87 @@ public sealed class AgentLoopTextToolExecutionTests
             .Should().BeFalse();
     }
 
+    [Fact]
+    public async Task RunTurnStreamingAsync_ToolCapableModel_FencedBashBlock_ExecutesFallbackToolCall()
+    {
+        var registry = Substitute.For<IProviderRegistry>();
+        var model = new ProviderModelInfo(
+            "claude-sonnet-4-6",
+            "Claude Sonnet 4.6",
+            "Claude Code",
+            Capabilities: ModelCapabilities.Chat | ModelCapabilities.ToolCalling);
+
+        const string Response = """
+            I'll check now.
+            ```bash
+            ls
+            ```
+            ```code
+            JDAI.md
+            ```
+            """;
+        const string FollowUpResponse = "Current directory contains multiple entries.";
+
+        var chatService = Substitute.For<IChatCompletionService>();
+        chatService
+            .GetStreamingChatMessageContentsAsync(
+                Arg.Any<ChatHistory>(),
+                Arg.Any<PromptExecutionSettings>(),
+                Arg.Any<Kernel>(),
+                Arg.Any<CancellationToken>())
+            .Returns(StreamOnce(Response));
+
+        chatService
+            .GetChatMessageContentsAsync(
+                Arg.Any<ChatHistory>(),
+                Arg.Any<PromptExecutionSettings?>(),
+                Arg.Any<Kernel?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new List<ChatMessageContent>
+            {
+                new(AuthorRole.Assistant, FollowUpResponse),
+            });
+
+        var executedCommands = new List<string>();
+        var builder = Kernel.CreateBuilder();
+        builder.Services.AddSingleton<IChatCompletionService>(chatService);
+        var kernel = builder.Build();
+        kernel.Plugins.AddFromFunctions("shell", [
+            KernelFunctionFactory.CreateFromMethod(
+                (string command) =>
+                {
+                    executedCommands.Add(command);
+                    return "Exit code: 0\n--- stdout ---\nfile-a\nfile-b";
+                },
+                "run_command",
+                "Execute command")
+        ]);
+
+        var session = new AgentSession(registry, kernel, model);
+        var loop = new AgentLoop(session);
+
+        var previousOutput = AgentOutput.Current;
+        var output = new NullOutput();
+        AgentOutput.Current = output;
+        try
+        {
+            var result = await loop.RunTurnStreamingAsync("Run ls");
+            result.Should().Be(FollowUpResponse);
+        }
+        finally
+        {
+            AgentOutput.Current = previousOutput;
+        }
+
+        output.ConfirmCalled.Should().BeTrue();
+        executedCommands.Should().ContainSingle().Which.Should().Be("ls");
+        session.History.Any(m =>
+            m.Role == AuthorRole.User &&
+            m.Content is not null &&
+            m.Content.Contains("Tool result for bash", StringComparison.Ordinal))
+            .Should().BeTrue();
+    }
+
     private static async IAsyncEnumerable<StreamingChatMessageContent> StreamOnce(string text)
     {
         yield return new StreamingChatMessageContent(AuthorRole.Assistant, text);
