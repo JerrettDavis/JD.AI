@@ -4,7 +4,7 @@ entries:
   - id: observability.control-plane-observability
     title: Control Plane Observability
     path: specs/observability/control-plane-observability.yaml
-    status: draft
+    status: active
   - id: observability.jdai-gateway
     title: JD.AI Gateway Observability
     path: specs/observability/examples/observability.example.yaml
@@ -12,4 +12,4 @@ entries:
   - id: observability.platform-observability-baseline
     title: Platform Observability Baseline
     path: specs/observability/platform-observability-baseline.yaml
-    status: draft
+    status: active

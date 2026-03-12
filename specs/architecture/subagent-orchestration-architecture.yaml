@@ -2,7 +2,7 @@ apiVersion: jdai.upss/v1
 kind: Architecture
 id: architecture.subagent-orchestration-architecture
 version: 1
-status: draft
+status: active
 metadata:
   owners:
     - JerrettDavis

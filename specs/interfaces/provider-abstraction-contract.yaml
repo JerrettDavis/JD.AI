@@ -2,7 +2,7 @@ apiVersion: jdai.upss/v1
 kind: Interface
 id: interface.provider-abstraction-contract
 version: 1
-status: draft
+status: active
 metadata:
   owners:
     - JerrettDavis

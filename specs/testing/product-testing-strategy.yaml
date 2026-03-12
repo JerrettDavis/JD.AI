@@ -2,7 +2,7 @@ apiVersion: jdai.upss/v1
 kind: Testing
 id: testing.product-testing-strategy
 version: 1
-status: draft
+status: active
 metadata:
   owners:
     - JerrettDavis

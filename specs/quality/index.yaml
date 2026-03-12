@@ -8,11 +8,11 @@ entries:
   - id: quality.product-quality-targets
     title: Product Quality Targets
     path: specs/quality/product-quality-targets.yaml
-    status: draft
+    status: active
   - id: quality.subagent-orchestration-quality
     title: Subagent Orchestration Quality
     path: specs/quality/subagent-orchestration-quality.yaml
-    status: draft
+    status: active
   - id: quality.session-reliability
     title: Session Reliability
     path: specs/quality/session-reliability.yaml

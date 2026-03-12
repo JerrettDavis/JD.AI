@@ -2,7 +2,7 @@ apiVersion: jdai.upss/v1
 kind: Capability
 id: capability.mcp-integration
 version: 1
-status: draft
+status: active
 metadata:
   owners:
     - JerrettDavis

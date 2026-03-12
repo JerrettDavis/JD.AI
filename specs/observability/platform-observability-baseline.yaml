@@ -2,7 +2,7 @@ apiVersion: jdai.upss/v1
 kind: Observability
 id: observability.platform-observability-baseline
 version: 1
-status: draft
+status: active
 metadata:
   owners:
     - JerrettDavis
