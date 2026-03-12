@@ -107,4 +107,12 @@ public sealed class ShellToolsTests
         // Either completes or truncates — either way, should have content
         Assert.True(result.Length > 0);
     }
+
+    [Fact]
+    public async Task RunCommand_RejectsCommandTargetingProtectedDirectory()
+    {
+        var result = await ShellTools.RunCommandAsync("cat ~/.openclaw/config.json");
+
+        Assert.Contains("protected", result, StringComparison.OrdinalIgnoreCase);
+    }
 }

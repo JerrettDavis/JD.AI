@@ -80,6 +80,10 @@ public sealed class OpenClawAgentRegistrar
     /// <summary>Prefix used to identify JD.AI-managed agents in OpenClaw config.</summary>
     public const string AgentIdPrefix = "jdai-";
 
+    /// <summary>Directory for config backups before writes.</summary>
+    public static string ConfigBackupDirectory =>
+        Path.Combine(DataDirectories.Root, "openclaw-config-backups");
+
     private static readonly JsonSerializerOptions IndentedJson = JsonDefaults.Indented;
 
     private readonly OpenClawRpcClient _rpc;
@@ -119,16 +123,20 @@ public sealed class OpenClawAgentRegistrar
                 return;
             }
 
+            // Snapshot before mutation for backup
+            var preModificationRaw = configNode.ToJsonString(IndentedJson);
+
             // Ensure agents.list exists
             EnsureAgentsList(configNode);
             var list = configNode["agents"]!["list"]!.AsArray();
 
+            var successfulIds = new List<string>();
             foreach (var agent in agentList)
             {
                 try
                 {
                     AddOrUpdateAgent(list, agent);
-                    _registeredAgentIds.Add(agent.Id);
+                    successfulIds.Add(agent.Id);
                     _logger.LogInformation(
                         "Prepared JD.AI agent '{Id}' ({Name}) for registration",
                         agent.Id, agent.Name);
@@ -140,7 +148,16 @@ public sealed class OpenClawAgentRegistrar
             }
 
             // Write the updated config atomically
-            await WriteConfigAsync(configNode, baseHash!, ct);
+            if (baseHash is null)
+            {
+                _logger.LogError("OpenClaw config hash is null — cannot write safely");
+                return;
+            }
+
+            await WriteConfigAsync(configNode, baseHash, preModificationRaw, ct);
+
+            // Only track as registered AFTER successful write
+            _registeredAgentIds.AddRange(successfulIds);
 
             // Register channel bindings for the agents
             await RegisterBindingsAsync(agentList, ct);
@@ -174,6 +191,9 @@ public sealed class OpenClawAgentRegistrar
             var (configNode, baseHash) = await ReadConfigAsync(ct);
             if (configNode is null)
                 return;
+
+            // Snapshot before mutation for backup
+            var preModificationRaw = configNode.ToJsonString(IndentedJson);
 
             var list = configNode["agents"]?["list"]?.AsArray();
             if (list is null)
@@ -214,8 +234,8 @@ public sealed class OpenClawAgentRegistrar
             if (list.Count == 0)
                 configNode["agents"]!.AsObject().Remove("list");
 
-            if (removed > 0)
-                await WriteConfigAsync(configNode, baseHash!, ct);
+            if (baseHash is not null && removed > 0)
+                await WriteConfigAsync(configNode, baseHash, preModificationRaw, ct);
         }
         catch (Exception ex)
         {
@@ -246,6 +266,9 @@ public sealed class OpenClawAgentRegistrar
         var (configNode, baseHash) = await ReadConfigAsync(ct);
         if (configNode is null)
             return;
+
+        // Snapshot before mutation for backup
+        var preModificationRaw = configNode.ToJsonString(IndentedJson);
 
         // Ensure top-level bindings array
         if (configNode["bindings"] is null)
@@ -288,7 +311,10 @@ public sealed class OpenClawAgentRegistrar
                 binding.Channel, agentId);
         }
 
-        await WriteConfigAsync(configNode, baseHash!, ct);
+        if (baseHash is null)
+            return;
+
+        await WriteConfigAsync(configNode, baseHash, preModificationRaw, ct);
     }
 
     /// <summary>
@@ -314,8 +340,41 @@ public sealed class OpenClawAgentRegistrar
     /// <summary>
     /// Writes the full config back to OpenClaw with optimistic concurrency.
     /// </summary>
-    internal async Task WriteConfigAsync(JsonNode config, string baseHash, CancellationToken ct)
+    /// <param name="config">The modified config to write.</param>
+    /// <param name="baseHash">Hash from the original <c>config.get</c> for optimistic concurrency.</param>
+    /// <param name="preModificationRaw">
+    /// Serialized JSON of the config <b>before</b> mutation, used for backup.
+    /// Callers should serialize the config immediately after reading it, before any changes.
+    /// </param>
+    /// <param name="ct">Cancellation token.</param>
+    internal async Task WriteConfigAsync(
+        JsonNode config, string baseHash, string? preModificationRaw, CancellationToken ct)
     {
+        // Backup the pre-modification config (no extra RPC needed)
+        if (preModificationRaw is not null)
+        {
+            try
+            {
+                var backupDir = ConfigBackupDirectory;
+                Directory.CreateDirectory(backupDir);
+                var backupFile = Path.Combine(backupDir,
+                    $"config-{DateTime.UtcNow:yyyyMMdd-HHmmss-fff}.json");
+                await File.WriteAllTextAsync(backupFile, preModificationRaw, ct);
+
+                // Keep only last 10 backups
+                var backups = Directory.GetFiles(backupDir, "config-*.json")
+                    .OrderByDescending(f => f)
+                    .Skip(10)
+                    .ToArray();
+                foreach (var old in backups)
+                    File.Delete(old);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to backup config before write — proceeding anyway");
+            }
+        }
+
         var raw = config.ToJsonString(IndentedJson);
         var response = await _rpc.RequestAsync("config.set", new { raw, baseHash }, ct);
 
@@ -338,18 +397,7 @@ public sealed class OpenClawAgentRegistrar
 
     private void AddOrUpdateAgent(JsonArray list, JdAiAgentDefinition agent)
     {
-        // Remove existing entry if present (for update)
-        for (var i = list.Count - 1; i >= 0; i--)
-        {
-            if (string.Equals(list[i]?["id"]?.GetValue<string>(), agent.Id, StringComparison.Ordinal))
-            {
-                list.RemoveAt(i);
-                _logger.LogDebug("Replacing existing agent '{Id}' in OpenClaw", agent.Id);
-                break;
-            }
-        }
-
-        // Build the agent entry matching OpenClaw's strict schema
+        // Build the new entry FIRST — if this throws, the list is untouched
         var entry = new JsonObject
         {
             ["id"] = agent.Id,
@@ -369,6 +417,18 @@ public sealed class OpenClawAgentRegistrar
             entry["model"] = agent.Model;
         }
 
+        // Now that entry is fully built, replace in-place or append
+        for (var i = list.Count - 1; i >= 0; i--)
+        {
+            if (string.Equals(list[i]?["id"]?.GetValue<string>(), agent.Id, StringComparison.Ordinal))
+            {
+                list[i] = entry; // Atomic replace — no window where entry is missing
+                _logger.LogDebug("Replaced existing agent '{Id}' in OpenClaw", agent.Id);
+                return;
+            }
+        }
+
+        // No existing entry — append
         list.Add(entry);
     }
 
