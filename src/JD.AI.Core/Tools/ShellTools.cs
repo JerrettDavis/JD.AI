@@ -145,12 +145,8 @@ public sealed class ShellTools
 
     private static (string FileName, string Arguments) BuildCmdInvocation(string command)
     {
-        // Common Unix-style command used by models; map to cmd-compatible form.
-        if (OperatingSystem.IsWindows() &&
-            string.Equals(command, "pwd", StringComparison.OrdinalIgnoreCase))
-        {
-            command = "cd";
-        }
+        if (OperatingSystem.IsWindows())
+            command = NormalizeUnixLikeCommandForCmd(command);
 
         return ("cmd.exe", $"/c {command}");
     }
@@ -160,7 +156,11 @@ public sealed class ShellTools
         string command)
     {
         if (OperatingSystem.IsWindows())
+        {
+            if (IsCmdExecutable(executable))
+                command = NormalizeUnixLikeCommandForCmd(command);
             return (executable, $"/c {command}");
+        }
 
         return (executable, $"-c \"{EscapeForDoubleQuotedArg(command)}\"");
     }
@@ -215,4 +215,72 @@ public sealed class ShellTools
 
     private static string EscapeForDoubleQuotedArg(string value) =>
         value.Replace("\"", "\\\"", StringComparison.Ordinal);
+
+    internal static string NormalizeUnixLikeCommandForCmd(string command)
+    {
+        if (string.IsNullOrWhiteSpace(command))
+            return command;
+
+        var trimmed = command.Trim();
+        if (string.Equals(trimmed, "pwd", StringComparison.OrdinalIgnoreCase))
+            return "cd";
+
+        if (trimmed.StartsWith("which ", StringComparison.OrdinalIgnoreCase))
+            return "where " + trimmed["which ".Length..];
+
+        if (trimmed.StartsWith("cat ", StringComparison.OrdinalIgnoreCase))
+            return "type " + trimmed["cat ".Length..];
+
+        if (trimmed.StartsWith("clear", StringComparison.OrdinalIgnoreCase))
+            return "cls";
+
+        if (trimmed.Equals("ls", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.StartsWith("ls ", StringComparison.OrdinalIgnoreCase))
+        {
+            return ConvertLsToDir(trimmed);
+        }
+
+        return command;
+    }
+
+    private static string ConvertLsToDir(string command)
+    {
+        var argText = command.Length <= 2 ? string.Empty : command[2..].Trim();
+        if (string.IsNullOrWhiteSpace(argText))
+            return "dir";
+
+        var args = argText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var dirSwitches = new List<string>();
+        var pathArgs = new List<string>();
+
+        foreach (var arg in args)
+        {
+            if (arg.StartsWith('-'))
+            {
+                if (arg.Contains('a', StringComparison.OrdinalIgnoreCase))
+                    dirSwitches.Add("/a");
+                continue;
+            }
+
+            pathArgs.Add(arg);
+        }
+
+        if (dirSwitches.Count == 0 && pathArgs.Count == 0)
+            return "dir";
+
+        var parts = new List<string> { "dir" };
+        parts.AddRange(dirSwitches.Distinct(StringComparer.OrdinalIgnoreCase));
+        parts.AddRange(pathArgs);
+        return string.Join(' ', parts);
+    }
+
+    private static bool IsCmdExecutable(string executable)
+    {
+        if (string.IsNullOrWhiteSpace(executable))
+            return false;
+
+        var fileName = Path.GetFileName(executable);
+        return string.Equals(fileName, "cmd", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(fileName, "cmd.exe", StringComparison.OrdinalIgnoreCase);
+    }
 }
