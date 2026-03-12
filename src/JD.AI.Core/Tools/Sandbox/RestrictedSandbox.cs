@@ -37,10 +37,9 @@ public sealed class RestrictedSandbox : ISandbox
         int timeoutSeconds = 60,
         CancellationToken ct = default)
     {
-        var lowerCmd = command.ToLowerInvariant();
         foreach (var pattern in BlockedPatterns)
         {
-            if (lowerCmd.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+            if (command.Contains(pattern, StringComparison.OrdinalIgnoreCase))
             {
                 return new SandboxResult(-1, "", $"Blocked: command matches dangerous pattern '{pattern}'", TimedOut: false);
             }
@@ -48,7 +47,7 @@ public sealed class RestrictedSandbox : ISandbox
 
         foreach (var pattern in PathGuard.ProtectedCommandPatterns.Value)
         {
-            if (lowerCmd.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+            if (command.Contains(pattern, StringComparison.OrdinalIgnoreCase))
             {
                 return new SandboxResult(-1, "", $"Blocked: command references protected directory '{pattern}'", TimedOut: false);
             }

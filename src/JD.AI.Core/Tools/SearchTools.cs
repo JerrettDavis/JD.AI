@@ -59,7 +59,12 @@ public sealed class SearchTools
                 break;
             }
 
-            // Skip binary/hidden
+            // Skip protected/binary/hidden
+            if (PathGuard.IsProtected(file))
+            {
+                continue;
+            }
+
             var name = Path.GetFileName(file);
             if (name.StartsWith('.') || IsBinaryExtension(Path.GetExtension(file)))
             {
@@ -124,6 +129,7 @@ public sealed class SearchTools
 
         // Simple glob implementation— convert ** and * to search patterns
         var files = Directory.GetFiles(dir, "*", SearchOption.AllDirectories)
+            .Where(f => !PathGuard.IsProtected(f))
             .Select(f => Path.GetRelativePath(dir, f))
             .Where(f => MatchGlob(f, pattern))
             .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)

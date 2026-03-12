@@ -231,12 +231,12 @@ public sealed class MigrationTools
     public static string ConvertInstructions(
         [Description("Path to CLAUDE.md file, or content directly")] string input)
     {
-        if (File.Exists(input) && PathGuard.IsProtected(input))
-            return OutputFormatter.Error($"Access denied: '{input}' is inside a protected directory.");
-
         string content;
         if (File.Exists(input))
         {
+            if (PathGuard.IsProtected(input))
+                return OutputFormatter.Error($"Access denied: '{input}' is inside a protected directory.");
+
             content = File.ReadAllText(input);
         }
         else
