@@ -145,12 +145,41 @@ internal static class ProviderOrchestrator
         var defaultProvider = await configStore.GetDefaultProviderAsync(projectPath).ConfigureAwait(false);
         var defaultModel = await configStore.GetDefaultModelAsync(projectPath).ConfigureAwait(false);
 
-        if (!opts.PrintMode)
-            AnsiConsole.MarkupLine("[dim]Detecting providers...[/]");
-
         var (registry, providerConfig, metadataProvider) = CreateRegistry();
         var router = RouterFactory();
         var routingPolicy = BuildRoutingPolicy(opts);
+
+        // Startup fast path: trust persisted provider+model defaults and skip provider probing.
+        if (opts.CliModel is null
+            && opts.CliProvider is null
+            && !string.IsNullOrWhiteSpace(defaultProvider)
+            && !string.IsNullOrWhiteSpace(defaultModel))
+        {
+            var configuredModel = new ProviderModelInfo(
+                defaultModel,
+                defaultModel,
+                defaultProvider);
+
+            try
+            {
+                var kernelConfigured = registry.BuildKernel(configuredModel);
+                return new ProviderSetup(
+                    registry,
+                    providerConfig,
+                    metadataProvider,
+                    [configuredModel],
+                    configuredModel,
+                    [],
+                    kernelConfigured);
+            }
+            catch (InvalidOperationException)
+            {
+                // Unknown provider name persisted in config; fall through to active detection.
+            }
+        }
+
+        if (!opts.PrintMode)
+            AnsiConsole.MarkupLine("[dim]Detecting providers...[/]");
 
         // Fast path: prefer the persisted provider/model and refresh auth only for that provider.
         if (opts.CliModel is null

@@ -52,7 +52,7 @@ public sealed class ProviderOrchestratorStartupTests : IDisposable
         Assert.Equal("preferred-model", setup!.SelectedModel.Id);
         Assert.Single(setup.AllModels);
         Assert.Equal("Preferred", setup.SelectedModel.ProviderName);
-        Assert.Equal(1, preferred.DetectCount);
+        Assert.Equal(0, preferred.DetectCount);
         Assert.Equal(0, secondary.DetectCount);
     }
 
@@ -64,7 +64,6 @@ public sealed class ProviderOrchestratorStartupTests : IDisposable
 
         using var configStore = new AtomicConfigStore(_fixture.GetPath("config-fallback.json"));
         await configStore.SetDefaultProviderAsync("Preferred", projectPath);
-        await configStore.SetDefaultModelAsync("preferred-model", projectPath);
 
         var preferred = new FakeDetector(
             "Preferred",
