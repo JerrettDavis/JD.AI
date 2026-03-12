@@ -2,7 +2,7 @@ apiVersion: jdai.upss/v1
 kind: Capability
 id: capability.multi-channel-platform
 version: 1
-status: draft
+status: active
 metadata:
   owners:
     - JerrettDavis
@@ -18,6 +18,8 @@ actors:
   - persona.platform-engineer
   - persona.terminal-operator
 dependencies:
+  - capability.multi-channel-interaction
+  - capability.messaging-adapters
   - capability.provider-model-management
 relatedUseCases: []
 trace:

@@ -2,7 +2,7 @@ apiVersion: jdai.upss/v1
 kind: Capability
 id: capability.control-plane-management
 version: 1
-status: draft
+status: active
 metadata:
   owners:
     - JerrettDavis
@@ -17,6 +17,8 @@ actors:
   - persona.platform-engineer
   - persona.governance-admin
 dependencies:
+  - capability.gateway-control-plane
+  - capability.dashboard-ui
   - capability.multi-channel-platform
 relatedUseCases: []
 trace:

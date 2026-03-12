@@ -2,7 +2,7 @@ apiVersion: jdai.upss/v1
 kind: Domain
 id: domain.product-core-domain-model
 version: 1
-status: draft
+status: active
 metadata:
   owners:
     - JerrettDavis

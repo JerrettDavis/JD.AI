@@ -2,7 +2,7 @@ apiVersion: jdai.upss/v1
 kind: Capability
 id: capability.subagent-team-orchestration
 version: 1
-status: draft
+status: active
 metadata:
   owners:
     - JerrettDavis
@@ -17,7 +17,9 @@ actors:
   - persona.autonomous-agent
   - persona.platform-engineer
   - persona.terminal-operator
-dependencies: []
+dependencies:
+  - capability.subagents
+  - capability.team-orchestration
 relatedUseCases:
   - usecase.subagent-team-orchestration
 trace:

@@ -2,7 +2,7 @@ apiVersion: jdai.upss/v1
 kind: Governance
 id: governance.product-governance-model
 version: 1
-status: draft
+status: active
 metadata:
   owners:
     - JerrettDavis
