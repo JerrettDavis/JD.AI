@@ -1174,7 +1174,7 @@ public sealed class AgentLoop
         // plain text. Allow a strict fallback only for standalone payloads.
         if (ShouldEnforceStructuredToolChannel() &&
             !IsStandaloneToolCallPayload(response) &&
-            !ShouldAllowTaggedToolUseFallback(response))
+            !ContainsTaggedToolPayload(response))
             return null;
 
         var jsonText = ExtractFirstToolCallJson(response);
@@ -1277,18 +1277,6 @@ public sealed class AgentLoop
 
     private bool ShouldEnforceStructuredToolChannel() =>
         _session.CurrentModel?.Capabilities.HasFlag(ModelCapabilities.ToolCalling) ?? false;
-
-    private bool ShouldAllowTaggedToolUseFallback(string response)
-    {
-        var provider = _session.CurrentModel?.ProviderName ?? string.Empty;
-        if (!provider.Contains("anthropic", StringComparison.OrdinalIgnoreCase) &&
-            !provider.Contains("claude", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        return ContainsTaggedToolUsePayload(response);
-    }
 
     // Compiled regex for fenced JSON blocks (e.g. ```json\n{...}\n```)
     private static readonly Regex FencedJsonRegex = new(
@@ -1505,6 +1493,24 @@ public sealed class AgentLoop
 
         return false;
     }
+
+    private static bool ContainsTaggedToolCallPayload(string response)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+            return false;
+
+        foreach (Match m in TaggedToolCallRegex.Matches(response))
+        {
+            var candidate = m.Groups["json"].Value.Trim();
+            if (LooksLikeToolCall(candidate))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool ContainsTaggedToolPayload(string response) =>
+        ContainsTaggedToolUsePayload(response) || ContainsTaggedToolCallPayload(response);
 
     private static bool TryGetToolCallArguments(
         JsonElement root, out JsonElement argumentsElement)
