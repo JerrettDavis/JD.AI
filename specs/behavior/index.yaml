@@ -33,3 +33,7 @@ entries:
     title: Context Transformation
     path: specs/behavior/context-transformation.yaml
     status: draft
+  - id: behavior.status-bar-rendering
+    title: Status Bar Rendering
+    path: specs/behavior/status-bar-rendering.yaml
+    status: draft

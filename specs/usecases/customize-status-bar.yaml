@@ -1,0 +1,40 @@
+apiVersion: jdai.upss/v1
+kind: UseCase
+id: usecase.customize-status-bar
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-usecase-architect
+  lastReviewed: "2026-03-12"
+  changeReason: Define use case for customizing the TUI status bar footer.
+actor: persona.terminal-operator
+capabilityRef: capability.tui-status-bar
+preconditions:
+  - The operator has a JD.AI TUI session running.
+  - The tui-settings.json file is accessible at ~/.jdai/tui-settings.json.
+workflowSteps:
+  - Operator edits the footer section in tui-settings.json (or uses a slash command).
+  - On next session start (or live reload), TuiSettings loads the footer configuration.
+  - FooterTemplate parses the configured template string into segment tokens.
+  - FooterStateProvider resolves each segment using session state, git info, and plugin hooks.
+  - FooterBar renders the resolved segments into the terminal layout footer region.
+expectedOutcomes:
+  - The footer displays only the segments specified in the template.
+  - Conditional segments appear or hide based on their visibility rules.
+  - Plugin-contributed segments are rendered at their declared positions.
+  - Invalid templates fall back to the default template with a warning.
+failureScenarios:
+  - Template string contains unrecognized segment keys — they are silently omitted.
+  - Template string is malformed — fallback to default template, warning logged.
+  - Plugin hook returns invalid segment data — segment omitted, error logged.
+trace:
+  upstream:
+    - specs/capabilities/tui-status-bar.yaml
+  downstream:
+    behavior:
+      - specs/behavior/status-bar-rendering.yaml
+    testing:
+      - tests/JD.AI.Tests/Rendering/FooterTemplateTests.cs

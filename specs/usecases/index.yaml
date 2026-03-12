@@ -37,3 +37,11 @@ entries:
     title: Recover Interrupted Conversation
     path: specs/usecases/recover-interrupted-conversation.yaml
     status: draft
+  - id: usecase.customize-status-bar
+    title: Customize Status Bar
+    path: specs/usecases/customize-status-bar.yaml
+    status: draft
+  - id: usecase.view-context-usage
+    title: View Context Usage
+    path: specs/usecases/view-context-usage.yaml
+    status: draft

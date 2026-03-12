@@ -1,0 +1,46 @@
+apiVersion: jdai.upss/v1
+kind: Capability
+id: capability.tui-status-bar
+version: 1
+status: draft
+metadata:
+  owners:
+    - JerrettDavis
+  reviewers:
+    - upss-capability-map-architect
+  lastReviewed: "2026-03-12"
+  changeReason: Define TUI status bar capability for customizable persistent footer.
+name: TUI Status Bar
+description: >-
+  Provide a persistent, customizable status bar at the bottom of the terminal UI
+  that displays session context (working directory, git branch, PR link, context usage,
+  provider, model, turn count) with templateable layout, contextual visibility rules,
+  and plugin extensibility via hook-contributed segments.
+maturity: emerging
+actors:
+  - persona.terminal-operator
+  - persona.platform-engineer
+dependencies:
+  - capability.session-management
+  - capability.agent-conversation
+  - capability.plugin-system
+relatedUseCases:
+  - usecase.customize-status-bar
+  - usecase.view-context-usage
+trace:
+  visionRefs:
+    - vision.jdai.product
+  upstream:
+    - specs/vision/jdai-product-vision.yaml
+    - specs/capabilities/session-management.yaml
+    - specs/capabilities/plugin-system.yaml
+  downstream:
+    useCases:
+      - usecase.customize-status-bar
+      - usecase.view-context-usage
+    architecture:
+      - docs/superpowers/specs/2026-03-12-customizable-footer-design.md
+    testing:
+      - tests/JD.AI.Tests/Rendering/FooterTemplateTests.cs
+      - tests/JD.AI.Tests/Rendering/FooterBarTests.cs
+      - tests/JD.AI.Tests/Rendering/FooterStateProviderTests.cs
