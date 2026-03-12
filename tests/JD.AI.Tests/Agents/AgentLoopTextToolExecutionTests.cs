@@ -91,7 +91,7 @@ public sealed class AgentLoopTextToolExecutionTests
     }
 
     [Fact]
-    public async Task RunTurnStreamingAsync_ToolCapableModel_DoesNotExecuteTaggedTextToolCall()
+    public async Task RunTurnStreamingAsync_ToolCapableModel_ExecutesTaggedToolCallFallback()
     {
         var registry = Substitute.For<IProviderRegistry>();
         var model = new ProviderModelInfo(
@@ -103,7 +103,9 @@ public sealed class AgentLoopTextToolExecutionTests
         const string Response = """
             Let me check.
             <tool_call> {"name": "run_command", "arguments": {"command": "cd"}} </tool_call>
+            <tool_response> Exit code: 0 --- stdout --- C:\Users\user\project </tool_response>
             """;
+        const string FollowUpResponse = "Current directory resolved.";
 
         var chatService = Substitute.For<IChatCompletionService>();
         chatService
@@ -113,6 +115,17 @@ public sealed class AgentLoopTextToolExecutionTests
                 Arg.Any<Kernel>(),
                 Arg.Any<CancellationToken>())
             .Returns(StreamOnce(Response));
+
+        chatService
+            .GetChatMessageContentsAsync(
+                Arg.Any<ChatHistory>(),
+                Arg.Any<PromptExecutionSettings?>(),
+                Arg.Any<Kernel?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new List<ChatMessageContent>
+            {
+                new(AuthorRole.Assistant, FollowUpResponse),
+            });
 
         var executedCommands = new List<string>();
         var builder = Kernel.CreateBuilder();
@@ -133,22 +146,25 @@ public sealed class AgentLoopTextToolExecutionTests
         var loop = new AgentLoop(session);
 
         var previousOutput = AgentOutput.Current;
-        AgentOutput.Current = new NullOutput();
+        var output = new NullOutput();
+        AgentOutput.Current = output;
         try
         {
-            _ = await loop.RunTurnStreamingAsync("What folder are we running in?");
+            var result = await loop.RunTurnStreamingAsync("What folder are we running in?");
+            result.Should().Be(FollowUpResponse);
         }
         finally
         {
             AgentOutput.Current = previousOutput;
         }
 
-        executedCommands.Should().BeEmpty();
+        output.ConfirmCalled.Should().BeTrue();
+        executedCommands.Should().ContainSingle().Which.Should().Be("cd");
         session.History.Any(m =>
             m.Role == AuthorRole.User &&
             m.Content is not null &&
             m.Content.Contains("Tool result for run_command", StringComparison.Ordinal))
-            .Should().BeFalse();
+            .Should().BeTrue();
     }
 
     [Fact]
@@ -232,7 +248,7 @@ public sealed class AgentLoopTextToolExecutionTests
     }
 
     [Fact]
-    public async Task RunTurnStreamingAsync_ToolCapableNonClaudeModel_DoesNotExecuteTaggedToolUseFallback()
+    public async Task RunTurnStreamingAsync_ToolCapableNonClaudeModel_ExecutesTaggedToolUseFallback()
     {
         var registry = Substitute.For<IProviderRegistry>();
         var model = new ProviderModelInfo(
@@ -276,7 +292,8 @@ public sealed class AgentLoopTextToolExecutionTests
         var loop = new AgentLoop(session);
 
         var previousOutput = AgentOutput.Current;
-        AgentOutput.Current = new NullOutput();
+        var output = new NullOutput();
+        AgentOutput.Current = output;
         try
         {
             _ = await loop.RunTurnStreamingAsync("Run ls");
@@ -286,12 +303,82 @@ public sealed class AgentLoopTextToolExecutionTests
             AgentOutput.Current = previousOutput;
         }
 
-        executedCommands.Should().BeEmpty();
+        output.ConfirmCalled.Should().BeTrue();
+        executedCommands.Should().ContainSingle().Which.Should().Be("cd");
         session.History.Any(m =>
             m.Role == AuthorRole.User &&
             m.Content is not null &&
             m.Content.Contains("Tool result for run_command", StringComparison.Ordinal))
-            .Should().BeFalse();
+            .Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RunTurnAsync_ToolCapableModel_ExecutesTaggedToolCallFallback()
+    {
+        var registry = Substitute.For<IProviderRegistry>();
+        var model = new ProviderModelInfo(
+            "test-model",
+            "Test",
+            "TestProvider",
+            Capabilities: ModelCapabilities.Chat | ModelCapabilities.ToolCalling);
+
+        const string FirstResponse = """
+            I'll run ls for you.
+            <tool_call>
+            {"name":"run_command","arguments":{"command":"cd"}}
+            </tool_call>
+            """;
+        const string FollowUpResponse = "Current directory resolved.";
+
+        var chatService = Substitute.For<IChatCompletionService>();
+        chatService
+            .GetChatMessageContentsAsync(
+                Arg.Any<ChatHistory>(),
+                Arg.Any<PromptExecutionSettings?>(),
+                Arg.Any<Kernel?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(
+                new List<ChatMessageContent> { new(AuthorRole.Assistant, FirstResponse) },
+                new List<ChatMessageContent> { new(AuthorRole.Assistant, FollowUpResponse) });
+
+        var executedCommands = new List<string>();
+        var builder = Kernel.CreateBuilder();
+        builder.Services.AddSingleton<IChatCompletionService>(chatService);
+        var kernel = builder.Build();
+        kernel.Plugins.AddFromFunctions("shell", [
+            KernelFunctionFactory.CreateFromMethod(
+                (string command) =>
+                {
+                    executedCommands.Add(command);
+                    return "Exit code: 0\n--- stdout ---\nC:\\Users\\jd";
+                },
+                "run_command",
+                "Execute command")
+        ]);
+
+        var session = new AgentSession(registry, kernel, model);
+        var loop = new AgentLoop(session);
+
+        var previousOutput = AgentOutput.Current;
+        var output = new NullOutput();
+        AgentOutput.Current = output;
+        try
+        {
+            var result = await loop.RunTurnAsync("Run ls");
+            result.Should().Be(FollowUpResponse);
+        }
+        finally
+        {
+            AgentOutput.Current = previousOutput;
+        }
+
+        output.ConfirmCalled.Should().BeTrue();
+        executedCommands.Should().ContainSingle().Which.Should().Be("cd");
+        session.History.Any(m =>
+            m.Role == AuthorRole.User &&
+            m.Content is not null &&
+            m.Content.Contains("Tool result for run_command", StringComparison.Ordinal))
+            .Should().BeTrue();
     }
 
     [Fact]
