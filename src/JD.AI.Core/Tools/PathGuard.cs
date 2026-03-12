@@ -46,6 +46,8 @@ public static class PathGuard
         var patterns = new List<string>
         {
             "~/.openclaw",
+            "$HOME/.openclaw",
+            "%USERPROFILE%\\.openclaw",
             ".openclaw/",
             ".openclaw\\",
         };
@@ -73,11 +75,9 @@ public static class PathGuard
     /// </summary>
     public static bool ContainsProtectedPath(string commandText)
     {
-        var lower = commandText.ToLowerInvariant();
-
         foreach (var pattern in ProtectedCommandPatterns.Value)
         {
-            if (lower.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+            if (commandText.Contains(pattern, StringComparison.OrdinalIgnoreCase))
                 return true;
         }
 
