@@ -105,10 +105,7 @@ internal sealed class InteractiveLoop
         // Input with command completions
         var completionProvider = new CompletionProvider();
         SlashCommandCatalog.RegisterCompletions(completionProvider);
-        var interactiveInput = new InteractiveInput(completionProvider)
-        {
-            VimModeEnabled = tuiSettings.VimMode,
-        };
+        var interactiveInput = new InteractiveInput(completionProvider) { VimModeEnabled = tuiSettings.VimMode, };
 
         // Workflow store and slash command router
         var workflowStoreUrl = Environment.GetEnvironmentVariable("JDAI_WORKFLOW_STORE_URL");
@@ -121,10 +118,10 @@ internal sealed class InteractiveLoop
         // Wire workflow capture callback so AgentLoop can save captured workflows
         _session.SaveCapturedWorkflowAsync = async (name, steps, ct) =>
         {
-            var wfSteps = steps
-                .Select(s => AgentStepDefinition.InvokeTool(
-                    WorkflowGenerator.DeriveToolStepName(s.ToolName), s.ToolName))
-                .ToList();
+            var wfSteps = steps.Select(s => AgentStepDefinition.InvokeTool(
+                    WorkflowGenerator.DeriveToolStepName(s.ToolName),
+                    s.ToolName)).
+                ToList();
 
             var workflow = new AgentWorkflowDefinition
             {
@@ -141,8 +138,7 @@ internal sealed class InteractiveLoop
         using var searchHttp = new HttpClient();
         var modelSearchAggregator = new ModelSearchAggregator(new IRemoteModelSearch[]
         {
-            new OllamaModelSearch(searchHttp),
-            new HuggingFaceModelSearch(searchHttp),
+            new OllamaModelSearch(searchHttp), new HuggingFaceModelSearch(searchHttp),
             new FoundryLocalModelSearch(),
         });
 
@@ -151,6 +147,7 @@ internal sealed class InteractiveLoop
         _session.UsageMeter = usageMeter;
 
         string GetSkillsStatus() => _skillLifecycleManager.FormatStatusReport();
+
         string ReloadSkills()
         {
             _refreshSkills(true);
@@ -158,7 +155,10 @@ internal sealed class InteractiveLoop
         }
 
         var commandRouter = new SlashCommandRouter(
-            _session, _registry, _governance.Instructions, _governance.CheckpointStrategy,
+            _session,
+            _registry,
+            _governance.Instructions,
+            _governance.CheckpointStrategy,
             pluginLoader: _pluginLoader,
             pluginManager: _pluginManager,
             workflowCatalog: workflowCatalog,
@@ -186,17 +186,13 @@ internal sealed class InteractiveLoop
         // Welcome banner
         var welcomeSettings = WelcomePanelSettings.Normalize(tuiSettings.Welcome);
         var indicators = welcomeSettings.ShowServices
-            ? await WelcomeServiceStatusProbe
-                .ProbeSafeAsync(_opts)
-                .ConfigureAwait(false)
+            ? await WelcomeServiceStatusProbe.ProbeSafeAsync(_opts).ConfigureAwait(false)
             : [];
 
         var shouldFetchMotd = welcomeSettings.ShowMotd
-            && !string.IsNullOrWhiteSpace(welcomeSettings.MotdUrl);
+                              && !string.IsNullOrWhiteSpace(welcomeSettings.MotdUrl);
         var motd = shouldFetchMotd
-            ? await WelcomeMotdProvider
-                .TryGetMotdAsync(welcomeSettings)
-                .ConfigureAwait(false)
+            ? await WelcomeMotdProvider.TryGetMotdAsync(welcomeSettings).ConfigureAwait(false)
             : null;
         var bannerDetails = new WelcomeBannerDetails(
             WorkingDirectory: Directory.GetCurrentDirectory(),
@@ -216,7 +212,10 @@ internal sealed class InteractiveLoop
 
         // Main loop
         return await RunMainLoopAsync(
-            commandRouter, interactiveInput, spectreOutput).ConfigureAwait(false);
+                commandRouter,
+                interactiveInput,
+                spectreOutput).
+            ConfigureAwait(false);
     }
 
     private static void WireEventHooks(
@@ -282,7 +281,7 @@ internal sealed class InteractiveLoop
         var compactionMode = tuiSettings.SystemPromptCompaction;
 
         var shouldCompact = compactionMode == SystemPromptCompaction.Always
-            || (compactionMode == SystemPromptCompaction.Auto && systemPromptTokens > budgetTokens);
+                            || (compactionMode == SystemPromptCompaction.Auto && systemPromptTokens > budgetTokens);
 
         if (shouldCompact)
         {
@@ -340,7 +339,10 @@ internal sealed class InteractiveLoop
                     monitor.CancelTurn();
                 }
 #pragma warning disable CA1031
-                catch { /* monitor may already be disposed */ }
+                catch
+                {
+                    /* monitor may already be disposed */
+                }
 #pragma warning restore CA1031
                 return;
             }
@@ -349,9 +351,15 @@ internal sealed class InteractiveLoop
             if (now - lastCtrlCTime <= ctrlCWindow)
             {
                 e.Cancel = false;
-                try { appCts.Cancel(); }
+                try
+                {
+                    appCts.Cancel();
+                }
 #pragma warning disable CA1031
-                catch { /* already disposed/cancelled */ }
+                catch
+                {
+                    /* already disposed/cancelled */
+                }
 #pragma warning restore CA1031
                 return;
             }
@@ -369,7 +377,7 @@ internal sealed class InteractiveLoop
             {
                 ChatRenderer.RenderModeBar(_session.PermissionMode);
             }
-            RenderFooter();
+
             var inputResult = ChatRenderer.ReadInputStructured(interactiveInput);
             if (inputResult is null) continue;
 
@@ -393,7 +401,8 @@ internal sealed class InteractiveLoop
                     ChatRenderer.RenderInfo($"$ {bashCmd}");
                     try
                     {
-                        var bashResult = await JD.AI.Core.Tools.ShellTools.RunCommandAsync(bashCmd).ConfigureAwait(false);
+                        var bashResult = await JD.AI.Core.Tools.ShellTools.RunCommandAsync(bashCmd).
+                            ConfigureAwait(false);
                         Console.WriteLine(bashResult);
                         _session.History.AddUserMessage($"[Shell command: {bashCmd}]\n{bashResult}");
                     }
@@ -427,9 +436,7 @@ internal sealed class InteractiveLoop
                     break;
                 }
 
-                var cmdResult = await commandRouter
-                    .ExecuteAsync(typedText, appCts.Token)
-                    .ConfigureAwait(false);
+                var cmdResult = await commandRouter.ExecuteAsync(typedText, appCts.Token).ConfigureAwait(false);
                 if (cmdResult != null)
                     ChatRenderer.RenderInfo(cmdResult);
                 continue;
@@ -438,7 +445,12 @@ internal sealed class InteractiveLoop
             // Regular chat message
             ChatRenderer.DimInputLine(input);
             await RunAgentTurnLoopAsync(
-                agentLoop, input, appCts, spectreOutput, monitorBox).ConfigureAwait(false);
+                    agentLoop,
+                    input,
+                    appCts,
+                    spectreOutput,
+                    monitorBox).
+                ConfigureAwait(false);
         }
 
         appCts.Dispose();
@@ -468,7 +480,8 @@ internal sealed class InteractiveLoop
                     break;
                 }
 
-                if (!await _governance.BudgetTracker.IsWithinBudgetAsync(budgetPolicy, appCts.Token).ConfigureAwait(false))
+                if (!await _governance.BudgetTracker.IsWithinBudgetAsync(budgetPolicy, appCts.Token).
+                        ConfigureAwait(false))
                 {
                     var status = await _governance.BudgetTracker.GetStatusAsync(appCts.Token).ConfigureAwait(false);
                     ChatRenderer.RenderWarning(
@@ -484,9 +497,7 @@ internal sealed class InteractiveLoop
             {
                 using (_skillLifecycleManager.BeginRunScope())
                 {
-                    await agentLoop
-                        .RunTurnStreamingAsync(currentMessage, turnMonitor.Token)
-                        .ConfigureAwait(false);
+                    await agentLoop.RunTurnStreamingAsync(currentMessage, turnMonitor.Token).ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException) when (!appCts.IsCancellationRequested)
@@ -516,8 +527,8 @@ internal sealed class InteractiveLoop
                         await _governance.BudgetTracker.RecordSpendAsync(
                                 estimatedCost,
                                 _session.CurrentModel.ProviderName,
-                                appCts.Token)
-                            .ConfigureAwait(false);
+                                appCts.Token).
+                            ConfigureAwait(false);
                     }
                 }
             }
