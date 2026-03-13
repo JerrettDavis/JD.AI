@@ -1,4 +1,5 @@
 using JD.AI.Core.Installation;
+using System.Reflection;
 
 namespace JD.AI.Tests.Installation;
 
@@ -103,6 +104,34 @@ public sealed class DetachedUpdaterTests
         Assert.True(result.Success);
         Assert.True(result.RequiresRestart);
         Assert.Contains("launched", result.Output, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void WindowsScript_UsesDelayedDetachedSelfDelete()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        var method = typeof(DetachedUpdater).GetMethod(
+            "WriteUpdateScript",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.NotNull(method);
+
+        var scriptPath = (string)method!.Invoke(null, ["JD.AI", null, Environment.ProcessId, false])!;
+        try
+        {
+            var script = File.ReadAllText(scriptPath);
+
+            Assert.Contains("set \"SCRIPT_PATH=%~f0\"", script, StringComparison.Ordinal);
+            Assert.Contains("start \"\" /b cmd /c", script, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("del /f /q \"%~f0\" >nul 2>&1", script, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            if (File.Exists(scriptPath))
+                File.Delete(scriptPath);
+        }
     }
 }
 

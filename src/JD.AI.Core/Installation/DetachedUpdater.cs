@@ -137,8 +137,11 @@ public static class DetachedUpdater
             bat.AppendLine("echo.");
             if (pauseOnExit)
                 bat.AppendLine("pause");
-            // Self-delete — no temp file accumulation.
-            bat.AppendLine("del /f /q \"%~f0\" >nul 2>&1");
+            // Schedule delayed self-delete in a detached cmd process.
+            // Deleting the batch file from inside itself can emit:
+            // "The batch file cannot be found." on some cmd.exe versions.
+            bat.AppendLine("set \"SCRIPT_PATH=%~f0\"");
+            bat.AppendLine("start \"\" /b cmd /c \"ping 127.0.0.1 -n 2 >nul & del /f /q \"\"%SCRIPT_PATH%\"\" >nul 2>&1\"");
             File.WriteAllText(scriptPath, bat.ToString(), Encoding.ASCII);
             return scriptPath;
         }
