@@ -380,6 +380,7 @@ internal sealed class InteractiveLoop
 
             var inputResult = ChatRenderer.ReadInputStructured(interactiveInput);
             if (inputResult is null) continue;
+            RenderFooter();
 
             var input = inputResult.AssemblePrompt();
             if (string.IsNullOrWhiteSpace(input)) continue;
@@ -561,9 +562,8 @@ internal sealed class InteractiveLoop
             // Safe to continue
         }
 
-        // Update footer after turn completes
+        // Keep model metadata fresh for subsequent footer renders.
         spectreOutput.ModelName = _session.CurrentModel?.Id;
-        RenderFooter();
     }
 }
 
