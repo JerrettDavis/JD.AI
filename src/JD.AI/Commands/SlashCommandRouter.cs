@@ -1626,120 +1626,54 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                     "Rewind before tool use",
                     "Rewind after tool use"));
 
+        var service = new ToolHistoryActionService(_session, _configStore, _checkpointStrategy);
         switch (action)
         {
             case "View details":
-                return RenderToolHistoryEntryDetail(entry);
+                return await service
+                    .ApplyAsync(entry, ToolHistoryAction.ViewDetails, ct: ct)
+                    .ConfigureAwait(false);
             case "Allow globally":
-                return await PersistToolPermissionFromHistoryAsync(entry, allow: true, projectScope: false, ct).ConfigureAwait(false);
+                return await service
+                    .ApplyAsync(entry, ToolHistoryAction.AllowGlobal, ct: ct)
+                    .ConfigureAwait(false);
             case "Allow for project":
-                return await PersistToolPermissionFromHistoryAsync(entry, allow: true, projectScope: true, ct).ConfigureAwait(false);
+                return await service
+                    .ApplyAsync(entry, ToolHistoryAction.AllowProject, ct: ct)
+                    .ConfigureAwait(false);
             case "Deny globally":
-                return await PersistToolPermissionFromHistoryAsync(entry, allow: false, projectScope: false, ct).ConfigureAwait(false);
+                return await service
+                    .ApplyAsync(entry, ToolHistoryAction.DenyGlobal, ct: ct)
+                    .ConfigureAwait(false);
             case "Deny for project":
-                return await PersistToolPermissionFromHistoryAsync(entry, allow: false, projectScope: true, ct).ConfigureAwait(false);
+                return await service
+                    .ApplyAsync(entry, ToolHistoryAction.DenyProject, ct: ct)
+                    .ConfigureAwait(false);
             case "Rewind before tool use":
-                return await RewindToToolUseAsync(entry, includeToolTurn: false, ct).ConfigureAwait(false);
+                return await HandleToolHistoryRewindAsync(service, entry, includeToolTurn: false, ct).ConfigureAwait(false);
             case "Rewind after tool use":
-                return await RewindToToolUseAsync(entry, includeToolTurn: true, ct).ConfigureAwait(false);
+                return await HandleToolHistoryRewindAsync(service, entry, includeToolTurn: true, ct).ConfigureAwait(false);
             default:
                 return "No action applied.";
         }
     }
 
-    private async Task<string> PersistToolPermissionFromHistoryAsync(
-        ToolHistoryEntry entry,
-        bool allow,
-        bool projectScope,
-        CancellationToken ct)
-    {
-        var canonical = OpenClawToolAliasResolver.Resolve(entry.ToolName);
-        var projectPath = _session.SessionInfo?.ProjectPath ?? Directory.GetCurrentDirectory();
-        if (_configStore is not null)
-        {
-            await _configStore.AddToolPermissionRuleAsync(
-                canonical,
-                allow,
-                projectScope,
-                projectPath,
-                ct).ConfigureAwait(false);
-        }
-
-        if (allow)
-            _session.ToolPermissionProfile.AddAllowed(canonical, projectScope);
-        else
-            _session.ToolPermissionProfile.AddDenied(canonical, projectScope);
-
-        return $"{(allow ? "Allowed" : "Denied")} `{canonical}` in {(projectScope ? "project" : "global")} scope.";
-    }
-
-    private string RenderToolHistoryEntryDetail(ToolHistoryEntry entry)
-    {
-        var summaryLines = TruncateLines(entry.Result, 2);
-        var details = $"""
-            Tool: {entry.ToolName}
-            Session: {entry.SessionId}
-            Turn: {entry.TurnIndex}
-            Status: {entry.Status}
-            Duration: {entry.DurationMs}ms
-            Time: {entry.CreatedAt:g}
-            Args: {entry.Arguments}
-            Output:
-            {summaryLines}
-            """;
-        return details;
-    }
-
-    private async Task<string> RewindToToolUseAsync(
+    private async Task<string> HandleToolHistoryRewindAsync(
+        ToolHistoryActionService service,
         ToolHistoryEntry entry,
         bool includeToolTurn,
         CancellationToken ct)
     {
-        if (_session.Store is null || _session.SessionInfo is null)
-            return "Session persistence not initialized.";
+        var restorePrompt = new SelectionPrompt<string>()
+            .Title("[bold]Restore code checkpoint too?[/]")
+            .AddChoices("No", "Yes (latest checkpoint)");
 
-        if (!string.Equals(entry.SessionId, _session.SessionInfo.Id, StringComparison.Ordinal))
-            return "Rewind is only supported for the current active session.";
-
-        var targetTurn = includeToolTurn ? entry.TurnIndex : Math.Max(0, entry.TurnIndex - 1);
-
-        await _session.Store.DeleteTurnsAfterAsync(_session.SessionInfo.Id, targetTurn).ConfigureAwait(false);
-        while (_session.SessionInfo.Turns.Count > targetTurn + 1)
-            _session.SessionInfo.Turns.RemoveAt(_session.SessionInfo.Turns.Count - 1);
-
-        _session.History.Clear();
-        if (!string.IsNullOrWhiteSpace(_session.OriginalSystemPrompt))
-            _session.History.AddSystemMessage(_session.OriginalSystemPrompt);
-
-        foreach (var turn in _session.SessionInfo.Turns)
-        {
-            if (string.Equals(turn.Role, "user", StringComparison.Ordinal))
-                _session.History.AddUserMessage(turn.Content ?? string.Empty);
-            else if (string.Equals(turn.Role, "assistant", StringComparison.Ordinal))
-                _session.History.AddAssistantMessage(turn.Content ?? string.Empty);
-        }
-
-        var checkpoints = _checkpointStrategy is null
-            ? []
-            : await _checkpointStrategy.ListAsync(ct).ConfigureAwait(false);
-        if (_checkpointStrategy is not null && checkpoints.Count > 0)
-        {
-            var restorePrompt = new SelectionPrompt<string>()
-                .Title("[bold]Restore code checkpoint too?[/]")
-                .AddChoices("No", "Yes (latest checkpoint)");
-            var restoreChoice = AnsiConsole.Prompt(restorePrompt);
-            if (string.Equals(restoreChoice, "Yes (latest checkpoint)", StringComparison.Ordinal))
-            {
-                var restored = await _checkpointStrategy
-                    .RestoreAsync(checkpoints[0].Id, ct)
-                    .ConfigureAwait(false);
-                return restored
-                    ? $"Rewound conversation to turn {targetTurn} and restored checkpoint {checkpoints[0].Id}."
-                    : $"Rewound conversation to turn {targetTurn}. Checkpoint restore failed.";
-            }
-        }
-
-        return $"Rewound conversation to turn {targetTurn}.";
+        var restoreChoice = AnsiConsole.Prompt(restorePrompt);
+        var restoreCheckpoint = string.Equals(restoreChoice, "Yes (latest checkpoint)", StringComparison.Ordinal);
+        var action = includeToolTurn ? ToolHistoryAction.RewindAfter : ToolHistoryAction.RewindBefore;
+        return await service
+            .ApplyAsync(entry, action, new ToolHistoryActionRequest(restoreCheckpoint), ct)
+            .ConfigureAwait(false);
     }
 
     private async Task<List<ToolHistoryEntry>> CollectToolHistoryEntriesAsync(
@@ -1818,16 +1752,6 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             return line;
 
         return string.Concat(line.AsSpan(0, maxChars - 3), "...");
-    }
-
-    private static string TruncateLines(string? text, int maxLines)
-    {
-        var lines = (text ?? string.Empty)
-            .Split('\n', StringSplitOptions.TrimEntries);
-        if (lines.Length <= maxLines)
-            return string.Join('\n', lines);
-
-        return string.Join('\n', lines.Take(maxLines)) + "\n...";
     }
 
     private async Task<string> ExportSessionAsync(CancellationToken ct)
@@ -5037,15 +4961,4 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             """;
     }
 
-    private sealed record ToolHistoryEntry(
-        string SessionId,
-        string SessionName,
-        int TurnIndex,
-        DateTime CreatedAt,
-        string ToolName,
-        string Arguments,
-        string Result,
-        string Status,
-        long DurationMs,
-        string Label);
 }
