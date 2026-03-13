@@ -119,7 +119,7 @@ namespace JD.AI.Specs.Features.Core.Config
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/Core/Config/AtomicConfigStore.feature.ndjson", 9);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/Core/Config/AtomicConfigStore.feature.ndjson", 11);
         }
         
         async global::System.Threading.Tasks.Task global::Xunit.IAsyncLifetime.InitializeAsync()
@@ -404,6 +404,80 @@ namespace JD.AI.Specs.Features.Core.Config
 #line hidden
 #line 44
         await testRunner.AndAsync("the config defaults should not be null", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Stores and resolves global tool allow rules")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Atomic Config Store")]
+        [global::Xunit.TraitAttribute("Description", "Stores and resolves global tool allow rules")]
+        public async global::System.Threading.Tasks.Task StoresAndResolvesGlobalToolAllowRules()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "7";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Stores and resolves global tool allow rules", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 46
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 7
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 47
+        await testRunner.WhenAsync("tool pattern \"run_command\" is allowed globally", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 48
+        await testRunner.AndAsync("tool permissions are read for project \"/tmp/spec-project\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 49
+        await testRunner.ThenAsync("global allowed tools should contain \"run_command\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Stores and resolves project tool deny rules")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Atomic Config Store")]
+        [global::Xunit.TraitAttribute("Description", "Stores and resolves project tool deny rules")]
+        public async global::System.Threading.Tasks.Task StoresAndResolvesProjectToolDenyRules()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "8";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Stores and resolves project tool deny rules", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 51
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 7
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 52
+        await testRunner.WhenAsync("tool pattern \"git_push\" is denied for project \"/tmp/spec-project\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 53
+        await testRunner.AndAsync("tool permissions are read for project \"/tmp/spec-project\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 54
+        await testRunner.ThenAsync("project denied tools should contain \"git_push\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();

@@ -42,3 +42,13 @@ Feature: Atomic Config Store
         When the configuration is read
         Then the config object should not be null
         And the config defaults should not be null
+
+    Scenario: Stores and resolves global tool allow rules
+        When tool pattern "run_command" is allowed globally
+        And tool permissions are read for project "/tmp/spec-project"
+        Then global allowed tools should contain "run_command"
+
+    Scenario: Stores and resolves project tool deny rules
+        When tool pattern "git_push" is denied for project "/tmp/spec-project"
+        And tool permissions are read for project "/tmp/spec-project"
+        Then project denied tools should contain "git_push"
