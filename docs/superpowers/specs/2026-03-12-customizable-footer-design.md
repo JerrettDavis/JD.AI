@@ -149,6 +149,8 @@ Added to `TuiSettings` in `~/.jdai/tui-settings.json`:
 
 **Segment visibility modes:** `"always"`, `"auto"` (contextual rules), `"never"`
 
+**Threshold precedence:** The per-segment `warnPercent` (e.g., `segments.compact.warnPercent`) overrides the top-level `footer.warnThresholdPercent` for that segment only. If unset, the segment inherits the top-level value.
+
 **Claude Code compatibility:** JD.AI reads `~/.claude/settings.json` status line configuration as a fallback (existing parity mechanism). Plugins register footer segments via the `StatusLineUpdate` hook event (JD.AI's equivalent of Claude Code's `statusline-setup` hook — same contract, JD.AI naming). JD.AI's own config takes precedence when both exist.
 
 ### Plugin/Hook Integration
