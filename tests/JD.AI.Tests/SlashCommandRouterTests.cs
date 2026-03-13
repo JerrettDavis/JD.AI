@@ -371,6 +371,26 @@ public sealed class SlashCommandRouterTests
     }
 
     [Fact]
+    public async Task Permissions_ModeTransitions_UpdateSessionStateConsistently()
+    {
+        await _router.ExecuteAsync("/permissions plan");
+        Assert.Equal(PermissionMode.Plan, _session.PermissionMode);
+        Assert.False(_session.SkipPermissions);
+
+        await _router.ExecuteAsync("/permissions accept-edits");
+        Assert.Equal(PermissionMode.AcceptEdits, _session.PermissionMode);
+        Assert.False(_session.SkipPermissions);
+
+        await _router.ExecuteAsync("/permissions off");
+        Assert.Equal(PermissionMode.BypassAll, _session.PermissionMode);
+        Assert.True(_session.SkipPermissions);
+
+        await _router.ExecuteAsync("/permissions on");
+        Assert.Equal(PermissionMode.Normal, _session.PermissionMode);
+        Assert.False(_session.SkipPermissions);
+    }
+
+    [Fact]
     public async Task Permissions_AllowGlobalRule_PersistsAndUpdatesSessionProfile()
     {
         var tempDirectory = Path.Combine(Path.GetTempPath(), $"jdai-perms-global-{Guid.NewGuid():N}");
