@@ -1,5 +1,7 @@
+using System.Text.Json;
 using FluentAssertions;
 using JD.AI.Core.Config;
+using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Tests.Config;
 
@@ -119,5 +121,28 @@ public sealed class FooterSettingsTests
         var result = FooterSettings.Normalize(settings);
         result.Segments.Should().NotBeNull();
         result.Segments.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void TuiSettings_FooterConfig_RoundTrips()
+    {
+        var settings = new TuiSettings
+        {
+            Footer = new FooterSettings
+            {
+                Enabled = true,
+                Lines = 2,
+                Template = "{model} │ {turns}",
+                WarnThresholdPercent = 10,
+            },
+        };
+
+        var json = JsonSerializer.Serialize(settings, JsonDefaults.Options);
+        var deserialized = JsonSerializer.Deserialize<TuiSettings>(json, JsonDefaults.Options);
+
+        deserialized!.Footer.Enabled.Should().BeTrue();
+        deserialized.Footer.Lines.Should().Be(2);
+        deserialized.Footer.Template.Should().Be("{model} │ {turns}");
+        deserialized.Footer.WarnThresholdPercent.Should().Be(10);
     }
 }
