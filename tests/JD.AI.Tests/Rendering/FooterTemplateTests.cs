@@ -43,7 +43,7 @@ public sealed class FooterTemplateTests
     public void Render_OmitsConditionalSegment_WhenValueIsNull()
     {
         var template = FooterTemplate.Parse("{model} │ {session?} │ {mode}");
-        var segments = new Dictionary<string, string?>
+        var segments = new Dictionary<string, string?>(StringComparer.Ordinal)
         {
             ["model"]   = "claude-3",
             ["session"] = null,
@@ -59,7 +59,7 @@ public sealed class FooterTemplateTests
     public void Render_IncludesConditionalSegment_WhenValueIsPresent()
     {
         var template = FooterTemplate.Parse("{model} │ {session?} │ {mode}");
-        var segments = new Dictionary<string, string?>
+        var segments = new Dictionary<string, string?>(StringComparer.Ordinal)
         {
             ["model"]   = "claude-3",
             ["session"] = "abc-123",
@@ -76,7 +76,7 @@ public sealed class FooterTemplateTests
     {
         // Both middle segments are conditional and null — double separator collapse
         var template = FooterTemplate.Parse("{a} │ {b?} · {c?} │ {d}");
-        var segments = new Dictionary<string, string?>
+        var segments = new Dictionary<string, string?>(StringComparer.Ordinal)
         {
             ["a"] = "A",
             ["b"] = null,
@@ -93,7 +93,7 @@ public sealed class FooterTemplateTests
     public void Render_OmitsUnknownSegmentKey_Silently()
     {
         var template = FooterTemplate.Parse("{known} │ {unknown}");
-        var segments = new Dictionary<string, string?>
+        var segments = new Dictionary<string, string?>(StringComparer.Ordinal)
         {
             ["known"] = "value",
         };
