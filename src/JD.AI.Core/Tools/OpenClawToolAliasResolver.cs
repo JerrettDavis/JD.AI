@@ -9,6 +9,7 @@ public static class OpenClawToolAliasResolver
         new(StringComparer.OrdinalIgnoreCase)
         {
             ["bash"] = "run_command",
+            ["shell"] = "run_command",
             ["read"] = "read_file",
             ["write"] = "write_file",
             ["edit"] = "edit_file",
