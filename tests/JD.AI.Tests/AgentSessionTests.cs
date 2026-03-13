@@ -162,6 +162,30 @@ public sealed class AgentSessionTests
         Assert.Null(session.CycleReasoningEffort());
     }
 
+    [Fact]
+    public void TryRegisterToolCallForCurrentTurn_DeduplicatesWithinTurn()
+    {
+        var session = CreateSession();
+
+        var first = session.TryRegisterToolCallForCurrentTurn("run_command", "command=ls");
+        var duplicate = session.TryRegisterToolCallForCurrentTurn("run_command", "command=ls");
+
+        Assert.True(first);
+        Assert.False(duplicate);
+    }
+
+    [Fact]
+    public void TryRegisterToolCallForCurrentTurn_ResetTurnState_AllowsSameFingerprintAgain()
+    {
+        var session = CreateSession();
+
+        _ = session.TryRegisterToolCallForCurrentTurn("run_command", "command=ls");
+        session.ResetTurnState();
+        var afterReset = session.TryRegisterToolCallForCurrentTurn("run_command", "command=ls");
+
+        Assert.True(afterReset);
+    }
+
     // Dummy plugin for SwitchModel test
     private sealed class DummyPlugin
     {

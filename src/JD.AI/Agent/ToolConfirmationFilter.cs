@@ -263,9 +263,11 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             new KeyValuePair<string, object?>("jdai.tool.canonical_name", canonicalToolName));
 
         // Render tool result
+        var redactedArgs = BuildRedactedArgs(context.Arguments);
+        _session.TryRegisterToolCallForCurrentTurn(canonicalToolName, redactedArgs);
         var result = context.Result.GetValue<string>() ?? context.Result.ToString() ?? "";
         output.RenderToolCall(functionName, displayArgs, result);
-        _session.RecordToolCall(canonicalToolName, BuildRedactedArgs(context.Arguments), result, "ok", sw.ElapsedMilliseconds);
+        _session.RecordToolCall(canonicalToolName, redactedArgs, result, "ok", sw.ElapsedMilliseconds);
 
         // ── Audit ────────────────────────────────────────────
         await EmitAuditEventAsync(functionName, canonicalToolName, context.Arguments, "ok", policyResult)

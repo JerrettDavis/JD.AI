@@ -1266,6 +1266,13 @@ public sealed class AgentLoop
                 return null;
             }
 
+            if (!_session.TryRegisterToolCallForCurrentTurn(functionName, argsSummary))
+            {
+                DebugLogger.Log(DebugCategory.Agents,
+                    "Skipping duplicate text-based tool call in current turn: {0}", fullName);
+                return null;
+            }
+
             var toolStopwatch = Stopwatch.StartNew();
             var result = await func.InvokeAsync(_session.Kernel, args, ct).ConfigureAwait(false);
             toolStopwatch.Stop();

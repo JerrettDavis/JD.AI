@@ -20,6 +20,8 @@ public sealed class AgentSession
     private readonly IProviderRegistry _registry;
     private readonly List<ModelSwitchRecord> _modelSwitchHistory = [];
     private readonly List<ForkPoint> _forkPoints = [];
+    private readonly Lock _toolFingerprintLock = new();
+    private readonly HashSet<string> _toolFingerprintsThisTurn = new(StringComparer.OrdinalIgnoreCase);
     private Kernel _kernel;
     private int _turnIndex;
     private readonly List<PendingToolCall> _pendingToolCalls = [];
@@ -149,7 +151,24 @@ public sealed class AgentSession
     {
         WorkflowDeclinedThisTurn = false;
         _pendingToolCalls.Clear();
+        lock (_toolFingerprintLock)
+        {
+            _toolFingerprintsThisTurn.Clear();
+        }
         // Don't clear CapturedWorkflowSteps here — they persist across the turn
+    }
+
+    /// <summary>
+    /// Registers a tool-call fingerprint for the current turn.
+    /// Returns false when the same tool/argument signature was already seen.
+    /// </summary>
+    public bool TryRegisterToolCallForCurrentTurn(string canonicalToolName, string? argsSummary)
+    {
+        var key = $"{canonicalToolName.Trim()}|{(argsSummary ?? string.Empty).Trim()}";
+        lock (_toolFingerprintLock)
+        {
+            return _toolFingerprintsThisTurn.Add(key);
+        }
     }
 
     /// <summary>
