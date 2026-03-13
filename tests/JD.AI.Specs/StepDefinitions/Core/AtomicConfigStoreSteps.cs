@@ -1,4 +1,5 @@
 using FluentAssertions;
+using JD.AI.Core.Agents;
 using JD.AI.Core.Config;
 using Reqnroll;
 
@@ -127,6 +128,42 @@ public sealed class AtomicConfigStoreSteps : IDisposable
     {
         var config = _context.Get<JdAiConfig>("readConfig");
         config.Defaults.Should().NotBeNull();
+    }
+
+    [When(@"tool pattern ""(.*)"" is allowed globally")]
+    public async Task WhenToolPatternIsAllowedGlobally(string toolPattern)
+    {
+        var store = _context.Get<AtomicConfigStore>();
+        await store.AddToolPermissionRuleAsync(toolPattern, allow: true, projectScope: false);
+    }
+
+    [When(@"tool pattern ""(.*)"" is denied for project ""(.*)""")]
+    public async Task WhenToolPatternIsDeniedForProject(string toolPattern, string projectPath)
+    {
+        var store = _context.Get<AtomicConfigStore>();
+        await store.AddToolPermissionRuleAsync(toolPattern, allow: false, projectScope: true, projectPath: projectPath);
+    }
+
+    [When(@"tool permissions are read for project ""(.*)""")]
+    public async Task WhenToolPermissionsAreReadForProject(string projectPath)
+    {
+        var store = _context.Get<AtomicConfigStore>();
+        var profile = await store.GetToolPermissionProfileAsync(projectPath);
+        _context.Set(profile, "toolPermissionProfile");
+    }
+
+    [Then(@"global allowed tools should contain ""(.*)""")]
+    public void ThenGlobalAllowedToolsShouldContain(string toolPattern)
+    {
+        var profile = _context.Get<ToolPermissionProfile>("toolPermissionProfile");
+        profile.GlobalAllowed.Should().Contain(toolPattern);
+    }
+
+    [Then(@"project denied tools should contain ""(.*)""")]
+    public void ThenProjectDeniedToolsShouldContain(string toolPattern)
+    {
+        var profile = _context.Get<ToolPermissionProfile>("toolPermissionProfile");
+        profile.ProjectDenied.Should().Contain(toolPattern);
     }
 
     public void Dispose()

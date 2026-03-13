@@ -371,12 +371,85 @@ public sealed class SlashCommandRouterTests
     }
 
     [Fact]
+    public async Task Permissions_AllowGlobalRule_PersistsAndUpdatesSessionProfile()
+    {
+        var tempDirectory = Path.Combine(Path.GetTempPath(), $"jdai-perms-global-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDirectory);
+
+        try
+        {
+            var configPath = Path.Combine(tempDirectory, "config.json");
+            using var configStore = new AtomicConfigStore(configPath);
+            var router = new SlashCommandRouter(_session, _registry, configStore: configStore);
+
+            var result = await router.ExecuteAsync("/permissions allow run_command global");
+            var profile = await configStore.GetToolPermissionProfileAsync(tempDirectory);
+
+            Assert.NotNull(result);
+            Assert.Contains("Allowed", result);
+            Assert.Contains("run_command", profile.GlobalAllowed);
+            Assert.True(_session.ToolPermissionProfile.IsExplicitlyAllowed("run_command"));
+        }
+        finally
+        {
+            Directory.Delete(tempDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Permissions_DenyProjectRule_PersistsAndUpdatesSessionProfile()
+    {
+        var tempDirectory = Path.Combine(Path.GetTempPath(), $"jdai-perms-project-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDirectory);
+        var originalDirectory = Directory.GetCurrentDirectory();
+
+        try
+        {
+            Directory.SetCurrentDirectory(tempDirectory);
+            var configPath = Path.Combine(tempDirectory, "config.json");
+            using var configStore = new AtomicConfigStore(configPath);
+            var router = new SlashCommandRouter(_session, _registry, configStore: configStore);
+
+            var result = await router.ExecuteAsync("/permissions deny git_push project");
+            var profile = await configStore.GetToolPermissionProfileAsync(tempDirectory);
+
+            Assert.NotNull(result);
+            Assert.Contains("Denied", result);
+            Assert.Contains("git_push", profile.ProjectDenied);
+            Assert.True(_session.ToolPermissionProfile.IsExplicitlyDenied("git_push"));
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(originalDirectory);
+            Directory.Delete(tempDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Help_IncludesPermissionsCommand()
     {
         var result = await _router.ExecuteAsync("/help");
 
         Assert.NotNull(result);
         Assert.Contains("/permissions", result);
+    }
+
+    [Fact]
+    public async Task Help_IncludesToolHistoryCommand()
+    {
+        var result = await _router.ExecuteAsync("/help");
+
+        Assert.NotNull(result);
+        Assert.Contains("/tool-history", result);
+    }
+
+    [Fact]
+    public async Task ToolHistory_WithoutToolCalls_ReturnsNoHistoryMessage()
+    {
+        var result = await _router.ExecuteAsync("/tool-history");
+
+        Assert.NotNull(result);
+        Assert.Contains("No tool calls found in the current session", result);
     }
 
     [Fact]
