@@ -1,4 +1,5 @@
 using FluentAssertions;
+using JD.AI.Core.Agents;
 using JD.AI.Core.Config;
 using JD.AI.Rendering;
 
@@ -186,5 +187,17 @@ public sealed class ChatRendererTests : IDisposable
     {
         ChatRenderer.SetOutputStyle(style);
         ChatRenderer.CurrentOutputStyle.Should().Be(style);
+    }
+
+    [Theory]
+    [InlineData(PermissionMode.Normal, "Normal")]
+    [InlineData(PermissionMode.Plan, "Plan (read-only)")]
+    [InlineData(PermissionMode.AcceptEdits, "Auto-edit")]
+    [InlineData(PermissionMode.BypassAll, "Autopilot")]
+    public void GetModeBarLabel_UsesExpectedLabelPerPermissionMode(PermissionMode mode, string expectedLabel)
+    {
+        var (label, _) = ChatRenderer.GetModeBarLabel(mode);
+
+        label.Should().Be(expectedLabel);
     }
 }
