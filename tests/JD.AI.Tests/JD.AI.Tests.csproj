@@ -41,11 +41,6 @@
     <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
   </ItemGroup>
 
-  <!-- FooterBarTests depends on FooterBar which is implemented in a later task -->
-  <ItemGroup>
-    <Compile Remove="Rendering\FooterBarTests.cs" />
-  </ItemGroup>
-
   <ItemGroup>
     <None Update="xunit.runner.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
