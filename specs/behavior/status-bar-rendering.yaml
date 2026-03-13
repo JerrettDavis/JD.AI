@@ -10,9 +10,7 @@ metadata:
     - upss-behavioral-spec-architect
   lastReviewed: "2026-03-12"
   changeReason: Specify status bar rendering behavior for the customizable footer feature.
-useCaseRefs:
-  - usecase.customize-status-bar
-  - usecase.view-context-usage
+useCaseRef: usecase.customize-status-bar
 bddScenarios:
   - title: Footer renders default segments on startup
     given:
@@ -177,11 +175,9 @@ trace:
       - tests/JD.AI.Tests/Rendering/FooterTemplateTests.cs
       - tests/JD.AI.Tests/Rendering/FooterBarTests.cs
       - tests/JD.AI.Tests/Rendering/FooterStateProviderTests.cs
-      - tests/JD.AI.Tests/Rendering/TerminalLayoutTests.cs
     interfaces: []
     code:
       - src/JD.AI/Rendering/FooterBar.cs
       - src/JD.AI/Rendering/FooterState.cs
       - src/JD.AI/Rendering/FooterStateProvider.cs
       - src/JD.AI/Rendering/FooterTemplate.cs
-      - src/JD.AI/Rendering/TerminalLayout.cs
