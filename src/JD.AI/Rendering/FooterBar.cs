@@ -38,8 +38,15 @@ public sealed class FooterBar
             new Dictionary<string, string?>(
                 (IDictionary<string, string?>)segments));
 
+        // Pad to console width so the grey background fills the whole row.
+        // Guard against IOException when there is no console (e.g. during tests).
+        int width;
+        try { width = Console.WindowWidth; }
+        catch (IOException) { width = 0; }
+        var padded = width > 0 ? rendered.PadRight(width) : rendered;
+
         // Escape any Spectre markup characters in the rendered text
-        var escaped = Markup.Escape(rendered);
+        var escaped = Markup.Escape(padded);
 
         return new Markup($"[on grey]{escaped}[/]");
     }

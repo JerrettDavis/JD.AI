@@ -44,6 +44,9 @@ internal sealed class InteractiveLoop
     private readonly IPluginLifecycleManager? _pluginManager;
     private readonly ICostEstimator _costEstimator;
 
+    private FooterBar? _footerBar;
+    private FooterStateProvider? _footerStateProvider;
+
     public InteractiveLoop(
         AgentSession session,
         CliOptions opts,
@@ -88,6 +91,11 @@ internal sealed class InteractiveLoop
         _session.PromptCacheTtl = tuiSettings.PromptCacheTtl;
         ChatRenderer.ApplyTheme(tuiSettings.Theme);
         ChatRenderer.SetOutputStyle(tuiSettings.OutputStyle);
+
+        // Footer bar
+        var footerSettings = tuiSettings.Footer;
+        _footerBar = new FooterBar(footerSettings.Template, footerSettings.Enabled);
+        _footerStateProvider = new FooterStateProvider(Directory.GetCurrentDirectory());
 
         using var spectreOutput = new SpectreAgentOutput(
             tuiSettings.SpinnerStyle,
@@ -288,6 +296,26 @@ internal sealed class InteractiveLoop
         }
     }
 
+    private void RenderFooter()
+    {
+        if (_footerBar is null || _footerStateProvider is null)
+            return;
+
+        var model = _session.CurrentModel ?? _selectedModel;
+        _footerStateProvider.Update(
+            provider: model.ProviderName,
+            model: model.Id,
+            tokensUsed: _session.TotalTokens,
+            contextWindow: model.ContextWindowTokens,
+            turnCount: _session.SessionInfo?.Turns.Count ?? 0,
+            mode: _session.PermissionMode,
+            warnThresholdPercent: TuiSettings.Load().Footer.WarnThresholdPercent);
+
+        var renderable = _footerBar.ToRenderable(_footerStateProvider.CurrentState);
+        AnsiConsole.Write(renderable);
+        AnsiConsole.WriteLine();
+    }
+
     private async Task<int> RunMainLoopAsync(
         SlashCommandRouter commandRouter,
         InteractiveInput interactiveInput,
@@ -342,6 +370,7 @@ internal sealed class InteractiveLoop
                 ChatRenderer.RenderModeBar(_session.PermissionMode);
                 renderedMode = _session.PermissionMode;
             }
+            RenderFooter();
             var inputResult = ChatRenderer.ReadInputStructured(interactiveInput);
             if (inputResult is null) continue;
 
@@ -522,12 +551,9 @@ internal sealed class InteractiveLoop
             // Safe to continue
         }
 
-        // Status bar
+        // Update footer after turn completes
         spectreOutput.ModelName = _session.CurrentModel?.Id;
-        ChatRenderer.RenderStatusBar(
-            _session.CurrentModel?.ProviderName ?? "?",
-            _session.CurrentModel?.Id ?? "?",
-            _session.TotalTokens);
+        RenderFooter();
     }
 }
 
