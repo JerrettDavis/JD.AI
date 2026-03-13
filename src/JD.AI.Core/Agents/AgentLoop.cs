@@ -87,7 +87,6 @@ public sealed class AgentLoop
                 _session.History.AddAssistantMessage(response);
                 _session.History.AddUserMessage($"[Tool result for {toolResult.Value.FunctionName}]:\n{toolResult.Value.Result}");
 
-                AgentOutput.Current.RenderToolCall(toolResult.Value.FunctionName, null, toolResult.Value.Result);
                 turnEntry.Attributes["text_tool_call"] = toolResult.Value.FunctionName;
 
                 // Re-invoke the model with the tool result so it can produce a natural response
@@ -386,8 +385,6 @@ public sealed class AgentLoop
                 _session.History.AddAssistantMessage(response);
                 _session.History.AddUserMessage($"[Tool result for {toolResult.Value.FunctionName}]:\n{toolResult.Value.Result}");
 
-                output.RenderToolCall(toolResult.Value.FunctionName, null, toolResult.Value.Result);
-
                 DebugLogger.Log(DebugCategory.Agents,
                     "Text-based tool call detected: {0}, re-invoking model with result",
                     toolResult.Value.FunctionName);
@@ -470,7 +467,6 @@ public sealed class AgentLoop
                 var fallbackToolResult = await TryExecuteTextToolCallAsync(response, ct).ConfigureAwait(false);
                 if (fallbackToolResult is not null)
                 {
-                    output.RenderToolCall(fallbackToolResult.Value.FunctionName, null, fallbackToolResult.Value.Result);
                     _session.History.AddAssistantMessage(response);
                     _session.History.AddUserMessage(
                         $"[Tool result for {fallbackToolResult.Value.FunctionName}]:\n{fallbackToolResult.Value.Result}");
@@ -553,7 +549,6 @@ public sealed class AgentLoop
                 var retryToolResult = await TryExecuteTextToolCallAsync(response, ct).ConfigureAwait(false);
                 if (retryToolResult is not null)
                 {
-                    output.RenderToolCall(retryToolResult.Value.FunctionName, null, retryToolResult.Value.Result);
                     _session.History.AddAssistantMessage(response);
                     _session.History.AddUserMessage(
                         $"[Tool result for {retryToolResult.Value.FunctionName}]:\n{retryToolResult.Value.Result}");
