@@ -1621,27 +1621,19 @@ public sealed class AgentLoop
     {
         var tier = tierMap?.GetValueOrDefault(canonicalName, Tools.SafetyTier.AlwaysConfirm)
                    ?? Tools.SafetyTier.AlwaysConfirm;
-        var explicitDenied = permissionProfile?.IsExplicitlyDenied(canonicalName) ?? false;
-        var explicitAllowed = permissionProfile?.IsExplicitlyAllowed(canonicalName) ?? false;
+        var gate = ToolExecutionPermissionEvaluator.Evaluate(
+            canonicalName,
+            permissionMode,
+            tier,
+            permissionProfile);
 
-        if (explicitDenied)
+        if (gate.Decision == ToolExecutionGateDecision.Blocked)
         {
-            output.RenderWarning($"  \u2717 {canonicalName} blocked (explicit deny rule)");
+            output.RenderWarning($"  \u2717 {canonicalName} blocked ({gate.Reason})");
             return false;
         }
 
-        switch (permissionMode)
-        {
-            case PermissionMode.Plan:
-                if (tier != Tools.SafetyTier.AutoApprove)
-                {
-                    output.RenderWarning($"  \u2717 {canonicalName} blocked (plan mode \u2014 read-only)");
-                    return false;
-                }
-                break;
-        }
-
-        if (explicitAllowed)
+        if (gate.Decision == ToolExecutionGateDecision.AllowWithoutPrompt)
         {
             output.RenderInfo($"  \u25b8 [text-tool] {canonicalName}({argsSummary})");
             return true;

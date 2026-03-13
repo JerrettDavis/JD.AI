@@ -52,15 +52,18 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         var canonicalToolName = ResolvePolicyToolName(functionName);
         var tier = ToolTierMap.GetValueOrDefault(canonicalToolName, SafetyTier.AlwaysConfirm);
         var output = AgentOutput.Current;
-        var explicitDenied = _session.ToolPermissionProfile.IsExplicitlyDenied(canonicalToolName);
-        var explicitAllowed = _session.ToolPermissionProfile.IsExplicitlyAllowed(canonicalToolName);
+        var gate = ToolExecutionPermissionEvaluator.Evaluate(
+            canonicalToolName,
+            _session.PermissionMode,
+            tier,
+            _session.ToolPermissionProfile);
 
         // ── Workflow enforcement ────────────────────────────
         // If a workflow is active, tool calls are coordinated — skip the prompt.
         // If AutoApprove (read-only), let it through freely.
         // If the user already declined this turn, don't nag again.
         // Otherwise, prompt the user to start a workflow.
-        if (!explicitAllowed &&
+        if (gate.Decision == ToolExecutionGateDecision.RequirePrompt &&
             _session.ActiveWorkflowName is null &&
             !_session.WorkflowDeclinedThisTurn &&
             tier != SafetyTier.AutoApprove &&
@@ -94,29 +97,18 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         var needsConfirm = false;
         var blockReason = string.Empty;
 
-        if (explicitDenied)
+        switch (gate.Decision)
         {
-            blocked = true;
-            blockReason = "blocked by explicit deny rule";
-        }
-        else
-        {
-            switch (_session.PermissionMode)
-            {
-                case PermissionMode.Plan:
-                    // Read-only: block anything above AutoApprove
-                    if (tier != SafetyTier.AutoApprove)
-                    {
-                        blocked = true;
-                        blockReason = "plan mode — read-only";
-                    }
-                    break;
-                default:
-                    // Explicit allow rules skip prompts. Otherwise require per-call
-                    // confirmation regardless of provider/model call path.
-                    needsConfirm = !explicitAllowed;
-                    break;
-            }
+            case ToolExecutionGateDecision.Blocked:
+                blocked = true;
+                blockReason = gate.Reason ?? "blocked by permission policy";
+                break;
+            case ToolExecutionGateDecision.AllowWithoutPrompt:
+                needsConfirm = false;
+                break;
+            case ToolExecutionGateDecision.RequirePrompt:
+                needsConfirm = true;
+                break;
         }
 
         if (blocked)

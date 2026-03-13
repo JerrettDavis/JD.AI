@@ -72,7 +72,7 @@ public sealed class AgentSession
     /// Explicit allow/deny rules for tool invocations.
     /// A tool must either match an allow rule or receive per-call user confirmation.
     /// </summary>
-    public ToolPermissionProfile ToolPermissionProfile { get; set; } = ToolPermissionProfile.Empty;
+    public ToolPermissionProfile ToolPermissionProfile { get; set; } = new();
 
     /// <summary>
     /// Fallback model chain — used when the primary model returns 429/503/timeout.
