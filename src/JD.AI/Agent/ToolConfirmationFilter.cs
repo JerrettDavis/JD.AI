@@ -52,13 +52,16 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         var canonicalToolName = ResolvePolicyToolName(functionName);
         var tier = ToolTierMap.GetValueOrDefault(canonicalToolName, SafetyTier.AlwaysConfirm);
         var output = AgentOutput.Current;
+        var explicitDenied = _session.ToolPermissionProfile.IsExplicitlyDenied(canonicalToolName);
+        var explicitAllowed = _session.ToolPermissionProfile.IsExplicitlyAllowed(canonicalToolName);
 
         // ── Workflow enforcement ────────────────────────────
         // If a workflow is active, tool calls are coordinated — skip the prompt.
         // If AutoApprove (read-only), let it through freely.
         // If the user already declined this turn, don't nag again.
         // Otherwise, prompt the user to start a workflow.
-        if (_session.ActiveWorkflowName is null &&
+        if (!explicitAllowed &&
+            _session.ActiveWorkflowName is null &&
             !_session.WorkflowDeclinedThisTurn &&
             tier != SafetyTier.AutoApprove &&
             _session.PermissionMode != PermissionMode.BypassAll)
@@ -89,38 +92,39 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         // Check if we need confirmation based on permission mode
         bool blocked = false;
         var needsConfirm = false;
+        var blockReason = string.Empty;
 
-        switch (_session.PermissionMode)
+        if (explicitDenied)
         {
-            case PermissionMode.Plan:
-                // Read-only: block anything above AutoApprove
-                if (tier != SafetyTier.AutoApprove)
-                {
-                    blocked = true;
-                }
-                break;
-            case PermissionMode.AcceptEdits:
-                // Auto-approve file writes (ConfirmOnce), still confirm shell (AlwaysConfirm)
-                needsConfirm = tier == SafetyTier.AlwaysConfirm;
-                break;
-            case PermissionMode.BypassAll:
-                // Skip everything
-                break;
-            default: // Normal
-                needsConfirm = !_session.SkipPermissions && !_session.AutoRunEnabled && tier switch
-                {
-                    SafetyTier.AutoApprove => false,
-                    SafetyTier.ConfirmOnce => !_confirmedOnce.Contains(canonicalToolName),
-                    SafetyTier.AlwaysConfirm => true,
-                    _ => true,
-                };
-                break;
+            blocked = true;
+            blockReason = "blocked by explicit deny rule";
+        }
+        else
+        {
+            switch (_session.PermissionMode)
+            {
+                case PermissionMode.Plan:
+                    // Read-only: block anything above AutoApprove
+                    if (tier != SafetyTier.AutoApprove)
+                    {
+                        blocked = true;
+                        blockReason = "plan mode — read-only";
+                    }
+                    break;
+                default:
+                    // Explicit allow rules skip prompts. Otherwise require per-call
+                    // confirmation regardless of provider/model call path.
+                    needsConfirm = !explicitAllowed;
+                    break;
+            }
         }
 
         if (blocked)
         {
-            output.RenderWarning($"  ✗ {functionName} blocked (plan mode — read-only)");
-            context.Result = new FunctionResult(context.Function, "Tool blocked: plan mode restricts to read-only operations.");
+            output.RenderWarning($"  ✗ {functionName} blocked ({blockReason})");
+            var blockedResult = $"Tool blocked: {blockReason}.";
+            context.Result = new FunctionResult(context.Function, blockedResult);
+            _session.RecordToolCall(canonicalToolName, BuildRedactedArgs(context.Arguments), blockedResult, "denied", 0);
             return;
         }
 
@@ -163,7 +167,9 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             if (policyResult.Decision == PolicyDecision.Deny)
             {
                 output.RenderWarning($"Policy blocked: {functionName} — {policyResult.Reason}");
-                context.Result = new FunctionResult(context.Function, $"Blocked by policy: {policyResult.Reason}");
+                var deniedResult = $"Blocked by policy: {policyResult.Reason}";
+                context.Result = new FunctionResult(context.Function, deniedResult);
+                _session.RecordToolCall(canonicalToolName, BuildRedactedArgs(context.Arguments), deniedResult, "denied", 0);
 
                 await EmitAuditEventAsync(functionName, canonicalToolName, context.Arguments, "denied", policyResult)
                     .ConfigureAwait(false);
@@ -181,8 +187,9 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             {
                 output.RenderWarning($"  ⚡ Circuit breaker: {cbResult.Message}");
                 output.RenderInfo("  💡 Hint: Try a different approach or use /circuit-reset to manually reset.");
-                context.Result = new FunctionResult(context.Function,
-                    $"Blocked by circuit breaker: {cbResult.Message}");
+                var blockedResult = $"Blocked by circuit breaker: {cbResult.Message}";
+                context.Result = new FunctionResult(context.Function, blockedResult);
+                _session.RecordToolCall(canonicalToolName, BuildRedactedArgs(context.Arguments), blockedResult, "denied", 0);
 
                 Telemetry.Meters.CircuitBreakerTrips.Add(1,
                     new KeyValuePair<string, object?>("jdai.tool.name", functionName),
@@ -210,7 +217,9 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         {
             if (!output.ConfirmToolCall(functionName, displayArgs))
             {
-                context.Result = new FunctionResult(context.Function, "User denied tool execution.");
+                const string deniedResult = "User denied tool execution.";
+                context.Result = new FunctionResult(context.Function, deniedResult);
+                _session.RecordToolCall(canonicalToolName, BuildRedactedArgs(context.Arguments), deniedResult, "denied", 0);
                 await EmitAuditEventAsync(functionName, canonicalToolName, context.Arguments, "user_denied", policyResult)
                     .ConfigureAwait(false);
                 return;
@@ -264,6 +273,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         // Render tool result
         var result = context.Result.GetValue<string>() ?? context.Result.ToString() ?? "";
         output.RenderToolCall(functionName, displayArgs, result);
+        _session.RecordToolCall(canonicalToolName, BuildRedactedArgs(context.Arguments), result, "ok", sw.ElapsedMilliseconds);
 
         // ── Audit ────────────────────────────────────────────
         await EmitAuditEventAsync(functionName, canonicalToolName, context.Arguments, "ok", policyResult)

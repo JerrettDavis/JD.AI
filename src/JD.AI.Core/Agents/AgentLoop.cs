@@ -1262,13 +1262,17 @@ public sealed class AgentLoop
             {
                 DebugLogger.Log(DebugCategory.Agents,
                     "Text-based tool call blocked by safety gate: {0}", fullName);
+                _session.RecordToolCall(functionName, argsSummary, "Tool blocked by explicit permission gate.", "denied", 0);
                 return null;
             }
 
+            var toolStopwatch = Stopwatch.StartNew();
             var result = await func.InvokeAsync(_session.Kernel, args, ct).ConfigureAwait(false);
+            toolStopwatch.Stop();
             var resultStr = result?.ToString() ?? "(no output)";
 
             AgentOutput.Current.RenderToolCall(fullName!, argsSummary, resultStr);
+            _session.RecordToolCall(functionName, argsSummary, resultStr, "ok", toolStopwatch.ElapsedMilliseconds);
 
             return new TextToolCallResult(fullName, resultStr);
         }
@@ -1601,7 +1605,7 @@ public sealed class AgentLoop
         return EvaluateTextToolCallSafety(
             canonicalName, argsSummary,
             _session.PermissionMode, _session.SkipPermissions, _session.AutoRunEnabled,
-            _session.ToolSafetyTiers, _textToolConfirmedOnce, AgentOutput.Current);
+            _session.ToolSafetyTiers, _session.ToolPermissionProfile, _textToolConfirmedOnce, AgentOutput.Current);
     }
 
     /// <summary>
@@ -1612,10 +1616,19 @@ public sealed class AgentLoop
         string canonicalName, string argsSummary,
         PermissionMode permissionMode, bool skipPermissions, bool autoRunEnabled,
         IReadOnlyDictionary<string, Tools.SafetyTier>? tierMap,
+        ToolPermissionProfile? permissionProfile,
         HashSet<string> confirmedOnce, IAgentOutput output)
     {
         var tier = tierMap?.GetValueOrDefault(canonicalName, Tools.SafetyTier.AlwaysConfirm)
                    ?? Tools.SafetyTier.AlwaysConfirm;
+        var explicitDenied = permissionProfile?.IsExplicitlyDenied(canonicalName) ?? false;
+        var explicitAllowed = permissionProfile?.IsExplicitlyAllowed(canonicalName) ?? false;
+
+        if (explicitDenied)
+        {
+            output.RenderWarning($"  \u2717 {canonicalName} blocked (explicit deny rule)");
+            return false;
+        }
 
         switch (permissionMode)
         {
@@ -1626,46 +1639,18 @@ public sealed class AgentLoop
                     return false;
                 }
                 break;
-            case PermissionMode.BypassAll:
-                output.RenderInfo($"  \u25b8 [text-tool] {canonicalName}({argsSummary})");
-                return true;
-            case PermissionMode.AcceptEdits:
-                if (tier == Tools.SafetyTier.AlwaysConfirm)
-                {
-                    if (!output.ConfirmToolCall(canonicalName, argsSummary))
-                        return false;
-                }
-                else
-                    output.RenderInfo($"  \u25b8 [text-tool] {canonicalName}({argsSummary})");
-                return true;
-            default: // Normal
-                break;
         }
 
-        if (skipPermissions || autoRunEnabled)
+        if (explicitAllowed)
         {
             output.RenderInfo($"  \u25b8 [text-tool] {canonicalName}({argsSummary})");
             return true;
         }
 
-        var needsConfirm = tier switch
-        {
-            Tools.SafetyTier.AutoApprove => false,
-            Tools.SafetyTier.ConfirmOnce => !confirmedOnce.Contains(canonicalName),
-            Tools.SafetyTier.AlwaysConfirm => true,
-            _ => true,
-        };
-
-        if (needsConfirm)
-        {
-            if (!output.ConfirmToolCall(canonicalName, argsSummary))
-                return false;
-            if (tier == Tools.SafetyTier.ConfirmOnce)
-                confirmedOnce.Add(canonicalName);
-        }
-        else
-            output.RenderInfo($"  \u25b8 [text-tool] {canonicalName}({argsSummary})");
-
-        return true;
+        _ = skipPermissions;
+        _ = autoRunEnabled;
+        _ = confirmedOnce;
+        _ = tier;
+        return output.ConfirmToolCall(canonicalName, argsSummary);
     }
 }
