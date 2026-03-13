@@ -1,4 +1,5 @@
 using System.Text.Json;
+using JD.AI.Core.Agents;
 using JD.AI.Core.Infrastructure;
 
 namespace JD.AI.Core.Config;
@@ -204,6 +205,68 @@ public sealed class AtomicConfigStore : IDisposable
         }, ct).ConfigureAwait(false);
     }
 
+    /// <summary>Gets explicit tool permissions resolved for global + project scope.</summary>
+    public async Task<ToolPermissionProfile> GetToolPermissionProfileAsync(
+        string? projectPath = null,
+        CancellationToken ct = default)
+    {
+        var config = await ReadAsync(ct).ConfigureAwait(false);
+        var profile = new ToolPermissionProfile();
+
+        foreach (var rule in config.ToolPermissions.Global.Allowed)
+            profile.GlobalAllowed.Add(rule);
+        foreach (var rule in config.ToolPermissions.Global.Denied)
+            profile.GlobalDenied.Add(rule);
+
+        if (!string.IsNullOrWhiteSpace(projectPath) &&
+            config.ToolPermissions.Projects.TryGetValue(projectPath, out var project))
+        {
+            foreach (var rule in project.Allowed)
+                profile.ProjectAllowed.Add(rule);
+            foreach (var rule in project.Denied)
+                profile.ProjectDenied.Add(rule);
+        }
+
+        return profile;
+    }
+
+    /// <summary>Adds an allow/deny rule for tool execution in global or project scope.</summary>
+    public async Task AddToolPermissionRuleAsync(
+        string toolPattern,
+        bool allow,
+        bool projectScope,
+        string? projectPath = null,
+        CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(toolPattern);
+
+        await WriteAsync(cfg =>
+        {
+            ToolPermissionScopeConfig target;
+            if (projectScope)
+            {
+                var scopePath = string.IsNullOrWhiteSpace(projectPath)
+                    ? Directory.GetCurrentDirectory()
+                    : projectPath;
+                if (!cfg.ToolPermissions.Projects.TryGetValue(scopePath, out var project))
+                {
+                    project = new ToolPermissionScopeConfig();
+                    cfg.ToolPermissions.Projects[scopePath] = project;
+                }
+
+                target = project;
+            }
+            else
+            {
+                target = cfg.ToolPermissions.Global;
+            }
+
+            var list = allow ? target.Allowed : target.Denied;
+            if (!list.Any(item => string.Equals(item, toolPattern, StringComparison.OrdinalIgnoreCase)))
+                list.Add(toolPattern);
+        }, ct).ConfigureAwait(false);
+    }
+
     /// <inheritdoc />
     public void Dispose()
     {
@@ -275,6 +338,9 @@ public sealed class JdAiConfig
     /// <summary>Per-project default overrides keyed by absolute project path.</summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only", Justification = "Required for JSON deserialization")]
     public IDictionary<string, DefaultsConfig> ProjectDefaults { get; set; } = new Dictionary<string, DefaultsConfig>();
+
+    /// <summary>Explicit tool allow/deny permissions.</summary>
+    public ToolPermissionsConfig ToolPermissions { get; set; } = new();
 }
 
 /// <summary>Provider and model defaults.</summary>
@@ -291,4 +357,23 @@ public sealed class DefaultsConfig
     /// "powershell", "cmd", "bash", or a custom template with {command}).
     /// </summary>
     public string? Shell { get; set; }
+}
+
+/// <summary>Config root for explicit tool permission rules.</summary>
+public sealed class ToolPermissionsConfig
+{
+    public ToolPermissionScopeConfig Global { get; set; } = new();
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only", Justification = "Required for JSON deserialization")]
+    public IDictionary<string, ToolPermissionScopeConfig> Projects { get; set; } = new Dictionary<string, ToolPermissionScopeConfig>();
+}
+
+/// <summary>Allow/deny tool rules for one scope.</summary>
+public sealed class ToolPermissionScopeConfig
+{
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1002:Do not expose generic lists", Justification = "Required for JSON serialization")]
+    public List<string> Allowed { get; set; } = [];
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1002:Do not expose generic lists", Justification = "Required for JSON serialization")]
+    public List<string> Denied { get; set; } = [];
 }

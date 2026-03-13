@@ -22,6 +22,7 @@ public sealed class AgentSession
     private readonly List<ForkPoint> _forkPoints = [];
     private Kernel _kernel;
     private int _turnIndex;
+    private readonly List<PendingToolCall> _pendingToolCalls = [];
 
     /// <summary>Current turn index (0-based).</summary>
     public int TurnIndex => _turnIndex;
@@ -66,6 +67,12 @@ public sealed class AgentSession
     /// Controls the permission model for tool invocations within the session.
     /// </summary>
     public PermissionMode PermissionMode { get; set; } = PermissionMode.Normal;
+
+    /// <summary>
+    /// Explicit allow/deny rules for tool invocations.
+    /// A tool must either match an allow rule or receive per-call user confirmation.
+    /// </summary>
+    public ToolPermissionProfile ToolPermissionProfile { get; set; } = ToolPermissionProfile.Empty;
 
     /// <summary>
     /// Fallback model chain — used when the primary model returns 429/503/timeout.
@@ -141,6 +148,7 @@ public sealed class AgentSession
     public void ResetTurnState()
     {
         WorkflowDeclinedThisTurn = false;
+        _pendingToolCalls.Clear();
         // Don't clear CapturedWorkflowSteps here — they persist across the turn
     }
 
@@ -246,6 +254,20 @@ public sealed class AgentSession
             ContextWindowTokens = CurrentModel?.ContextWindowTokens ?? 0,
         };
         CurrentTurn = turn;
+        foreach (var pending in _pendingToolCalls)
+        {
+            turn.ToolCalls.Add(new ToolCallRecord
+            {
+                TurnId = turn.Id,
+                ToolName = pending.ToolName,
+                Arguments = pending.Arguments,
+                Result = pending.Result,
+                Status = pending.Status,
+                DurationMs = pending.DurationMs,
+                CreatedAt = pending.CreatedAt,
+            });
+        }
+        _pendingToolCalls.Clear();
         SessionInfo.Turns.Add(turn);
         SessionInfo.MessageCount++;
         SessionInfo.TotalTokens += tokensIn + tokensOut;
@@ -285,16 +307,27 @@ public sealed class AgentSession
     }
     public void RecordToolCall(string toolName, string? arguments, string? result, string status, long durationMs)
     {
-        if (CurrentTurn == null) return;
-        CurrentTurn.ToolCalls.Add(new ToolCallRecord
+        if (CurrentTurn is not null)
         {
-            TurnId = CurrentTurn.Id,
-            ToolName = toolName,
-            Arguments = arguments,
-            Result = result,
-            Status = status,
-            DurationMs = durationMs,
-        });
+            CurrentTurn.ToolCalls.Add(new ToolCallRecord
+            {
+                TurnId = CurrentTurn.Id,
+                ToolName = toolName,
+                Arguments = arguments,
+                Result = result,
+                Status = status,
+                DurationMs = durationMs,
+            });
+            return;
+        }
+
+        _pendingToolCalls.Add(new PendingToolCall(
+            ToolName: toolName,
+            Arguments: arguments,
+            Result: result,
+            Status: status,
+            DurationMs: durationMs,
+            CreatedAt: DateTime.UtcNow));
     }
 
     /// <summary>Record a file operation on the current turn.</summary>
@@ -726,4 +759,12 @@ public sealed class AgentSession
             History.Add(msg);
         }
     }
+
+    private sealed record PendingToolCall(
+        string ToolName,
+        string? Arguments,
+        string? Result,
+        string Status,
+        long DurationMs,
+        DateTime CreatedAt);
 }
