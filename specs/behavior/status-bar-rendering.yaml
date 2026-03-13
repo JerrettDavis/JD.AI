@@ -10,7 +10,9 @@ metadata:
     - upss-behavioral-spec-architect
   lastReviewed: "2026-03-12"
   changeReason: Specify status bar rendering behavior for the customizable footer feature.
-useCaseRef: usecase.customize-status-bar
+useCaseRefs:
+  - usecase.customize-status-bar
+  - usecase.view-context-usage
 bddScenarios:
   - title: Footer renders default segments on startup
     given:
