@@ -116,6 +116,10 @@ kernel = sessionSetup.Kernel;
 var projectPath = sessionSetup.ProjectPath;
 var worktreeManager = sessionSetup.WorktreeManager;
 
+session.ToolPermissionProfile = await configStore
+    .GetToolPermissionProfileAsync(projectPath)
+    .ConfigureAwait(false);
+
 // 6. Register built-in tools
 var toolReg = ToolRegistrar.RegisterAll(kernel, session, selectedModel);
 

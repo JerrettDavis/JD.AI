@@ -147,6 +147,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             SlashCommandId.Resume => await ResumeSessionAsync(arg, ct).ConfigureAwait(false),
             SlashCommandId.Name => NameSession(arg),
             SlashCommandId.History => ShowHistory(),
+            SlashCommandId.ToolHistory => await ShowToolHistoryAsync(arg, ct).ConfigureAwait(false),
             SlashCommandId.Export => await ExportSessionAsync(ct).ConfigureAwait(false),
             SlashCommandId.Update => await CheckUpdateAsync(ct).ConfigureAwait(false),
             SlashCommandId.Instructions => ShowInstructions(),
@@ -1392,12 +1393,59 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
     private string TogglePermissions(string? arg)
     {
+        if (string.IsNullOrWhiteSpace(arg))
+        {
+            return BuildPermissionSummary();
+        }
+
+        if (arg.StartsWith("allow ", StringComparison.OrdinalIgnoreCase) ||
+            arg.StartsWith("deny ", StringComparison.OrdinalIgnoreCase))
+        {
+            var tokens = arg.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (tokens.Length < 2)
+                return "Usage: /permissions allow|deny <tool-pattern> [global|project]";
+
+            var decision = tokens[0];
+            var toolPattern = tokens[1];
+            var scope = tokens.Length > 2 ? tokens[2] : "project";
+            var projectScope = !scope.Equals("global", StringComparison.OrdinalIgnoreCase);
+            var allow = decision.Equals("allow", StringComparison.OrdinalIgnoreCase);
+
+            var canonical = OpenClawToolAliasResolver.Resolve(toolPattern);
+            try
+            {
+                _configStore?.AddToolPermissionRuleAsync(
+                    canonical,
+                    allow,
+                    projectScope,
+                    _session.SessionInfo?.ProjectPath ?? Directory.GetCurrentDirectory())
+                    .GetAwaiter().GetResult();
+            }
+#pragma warning disable CA1031
+            catch
+#pragma warning restore CA1031
+            {
+                // Ignore persistence failures; session state still updates.
+            }
+
+            if (allow)
+                _session.ToolPermissionProfile.AddAllowed(canonical, projectScope);
+            else
+                _session.ToolPermissionProfile.AddDenied(canonical, projectScope);
+
+            var scopeLabel = projectScope ? "project" : "global";
+            return $"{(allow ? "Allowed" : "Denied")} tool pattern `{canonical}` in {scopeLabel} scope.";
+        }
+
+        if (string.Equals(arg, "list", StringComparison.OrdinalIgnoreCase))
+            return BuildPermissionSummary();
+
         if (string.Equals(arg, "off", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(arg, "false", StringComparison.OrdinalIgnoreCase))
         {
             _session.SkipPermissions = true;
             _session.PermissionMode = PermissionMode.BypassAll;
-            return "⚠ Permission checks DISABLED — all tools will run without confirmation.";
+            return "⚠ Permission checks DISABLED (legacy bypass mode). Explicit tool allow/deny rules are still enforced.";
         }
 
         if (string.Equals(arg, "on", StringComparison.OrdinalIgnoreCase) ||
@@ -1428,10 +1476,26 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         {
             _session.PermissionMode = PermissionMode.Normal;
             _session.SkipPermissions = false;
-            return "Permission checks enabled — safety tiers apply.";
+            return "Permission checks enabled — tools require explicit allow rules or per-call confirmation.";
         }
 
-        return $"Permission mode: {_session.PermissionMode}. Usage: /permissions [on|off|plan|acceptEdits|normal]";
+        return "Usage: /permissions [on|off|plan|acceptEdits|normal|list|allow <tool> [global|project]|deny <tool> [global|project]]";
+    }
+
+    private string BuildPermissionSummary()
+    {
+        var p = _session.ToolPermissionProfile;
+        static string Format(IEnumerable<string> values) =>
+            string.Join(", ", values.DefaultIfEmpty("none"));
+
+        return $"""
+            Permission mode: {_session.PermissionMode}
+            Explicit global allow: {Format(p.GlobalAllowed)}
+            Explicit global deny: {Format(p.GlobalDenied)}
+            Explicit project allow: {Format(p.ProjectAllowed)}
+            Explicit project deny: {Format(p.ProjectDenied)}
+            Usage: /permissions allow|deny <tool-pattern> [global|project]
+            """;
     }
 
     // ── Session commands ──────────────────────────────────
@@ -1509,6 +1573,261 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         });
 
         return $"Session history ({turns.Count} turns):\n{string.Join('\n', lines)}";
+    }
+
+    private async Task<string> ShowToolHistoryAsync(string? arg, CancellationToken ct)
+    {
+        var includeAll = string.Equals(arg?.Trim(), "all", StringComparison.OrdinalIgnoreCase);
+        var entries = await CollectToolHistoryEntriesAsync(includeAll, ct).ConfigureAwait(false);
+        if (entries.Count == 0)
+            return includeAll
+                ? "No tool calls found across sessions."
+                : "No tool calls found in the current session.";
+
+        if (Console.IsInputRedirected)
+            return RenderToolHistorySummary(entries, includeAll);
+
+        var prompt = new SelectionPrompt<ToolHistoryEntry>()
+            .Title(includeAll
+                ? "[bold]Tool History[/] ([dim]all sessions[/])"
+                : "[bold]Tool History[/] ([dim]current session[/])")
+            .UseConverter(static e => e.Label)
+            .PageSize(15)
+            .AddChoices(entries);
+
+        ToolHistoryEntry selected;
+        try
+        {
+            selected = AnsiConsole.Prompt(prompt);
+        }
+        catch (OperationCanceledException)
+        {
+            return "Tool history closed.";
+        }
+        catch (InvalidOperationException)
+        {
+            return "Tool history closed.";
+        }
+
+        return await RunToolHistoryActionAsync(selected, ct).ConfigureAwait(false);
+    }
+
+    private async Task<string> RunToolHistoryActionAsync(ToolHistoryEntry entry, CancellationToken ct)
+    {
+        var action = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("[bold]Tool History Action[/]")
+                .AddChoices(
+                    "View details",
+                    "Allow globally",
+                    "Allow for project",
+                    "Deny globally",
+                    "Deny for project",
+                    "Rewind before tool use",
+                    "Rewind after tool use"));
+
+        switch (action)
+        {
+            case "View details":
+                return RenderToolHistoryEntryDetail(entry);
+            case "Allow globally":
+                return await PersistToolPermissionFromHistoryAsync(entry, allow: true, projectScope: false, ct).ConfigureAwait(false);
+            case "Allow for project":
+                return await PersistToolPermissionFromHistoryAsync(entry, allow: true, projectScope: true, ct).ConfigureAwait(false);
+            case "Deny globally":
+                return await PersistToolPermissionFromHistoryAsync(entry, allow: false, projectScope: false, ct).ConfigureAwait(false);
+            case "Deny for project":
+                return await PersistToolPermissionFromHistoryAsync(entry, allow: false, projectScope: true, ct).ConfigureAwait(false);
+            case "Rewind before tool use":
+                return await RewindToToolUseAsync(entry, includeToolTurn: false, ct).ConfigureAwait(false);
+            case "Rewind after tool use":
+                return await RewindToToolUseAsync(entry, includeToolTurn: true, ct).ConfigureAwait(false);
+            default:
+                return "No action applied.";
+        }
+    }
+
+    private async Task<string> PersistToolPermissionFromHistoryAsync(
+        ToolHistoryEntry entry,
+        bool allow,
+        bool projectScope,
+        CancellationToken ct)
+    {
+        var canonical = OpenClawToolAliasResolver.Resolve(entry.ToolName);
+        var projectPath = _session.SessionInfo?.ProjectPath ?? Directory.GetCurrentDirectory();
+        if (_configStore is not null)
+        {
+            await _configStore.AddToolPermissionRuleAsync(
+                canonical,
+                allow,
+                projectScope,
+                projectPath,
+                ct).ConfigureAwait(false);
+        }
+
+        if (allow)
+            _session.ToolPermissionProfile.AddAllowed(canonical, projectScope);
+        else
+            _session.ToolPermissionProfile.AddDenied(canonical, projectScope);
+
+        return $"{(allow ? "Allowed" : "Denied")} `{canonical}` in {(projectScope ? "project" : "global")} scope.";
+    }
+
+    private string RenderToolHistoryEntryDetail(ToolHistoryEntry entry)
+    {
+        var summaryLines = TruncateLines(entry.Result, 2);
+        var details = $"""
+            Tool: {entry.ToolName}
+            Session: {entry.SessionId}
+            Turn: {entry.TurnIndex}
+            Status: {entry.Status}
+            Duration: {entry.DurationMs}ms
+            Time: {entry.CreatedAt:g}
+            Args: {entry.Arguments}
+            Output:
+            {summaryLines}
+            """;
+        return details;
+    }
+
+    private async Task<string> RewindToToolUseAsync(
+        ToolHistoryEntry entry,
+        bool includeToolTurn,
+        CancellationToken ct)
+    {
+        if (_session.Store is null || _session.SessionInfo is null)
+            return "Session persistence not initialized.";
+
+        if (!string.Equals(entry.SessionId, _session.SessionInfo.Id, StringComparison.Ordinal))
+            return "Rewind is only supported for the current active session.";
+
+        var targetTurn = includeToolTurn ? entry.TurnIndex : Math.Max(0, entry.TurnIndex - 1);
+
+        await _session.Store.DeleteTurnsAfterAsync(_session.SessionInfo.Id, targetTurn).ConfigureAwait(false);
+        while (_session.SessionInfo.Turns.Count > targetTurn + 1)
+            _session.SessionInfo.Turns.RemoveAt(_session.SessionInfo.Turns.Count - 1);
+
+        _session.History.Clear();
+        if (!string.IsNullOrWhiteSpace(_session.OriginalSystemPrompt))
+            _session.History.AddSystemMessage(_session.OriginalSystemPrompt);
+
+        foreach (var turn in _session.SessionInfo.Turns)
+        {
+            if (string.Equals(turn.Role, "user", StringComparison.Ordinal))
+                _session.History.AddUserMessage(turn.Content ?? string.Empty);
+            else if (string.Equals(turn.Role, "assistant", StringComparison.Ordinal))
+                _session.History.AddAssistantMessage(turn.Content ?? string.Empty);
+        }
+
+        var checkpoints = _checkpointStrategy is null
+            ? []
+            : await _checkpointStrategy.ListAsync(ct).ConfigureAwait(false);
+        if (_checkpointStrategy is not null && checkpoints.Count > 0)
+        {
+            var restorePrompt = new SelectionPrompt<string>()
+                .Title("[bold]Restore code checkpoint too?[/]")
+                .AddChoices("No", "Yes (latest checkpoint)");
+            var restoreChoice = AnsiConsole.Prompt(restorePrompt);
+            if (string.Equals(restoreChoice, "Yes (latest checkpoint)", StringComparison.Ordinal))
+            {
+                var restored = await _checkpointStrategy
+                    .RestoreAsync(checkpoints[0].Id, ct)
+                    .ConfigureAwait(false);
+                return restored
+                    ? $"Rewound conversation to turn {targetTurn} and restored checkpoint {checkpoints[0].Id}."
+                    : $"Rewound conversation to turn {targetTurn}. Checkpoint restore failed.";
+            }
+        }
+
+        return $"Rewound conversation to turn {targetTurn}.";
+    }
+
+    private async Task<List<ToolHistoryEntry>> CollectToolHistoryEntriesAsync(
+        bool includeAll,
+        CancellationToken ct)
+    {
+        var entries = new List<ToolHistoryEntry>();
+
+        if (!includeAll || _session.Store is null)
+        {
+            if (_session.SessionInfo is null)
+                return entries;
+
+            entries.AddRange(FlattenToolCalls(_session.SessionInfo));
+            return entries
+                .OrderByDescending(e => e.CreatedAt)
+                .ToList();
+        }
+
+        var sessions = await _session.Store.ListSessionsAsync(limit: 50).ConfigureAwait(false);
+        foreach (var s in sessions)
+        {
+            ct.ThrowIfCancellationRequested();
+            var full = await _session.Store.GetSessionAsync(s.Id).ConfigureAwait(false);
+            if (full is null)
+                continue;
+            entries.AddRange(FlattenToolCalls(full));
+        }
+
+        return entries
+            .OrderByDescending(e => e.CreatedAt)
+            .ToList();
+    }
+
+    private static IEnumerable<ToolHistoryEntry> FlattenToolCalls(SessionInfo session)
+    {
+        var sessionLabel = session.Name ?? session.Id;
+        foreach (var turn in session.Turns)
+        {
+            foreach (var tool in turn.ToolCalls)
+            {
+                var preview = TruncateSingleLine(tool.Result, 70);
+                var label = $"[{tool.CreatedAt:g}] {tool.ToolName} ({tool.Status}) t{turn.TurnIndex} {preview}";
+                yield return new ToolHistoryEntry(
+                    SessionId: session.Id,
+                    SessionName: sessionLabel,
+                    TurnIndex: turn.TurnIndex,
+                    CreatedAt: tool.CreatedAt,
+                    ToolName: tool.ToolName,
+                    Arguments: tool.Arguments ?? "",
+                    Result: tool.Result ?? "",
+                    Status: tool.Status,
+                    DurationMs: tool.DurationMs,
+                    Label: label);
+            }
+        }
+    }
+
+    private static string RenderToolHistorySummary(IReadOnlyList<ToolHistoryEntry> entries, bool includeAll)
+    {
+        var heading = includeAll ? "Tool history (all sessions):" : "Tool history (current session):";
+        var lines = entries
+            .Take(50)
+            .Select(e => $"  [{e.CreatedAt:g}] {e.ToolName} ({e.Status}) turn={e.TurnIndex} args={TruncateSingleLine(e.Arguments, 60)}");
+        return heading + '\n' + string.Join('\n', lines);
+    }
+
+    private static string TruncateSingleLine(string? text, int maxChars)
+    {
+        var line = (text ?? string.Empty)
+            .Replace("\r", " ", StringComparison.Ordinal)
+            .Replace("\n", " ", StringComparison.Ordinal)
+            .Trim();
+
+        if (line.Length <= maxChars)
+            return line;
+
+        return string.Concat(line.AsSpan(0, maxChars - 3), "...");
+    }
+
+    private static string TruncateLines(string? text, int maxLines)
+    {
+        var lines = (text ?? string.Empty)
+            .Split('\n', StringSplitOptions.TrimEntries);
+        if (lines.Length <= maxLines)
+            return string.Join('\n', lines);
+
+        return string.Join('\n', lines.Take(maxLines)) + "\n...";
     }
 
     private async Task<string> ExportSessionAsync(CancellationToken ct)
@@ -4717,4 +5036,16 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
               /default project shell <value>  — Set project default shell
             """;
     }
+
+    private sealed record ToolHistoryEntry(
+        string SessionId,
+        string SessionName,
+        int TurnIndex,
+        DateTime CreatedAt,
+        string ToolName,
+        string Arguments,
+        string Result,
+        string Status,
+        long DurationMs,
+        string Label);
 }

@@ -63,6 +63,11 @@ public static class SlashCommandCatalog
         new(SlashCommandId.Resume, "/resume", "/resume [id]", "Resume a previous session"),
         new(SlashCommandId.Name, "/name", "/name <name>", "Name the current session"),
         new(SlashCommandId.History, "/history", "/history", "Show session turn history"),
+        new(
+            SlashCommandId.ToolHistory,
+            "/tool-history",
+            "/tool-history [current|all]",
+            "Browse tool-use audit history and apply allow/deny decisions"),
         new(SlashCommandId.Export, "/export", "/export", "Export current session to JSON"),
         new(SlashCommandId.Update, "/update", "/update", "Check for and apply updates"),
         new(
@@ -404,6 +409,7 @@ public enum SlashCommandId
     Resume,
     Name,
     History,
+    ToolHistory,
     Export,
     Update,
     Instructions,
