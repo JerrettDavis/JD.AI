@@ -669,6 +669,68 @@ public sealed class AgentLoopTextToolExecutionTests
             .Should().BeTrue();
     }
 
+    [Fact]
+    public async Task TryExecuteTextToolCallAsync_SkipsDuplicateFingerprintInSameTurn()
+    {
+        var registry = Substitute.For<IProviderRegistry>();
+        var model = new ProviderModelInfo(
+            "claude-sonnet-4-6",
+            "Claude Sonnet 4.6",
+            "Claude Code",
+            Capabilities: ModelCapabilities.Chat | ModelCapabilities.ToolCalling);
+
+        const string Response = """
+            I'll run ls for you.
+            <tool_use>
+            {"name":"run_command","arguments":{"command":"ls"}}
+            </tool_use>
+            """;
+
+        var executedCommands = new List<string>();
+        var builder = Kernel.CreateBuilder();
+        builder.Services.AddSingleton(Substitute.For<IChatCompletionService>());
+        var kernel = builder.Build();
+        kernel.Plugins.AddFromFunctions("shell", [
+            KernelFunctionFactory.CreateFromMethod(
+                (string command) =>
+                {
+                    executedCommands.Add(command);
+                    return "Exit code: 0\n--- stdout ---\nREADME.md";
+                },
+                "run_command",
+                "Execute command")
+        ]);
+
+        var session = new AgentSession(registry, kernel, model);
+        var output = new NullOutput();
+        session.ResetTurnState();
+        _ = session.TryRegisterToolCallForCurrentTurn("run_command", "command=ls");
+        var loop = new AgentLoop(session);
+
+        var previousOutput = AgentOutput.Current;
+        AgentOutput.Current = output;
+        try
+        {
+            var method = typeof(AgentLoop).GetMethod(
+                "TryExecuteTextToolCallAsync",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            method.Should().NotBeNull();
+
+            var taskObj = method!.Invoke(loop, [Response, CancellationToken.None]) as Task;
+            taskObj.Should().NotBeNull();
+            await taskObj!;
+            var result = taskObj!.GetType().GetProperty("Result")!.GetValue(taskObj);
+            result.Should().BeNull();
+        }
+        finally
+        {
+            AgentOutput.Current = previousOutput;
+        }
+
+        executedCommands.Should().BeEmpty();
+        output.ToolCallRenderCount.Should().Be(0);
+    }
+
     private static async IAsyncEnumerable<StreamingChatMessageContent> StreamOnce(string text)
     {
         yield return new StreamingChatMessageContent(AuthorRole.Assistant, text);
