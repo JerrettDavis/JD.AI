@@ -1,6 +1,6 @@
 # Spec Audit Matrix
 
-Last updated: 2026-03-12
+Last updated: 2026-03-13
 
 ## Scope Reviewed
 - `tests/JD.AI.Specs` (Reqnroll BDD core/gateway)
@@ -17,21 +17,16 @@ Last updated: 2026-03-12
   - `/tool-history` no-history behavior
   - `/help` includes `/tool-history`
 
-## High-Priority Remaining Gaps
+## Resolved High-Priority Gaps
 - Tool history interactive action flow:
-  - Allow/Deny actions from history selection are not covered by deterministic tests.
-  - Rewind-before/after behavior from `/tool-history` is not covered by automated tests.
+  - Deterministic tests now cover allow/deny actions and rewind-before/after flows.
 - Explicit permission enforcement end-to-end:
-  - No integration test currently validates both SK auto tool calls and text-emitted tool calls share the same explicit-permission gate.
+  - Shared permission gate is now tested for parity across structured SK calls and text-emitted tool calls.
 - TUI behavior contracts:
-  - Mode-bar rendering stability across turns is not covered by snapshot/spec tests.
+  - Mode-bar stability and permission-mode transition specs were added for non-dup and state correctness.
 - Provider parity tool execution:
-  - Cross-provider/cross-shell tool behavior parity scenarios (Claude Code, Copilot, OpenClaw style calls) need integration-level specs.
+  - Regression specs now cover duplicate tool invocation/render behavior in text-fallback paths.
 
-## Suggested Next Spec Sprint
-1. Add deterministic `ToolHistory` action tests by extracting action handling into a testable service.
-2. Add integration spec for explicit deny/allow across:
-   - Structured tool calls
-   - Text tool-call fallback (`<tool_call>`, `<tool_use>`, fenced shell).
-3. Add regression spec around duplicate tool rendering and duplicate invocation.
-4. Add CLI/TUI state-transition specs for permission mode display and prompt loop behavior.
+## Current Focus
+1. Extend parity suites to additional provider/channel adapters as new call patterns are introduced.
+2. Keep matrix and regression suites in lockstep with any tool pipeline/refactor changes.
