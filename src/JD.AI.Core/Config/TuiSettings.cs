@@ -50,6 +50,9 @@ public sealed record TuiSettings
     /// <summary>Welcome panel visibility and MoTD settings.</summary>
     public WelcomePanelSettings Welcome { get; init; } = new();
 
+    /// <summary>Status footer display settings.</summary>
+    public FooterSettings Footer { get; init; } = new();
+
     /// <summary>Load settings from the data directory, returning defaults if not found.</summary>
     public static TuiSettings Load()
     {
@@ -94,6 +97,7 @@ public sealed record TuiSettings
                 ? OutputStyle.Rich
                 : settings.OutputStyle,
             Welcome = WelcomePanelSettings.Normalize(settings.Welcome),
+            Footer = FooterSettings.Normalize(settings.Footer),
         };
     }
 }
