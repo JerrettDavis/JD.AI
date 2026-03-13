@@ -444,6 +444,7 @@ public sealed class AgentLoopTextToolExecutionTests
         }
 
         output.ConfirmCalled.Should().BeTrue();
+        output.ToolCallRenderCount.Should().Be(1);
         executedCommands.Should().ContainSingle().Which.Should().Be("ls");
         session.History.Any(m =>
             m.Role == AuthorRole.User &&
@@ -678,6 +679,7 @@ public sealed class AgentLoopTextToolExecutionTests
     {
         public bool ConfirmCalled { get; private set; }
         public bool JsonOutputMode { get; init; }
+        public int ToolCallRenderCount { get; private set; }
 
         public void RenderInfo(string message) { }
         public void RenderWarning(string message) { }
@@ -688,6 +690,8 @@ public sealed class AgentLoopTextToolExecutionTests
         public void BeginStreaming() { }
         public void WriteStreamingChunk(string text) { }
         public void EndStreaming() { }
+        public void RenderToolCall(string toolName, string? args, string result) =>
+            ToolCallRenderCount++;
         public void BeginTurn() { }
         public void EndTurn(TurnMetrics metrics) { }
         public bool IsJsonOutputMode => JsonOutputMode;
