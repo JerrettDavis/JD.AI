@@ -298,6 +298,7 @@ internal sealed class InteractiveLoop
         var lastCtrlCTime = DateTime.MinValue;
         var ctrlCWindow = TimeSpan.FromMilliseconds(1500);
         var monitorBox = new TurnMonitorBox();
+        PermissionMode? renderedMode = null;
 
         Console.CancelKeyPress += (_, e) =>
         {
@@ -336,7 +337,11 @@ internal sealed class InteractiveLoop
         {
             _refreshSkills(true);
 
-            ChatRenderer.RenderModeBar(_session.PermissionMode);
+            if (renderedMode != _session.PermissionMode)
+            {
+                ChatRenderer.RenderModeBar(_session.PermissionMode);
+                renderedMode = _session.PermissionMode;
+            }
             var inputResult = ChatRenderer.ReadInputStructured(interactiveInput);
             if (inputResult is null) continue;
 
