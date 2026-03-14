@@ -86,7 +86,7 @@ jobs:
           fail_ci_if_error: false
 
       - name: Add coverage summary to PR
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3
         with:
           recreate: true
           message: |
