@@ -33,21 +33,60 @@ public sealed class FooterBar
         if (!_enabled)
             return new Text(string.Empty);
 
-        var segments = state.ToSegments();
-        var rendered = _template.Render(
-            new Dictionary<string, string?>(
-                (IDictionary<string, string?>)segments));
-
-        // Pad to console width so the grey background fills the whole row.
-        // Guard against IOException when there is no console (e.g. during tests).
-        int width;
-        try { width = Console.WindowWidth; }
-        catch (IOException) { width = 0; }
-        var padded = width > 0 ? rendered.PadRight(width) : rendered;
+        var padded = BuildPaddedLine(state);
 
         // Escape any Spectre markup characters in the rendered text
         var escaped = Markup.Escape(padded);
 
         return new Markup($"[on grey]{escaped}[/]");
+    }
+
+    /// <summary>
+    /// Renders the footer as a persistent status line pinned to the bottom terminal row.
+    /// </summary>
+    public void RenderPersistent(FooterState state)
+    {
+        if (!_enabled)
+            return;
+
+        int width;
+        int height;
+        try
+        {
+            width = Console.WindowWidth;
+            height = Console.WindowHeight;
+        }
+        catch (IOException)
+        {
+            return;
+        }
+
+        if (width <= 0 || height <= 0)
+            return;
+
+        var line = BuildPaddedLine(state);
+        if (line.Length > width)
+            line = line[..width];
+
+        // Save cursor, draw footer on the last row, then restore cursor.
+        Console.Write("\x1b7");
+        Console.Write($"\x1b[{height};1H");
+        Console.Write("\x1b[2K");
+        Console.Write(line);
+        Console.Write("\x1b8");
+    }
+
+    private string BuildPaddedLine(FooterState state)
+    {
+        var segments = state.ToSegments();
+        var rendered = _template.Render(
+            new Dictionary<string, string?>(
+                (IDictionary<string, string?>)segments));
+
+        int width;
+        try { width = Console.WindowWidth; }
+        catch (IOException) { width = 0; }
+
+        return width > 0 ? rendered.PadRight(width) : rendered;
     }
 }

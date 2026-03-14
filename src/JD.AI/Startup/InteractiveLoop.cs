@@ -310,9 +310,7 @@ internal sealed class InteractiveLoop
             mode: _session.PermissionMode,
             warnThresholdPercent: TuiSettings.Load().Footer.WarnThresholdPercent);
 
-        var renderable = _footerBar.ToRenderable(_footerStateProvider.CurrentState);
-        AnsiConsole.Write(renderable);
-        AnsiConsole.WriteLine();
+        _footerBar.RenderPersistent(_footerStateProvider.CurrentState);
     }
 
     private async Task<int> RunMainLoopAsync(
@@ -377,10 +375,10 @@ internal sealed class InteractiveLoop
             {
                 ChatRenderer.RenderModeBar(_session.PermissionMode);
             }
+            RenderFooter();
 
             var inputResult = ChatRenderer.ReadInputStructured(interactiveInput);
             if (inputResult is null) continue;
-            RenderFooter();
 
             var input = inputResult.AssemblePrompt();
             if (string.IsNullOrWhiteSpace(input)) continue;
@@ -564,6 +562,7 @@ internal sealed class InteractiveLoop
 
         // Keep model metadata fresh for subsequent footer renders.
         spectreOutput.ModelName = _session.CurrentModel?.Id;
+        RenderFooter();
     }
 }
 
