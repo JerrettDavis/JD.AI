@@ -9,6 +9,7 @@ namespace JD.AI.Rendering;
 /// </summary>
 public sealed class FooterBar
 {
+    private static readonly Lock RenderLock = new();
     private readonly FooterTemplate _template;
     private readonly bool _enabled;
 
@@ -49,31 +50,51 @@ public sealed class FooterBar
         if (!_enabled)
             return;
 
-        int width;
-        int height;
-        try
+        lock (RenderLock)
         {
-            width = Console.WindowWidth;
-            height = Console.WindowHeight;
+            int width;
+            int windowHeight;
+            int windowTop;
+            int savedLeft;
+            int savedTop;
+            try
+            {
+                width = Console.WindowWidth;
+                windowHeight = Console.WindowHeight;
+                windowTop = Console.WindowTop;
+                (savedLeft, savedTop) = Console.GetCursorPosition();
+            }
+            catch (IOException)
+            {
+                return;
+            }
+
+            if (width <= 1 || windowHeight <= 0)
+                return;
+
+            var footerTop = windowTop + windowHeight - 1;
+            var maxChars = Math.Max(1, width - 1); // avoid autowrap-induced scroll
+            var line = BuildPaddedLine(state);
+            if (line.Length > maxChars)
+                line = line[..maxChars];
+            else if (line.Length < maxChars)
+                line = line.PadRight(maxChars);
+
+            try
+            {
+                Console.SetCursorPosition(0, footerTop);
+                Console.Write(line);
+
+                // Restore original cursor, clamped to visible content area above footer.
+                var restoreTop = Math.Min(savedTop, Math.Max(windowTop, footerTop - 1));
+                var restoreLeft = Math.Max(0, Math.Min(savedLeft, width - 1));
+                Console.SetCursorPosition(restoreLeft, restoreTop);
+            }
+            catch (IOException)
+            {
+                // Ignore footer failures in non-interactive / constrained terminals.
+            }
         }
-        catch (IOException)
-        {
-            return;
-        }
-
-        if (width <= 0 || height <= 0)
-            return;
-
-        var line = BuildPaddedLine(state);
-        if (line.Length > width)
-            line = line[..width];
-
-        // Save cursor, draw footer on the last row, then restore cursor.
-        Console.Write("\x1b7");
-        Console.Write($"\x1b[{height};1H");
-        Console.Write("\x1b[2K");
-        Console.Write(line);
-        Console.Write("\x1b8");
     }
 
     private string BuildPaddedLine(FooterState state)
@@ -84,8 +105,14 @@ public sealed class FooterBar
                 (IDictionary<string, string?>)segments));
 
         int width;
-        try { width = Console.WindowWidth; }
-        catch (IOException) { width = 0; }
+        try
+        {
+            width = Console.WindowWidth;
+        }
+        catch (IOException)
+        {
+            width = 0;
+        }
 
         return width > 0 ? rendered.PadRight(width) : rendered;
     }
