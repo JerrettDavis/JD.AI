@@ -99,7 +99,8 @@ internal sealed class InteractiveLoop
 
         using var spectreOutput = new SpectreAgentOutput(
             tuiSettings.SpinnerStyle,
-            _session.CurrentModel?.Id);
+            _session.CurrentModel?.Id,
+            RenderFooter);
         AgentOutput.Current = spectreOutput;
 
         // Input with command completions
