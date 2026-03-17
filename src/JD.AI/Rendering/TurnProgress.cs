@@ -16,6 +16,7 @@ internal sealed class TurnProgress : IDisposable
 
     private readonly SpinnerStyle _style;
     private readonly string? _modelName;
+    private readonly Action? _refreshFooter;
     private readonly Stopwatch _sw = Stopwatch.StartNew();
     private readonly Timer _timer;
     private readonly System.Threading.Lock _renderLock = new();
@@ -29,10 +30,11 @@ internal sealed class TurnProgress : IDisposable
     /// <summary>Elapsed milliseconds when the spinner was stopped (first content arrived).</summary>
     public long TimeToFirstTokenMs { get; private set; } = -1;
 
-    public TurnProgress(SpinnerStyle style, string? modelName = null)
+    public TurnProgress(SpinnerStyle style, string? modelName = null, Action? refreshFooter = null)
     {
         _style = style;
         _modelName = modelName;
+        _refreshFooter = refreshFooter;
 
         // Suppress spinner entirely in JSON mode to prevent ANSI interleaving
         if (style == SpinnerStyle.None || ChatRenderer.CurrentOutputStyle == OutputStyle.Json)
@@ -67,6 +69,8 @@ internal sealed class TurnProgress : IDisposable
                 Console.Write(line);
                 _renderedLineCount = CountRenderedLines(line);
             }
+
+            _refreshFooter?.Invoke();
         }
         catch (ObjectDisposedException)
         {
@@ -89,6 +93,8 @@ internal sealed class TurnProgress : IDisposable
             {
                 ClearRenderedBlockNoLock();
             }
+
+            _refreshFooter?.Invoke();
         }
         catch (ObjectDisposedException)
         {
@@ -112,6 +118,8 @@ internal sealed class TurnProgress : IDisposable
             {
                 ClearRenderedBlockNoLock();
             }
+
+            _refreshFooter?.Invoke();
         }
         catch (ObjectDisposedException)
         {
