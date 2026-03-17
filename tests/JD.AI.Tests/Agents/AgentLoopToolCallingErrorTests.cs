@@ -301,6 +301,52 @@ public sealed class AgentLoopToolCallingErrorTests : TinyBddXunitBase
             .AssertPassed();
     }
 
+    [Scenario("IsToolsRejectedError detects Anthropic invalid_request_error payloads when tools were enabled"), Fact]
+    public async Task IsToolsRejectedError_DetectsInvalidRequestErrorPayload()
+    {
+        bool? result = null;
+
+        await Given("an exception containing Anthropic invalid_request_error payload text", () =>
+            {
+                return new HttpRequestException(
+                    "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Error\"}}");
+            })
+            .When("IsToolsRejectedError is called with toolsWereEnabled=true", ex =>
+            {
+                result = AgentLoop.IsToolsRejectedError(ex, toolsWereEnabled: true);
+                return true;
+            })
+            .Then("it returns true so the loop can retry without structured tools", _ =>
+            {
+                result.Should().BeTrue();
+                return true;
+            })
+            .AssertPassed();
+    }
+
+    [Scenario("IsToolsRejectedError ignores invalid_request_error payloads when tools were disabled"), Fact]
+    public async Task IsToolsRejectedError_InvalidRequestError_IgnoredWhenToolsDisabled()
+    {
+        bool? result = null;
+
+        await Given("an exception containing invalid_request_error text", () =>
+            {
+                return new HttpRequestException(
+                    "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Error\"}}");
+            })
+            .When("IsToolsRejectedError is called with toolsWereEnabled=false", ex =>
+            {
+                result = AgentLoop.IsToolsRejectedError(ex, toolsWereEnabled: false);
+                return true;
+            })
+            .Then("it returns false to avoid swallowing unrelated invalid-request failures", _ =>
+            {
+                result.Should().BeFalse();
+                return true;
+            })
+            .AssertPassed();
+    }
+
     [Scenario("IsToolsRejectedError returns false when tools were not enabled"), Fact]
     public async Task IsToolsRejectedError_ReturnsFalseWhenToolsNotEnabled()
     {

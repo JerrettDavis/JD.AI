@@ -823,7 +823,8 @@ public sealed class AgentLoop
             var msg = current.Message;
             if (msg.Contains("400 (Bad Request)", StringComparison.OrdinalIgnoreCase) ||
                 msg.Contains("Status: 400", StringComparison.OrdinalIgnoreCase) ||
-                msg.Contains("StatusCode: 400", StringComparison.OrdinalIgnoreCase))
+                msg.Contains("StatusCode: 400", StringComparison.OrdinalIgnoreCase) ||
+                msg.Contains("invalid_request_error", StringComparison.OrdinalIgnoreCase))
                 return true;
         }
         return false;

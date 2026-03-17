@@ -14,16 +14,21 @@ namespace JD.AI.Rendering;
 internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
 {
     private TurnProgress? _progress;
+    private readonly Action? _refreshFooter;
     private readonly StringBuilder _thinkingBuffer = new();
     private readonly List<string> _thinkingSteps = [];
     private readonly Queue<string> _thinkingDetails = new();
     private string? _lastThinkingDetail;
     private int _thinkingTokenCount;
 
-    public SpectreAgentOutput(SpinnerStyle style = SpinnerStyle.Normal, string? modelName = null)
+    public SpectreAgentOutput(
+        SpinnerStyle style = SpinnerStyle.Normal,
+        string? modelName = null,
+        Action? refreshFooter = null)
     {
         Style = style;
         ModelName = modelName;
+        _refreshFooter = refreshFooter;
     }
 
     /// <summary>The active spinner/progress style. Can be changed at runtime via /spinner.</summary>
@@ -41,6 +46,7 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
         ChatRenderer.RenderInfo(message);
         ChatRenderer.ResumeStreaming();
         ResumeProgress();
+        RefreshFooterSafe();
     }
 
     public void RenderWarning(string message)
@@ -50,15 +56,17 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
         ChatRenderer.RenderWarning(message);
         ChatRenderer.ResumeStreaming();
         ResumeProgress();
+        RefreshFooterSafe();
     }
 
     public void RenderError(string message)
     {
-        PauseProgress();
+        // Stop progress entirely so subsequent redraw cycles cannot erase the error line.
+        StopProgress();
         ChatRenderer.PauseStreaming();
         ChatRenderer.RenderError(message);
         ChatRenderer.ResumeStreaming();
-        ResumeProgress();
+        RefreshFooterSafe();
     }
 
     public void RenderToolCall(string toolName, string? args, string result)
@@ -68,6 +76,7 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
         ChatRenderer.RenderToolCall(toolName, args, result);
         ChatRenderer.ResumeStreaming();
         ResumeProgress();
+        RefreshFooterSafe();
     }
 
     public bool ConfirmToolCall(string toolName, string? args)
@@ -78,6 +87,7 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
         var confirmed = ChatRenderer.Confirm("Allow this tool to run?");
         ChatRenderer.ResumeStreaming();
         ResumeProgress();
+        RefreshFooterSafe();
         return confirmed;
     }
 
@@ -89,6 +99,7 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
         var accepted = ChatRenderer.ConfirmWorkflow("Start a workflow?");
         ChatRenderer.ResumeStreaming();
         ResumeProgress();
+        RefreshFooterSafe();
         return accepted;
     }
 
@@ -99,16 +110,18 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
         _thinkingDetails.Clear();
         _lastThinkingDetail = null;
         _thinkingTokenCount = 0;
-        _progress = new TurnProgress(Style, ModelName);
+        _progress = new TurnProgress(Style, ModelName, RefreshFooterSafe);
     }
 
     public void EndTurn(TurnMetrics metrics)
     {
         var ttft = _progress?.TimeToFirstTokenMs;
         StopProgress();
+        RefreshFooterSafe();
         ChatRenderer.RenderTurnMetrics(
             metrics.ElapsedMs, metrics.TokensOut, metrics.BytesReceived,
             Style, ttft, metrics.ModelName ?? ModelName);
+        RefreshFooterSafe();
     }
 
     public void BeginThinking()
@@ -145,6 +158,7 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
     {
         var summary = BuildThinkingSummary();
         StopProgress();
+        RefreshFooterSafe();
 
         if (!string.IsNullOrWhiteSpace(summary) &&
             Style is SpinnerStyle.Normal or SpinnerStyle.Rich or SpinnerStyle.Nerdy)
@@ -153,6 +167,7 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
         }
 
         ChatRenderer.BeginStreaming();
+        RefreshFooterSafe();
     }
 
     public void WriteStreamingChunk(string text) => ChatRenderer.WriteStreamingChunk(text);
@@ -172,6 +187,18 @@ internal sealed class SpectreAgentOutput : IAgentOutput, IDisposable
         _progress.SetThinkingPreview(null);
         _progress.Dispose();
         _progress = null;
+    }
+
+    private void RefreshFooterSafe()
+    {
+        try
+        {
+            _refreshFooter?.Invoke();
+        }
+        catch (System.IO.IOException)
+        {
+            // Ignore footer redraw failures in non-interactive terminals.
+        }
     }
 
     private void UpdateThinkingSignals(string chunk)
