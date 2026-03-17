@@ -1061,7 +1061,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         {
             return """
                 Usage: /provider add <name>
-                Available providers: openai, azure-openai, anthropic, google-gemini,
+                Available providers: ollama, openai, azure-openai, anthropic, google-gemini,
                   mistral, bedrock, huggingface, openrouter, openai-compat
                 Example: /provider add openai
                 """;
@@ -1071,6 +1071,14 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
         switch (name)
         {
+            case "ollama":
+                AnsiConsole.MarkupLine("[bold]Configure Ollama Endpoint[/]");
+                var ollamaAlias = AnsiConsole.Ask("Alias (e.g. local, workstation, gpu-rig):", "local");
+                var endpoint = AnsiConsole.Ask("Endpoint (e.g. http://localhost:11434):", "http://localhost:11434");
+                await _providerConfig.SetCredentialAsync($"ollama:{ollamaAlias}", "endpoint", endpoint, ct)
+                    .ConfigureAwait(false);
+                return $"Ollama endpoint '{ollamaAlias}' configured. Run /providers to verify.";
+
             case "openai":
                 AnsiConsole.MarkupLine("[bold]Configure OpenAI[/]");
                 var openaiKey = AnsiConsole.Ask<string>("API Key (sk-...):");
@@ -1169,9 +1177,13 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         if (string.IsNullOrWhiteSpace(providerName))
             return "Usage: /provider remove <name>";
 
-        await _providerConfig.RemoveProviderAsync(providerName.Trim().ToLowerInvariant(), ct)
+        var normalized = providerName.Trim().ToLowerInvariant();
+        if (normalized.StartsWith("ollama/", StringComparison.Ordinal))
+            normalized = $"ollama:{normalized["ollama/".Length..]}";
+
+        await _providerConfig.RemoveProviderAsync(normalized, ct)
             .ConfigureAwait(false);
-        return $"Credentials for '{providerName.Trim()}' removed.";
+        return $"Credentials for '{normalized}' removed.";
     }
 
     private async Task<string> ProviderTestAsync(string? providerName, CancellationToken ct)
