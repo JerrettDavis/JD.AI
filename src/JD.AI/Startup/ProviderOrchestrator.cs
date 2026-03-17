@@ -87,7 +87,7 @@ internal static class ProviderOrchestrator
         new(nameof(ClaudeCodeDetector), _ => new ClaudeCodeDetector()),
         new(nameof(CopilotDetector), _ => new CopilotDetector()),
         new(nameof(OpenAICodexDetector), _ => new OpenAICodexDetector()),
-        new(nameof(OllamaDetector), _ => new OllamaDetector()),
+        new(nameof(OllamaDetector), config => new OllamaDetector(config)),
         new(nameof(FoundryLocalDetector), _ => new FoundryLocalDetector()),
         new(nameof(LocalModelDetector), _ => new LocalModelDetector()),
         new(nameof(OpenAIDetector), config => new OpenAIDetector(config)),

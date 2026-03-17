@@ -1,54 +1,80 @@
 using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using JD.AI.Core.Providers.Credentials;
 using Microsoft.SemanticKernel;
 
 namespace JD.AI.Core.Providers;
 
 /// <summary>
-/// Detects a locally-running Ollama instance and enumerates its models.
+/// Detects Ollama instances (local and optionally named remote endpoints) and enumerates models.
 /// </summary>
 public sealed class OllamaDetector : IProviderDetector
 {
-    private readonly string _endpoint;
+    private readonly string _defaultEndpoint;
+    private readonly ProviderConfigurationManager? _config;
     private static readonly HttpClient SharedClient = new();
-    private static readonly ConcurrentDictionary<string, ModelCapabilities> CapabilityCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<string, ModelCapabilities> CapabilityCache =
+        new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, OllamaInstance> _instances = new(StringComparer.OrdinalIgnoreCase);
 
     public OllamaDetector(string endpoint = "http://localhost:11434")
     {
-        _endpoint = endpoint.TrimEnd('/');
+        _defaultEndpoint = endpoint.TrimEnd('/');
+    }
+
+    public OllamaDetector(
+        ProviderConfigurationManager config,
+        string defaultEndpoint = "http://localhost:11434")
+    {
+        _config = config;
+        _defaultEndpoint = defaultEndpoint.TrimEnd('/');
     }
 
     public string ProviderName => "Ollama";
 
     public async Task<ProviderInfo> DetectAsync(CancellationToken ct = default)
     {
-        try
+        await LoadInstancesAsync(ct).ConfigureAwait(false);
+
+        var allModels = new List<ProviderModelInfo>();
+        var onlineEndpoints = 0;
+
+        foreach (var instance in _instances.Values)
         {
-            var resp = await SharedClient
-                .GetFromJsonAsync<OllamaTagsResponse>(
-                    $"{_endpoint}/api/tags", ct)
-                .ConfigureAwait(false);
+            try
+            {
+                var resp = await SharedClient
+                    .GetFromJsonAsync<OllamaTagsResponse>(
+                        $"{instance.Endpoint}/api/tags", ct)
+                    .ConfigureAwait(false);
 
-            var rawModels = resp?.Models ?? [];
-
-            // Probe capabilities in parallel (cached after first call)
-            var tasks = rawModels
-                .Select(async m =>
+                var rawModels = resp?.Models ?? [];
+                var tasks = rawModels.Select(async m =>
                 {
                     var name = m.Name ?? "unknown";
-                    var caps = await ProbeCapabilitiesAsync(name, ct).ConfigureAwait(false);
-                    return new ProviderModelInfo(name, name, ProviderName, Capabilities: caps);
-                });
-            var models = await Task.WhenAll(tasks).ConfigureAwait(false);
+                    var caps = await ProbeCapabilitiesAsync(instance.Endpoint, name, ct).ConfigureAwait(false);
 
-            return new ProviderInfo(
-                ProviderName,
-                IsAvailable: true,
-                StatusMessage: $"{models.Length} model(s) available",
-                Models: models);
+                    var modelId = instance.IsDefault
+                        ? name
+                        : $"{instance.Alias}/{name}";
+                    var displayName = instance.IsDefault
+                        ? name
+                        : $"[{instance.Alias}] {name}";
+
+                    return new ProviderModelInfo(modelId, displayName, ProviderName, Capabilities: caps);
+                });
+
+                allModels.AddRange(await Task.WhenAll(tasks).ConfigureAwait(false));
+                onlineEndpoints++;
+            }
+            catch (HttpRequestException) when (!ct.IsCancellationRequested)
+            {
+                // Keep probing other configured endpoints.
+            }
         }
-        catch (HttpRequestException)
+
+        if (onlineEndpoints == 0)
         {
             return new ProviderInfo(
                 ProviderName,
@@ -56,15 +82,25 @@ public sealed class OllamaDetector : IProviderDetector
                 StatusMessage: "Not running",
                 Models: []);
         }
+
+        return new ProviderInfo(
+            ProviderName,
+            IsAvailable: true,
+            StatusMessage: $"{onlineEndpoints}/{_instances.Count} endpoint(s) online - {allModels.Count} model(s)",
+            Models: allModels);
     }
 
     /// <summary>
     /// Probes a model's capabilities by calling /api/show and inspecting
     /// the template for tool-calling tokens. Falls back to name heuristics.
     /// </summary>
-    internal async Task<ModelCapabilities> ProbeCapabilitiesAsync(string modelName, CancellationToken ct)
+    internal async Task<ModelCapabilities> ProbeCapabilitiesAsync(
+        string endpoint,
+        string modelName,
+        CancellationToken ct)
     {
-        if (CapabilityCache.TryGetValue(modelName, out var cached))
+        var cacheKey = $"{endpoint}|{modelName}";
+        if (CapabilityCache.TryGetValue(cacheKey, out var cached))
             return cached;
 
         var caps = ModelCapabilities.Chat;
@@ -72,7 +108,7 @@ public sealed class OllamaDetector : IProviderDetector
         try
         {
             var showResp = await SharedClient
-                .PostAsJsonAsync($"{_endpoint}/api/show", new { name = modelName }, ct)
+                .PostAsJsonAsync($"{endpoint}/api/show", new { name = modelName }, ct)
                 .ConfigureAwait(false);
 
             if (showResp.IsSuccessStatusCode)
@@ -116,21 +152,27 @@ public sealed class OllamaDetector : IProviderDetector
             caps |= heuristic & ~ModelCapabilities.Chat; // Merge non-Chat flags
         }
 
-        CapabilityCache[modelName] = caps;
+        CapabilityCache[cacheKey] = caps;
         return caps;
     }
 
     public Kernel BuildKernel(ProviderModelInfo model)
     {
+        EnsureInstancesLoadedForBuild();
+
+        var (alias, modelId) = ParseModelIdentifier(model.Id);
+        if (!_instances.TryGetValue(alias, out var instance))
+            throw new InvalidOperationException($"No Ollama endpoint configured for '{alias}'.");
+
         var builder = Kernel.CreateBuilder();
 
 #pragma warning disable SKEXP0010 // OpenAI connector experimental
         builder.AddOpenAIChatCompletion(
-            modelId: model.Id,
+            modelId: modelId,
             apiKey: "ollama",
             httpClient: new HttpClient
             {
-                BaseAddress = new Uri($"{_endpoint}/v1"),
+                BaseAddress = new Uri($"{instance.Endpoint}/v1"),
                 Timeout = TimeSpan.FromMinutes(10),
             });
 #pragma warning restore SKEXP0010
@@ -151,4 +193,91 @@ public sealed class OllamaDetector : IProviderDetector
         string? Template,
         [property: JsonPropertyName("modelinfo")]
         string? ModelInfo);
+
+    private sealed record OllamaInstance(string Alias, string Endpoint, bool IsDefault);
+
+    private async Task LoadInstancesAsync(CancellationToken ct)
+    {
+        _instances.Clear();
+        _instances["local"] = new OllamaInstance("local", _defaultEndpoint, IsDefault: true);
+
+        if (_config is null)
+            return;
+
+        var keys = await _config.Store
+            .ListKeysAsync("jdai:provider:ollama:", ct)
+            .ConfigureAwait(false);
+
+        var aliases = keys
+            .Select(key =>
+            {
+                // key format: jdai:provider:ollama:{alias}:{field}
+                var parts = key.Split(':');
+                return parts.Length >= 5 ? parts[3] : null;
+            })
+            .Where(alias => !string.IsNullOrWhiteSpace(alias))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        foreach (var alias in aliases)
+        {
+            var endpoint = await _config
+                .GetCredentialAsync($"ollama:{alias}", "endpoint", ct)
+                .ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(endpoint))
+            {
+                endpoint = await _config
+                    .GetCredentialAsync($"ollama:{alias}", "baseurl", ct)
+                    .ConfigureAwait(false);
+            }
+
+            if (string.IsNullOrWhiteSpace(endpoint))
+                continue;
+
+            var trimmedAlias = alias!.Trim();
+            var normalizedEndpoint = endpoint.TrimEnd('/');
+            var isDefault = string.Equals(trimmedAlias, "local", StringComparison.OrdinalIgnoreCase);
+            _instances[trimmedAlias] = new OllamaInstance(trimmedAlias, normalizedEndpoint, isDefault);
+        }
+    }
+
+    private void EnsureInstancesLoadedForBuild()
+    {
+        if (_instances.Count > 0)
+            return;
+
+        if (_config is null)
+        {
+            _instances["local"] = new OllamaInstance("local", _defaultEndpoint, IsDefault: true);
+            return;
+        }
+
+        try
+        {
+            LoadInstancesAsync(CancellationToken.None).GetAwaiter().GetResult();
+        }
+        catch
+        {
+            // Best-effort fallback for kernel construction.
+            _instances.Clear();
+            _instances["local"] = new OllamaInstance("local", _defaultEndpoint, IsDefault: true);
+        }
+    }
+
+    private (string Alias, string ModelId) ParseModelIdentifier(string modelId)
+    {
+        var idx = modelId.IndexOf('/', StringComparison.Ordinal);
+        if (idx <= 0)
+            return ("local", modelId);
+
+        var alias = modelId[..idx];
+        var actualModelId = modelId[(idx + 1)..];
+
+        if (_instances.ContainsKey(alias))
+            return (alias, actualModelId);
+
+        // If the prefix is not a configured alias, treat the entire value as a local model ID.
+        // This preserves compatibility with model names that contain '/'.
+        return ("local", modelId);
+    }
 }
