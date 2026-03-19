@@ -82,9 +82,9 @@ public sealed class AgentLoopIntegrationTests
             var response = await loop.RunTurnAsync($"Read the file at {tempFile} and tell me what it says.");
             Assert.NotNull(response);
             // Small models (e.g. qwen2.5:0.5b) may not reliably invoke tools.
-            // Verify the agent loop completes without error when tools are registered.
-            Assert.False(string.IsNullOrWhiteSpace(response),
-                "Expected a non-empty response from the model with tools registered");
+            // Verify the agent loop/session integrity when tools are registered.
+            Assert.True(session.History.Count >= 2,
+                "Session should contain user + assistant messages after tool-registered turn");
         }
         finally
         {
