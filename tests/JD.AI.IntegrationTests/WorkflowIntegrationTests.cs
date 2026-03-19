@@ -2,7 +2,6 @@ using FluentAssertions;
 using JD.AI.Workflows;
 using JD.AI.Workflows.Steps;
 using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.Connectors.OpenAI;
 using WorkflowFramework;
 using Xunit;
 
@@ -10,7 +9,7 @@ namespace JD.AI.IntegrationTests;
 
 /// <summary>
 /// Integration tests that execute WorkflowFramework workflows against Ollama.
-/// Gated behind <c>TUI_INTEGRATION_TESTS=true</c> and Ollama availability.
+/// Gated behind <c>JDAI_INTEGRATION_TESTS=true</c> and Ollama availability.
 /// </summary>
 public class WorkflowIntegrationTests : IAsyncLifetime
 {
@@ -19,13 +18,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         await IntegrationTestGuard.EnsureOllamaAsync().ConfigureAwait(false);
-
-        _kernel = Kernel.CreateBuilder()
-            .AddOpenAIChatCompletion(
-                modelId: IntegrationTestGuard.OllamaModel,
-                apiKey: "ollama",
-                endpoint: new Uri($"{IntegrationTestGuard.OllamaEndpoint}/v1"))
-            .Build();
+        _kernel = IntegrationTestFactories.CreateOllamaWorkflowKernel();
     }
 
     public Task DisposeAsync() => Task.CompletedTask;
@@ -162,10 +155,8 @@ public class WorkflowIntegrationTests : IAsyncLifetime
     {
         IntegrationTestGuard.EnsureEnabled();
 
-        var tempDir = Path.Combine(Path.GetTempPath(), $"jdai-wf-test-{Guid.NewGuid():N}");
-        try
-        {
-            var catalog = new FileWorkflowCatalog(tempDir);
+        using var tempDir = new TempTestDirectory("jdai-wf-test");
+        var catalog = tempDir.CreateWorkflowCatalog();
 
             var definition = new AgentWorkflowDefinition
             {
@@ -210,12 +201,6 @@ public class WorkflowIntegrationTests : IAsyncLifetime
             deleted.Should().BeTrue();
             all = await catalog.ListAsync().ConfigureAwait(false);
             all.Should().HaveCount(1);
-        }
-        finally
-        {
-            if (Directory.Exists(tempDir))
-                Directory.Delete(tempDir, true);
-        }
     }
 
     // ── Matcher: tag-based workflow reuse ────────────────────────────────
@@ -225,10 +210,8 @@ public class WorkflowIntegrationTests : IAsyncLifetime
     {
         IntegrationTestGuard.EnsureEnabled();
 
-        var tempDir = Path.Combine(Path.GetTempPath(), $"jdai-wf-match-{Guid.NewGuid():N}");
-        try
-        {
-            var catalog = new FileWorkflowCatalog(tempDir);
+        using var tempDir = new TempTestDirectory("jdai-wf-match");
+        var catalog = tempDir.CreateWorkflowCatalog();
 
             await catalog.SaveAsync(new AgentWorkflowDefinition
             {
@@ -256,12 +239,6 @@ public class WorkflowIntegrationTests : IAsyncLifetime
                 new AgentRequest("deploy the new release to production infrastructure")).ConfigureAwait(false);
             deployMatch.Should().NotBeNull();
             deployMatch!.Definition.Name.Should().Be("deploy");
-        }
-        finally
-        {
-            if (Directory.Exists(tempDir))
-                Directory.Delete(tempDir, true);
-        }
     }
 
     // ── Emitter: JSON, C#, Mermaid ─────────────────────────────────────
@@ -301,10 +278,8 @@ public class WorkflowIntegrationTests : IAsyncLifetime
     [SkippableFact]
     public async Task Replay_ReExecutes_Saved_Workflow_Successfully()
     {
-        var tempDir = Path.Combine(Path.GetTempPath(), $"jdai-wf-replay-{Guid.NewGuid():N}");
-        try
-        {
-            var catalog = new FileWorkflowCatalog(tempDir);
+        using var tempDir = new TempTestDirectory("jdai-wf-replay");
+        var catalog = tempDir.CreateWorkflowCatalog();
 
             // First execution: build, run, save
             var definition = new AgentWorkflowDefinition
@@ -341,12 +316,6 @@ public class WorkflowIntegrationTests : IAsyncLifetime
 
             result2.IsSuccess.Should().BeTrue();
             result2.Data.StepOutputs.Should().ContainKey("greet");
-        }
-        finally
-        {
-            if (Directory.Exists(tempDir))
-                Directory.Delete(tempDir, true);
-        }
     }
 
     // ── Validation step aborts workflow ─────────────────────────────────
