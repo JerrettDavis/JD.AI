@@ -32,6 +32,7 @@ internal static class SystemPromptBuilder
                 - Store important decisions and facts in memory for future recall
                 - Use subagents for specialized work (explore for analysis, task for commands, plan for planning, review for code review)
                 - Use native tool/function calls when a tool is needed; if native tool calls are unavailable, emit a single tagged JSON tool call (<tool_use>...</tool_use> or <tool_call>...</tool_call>) so the runtime can execute it
+                - Do not simulate tool calls in plain text
 
                 Be concise and direct. Use tools proactively when they'll help answer the question.
                 """;
