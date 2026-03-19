@@ -1,4 +1,3 @@
-using JD.AI.Core.Providers;
 using JD.AI.Core.Tools;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -17,9 +16,7 @@ public sealed class AgentLoopIntegrationTests
     {
         await IntegrationTestGuard.EnsureOllamaAsync();
 
-        var model = new ProviderModelInfo(IntegrationTestGuard.OllamaModel, "Ollama Chat", "Ollama");
-        var detector = new OllamaDetector();
-        using var harness = HeadlessAgentIntegrationHarness.Create(detector, model);
+        using var harness = IntegrationTestFactories.CreateOllamaHarness();
 
         var response = await harness.ExecuteTurnAsync("What is 2+2? Reply with just the number.");
 
@@ -34,9 +31,7 @@ public sealed class AgentLoopIntegrationTests
     {
         await IntegrationTestGuard.EnsureOllamaAsync();
 
-        var model = new ProviderModelInfo(IntegrationTestGuard.OllamaModel, "Ollama Chat", "Ollama");
-        var detector = new OllamaDetector();
-        using var harness = HeadlessAgentIntegrationHarness.Create(detector, model);
+        using var harness = IntegrationTestFactories.CreateOllamaHarness();
 
         var response1 = await harness.ExecuteTurnAsync("My name is TestUser.");
         Assert.NotNull(response1);
@@ -54,9 +49,7 @@ public sealed class AgentLoopIntegrationTests
     {
         await IntegrationTestGuard.EnsureOllamaAsync();
 
-        var model = new ProviderModelInfo(IntegrationTestGuard.OllamaModel, "Ollama Chat", "Ollama");
-        var detector = new OllamaDetector();
-        using var harness = HeadlessAgentIntegrationHarness.Create(detector, model);
+        using var harness = IntegrationTestFactories.CreateOllamaHarness();
         harness.Session.Kernel.Plugins.AddFromType<FileTools>("FileTools");
 
         // Create a temp file
@@ -82,9 +75,7 @@ public sealed class AgentLoopIntegrationTests
     {
         await IntegrationTestGuard.EnsureOllamaAsync();
 
-        var model = new ProviderModelInfo(IntegrationTestGuard.OllamaModel, "Ollama Chat", "Ollama");
-        var detector = new OllamaDetector();
-        using var harness = HeadlessAgentIntegrationHarness.Create(detector, model);
+        using var harness = IntegrationTestFactories.CreateOllamaHarness();
 
         // First conversation
         await harness.ExecuteTurnAsync("Hello");
@@ -107,15 +98,13 @@ public sealed class AgentLoopIntegrationTests
     {
         await IntegrationTestGuard.EnsureOllamaAsync();
 
-        var model = new ProviderModelInfo(IntegrationTestGuard.OllamaModel, "Ollama Chat", "Ollama");
-        var detector = new OllamaDetector();
-        using var harness = HeadlessAgentIntegrationHarness.Create(detector, model);
+        using var harness = IntegrationTestFactories.CreateOllamaHarness();
 
         var filter = new PassThroughAutoFunctionFilter();
         harness.Session.Kernel.AutoFunctionInvocationFilters.Add(filter);
 
         // Rebuild kernel via model switch path (same model is sufficient to exercise the swap).
-        harness.Session.SwitchModel(model);
+        harness.Session.SwitchModel(harness.Session.CurrentModel!);
 
         Assert.Contains(
             harness.Session.Kernel.AutoFunctionInvocationFilters,
