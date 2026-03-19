@@ -194,7 +194,7 @@ public sealed class OpenAICodexDetector : IProviderDetector
         {
             // Keyring-backed auth isn't read by this connector path, so provide
             // explicit credentials resolved from the keyring snapshot.
-            if (IsChatGptAuthMode(authMode) && !string.IsNullOrWhiteSpace(token))
+            if (ShouldPreferTokens(creds, authMode, envApiKey, token))
             {
                 options.AccessToken = token;
                 options.ApiKey = null;
@@ -220,8 +220,7 @@ public sealed class OpenAICodexDetector : IProviderDetector
         // Match Codex CLI intent: when auth.json is explicitly ChatGPT-based, prefer
         // OAuth tokens over API keys so account subscription auth isn't shadowed by
         // stale/billing-limited API keys in env or auth.json.
-        if (ShouldPreferTokens(creds, authMode, envApiKey) &&
-            !string.IsNullOrWhiteSpace(token))
+        if (ShouldPreferTokens(creds, authMode, envApiKey, token))
         {
             options.AccessToken = token;
             options.ApiKey = null;
@@ -497,16 +496,34 @@ public sealed class OpenAICodexDetector : IProviderDetector
     private static bool ShouldPreferTokens(
         CodexCredentialsFile creds,
         string? authMode,
-        string? envApiKey)
+        string? envApiKey,
+        string? token)
     {
-        if (!IsChatGptAuthMode(authMode))
+        if (string.IsNullOrWhiteSpace(token))
             return false;
 
-        // Only force explicit token precedence when an API-key source would shadow
-        // ChatGPT OAuth mode. Otherwise let the connector read auth.json directly so
-        // its built-in refresh/exchange paths remain intact.
-        return !string.IsNullOrWhiteSpace(creds.OpenAIApiKey) ||
-               !string.IsNullOrWhiteSpace(envApiKey);
+        var apiKeyWouldShadow = !string.IsNullOrWhiteSpace(creds.OpenAIApiKey) ||
+                                !string.IsNullOrWhiteSpace(envApiKey);
+        if (!apiKeyWouldShadow)
+            return false;
+
+        // Match Codex CLI behavior for explicit ChatGPT auth mode and also recover
+        // cases where auth_mode is missing but token payload still looks like OAuth
+        // JWT output from `codex login`.
+        return IsChatGptAuthMode(authMode) || LooksLikeOAuthJwt(token);
+    }
+
+    private static bool LooksLikeOAuthJwt(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token) || !token.StartsWith("eyJ", StringComparison.Ordinal))
+            return false;
+
+        var firstDot = token.IndexOf('.');
+        if (firstDot <= 0)
+            return false;
+
+        var secondDot = token.IndexOf('.', firstDot + 1);
+        return secondDot > firstDot + 1 && secondDot < token.Length - 1;
     }
 
     private static bool TryReadCredentialsFromKeyring(
