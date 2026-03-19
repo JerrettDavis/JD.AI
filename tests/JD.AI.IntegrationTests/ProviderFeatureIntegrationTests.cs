@@ -1,4 +1,3 @@
-using JD.AI.Core.Agents;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Providers.Credentials;
 using JD.AI.Core.Tools;
@@ -223,25 +222,20 @@ public sealed class ProviderFeatureIntegrationTests
         Assert.NotEmpty(info.Models);
 
         var model = SelectModel(info.Models, preferredModelIds);
-        var kernel = detector.BuildKernel(model);
-        Assert.NotNull(kernel);
-
-        kernel.Plugins.AddFromType<FileTools>("FileTools");
-        var chatServices = kernel.GetAllServices<Microsoft.SemanticKernel.ChatCompletion.IChatCompletionService>();
+        using var harness = HeadlessAgentIntegrationHarness.Create(detector, model);
+        harness.Session.Kernel.Plugins.AddFromType<FileTools>("FileTools");
+        var chatServices = harness.Session.Kernel
+            .GetAllServices<Microsoft.SemanticKernel.ChatCompletion.IChatCompletionService>();
         Assert.NotEmpty(chatServices);
-
-        var registry = new ProviderRegistry([detector]);
-        var session = new AgentSession(registry, kernel, model);
-        var loop = new AgentLoop(session);
 
         var tempFile = Path.GetTempFileName();
         await File.WriteAllTextAsync(tempFile, "provider integration test content");
         try
         {
-            var response = await loop.RunTurnAsync(
+            var response = await harness.ExecuteTurnAsync(
                 $"Read the file at {tempFile} and summarize its contents in one short sentence.");
             Assert.NotNull(response);
-            Assert.True(session.History.Count >= 2,
+            Assert.True(harness.Session.History.Count >= 2,
                 "Session should contain user + assistant messages after provider tool smoke turn");
         }
         finally

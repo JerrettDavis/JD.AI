@@ -5,16 +5,17 @@ namespace JD.AI.IntegrationTests;
 /// </summary>
 public static class TuiIntegrationGuard
 {
-    private const string EnvVar = "TUI_INTEGRATION_TESTS";
+    private const string EnvVar = "JDAI_INTEGRATION_TESTS";
+    private const string LegacyEnvVar = "TUI_INTEGRATION_TESTS";
 
     public static bool IsEnabled =>
-        string.Equals(
-            Environment.GetEnvironmentVariable(EnvVar),
-            "true",
-            StringComparison.OrdinalIgnoreCase);
+        IsTrue(Environment.GetEnvironmentVariable(EnvVar)) ||
+        IsTrue(Environment.GetEnvironmentVariable(LegacyEnvVar));
 
     public static void EnsureEnabled() =>
-        Xunit.Skip.IfNot(IsEnabled, $"Set {EnvVar}=true to run TUI integration tests.");
+        Xunit.Skip.IfNot(
+            IsEnabled,
+            $"Set {EnvVar}=true (or legacy {LegacyEnvVar}=true) to run integration tests.");
 
     /// <summary>
     /// Chat model name, configurable via <c>OLLAMA_CHAT_MODEL</c> env var.
@@ -147,6 +148,9 @@ public static class TuiIntegrationGuard
         var available = await IsOllamaAvailableAsync().ConfigureAwait(false);
         Xunit.Skip.IfNot(available, "Ollama is not running on localhost:11434.");
     }
+
+    private static bool IsTrue(string? value) =>
+        string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
 
     public static void EnsureHuggingFaceKey() =>
         Xunit.Skip.IfNot(HuggingFaceApiKey is not null, "Set HF_API_KEY to run HuggingFace integration tests.");
