@@ -3,7 +3,7 @@ namespace JD.AI.IntegrationTests;
 /// <summary>
 /// Guards for integration test preconditions.
 /// </summary>
-public static class TuiIntegrationGuard
+public static class IntegrationTestGuard
 {
     private const string EnvVar = "JDAI_INTEGRATION_TESTS";
     private const string LegacyEnvVar = "TUI_INTEGRATION_TESTS";
