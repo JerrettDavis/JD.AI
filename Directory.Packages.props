@@ -18,7 +18,7 @@
     <PackageVersion Include="JD.SemanticKernel.Extensions.Mcp" Version="0.1.41" />
     <PackageVersion Include="JD.SemanticKernel.Connectors.ClaudeCode" Version="1.0.2" />
     <PackageVersion Include="JD.SemanticKernel.Connectors.GitHubCopilot" Version="0.1.14" />
-    <PackageVersion Include="JD.SemanticKernel.Connectors.OpenAICodex" Version="0.1.3" />
+    <PackageVersion Include="JD.SemanticKernel.Connectors.OpenAICodex" Version="0.1.8" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.3" />
     <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
     <PackageVersion Include="Microsoft.SemanticKernel" Version="1.73.0" />
@@ -42,7 +42,7 @@
     <PackageVersion Include="AWSSDK.SecretsManager" Version="4.0.4.9" />
     <PackageVersion Include="Azure.Identity" Version="1.19.0" />
     <PackageVersion Include="Azure.Security.KeyVault.Secrets" Version="4.9.0" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.5" />
     <PackageVersion Include="StackExchange.Redis" Version="2.8.41" />
   </ItemGroup>
   <!-- Gateway -->
@@ -71,9 +71,9 @@
   <!-- Channel adapters -->
   <ItemGroup>
     <PackageVersion Include="Discord.Net" Version="3.19.1" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.3" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3" />
-    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.5" />
     <PackageVersion Include="NSec.Cryptography" Version="25.4.0" />
     <PackageVersion Include="SlackNet" Version="0.17.9" />
     <PackageVersion Include="Telegram.Bot" Version="22.7.0" />
@@ -88,7 +88,7 @@
   <ItemGroup>
     <PackageVersion Include="coverlet.collector" Version="8.0.0" />
     <PackageVersion Include="FluentAssertions" Version="8.8.0" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.5" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.3" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
     <PackageVersion Include="NSubstitute" Version="5.3.0" />

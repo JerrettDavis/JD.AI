@@ -10,6 +10,7 @@ namespace JD.AI.Tests.Providers;
 /// </summary>
 public sealed class OpenAICodexDetectorAdditionalTests : IDisposable
 {
+    private static readonly Lock EnvLock = new();
     private readonly TempDirectoryFixture _fixture = new();
 
     public void Dispose() => _fixture.Dispose();
@@ -243,6 +244,47 @@ public sealed class OpenAICodexDetectorAdditionalTests : IDisposable
     }
 
     [Fact]
+    public void ApplyCredentialOverridesFromAuthFile_ChatGptModePrefersTokens_OverApiKey()
+    {
+        var authPath = Path.Combine(_fixture.DirectoryPath, "auth.json");
+        File.WriteAllText(authPath, """
+            {
+              "auth_mode": "chatgpt",
+              "OPENAI_API_KEY": "sk-billing-limited",
+              "tokens": {
+                "id_token": "id-token-from-chatgpt-mode"
+              }
+            }
+            """);
+
+        var options = new CodexSessionOptions { CredentialsPath = authPath };
+        OpenAICodexDetector.ApplyCredentialOverridesFromAuthFile(options);
+
+        Assert.Equal("id-token-from-chatgpt-mode", options.AccessToken);
+        Assert.Null(options.ApiKey);
+    }
+
+    [Fact]
+    public void ApplyCredentialOverridesFromAuthFile_ChatGptModeWithoutApiKey_DoesNotForceToken()
+    {
+        var authPath = Path.Combine(_fixture.DirectoryPath, "auth.json");
+        File.WriteAllText(authPath, """
+            {
+              "auth_mode": "chatgpt",
+              "tokens": {
+                "id_token": "id-token-from-chatgpt-mode"
+              }
+            }
+            """);
+
+        var options = new CodexSessionOptions { CredentialsPath = authPath };
+        OpenAICodexDetector.ApplyCredentialOverridesFromAuthFile(options);
+
+        Assert.Null(options.AccessToken);
+        Assert.Null(options.ApiKey);
+    }
+
+    [Fact]
     public void ApplyCredentialOverridesFromAuthFile_DoesNotForceToken_WhenEnvApiKeyNotPresent()
     {
         var authPath = Path.Combine(_fixture.DirectoryPath, "auth.json");
@@ -276,5 +318,85 @@ public sealed class OpenAICodexDetectorAdditionalTests : IDisposable
 
         Assert.Equal("id-token-from-file", options.AccessToken);
         Assert.Null(options.ApiKey);
+    }
+
+    [Fact]
+    public void ComputeCodexKeyringAccountKey_HasExpectedShape()
+    {
+        var key = OpenAICodexDetector.ComputeCodexKeyringAccountKey(@"C:\Users\alice\.codex");
+
+        Assert.StartsWith("cli|", key, StringComparison.Ordinal);
+        Assert.Equal(20, key.Length);
+    }
+
+    [Fact]
+    public void ComputeCodexKeyringAccountKey_IsDeterministic()
+    {
+        var a = OpenAICodexDetector.ComputeCodexKeyringAccountKey(@"/home/alice/.codex");
+        var b = OpenAICodexDetector.ComputeCodexKeyringAccountKey(@"/home/alice/.codex");
+        var c = OpenAICodexDetector.ComputeCodexKeyringAccountKey(@"/home/bob/.codex");
+
+        Assert.Equal(a, b);
+        Assert.NotEqual(a, c);
+    }
+
+    [Fact]
+    public void ApplyCredentialOverridesFromAuthFile_KeyringMode_DoesNotUseAuthJsonFallback()
+    {
+        var codexHome = Path.Combine(_fixture.DirectoryPath, "codex-home");
+        Directory.CreateDirectory(codexHome);
+        File.WriteAllText(Path.Combine(codexHome, "config.toml"),
+            "cli_auth_credentials_store = \"keyring\"");
+        File.WriteAllText(Path.Combine(codexHome, "auth.json"),
+            "{\"OPENAI_API_KEY\":\"sk-from-file\"}");
+
+        lock (EnvLock)
+        {
+            var previous = Environment.GetEnvironmentVariable("CODEX_HOME");
+            try
+            {
+                Environment.SetEnvironmentVariable("CODEX_HOME", codexHome);
+                var options = new CodexSessionOptions();
+
+                OpenAICodexDetector.ApplyCredentialOverridesFromAuthFile(options);
+
+                Assert.Null(options.ApiKey);
+                Assert.Null(options.AccessToken);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("CODEX_HOME", previous);
+            }
+        }
+    }
+
+    [Fact]
+    public void ApplyCredentialOverridesFromAuthFile_AutoMode_FallsBackToAuthJsonWhenKeyringMissing()
+    {
+        var codexHome = Path.Combine(_fixture.DirectoryPath, "codex-home-auto");
+        Directory.CreateDirectory(codexHome);
+        File.WriteAllText(Path.Combine(codexHome, "config.toml"),
+            "cli_auth_credentials_store = \"auto\"");
+        File.WriteAllText(Path.Combine(codexHome, "auth.json"),
+            "{\"OPENAI_API_KEY\":\"sk-from-file\"}");
+
+        lock (EnvLock)
+        {
+            var previous = Environment.GetEnvironmentVariable("CODEX_HOME");
+            try
+            {
+                Environment.SetEnvironmentVariable("CODEX_HOME", codexHome);
+                var options = new CodexSessionOptions();
+
+                OpenAICodexDetector.ApplyCredentialOverridesFromAuthFile(options);
+
+                Assert.Equal("sk-from-file", options.ApiKey);
+                Assert.Null(options.AccessToken);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("CODEX_HOME", previous);
+            }
+        }
     }
 }
