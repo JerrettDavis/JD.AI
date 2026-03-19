@@ -1,4 +1,5 @@
 using JD.AI.Core.Providers;
+using Microsoft.SemanticKernel;
 using Xunit;
 
 namespace JD.AI.IntegrationTests;
@@ -133,12 +134,13 @@ public sealed class ProviderDetectionTests
         TuiIntegrationGuard.EnsureEnabled();
         TuiIntegrationGuard.EnsureHuggingFaceKey();
 
-        var store = new JD.AI.Core.Providers.Credentials.EncryptedFileStore(
-            Path.Combine(Path.GetTempPath(), $"jdai-hf-test-{Guid.NewGuid()}"));
-        await store.SetAsync("jdai:provider:huggingface:apikey", TuiIntegrationGuard.HuggingFaceApiKey!);
-        var config = new JD.AI.Core.Providers.Credentials.ProviderConfigurationManager(store);
+        using var temp = await ProviderIntegrationTestHelpers
+            .CreateTempProviderConfigurationAsync(
+                "hf-detect",
+                [("huggingface", "apikey", TuiIntegrationGuard.HuggingFaceApiKey!)])
+            .ConfigureAwait(false);
 
-        var detector = new HuggingFaceDetector(config);
+        var detector = new HuggingFaceDetector(temp.Config);
         var result = await detector.DetectAsync();
 
         Assert.True(result.IsAvailable, "HuggingFace detector should be available with a valid API key");
@@ -156,20 +158,20 @@ public sealed class ProviderDetectionTests
         TuiIntegrationGuard.EnsureEnabled();
         TuiIntegrationGuard.EnsureHuggingFaceKey();
 
-        var store = new JD.AI.Core.Providers.Credentials.EncryptedFileStore(
-            Path.Combine(Path.GetTempPath(), $"jdai-hf-test-{Guid.NewGuid()}"));
-        await store.SetAsync("jdai:provider:huggingface:apikey", TuiIntegrationGuard.HuggingFaceApiKey!);
-        var config = new JD.AI.Core.Providers.Credentials.ProviderConfigurationManager(store);
+        using var temp = await ProviderIntegrationTestHelpers
+            .CreateTempProviderConfigurationAsync(
+                "hf-chat",
+                [("huggingface", "apikey", TuiIntegrationGuard.HuggingFaceApiKey!)])
+            .ConfigureAwait(false);
 
-        var detector = new HuggingFaceDetector(config);
+        var detector = new HuggingFaceDetector(temp.Config);
         var result = await detector.DetectAsync();
         Skip.If(!result.IsAvailable || result.Models.Count == 0, "No HuggingFace models available");
 
         // Use the smallest/fastest model available for the smoke test
-        var model = result.Models
-            .FirstOrDefault(m => m.Id.Contains("7B", StringComparison.OrdinalIgnoreCase)
-                               || m.Id.Contains("8B", StringComparison.OrdinalIgnoreCase))
-            ?? result.Models[0];
+        var model = ProviderIntegrationTestHelpers.SelectPreferredModel(
+            result.Models,
+            preferredModelIds: ["7b", "8b"]);
 
         var kernel = detector.BuildKernel(model);
         var chatSvc = kernel.GetRequiredService<Microsoft.SemanticKernel.ChatCompletion.IChatCompletionService>();

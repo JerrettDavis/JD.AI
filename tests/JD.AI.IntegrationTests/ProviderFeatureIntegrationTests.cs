@@ -189,29 +189,15 @@ public sealed class ProviderFeatureIntegrationTests
         Func<ProviderConfigurationManager, IProviderDetector> createDetector,
         string[]? preferredModelIds = null)
     {
-        var storePath = Path.Combine(Path.GetTempPath(), $"jdai-{provider}-itest-{Guid.NewGuid():N}");
-        try
-        {
-            var store = new EncryptedFileStore(storePath);
-            foreach (var (p, field, value) in credentials)
-            {
-                await store.SetAsync($"jdai:provider:{p}:{field}", value);
-            }
+        using var temp = await ProviderIntegrationTestHelpers
+            .CreateTempProviderConfigurationAsync(provider, credentials)
+            .ConfigureAwait(false);
 
-            var config = new ProviderConfigurationManager(store);
-            var detector = createDetector(config);
-            var info = await detector.DetectAsync();
+        var detector = createDetector(temp.Config);
+        var info = await detector.DetectAsync();
 
-            Skip.IfNot(info.IsAvailable, $"{detector.ProviderName} unavailable: {info.StatusMessage}");
-            await RunToolSmokeAsync(detector, info, preferredModelIds);
-        }
-        finally
-        {
-            if (Directory.Exists(storePath))
-            {
-                Directory.Delete(storePath, true);
-            }
-        }
+        Skip.IfNot(info.IsAvailable, $"{detector.ProviderName} unavailable: {info.StatusMessage}");
+        await RunToolSmokeAsync(detector, info, preferredModelIds);
     }
 
     private static async Task RunToolSmokeAsync(
@@ -221,7 +207,7 @@ public sealed class ProviderFeatureIntegrationTests
     {
         Assert.NotEmpty(info.Models);
 
-        var model = SelectModel(info.Models, preferredModelIds);
+        var model = ProviderIntegrationTestHelpers.SelectPreferredModel(info.Models, preferredModelIds);
         using var harness = HeadlessAgentIntegrationHarness.Create(detector, model);
         harness.Session.Kernel.Plugins.AddFromType<FileTools>("FileTools");
         var chatServices = harness.Session.Kernel
@@ -244,23 +230,4 @@ public sealed class ProviderFeatureIntegrationTests
         }
     }
 
-    private static ProviderModelInfo SelectModel(
-        IReadOnlyList<ProviderModelInfo> models,
-        IReadOnlyList<string>? preferredModelIds)
-    {
-        if (preferredModelIds is not null)
-        {
-            foreach (var preferred in preferredModelIds)
-            {
-                var match = models.FirstOrDefault(m =>
-                    m.Id.Contains(preferred, StringComparison.OrdinalIgnoreCase));
-                if (match is not null)
-                {
-                    return match;
-                }
-            }
-        }
-
-        return models[0];
-    }
 }
