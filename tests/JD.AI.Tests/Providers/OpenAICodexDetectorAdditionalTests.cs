@@ -244,6 +244,26 @@ public sealed class OpenAICodexDetectorAdditionalTests : IDisposable
     }
 
     [Fact]
+    public void ApplyCredentialOverridesFromAuthFile_PrefersJwtToken_WhenAuthModeMissing()
+    {
+        var authPath = Path.Combine(_fixture.DirectoryPath, "auth.json");
+        File.WriteAllText(authPath, """
+            {
+              "OPENAI_API_KEY": "sk-stale-file-key",
+              "tokens": {
+                "id_token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.signature"
+              }
+            }
+            """);
+
+        var options = new CodexSessionOptions { CredentialsPath = authPath };
+        OpenAICodexDetector.ApplyCredentialOverridesFromAuthFile(options);
+
+        Assert.Equal("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.signature", options.AccessToken);
+        Assert.Null(options.ApiKey);
+    }
+
+    [Fact]
     public void ApplyCredentialOverridesFromAuthFile_ChatGptModePrefersTokens_OverApiKey()
     {
         var authPath = Path.Combine(_fixture.DirectoryPath, "auth.json");
