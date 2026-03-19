@@ -3,6 +3,7 @@ using JD.SemanticKernel.Connectors.GitHubCopilot;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.SemanticKernel;
+using System.Reflection;
 namespace JD.AI.Core.Providers;
 
 /// <summary>
@@ -12,7 +13,9 @@ namespace JD.AI.Core.Providers;
 /// </summary>
 public sealed class CopilotDetector : IProviderDetector
 {
-    public string ProviderName => "GitHub Copilot";
+    private const string CopilotProviderName = "GitHub Copilot";
+
+    public string ProviderName => CopilotProviderName;
 
     public async Task<ProviderInfo> DetectAsync(CancellationToken ct = default)
     {
@@ -49,7 +52,8 @@ public sealed class CopilotDetector : IProviderDetector
                 }
             }
 
-            // Try model discovery; fall back to well-known models
+            // Try model discovery first and then supplement with well-known constants
+            // so /provider and /models remain useful even when discovery is partial.
             var models = new List<ProviderModelInfo>();
             try
             {
@@ -57,21 +61,17 @@ public sealed class CopilotDetector : IProviderDetector
                     provider, new HttpClient(),
                     NullLogger<CopilotModelDiscovery>.Instance);
                 var discovered = await discovery.DiscoverModelsAsync(ct).ConfigureAwait(false);
-                models.AddRange(discovered.Select(m =>
+                AddUniqueModels(models, discovered.Select(m =>
                     new ProviderModelInfo(m.Id, m.Name ?? m.Id, ProviderName)));
             }
 #pragma warning disable CA1031 // catch broad — discovery is optional
             catch
 #pragma warning restore CA1031
             {
-                // Fall back to well-known models
-                models.AddRange(new[]
-                {
-                    new ProviderModelInfo(CopilotModels.Default, "Claude Sonnet 4.6", ProviderName, 200_000),
-                    new ProviderModelInfo(CopilotModels.Gpt4o, "GPT-4o", ProviderName),
-                    new ProviderModelInfo(CopilotModels.ClaudeOpus46, "Claude Opus 4.6", ProviderName, 200_000),
-                });
+                // Keep going to known-model fallback.
             }
+
+            AddUniqueModels(models, GetKnownModelsFromConstants());
 
             provider.Dispose();
 
@@ -160,5 +160,44 @@ public sealed class CopilotDetector : IProviderDetector
 #pragma warning disable CA1031 // best-effort refresh
         catch { return false; }
 #pragma warning restore CA1031
+    }
+
+    private static void AddUniqueModels(
+        List<ProviderModelInfo> target,
+        IEnumerable<ProviderModelInfo> candidates)
+    {
+        foreach (var model in candidates)
+        {
+            if (!target.Any(existing =>
+                string.Equals(existing.Id, model.Id, StringComparison.OrdinalIgnoreCase)))
+            {
+                target.Add(model);
+            }
+        }
+    }
+
+    private static IReadOnlyList<ProviderModelInfo> GetKnownModelsFromConstants()
+    {
+        var constants = typeof(CopilotModels)
+            .GetFields(BindingFlags.Public | BindingFlags.Static)
+            .Where(field => field.FieldType == typeof(string))
+            .Select(field => new
+            {
+                Name = field.Name,
+                Id = field.GetValue(null) as string,
+            })
+            .Where(x => !string.IsNullOrWhiteSpace(x.Id))
+            .ToList();
+
+        // "Default" points to another concrete model id and is already represented.
+        return constants
+            .Where(x => !string.Equals(x.Name, "Default", StringComparison.Ordinal))
+            .Select(x => new ProviderModelInfo(
+                x.Id!,
+                x.Id!,
+                CopilotProviderName))
+            .DistinctBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 }

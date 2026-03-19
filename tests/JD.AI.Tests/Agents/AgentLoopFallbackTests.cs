@@ -78,4 +78,23 @@ public sealed class AgentLoopFallbackTests
         var ex = new InvalidOperationException("Wrapper", inner);
         Assert.True(InvokeIsRetriableError(ex));
     }
+
+    [Fact]
+    public void IsRetriableError_InsufficientQuota_ReturnsFalse()
+    {
+        var ex = new InvalidOperationException(
+            "HTTP 429 (insufficient_quota: insufficient_quota) You exceeded your current quota.");
+        Assert.False(InvokeIsRetriableError(ex));
+    }
+
+    [Fact]
+    public void IsRetriableError_InnerQuotaMessage_ReturnsFalse()
+    {
+        var inner = new HttpRequestException(
+            "insufficient_quota: check your plan and billing details",
+            null,
+            System.Net.HttpStatusCode.TooManyRequests);
+        var ex = new InvalidOperationException("Wrapper", inner);
+        Assert.False(InvokeIsRetriableError(ex));
+    }
 }
