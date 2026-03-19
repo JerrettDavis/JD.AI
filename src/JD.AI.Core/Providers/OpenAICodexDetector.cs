@@ -1,4 +1,9 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+using System.Security.Cryptography;
+using JD.AI.Core.Infrastructure;
 using JD.SemanticKernel.Connectors.OpenAICodex;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -14,33 +19,60 @@ namespace JD.AI.Core.Providers;
 public sealed class OpenAICodexDetector : IProviderDetector
 {
     private const string CodexProviderName = "OpenAI Codex";
+    private static readonly Regex CliAuthCredentialsStorePattern = new(
+        @"(?im)^\s*cli_auth_credentials_store\s*=\s*[""'](?<mode>file|keyring|auto)[""']",
+        RegexOptions.CultureInvariant);
 
     public string ProviderName => CodexProviderName;
 
     public async Task<ProviderInfo> DetectAsync(CancellationToken ct = default)
     {
+        CodexSessionProvider? provider = null;
         try
         {
             var options = BuildSessionOptions();
-            using var provider = new CodexSessionProvider(
-                Options.Create(options),
-                NullLogger<CodexSessionProvider>.Instance);
+            provider = CreateSessionProvider(options);
 
             var isAuth = await provider.IsAuthenticatedAsync(ct).ConfigureAwait(false);
 
             if (!isAuth)
             {
+                // Token exchange may have failed — try refreshing via codex CLI.
+                var refreshed = await TryRefreshAuthAsync(ct).ConfigureAwait(false);
+                if (refreshed)
+                {
+                    provider.Dispose();
+                    provider = CreateSessionProvider(options);
+                    isAuth = await provider.IsAuthenticatedAsync(ct).ConfigureAwait(false);
+                }
+
+                if (!isAuth)
+                {
                 return new ProviderInfo(
                     ProviderName,
                     IsAvailable: false,
-                    StatusMessage: "Not authenticated — set OPENAI_API_KEY or run 'codex login'",
+                    StatusMessage: "Not authenticated — run 'codex login' (or 'codex login --device-auth')",
                     Models: []);
+                }
             }
 
             // Force credential materialization once at startup. This triggers token
             // refresh/exchange logic and prevents false "Authenticated" status when
             // the current token is already expired.
-            _ = await provider.GetApiKeyAsync(ct).ConfigureAwait(false);
+            try
+            {
+                _ = await provider.GetApiKeyAsync(ct).ConfigureAwait(false);
+            }
+            catch (CodexSessionException)
+            {
+                var refreshed = await TryRefreshAuthAsync(ct).ConfigureAwait(false);
+                if (!refreshed)
+                    throw;
+
+                provider.Dispose();
+                provider = CreateSessionProvider(options);
+                _ = await provider.GetApiKeyAsync(ct).ConfigureAwait(false);
+            }
 
             // Use live model discovery first, then local cache as a supplement.
             var models = new List<ProviderModelInfo>();
@@ -83,8 +115,20 @@ public sealed class OpenAICodexDetector : IProviderDetector
             return new ProviderInfo(
                 ProviderName,
                 IsAvailable: false,
-                StatusMessage: ex.Message,
+                StatusMessage: NormalizeStatusMessage(ex.Message),
                 Models: []);
+        }
+        catch (Exception ex)
+        {
+            return new ProviderInfo(
+                ProviderName,
+                IsAvailable: false,
+                StatusMessage: NormalizeStatusMessage(ex.Message),
+                Models: []);
+        }
+        finally
+        {
+            provider?.Dispose();
         }
     }
 
@@ -139,31 +183,50 @@ public sealed class OpenAICodexDetector : IProviderDetector
         CodexSessionOptions options,
         string? envApiKeyOverride = null)
     {
-        var authPath = ResolveAuthPath(options);
-        if (authPath is null || !File.Exists(authPath))
+        if (!TryReadCodexCredentials(options, out var creds, out var authMode, out var source))
             return;
+        var token = !string.IsNullOrWhiteSpace(creds.EffectiveIdToken)
+            ? creds.EffectiveIdToken
+            : creds.EffectiveAccessToken;
+        var envApiKey = envApiKeyOverride ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY");
 
-        CodexCredentialsFile? creds;
-        try
+        if (source == CredentialSource.Keyring)
         {
-            using var stream = File.OpenRead(authPath);
-            creds = JsonSerializer.Deserialize<CodexCredentialsFile>(stream);
-        }
-        catch (JsonException)
-        {
-            return;
-        }
-        catch (IOException)
-        {
-            return;
-        }
-        catch (UnauthorizedAccessException)
-        {
+            // Keyring-backed auth isn't read by this connector path, so provide
+            // explicit credentials resolved from the keyring snapshot.
+            if (IsChatGptAuthMode(authMode) && !string.IsNullOrWhiteSpace(token))
+            {
+                options.AccessToken = token;
+                options.ApiKey = null;
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(creds.OpenAIApiKey))
+            {
+                options.ApiKey = creds.OpenAIApiKey;
+                options.AccessToken = null;
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                options.AccessToken = token;
+                options.ApiKey = null;
+            }
+
             return;
         }
 
-        if (creds is null)
+        // Match Codex CLI intent: when auth.json is explicitly ChatGPT-based, prefer
+        // OAuth tokens over API keys so account subscription auth isn't shadowed by
+        // stale/billing-limited API keys in env or auth.json.
+        if (ShouldPreferTokens(creds, authMode, envApiKey) &&
+            !string.IsNullOrWhiteSpace(token))
+        {
+            options.AccessToken = token;
+            options.ApiKey = null;
             return;
+        }
 
         if (!string.IsNullOrWhiteSpace(creds.OpenAIApiKey))
         {
@@ -171,11 +234,6 @@ public sealed class OpenAICodexDetector : IProviderDetector
             options.AccessToken = null;
             return;
         }
-
-        var token = !string.IsNullOrWhiteSpace(creds.EffectiveIdToken)
-            ? creds.EffectiveIdToken
-            : creds.EffectiveAccessToken;
-        var envApiKey = envApiKeyOverride ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY");
 
         if (!string.IsNullOrWhiteSpace(token) &&
             !string.IsNullOrWhiteSpace(envApiKey))
@@ -282,11 +340,96 @@ public sealed class OpenAICodexDetector : IProviderDetector
         if (!string.IsNullOrWhiteSpace(options.CredentialsPath))
             return options.CredentialsPath;
 
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        if (string.IsNullOrWhiteSpace(home))
+        var codexHome = ResolveCodexHomePath(options);
+        if (string.IsNullOrWhiteSpace(codexHome))
             return null;
 
-        return Path.Combine(home, ".codex", "auth.json");
+        return Path.Combine(codexHome, "auth.json");
+    }
+
+    private static bool TryReadCodexCredentials(
+        CodexSessionOptions options,
+        out CodexCredentialsFile creds,
+        out string? authMode,
+        out CredentialSource source)
+    {
+        var storeMode = ResolveAuthStoreMode(options);
+        var authPath = ResolveAuthPath(options);
+        var hasAuthPath = !string.IsNullOrWhiteSpace(authPath);
+
+        switch (storeMode)
+        {
+            case AuthStoreMode.Keyring:
+                if (TryReadCredentialsFromKeyring(options, out creds, out authMode))
+                {
+                    source = CredentialSource.Keyring;
+                    return true;
+                }
+                break;
+            case AuthStoreMode.Auto:
+                if (TryReadCredentialsFromKeyring(options, out creds, out authMode))
+                {
+                    source = CredentialSource.Keyring;
+                    return true;
+                }
+
+                if (hasAuthPath && TryReadCredentialsFromJsonFile(authPath!, out creds, out authMode))
+                {
+                    source = CredentialSource.File;
+                    return true;
+                }
+                break;
+            case AuthStoreMode.File:
+            default:
+                if (hasAuthPath && TryReadCredentialsFromJsonFile(authPath!, out creds, out authMode))
+                {
+                    source = CredentialSource.File;
+                    return true;
+                }
+                break;
+        }
+
+        creds = default!;
+        authMode = null;
+        source = CredentialSource.File;
+        return false;
+    }
+
+    private static bool TryReadCredentialsFromJsonFile(
+        string authPath,
+        out CodexCredentialsFile creds,
+        out string? authMode)
+    {
+        creds = default!;
+        authMode = null;
+
+        if (!File.Exists(authPath))
+            return false;
+
+        try
+        {
+            using var stream = File.OpenRead(authPath);
+            using var doc = JsonDocument.Parse(stream);
+            creds = JsonSerializer.Deserialize<CodexCredentialsFile>(doc.RootElement.GetRawText())
+                ?? default!;
+            if (creds is null)
+                return false;
+
+            authMode = ReadAuthMode(doc);
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 
     private static void AddUniqueModels(
@@ -312,5 +455,399 @@ public sealed class OpenAICodexDetector : IProviderDetector
         }
 
         return value.GetString();
+    }
+
+    private static string? ReadAuthMode(string authPath)
+    {
+        try
+        {
+            using var stream = File.OpenRead(authPath);
+            using var doc = JsonDocument.Parse(stream);
+            return ReadAuthMode(doc);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    private static string? ReadAuthMode(JsonDocument doc)
+    {
+        if (doc.RootElement.TryGetProperty("auth_mode", out var mode) &&
+            mode.ValueKind == JsonValueKind.String)
+        {
+            return mode.GetString();
+        }
+
+        return null;
+    }
+
+    private static bool IsChatGptAuthMode(string? authMode) =>
+        !string.IsNullOrWhiteSpace(authMode) &&
+        authMode.Contains("chatgpt", StringComparison.OrdinalIgnoreCase);
+
+    private static bool ShouldPreferTokens(
+        CodexCredentialsFile creds,
+        string? authMode,
+        string? envApiKey)
+    {
+        if (!IsChatGptAuthMode(authMode))
+            return false;
+
+        // Only force explicit token precedence when an API-key source would shadow
+        // ChatGPT OAuth mode. Otherwise let the connector read auth.json directly so
+        // its built-in refresh/exchange paths remain intact.
+        return !string.IsNullOrWhiteSpace(creds.OpenAIApiKey) ||
+               !string.IsNullOrWhiteSpace(envApiKey);
+    }
+
+    private static bool TryReadCredentialsFromKeyring(
+        CodexSessionOptions options,
+        out CodexCredentialsFile creds,
+        out string? authMode)
+    {
+        creds = default!;
+        authMode = null;
+
+        if (!OperatingSystem.IsWindows())
+            return false;
+
+        var codexHome = ResolveCodexHomePath(options);
+        if (string.IsNullOrWhiteSpace(codexHome))
+            return false;
+
+        var account = ComputeCodexKeyringAccountKey(codexHome);
+        if (string.IsNullOrWhiteSpace(account))
+            return false;
+
+        if (!TryReadWindowsCodexKeyringJson(account, out var json))
+            return false;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            creds = JsonSerializer.Deserialize<CodexCredentialsFile>(doc.RootElement.GetRawText())
+                ?? default!;
+            if (creds is null)
+                return false;
+
+            authMode = ReadAuthMode(doc);
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    private static string? ResolveCodexHomePath(CodexSessionOptions options)
+    {
+        if (!string.IsNullOrWhiteSpace(options.CredentialsPath))
+        {
+            var dir = Path.GetDirectoryName(options.CredentialsPath);
+            if (!string.IsNullOrWhiteSpace(dir))
+                return dir;
+        }
+
+        var envCodexHome = Environment.GetEnvironmentVariable("CODEX_HOME");
+        if (!string.IsNullOrWhiteSpace(envCodexHome))
+            return envCodexHome;
+
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (string.IsNullOrWhiteSpace(home))
+            return null;
+
+        return Path.Combine(home, ".codex");
+    }
+
+    private static AuthStoreMode ResolveAuthStoreMode(CodexSessionOptions options)
+    {
+        var codexHome = ResolveCodexHomePath(options);
+        if (string.IsNullOrWhiteSpace(codexHome))
+            return AuthStoreMode.File;
+
+        var configPath = Path.Combine(codexHome, "config.toml");
+        if (!File.Exists(configPath))
+            return AuthStoreMode.File;
+
+        try
+        {
+            var config = File.ReadAllText(configPath);
+            var match = CliAuthCredentialsStorePattern.Match(config);
+            if (!match.Success)
+                return AuthStoreMode.File;
+
+            var mode = match.Groups["mode"].Value;
+            return mode.ToLowerInvariant() switch
+            {
+                "keyring" => AuthStoreMode.Keyring,
+                "auto" => AuthStoreMode.Auto,
+                _ => AuthStoreMode.File,
+            };
+        }
+        catch (IOException)
+        {
+            return AuthStoreMode.File;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return AuthStoreMode.File;
+        }
+    }
+
+    internal static string ComputeCodexKeyringAccountKey(string codexHomePath)
+    {
+        var normalized = codexHomePath;
+        try
+        {
+            normalized = Path.GetFullPath(codexHomePath);
+        }
+        catch
+        {
+            // Keep original path if normalization fails.
+        }
+
+        var bytes = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(normalized));
+        var hex = Convert.ToHexString(bytes).ToLowerInvariant();
+        var shortHex = hex.Length >= 16 ? hex[..16] : hex;
+        return $"cli|{shortHex}";
+    }
+
+    private static bool TryReadWindowsCodexKeyringJson(string account, out string json)
+    {
+        json = string.Empty;
+        const string service = "Codex Auth";
+
+        // Common Windows target shapes used by keyring wrappers.
+        var targets = new[]
+        {
+            $"{service}:{account}",
+            $"{service}/{account}",
+            account,
+            service,
+        };
+
+        foreach (var target in targets)
+        {
+            if (TryCredReadJson(target, out json))
+                return true;
+        }
+
+        return TryCredEnumerateJson(account, out json);
+    }
+
+    private static bool TryCredReadJson(string targetName, out string json)
+    {
+        json = string.Empty;
+        if (!CredRead(targetName, CRED_TYPE_GENERIC, 0, out var credPtr) || credPtr == IntPtr.Zero)
+            return false;
+
+        try
+        {
+            var credential = Marshal.PtrToStructure<CREDENTIAL>(credPtr);
+            var payload = CredentialBlobToString(
+                credential.CredentialBlob,
+                credential.CredentialBlobSize);
+            if (!string.IsNullOrWhiteSpace(payload) &&
+                payload.TrimStart().StartsWith('{'))
+            {
+                json = payload;
+                return true;
+            }
+        }
+        finally
+        {
+            CredFree(credPtr);
+        }
+
+        return false;
+    }
+
+    private static bool TryCredEnumerateJson(string account, out string json)
+    {
+        json = string.Empty;
+        if (!CredEnumerate(null, 0, out var count, out var credsPtr) || credsPtr == IntPtr.Zero)
+            return false;
+
+        try
+        {
+            for (var i = 0; i < count; i++)
+            {
+                var credPtr = Marshal.ReadIntPtr(credsPtr, i * IntPtr.Size);
+                if (credPtr == IntPtr.Zero)
+                    continue;
+
+                var credential = Marshal.PtrToStructure<CREDENTIAL>(credPtr);
+                if (credential.Type != CRED_TYPE_GENERIC)
+                    continue;
+
+                var target = Marshal.PtrToStringUni(credential.TargetName) ?? string.Empty;
+                if (!target.Contains("Codex", StringComparison.OrdinalIgnoreCase) &&
+                    !target.Contains(account, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var payload = CredentialBlobToString(
+                    credential.CredentialBlob,
+                    credential.CredentialBlobSize);
+                if (string.IsNullOrWhiteSpace(payload))
+                    continue;
+
+                var trimmed = payload.TrimStart();
+                if (!trimmed.StartsWith('{'))
+                    continue;
+
+                json = payload;
+                return true;
+            }
+        }
+        finally
+        {
+            CredFree(credsPtr);
+        }
+
+        return false;
+    }
+
+    private static string CredentialBlobToString(IntPtr blobPtr, uint blobSize)
+    {
+        if (blobPtr == IntPtr.Zero || blobSize == 0)
+            return string.Empty;
+
+        var bytes = new byte[blobSize];
+        Marshal.Copy(blobPtr, bytes, 0, (int)blobSize);
+
+        var utf8 = System.Text.Encoding.UTF8.GetString(bytes).TrimEnd('\0');
+        if (utf8.StartsWith('{'))
+            return utf8;
+
+        if (bytes.Length % 2 == 0)
+        {
+            var utf16 = System.Text.Encoding.Unicode.GetString(bytes).TrimEnd('\0');
+            if (utf16.StartsWith('{'))
+                return utf16;
+        }
+
+        return utf8;
+    }
+
+    private static CodexSessionProvider CreateSessionProvider(CodexSessionOptions options) =>
+        new(
+            Options.Create(options),
+            NullLogger<CodexSessionProvider>.Instance);
+
+    private static async Task<bool> TryRefreshAuthAsync(CancellationToken ct)
+    {
+        try
+        {
+            var codexPath = ClaudeCodeDetector.FindCli("codex");
+            if (codexPath is null)
+                return false;
+
+            Console.WriteLine("  ↻ Attempting Codex session refresh...");
+
+            var status = await ProcessExecutor.RunAsync(
+                codexPath,
+                "login status",
+                timeout: TimeSpan.FromSeconds(15),
+                cancellationToken: ct).ConfigureAwait(false);
+
+            if (status.Success)
+                return true;
+
+            // Fallback probe that can still trigger auth file/keyring re-read paths.
+            var version = await ProcessExecutor.RunAsync(
+                codexPath,
+                "--version",
+                timeout: TimeSpan.FromSeconds(10),
+                cancellationToken: ct).ConfigureAwait(false);
+
+            return version.Success;
+        }
+#pragma warning disable CA1031 // best-effort refresh
+        catch { return false; }
+#pragma warning restore CA1031
+    }
+
+    private static string NormalizeStatusMessage(string? message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+            return "Unavailable";
+
+        if (message.Contains("insufficient_quota", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("billing", StringComparison.OrdinalIgnoreCase))
+        {
+            return "OpenAI quota/billing unavailable (429 insufficient_quota). " +
+                   "If Codex OAuth is configured, re-run `codex login` or unset `OPENAI_API_KEY`.";
+        }
+
+        if (message.Contains("429", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("rate limit", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Rate limited by OpenAI API (429). Retry shortly.";
+        }
+
+        return message;
+    }
+
+    private enum CredentialSource
+    {
+        File,
+        Keyring,
+    }
+
+    private enum AuthStoreMode
+    {
+        File,
+        Keyring,
+        Auto,
+    }
+
+    private const uint CRED_TYPE_GENERIC = 1;
+
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool CredRead(
+        string target,
+        uint type,
+        uint flags,
+        out IntPtr credentialPtr);
+
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool CredEnumerate(
+        string? filter,
+        uint flags,
+        out uint count,
+        out IntPtr credentialsPtr);
+
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [DllImport("advapi32.dll", SetLastError = true)]
+    private static extern void CredFree(IntPtr buffer);
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct CREDENTIAL
+    {
+        public uint Flags;
+        public uint Type;
+        public IntPtr TargetName;
+        public IntPtr Comment;
+        public FILETIME LastWritten;
+        public uint CredentialBlobSize;
+        public IntPtr CredentialBlob;
+        public uint Persist;
+        public uint AttributeCount;
+        public IntPtr Attributes;
+        public IntPtr TargetAlias;
+        public IntPtr UserName;
     }
 }
