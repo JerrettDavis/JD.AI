@@ -7,10 +7,24 @@ namespace JD.AI.IntegrationTests;
 [Trait("Category", "Integration")]
 public sealed class ProviderDetectionTests
 {
+    public static IEnumerable<object[]> OptionalDetectorCases()
+    {
+        yield return
+        [
+            "Claude Code",
+            new Func<IProviderDetector>(() => new ClaudeCodeDetector())
+        ];
+
+        yield return
+        [
+            "GitHub Copilot",
+            new Func<IProviderDetector>(() => new CopilotDetector())
+        ];
+    }
+
     [SkippableFact]
     public async Task OllamaDetector_DetectsRunningInstance()
     {
-        IntegrationTestGuard.EnsureEnabled();
         await IntegrationTestGuard.EnsureOllamaAsync();
 
         var detector = new OllamaDetector();
@@ -42,7 +56,6 @@ public sealed class ProviderDetectionTests
     [SkippableFact]
     public async Task OllamaDetector_BuildKernel_ProducesValidKernel()
     {
-        IntegrationTestGuard.EnsureEnabled();
         await IntegrationTestGuard.EnsureOllamaAsync();
 
         var detector = new OllamaDetector();
@@ -57,38 +70,21 @@ public sealed class ProviderDetectionTests
         Assert.NotEmpty(chatService);
     }
 
-    [SkippableFact]
-    public async Task ClaudeCodeDetector_DetectsOrSkips()
+    [SkippableTheory]
+    [MemberData(nameof(OptionalDetectorCases))]
+    public async Task OptionalDetector_DetectsOrSkips(
+        string expectedProviderName,
+        Func<IProviderDetector> createDetector)
     {
         IntegrationTestGuard.EnsureEnabled();
 
-        var detector = new ClaudeCodeDetector();
-        var result = await detector.DetectAsync();
-
-        // Either available with models or not available — both are valid
-        if (result.IsAvailable)
-        {
-            Assert.NotEmpty(result.Models);
-            Assert.All(result.Models, m => Assert.Equal("Claude Code", m.ProviderName));
-        }
-        else
-        {
-            Assert.Empty(result.Models);
-        }
-    }
-
-    [SkippableFact]
-    public async Task CopilotDetector_DetectsOrSkips()
-    {
-        IntegrationTestGuard.EnsureEnabled();
-
-        var detector = new CopilotDetector();
+        var detector = createDetector();
         var result = await detector.DetectAsync();
 
         if (result.IsAvailable)
         {
             Assert.NotEmpty(result.Models);
-            Assert.All(result.Models, m => Assert.Equal("GitHub Copilot", m.ProviderName));
+            Assert.All(result.Models, m => Assert.Equal(expectedProviderName, m.ProviderName));
         }
         else
         {
@@ -118,7 +114,6 @@ public sealed class ProviderDetectionTests
     [SkippableFact]
     public async Task ProviderRegistry_GetModels_ReturnsUnifiedCatalog()
     {
-        IntegrationTestGuard.EnsureEnabled();
         await IntegrationTestGuard.EnsureOllamaAsync();
 
         var registry = new ProviderRegistry([new OllamaDetector()]);
