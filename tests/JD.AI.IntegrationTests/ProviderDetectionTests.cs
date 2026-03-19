@@ -10,8 +10,8 @@ public sealed class ProviderDetectionTests
     [SkippableFact]
     public async Task OllamaDetector_DetectsRunningInstance()
     {
-        TuiIntegrationGuard.EnsureEnabled();
-        await TuiIntegrationGuard.EnsureOllamaAsync();
+        IntegrationTestGuard.EnsureEnabled();
+        await IntegrationTestGuard.EnsureOllamaAsync();
 
         var detector = new OllamaDetector();
         var result = await detector.DetectAsync();
@@ -28,7 +28,7 @@ public sealed class ProviderDetectionTests
     [SkippableFact]
     public async Task OllamaDetector_HandlesUnavailableInstance()
     {
-        TuiIntegrationGuard.EnsureEnabled();
+        IntegrationTestGuard.EnsureEnabled();
 
         // Point to a port that's not running Ollama
         var detector = new OllamaDetector("http://localhost:59999");
@@ -42,8 +42,8 @@ public sealed class ProviderDetectionTests
     [SkippableFact]
     public async Task OllamaDetector_BuildKernel_ProducesValidKernel()
     {
-        TuiIntegrationGuard.EnsureEnabled();
-        await TuiIntegrationGuard.EnsureOllamaAsync();
+        IntegrationTestGuard.EnsureEnabled();
+        await IntegrationTestGuard.EnsureOllamaAsync();
 
         var detector = new OllamaDetector();
         var info = await detector.DetectAsync();
@@ -60,7 +60,7 @@ public sealed class ProviderDetectionTests
     [SkippableFact]
     public async Task ClaudeCodeDetector_DetectsOrSkips()
     {
-        TuiIntegrationGuard.EnsureEnabled();
+        IntegrationTestGuard.EnsureEnabled();
 
         var detector = new ClaudeCodeDetector();
         var result = await detector.DetectAsync();
@@ -80,7 +80,7 @@ public sealed class ProviderDetectionTests
     [SkippableFact]
     public async Task CopilotDetector_DetectsOrSkips()
     {
-        TuiIntegrationGuard.EnsureEnabled();
+        IntegrationTestGuard.EnsureEnabled();
 
         var detector = new CopilotDetector();
         var result = await detector.DetectAsync();
@@ -99,7 +99,7 @@ public sealed class ProviderDetectionTests
     [SkippableFact]
     public async Task ProviderRegistry_AggregatesAllProviders()
     {
-        TuiIntegrationGuard.EnsureEnabled();
+        IntegrationTestGuard.EnsureEnabled();
 
         var registry = new ProviderRegistry([
             new ClaudeCodeDetector(),
@@ -118,8 +118,8 @@ public sealed class ProviderDetectionTests
     [SkippableFact]
     public async Task ProviderRegistry_GetModels_ReturnsUnifiedCatalog()
     {
-        TuiIntegrationGuard.EnsureEnabled();
-        await TuiIntegrationGuard.EnsureOllamaAsync();
+        IntegrationTestGuard.EnsureEnabled();
+        await IntegrationTestGuard.EnsureOllamaAsync();
 
         var registry = new ProviderRegistry([new OllamaDetector()]);
         var models = await registry.GetModelsAsync();
@@ -131,13 +131,13 @@ public sealed class ProviderDetectionTests
     [SkippableFact]
     public async Task HuggingFaceDetector_WithRealKey_DiscoversModels()
     {
-        TuiIntegrationGuard.EnsureEnabled();
-        TuiIntegrationGuard.EnsureHuggingFaceKey();
+        IntegrationTestGuard.EnsureEnabled();
+        IntegrationTestGuard.EnsureHuggingFaceKey();
 
         using var temp = await ProviderIntegrationTestHelpers
             .CreateTempProviderConfigurationAsync(
                 "hf-detect",
-                [("huggingface", "apikey", TuiIntegrationGuard.HuggingFaceApiKey!)])
+                [("huggingface", "apikey", IntegrationTestGuard.HuggingFaceApiKey!)])
             .ConfigureAwait(false);
 
         var detector = new HuggingFaceDetector(temp.Config);
@@ -155,13 +155,13 @@ public sealed class ProviderDetectionTests
     [SkippableFact]
     public async Task HuggingFaceDetector_WithRealKey_ChatCompletionSucceeds()
     {
-        TuiIntegrationGuard.EnsureEnabled();
-        TuiIntegrationGuard.EnsureHuggingFaceKey();
+        IntegrationTestGuard.EnsureEnabled();
+        IntegrationTestGuard.EnsureHuggingFaceKey();
 
         using var temp = await ProviderIntegrationTestHelpers
             .CreateTempProviderConfigurationAsync(
                 "hf-chat",
-                [("huggingface", "apikey", TuiIntegrationGuard.HuggingFaceApiKey!)])
+                [("huggingface", "apikey", IntegrationTestGuard.HuggingFaceApiKey!)])
             .ConfigureAwait(false);
 
         var detector = new HuggingFaceDetector(temp.Config);

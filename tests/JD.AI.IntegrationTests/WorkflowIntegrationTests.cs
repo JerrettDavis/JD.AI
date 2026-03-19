@@ -18,13 +18,13 @@ public class WorkflowIntegrationTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        await TuiIntegrationGuard.EnsureOllamaAsync().ConfigureAwait(false);
+        await IntegrationTestGuard.EnsureOllamaAsync().ConfigureAwait(false);
 
         _kernel = Kernel.CreateBuilder()
             .AddOpenAIChatCompletion(
-                modelId: TuiIntegrationGuard.OllamaModel,
+                modelId: IntegrationTestGuard.OllamaModel,
                 apiKey: "ollama",
-                endpoint: new Uri($"{TuiIntegrationGuard.OllamaEndpoint}/v1"))
+                endpoint: new Uri($"{IntegrationTestGuard.OllamaEndpoint}/v1"))
             .Build();
     }
 
@@ -35,7 +35,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
     [SkippableFact]
     public void Detector_Identifies_WorkflowWorthy_Requests()
     {
-        TuiIntegrationGuard.EnsureEnabled();
+        IntegrationTestGuard.EnsureEnabled();
         var detector = new AgentWorkflowDetector();
 
         detector.IsWorkflowRequired(new AgentRequest("implement a user login feature with JWT tokens"))
@@ -160,7 +160,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
     [SkippableFact]
     public async Task Catalog_Persists_And_Retrieves_Workflows()
     {
-        TuiIntegrationGuard.EnsureEnabled();
+        IntegrationTestGuard.EnsureEnabled();
 
         var tempDir = Path.Combine(Path.GetTempPath(), $"jdai-wf-test-{Guid.NewGuid():N}");
         try
@@ -223,7 +223,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
     [SkippableFact]
     public async Task Matcher_Finds_Workflow_By_Tag_Overlap()
     {
-        TuiIntegrationGuard.EnsureEnabled();
+        IntegrationTestGuard.EnsureEnabled();
 
         var tempDir = Path.Combine(Path.GetTempPath(), $"jdai-wf-match-{Guid.NewGuid():N}");
         try
@@ -269,7 +269,7 @@ public class WorkflowIntegrationTests : IAsyncLifetime
     [SkippableFact]
     public void Emitter_Produces_All_Formats()
     {
-        TuiIntegrationGuard.EnsureEnabled();
+        IntegrationTestGuard.EnsureEnabled();
 
         var definition = new AgentWorkflowDefinition
         {

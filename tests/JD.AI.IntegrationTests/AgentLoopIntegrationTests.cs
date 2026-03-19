@@ -15,9 +15,9 @@ public sealed class AgentLoopIntegrationTests
     [SkippableFact]
     public async Task AgentLoop_SimpleChat_ReturnsResponse()
     {
-        await TuiIntegrationGuard.EnsureOllamaAsync();
+        await IntegrationTestGuard.EnsureOllamaAsync();
 
-        var model = new ProviderModelInfo(TuiIntegrationGuard.OllamaModel, "Ollama Chat", "Ollama");
+        var model = new ProviderModelInfo(IntegrationTestGuard.OllamaModel, "Ollama Chat", "Ollama");
         var detector = new OllamaDetector();
         using var harness = HeadlessAgentIntegrationHarness.Create(detector, model);
 
@@ -32,9 +32,9 @@ public sealed class AgentLoopIntegrationTests
     [SkippableFact]
     public async Task AgentLoop_MultiTurn_MaintainsContext()
     {
-        await TuiIntegrationGuard.EnsureOllamaAsync();
+        await IntegrationTestGuard.EnsureOllamaAsync();
 
-        var model = new ProviderModelInfo(TuiIntegrationGuard.OllamaModel, "Ollama Chat", "Ollama");
+        var model = new ProviderModelInfo(IntegrationTestGuard.OllamaModel, "Ollama Chat", "Ollama");
         var detector = new OllamaDetector();
         using var harness = HeadlessAgentIntegrationHarness.Create(detector, model);
 
@@ -52,9 +52,9 @@ public sealed class AgentLoopIntegrationTests
     [SkippableFact]
     public async Task AgentLoop_WithToolCalling_ExecutesFileTools()
     {
-        await TuiIntegrationGuard.EnsureOllamaAsync();
+        await IntegrationTestGuard.EnsureOllamaAsync();
 
-        var model = new ProviderModelInfo(TuiIntegrationGuard.OllamaModel, "Ollama Chat", "Ollama");
+        var model = new ProviderModelInfo(IntegrationTestGuard.OllamaModel, "Ollama Chat", "Ollama");
         var detector = new OllamaDetector();
         using var harness = HeadlessAgentIntegrationHarness.Create(detector, model);
         harness.Session.Kernel.Plugins.AddFromType<FileTools>("FileTools");
@@ -80,9 +80,9 @@ public sealed class AgentLoopIntegrationTests
     [SkippableFact]
     public async Task Session_ClearAndSwitch_PreservesIntegrity()
     {
-        await TuiIntegrationGuard.EnsureOllamaAsync();
+        await IntegrationTestGuard.EnsureOllamaAsync();
 
-        var model = new ProviderModelInfo(TuiIntegrationGuard.OllamaModel, "Ollama Chat", "Ollama");
+        var model = new ProviderModelInfo(IntegrationTestGuard.OllamaModel, "Ollama Chat", "Ollama");
         var detector = new OllamaDetector();
         using var harness = HeadlessAgentIntegrationHarness.Create(detector, model);
 
@@ -105,9 +105,9 @@ public sealed class AgentLoopIntegrationTests
     [SkippableFact]
     public async Task AgentSession_SwitchModel_PreservesAutoFunctionFilters_WithOllamaModel()
     {
-        await TuiIntegrationGuard.EnsureOllamaAsync();
+        await IntegrationTestGuard.EnsureOllamaAsync();
 
-        var model = new ProviderModelInfo(TuiIntegrationGuard.OllamaModel, "Ollama Chat", "Ollama");
+        var model = new ProviderModelInfo(IntegrationTestGuard.OllamaModel, "Ollama Chat", "Ollama");
         var detector = new OllamaDetector();
         using var harness = HeadlessAgentIntegrationHarness.Create(detector, model);
 
