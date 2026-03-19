@@ -14,6 +14,12 @@ public sealed class PrintModeRunnerTests
         var (registry, _, _) = StartupTestProviderFactory.CreateRegistry(
             StartupTestProviderFactory.AvailableProvider("TestProvider", model));
         var session = new AgentSession(registry, registry.BuildKernel(model), model);
+        var governance = GovernanceInitializer.Initialize(
+            Directory.GetCurrentDirectory(),
+            session,
+            session.Kernel,
+            new CliOptions { PrintMode = true },
+            maxBudgetUsd: null);
         using var skills = new SkillLifecycleManager([]);
 
         var originalError = Console.Error;
@@ -22,7 +28,7 @@ public sealed class PrintModeRunnerTests
 
         try
         {
-            var exitCode = await PrintModeRunner.RunAsync(new CliOptions(), session, model, skills);
+            var exitCode = await PrintModeRunner.RunAsync(new CliOptions(), session, model, skills, governance);
             Assert.Equal(1, exitCode);
             Assert.Contains("--print requires a query argument or piped input", error.ToString(), StringComparison.Ordinal);
         }
@@ -39,6 +45,12 @@ public sealed class PrintModeRunnerTests
         var (registry, _, _) = StartupTestProviderFactory.CreateRegistry(
             StartupTestProviderFactory.AvailableProvider("TestProvider", model));
         var session = new AgentSession(registry, registry.BuildKernel(model), model);
+        var governance = GovernanceInitializer.Initialize(
+            Directory.GetCurrentDirectory(),
+            session,
+            session.Kernel,
+            new CliOptions { PrintMode = true },
+            maxBudgetUsd: null);
         using var skills = new SkillLifecycleManager([]);
 
         var originalError = Console.Error;
@@ -53,7 +65,7 @@ public sealed class PrintModeRunnerTests
                 MaxTurns = 0,
             };
 
-            var exitCode = await PrintModeRunner.RunAsync(options, session, model, skills);
+            var exitCode = await PrintModeRunner.RunAsync(options, session, model, skills, governance);
 
             Assert.Equal(1, exitCode);
             Assert.Contains("max turns (0) exceeded", error.ToString(), StringComparison.Ordinal);
