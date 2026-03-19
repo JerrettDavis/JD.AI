@@ -939,7 +939,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             else if (p.IsAvailable)
                 status = "[yellow]✓ Ready[/]";
             else
-                status = "[red]✗ No key[/]";
+                status = $"[red]{ClassifyUnavailableProviderStatus(p.StatusMessage)}[/]";
 
             var name = isActive
                 ? $"[green]{Markup.Escape(p.Name)}[/]"
@@ -952,6 +952,35 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
         AnsiConsole.Write(table);
         return string.Empty;
+    }
+
+    private static string ClassifyUnavailableProviderStatus(string? statusMessage)
+    {
+        if (string.IsNullOrWhiteSpace(statusMessage))
+            return "✗ Unavailable";
+
+        if (statusMessage.Contains("insufficient_quota", StringComparison.OrdinalIgnoreCase) ||
+            statusMessage.Contains("quota", StringComparison.OrdinalIgnoreCase) ||
+            statusMessage.Contains("billing", StringComparison.OrdinalIgnoreCase))
+        {
+            return "✗ Quota/Billing";
+        }
+
+        if (statusMessage.Contains("429", StringComparison.OrdinalIgnoreCase) ||
+            statusMessage.Contains("rate limit", StringComparison.OrdinalIgnoreCase))
+        {
+            return "✗ Rate Limited";
+        }
+
+        if (statusMessage.Contains("not authenticated", StringComparison.OrdinalIgnoreCase) ||
+            statusMessage.Contains("api key", StringComparison.OrdinalIgnoreCase) ||
+            statusMessage.Contains("token", StringComparison.OrdinalIgnoreCase) ||
+            statusMessage.Contains("credential", StringComparison.OrdinalIgnoreCase))
+        {
+            return "✗ Not Authenticated";
+        }
+
+        return "✗ Unavailable";
     }
 
     private async Task<string> ProviderPickerAsync(CancellationToken ct)
