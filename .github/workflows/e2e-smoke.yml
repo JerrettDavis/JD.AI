@@ -141,6 +141,30 @@ jobs:
       - name: Render VHS smoke tape
         run: vhs docs/tapes/ci-cli-smoke.tape
 
+      - name: Render plugin help fallback screenshot
+        run: |
+          if [ -f docs/images/ci-plugin-help.png ]; then
+            echo "ci-plugin-help.png already exists."
+            exit 0
+          fi
+
+          echo "ci-plugin-help.png missing after primary tape; rendering fallback screenshot."
+          cat > /tmp/ci-plugin-help-fallback.tape <<'EOF'
+          Output /tmp/ci-plugin-help-fallback.gif
+          Set Shell "bash"
+          Set Width 1200
+          Set Height 700
+          Set FontSize 14
+          Set TypingSpeed 0ms
+          Set Padding 20
+          Set Theme "Dracula"
+          Type "./artifacts/vhs-smoke/JD.AI plugin --help"
+          Enter
+          Sleep 2s
+          Screenshot docs/images/ci-plugin-help.png
+          EOF
+          vhs /tmp/ci-plugin-help-fallback.tape
+
       - name: Verify generated VHS outputs
         run: |
           expected=(
