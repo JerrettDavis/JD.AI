@@ -33,7 +33,7 @@ public sealed class ToolIntegrationTests : IDisposable
     [SkippableFact]
     public void FileTools_FullWorkflow_CreateReadEditList()
     {
-        TuiIntegrationGuard.EnsureEnabled();
+        IntegrationTestGuard.EnsureEnabled();
 
         // Write
         var writePath = Path.Combine(_tempDir, "workflow.txt");
@@ -62,7 +62,7 @@ public sealed class ToolIntegrationTests : IDisposable
     [SkippableFact]
     public void SearchTools_GrepAndGlob_RealFilesystem()
     {
-        TuiIntegrationGuard.EnsureEnabled();
+        IntegrationTestGuard.EnsureEnabled();
 
         // Create test files
         File.WriteAllText(Path.Combine(_tempDir, "app.cs"), "public class App { }");
@@ -83,7 +83,7 @@ public sealed class ToolIntegrationTests : IDisposable
     [SkippableFact]
     public async Task ShellTools_ExecutesRealCommands()
     {
-        TuiIntegrationGuard.EnsureEnabled();
+        IntegrationTestGuard.EnsureEnabled();
 
         var cmd = "echo integration-test";
         var result = await ShellTools.RunCommandAsync(cmd, cwd: _tempDir);
@@ -95,7 +95,7 @@ public sealed class ToolIntegrationTests : IDisposable
     [SkippableFact]
     public async Task GitTools_FullWorkflow_InitCommitStatusDiffLog()
     {
-        TuiIntegrationGuard.EnsureEnabled();
+        IntegrationTestGuard.EnsureEnabled();
 
         // Init repo
         await ShellTools.RunCommandAsync("git init", cwd: _tempDir);
@@ -123,11 +123,11 @@ public sealed class ToolIntegrationTests : IDisposable
     [SkippableFact]
     public async Task WebTools_FetchesRealUrl()
     {
-        TuiIntegrationGuard.EnsureEnabled();
+        IntegrationTestGuard.EnsureEnabled();
 
         // WebTools uses HttpClient which doesn't support file:// URIs.
         // Test with a simple HTTP request to a known endpoint (Ollama's API).
-        var ollamaAvailable = await TuiIntegrationGuard.IsOllamaAvailableAsync().ConfigureAwait(false);
+        var ollamaAvailable = await IntegrationTestGuard.IsOllamaAvailableAsync().ConfigureAwait(false);
         Skip.IfNot(ollamaAvailable, "Need a local HTTP server to test web_fetch");
 
         var result = await WebTools.WebFetchAsync("http://localhost:11434").ConfigureAwait(false);

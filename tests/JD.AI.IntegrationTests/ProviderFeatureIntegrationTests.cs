@@ -9,195 +9,178 @@ namespace JD.AI.IntegrationTests;
 [Trait("Category", "Integration")]
 public sealed class ProviderFeatureIntegrationTests
 {
-    [SkippableFact]
-    public async Task OpenAI_Detects_BuildsKernel_AndCompletesToolTurn()
+    public static IEnumerable<object[]> ApiKeyProviderCases()
     {
-        TuiIntegrationGuard.EnsureEnabled();
-        TuiIntegrationGuard.EnsureOpenAiKey();
+        yield return
+        [
+            new ApiKeyProviderCase(
+                Name: "openai",
+                EnsureCredentials: IntegrationTestGuard.EnsureOpenAiKey,
+                BuildCredentials: () => [("openai", "apikey", IntegrationTestGuard.OpenAIApiKey!)],
+                CreateDetector: config => new OpenAIDetector(config),
+                PreferredModelIds: ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4o", "gpt-4.1"])
+        ];
 
-        await RunApiKeyProviderToolSmokeAsync(
-            provider: "openai",
-            credentials:
-            [
-                ("openai", "apikey", TuiIntegrationGuard.OpenAIApiKey!)
-            ],
-            createDetector: config => new OpenAIDetector(config),
-            preferredModelIds: ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4o", "gpt-4.1"]);
+        yield return
+        [
+            new ApiKeyProviderCase(
+                Name: "azure-openai",
+                EnsureCredentials: IntegrationTestGuard.EnsureAzureOpenAi,
+                BuildCredentials: () =>
+                {
+                    var creds = new List<(string Provider, string Field, string Value)>
+                    {
+                        ("azure-openai", "apikey", IntegrationTestGuard.AzureOpenAIApiKey!),
+                        ("azure-openai", "endpoint", IntegrationTestGuard.AzureOpenAIEndpoint!)
+                    };
+
+                    if (!string.IsNullOrWhiteSpace(IntegrationTestGuard.AzureOpenAIDeployments))
+                        creds.Add(("azure-openai", "deployments", IntegrationTestGuard.AzureOpenAIDeployments!));
+
+                    return creds.ToArray();
+                },
+                CreateDetector: config => new AzureOpenAIDetector(config))
+        ];
+
+        yield return
+        [
+            new ApiKeyProviderCase(
+                Name: "anthropic",
+                EnsureCredentials: IntegrationTestGuard.EnsureAnthropicKey,
+                BuildCredentials: () => [("anthropic", "apikey", IntegrationTestGuard.AnthropicApiKey!)],
+                CreateDetector: config => new AnthropicDetector(config),
+                PreferredModelIds: ["haiku", "sonnet"])
+        ];
+
+        yield return
+        [
+            new ApiKeyProviderCase(
+                Name: "google-gemini",
+                EnsureCredentials: IntegrationTestGuard.EnsureGoogleGeminiKey,
+                BuildCredentials: () => [("google-gemini", "apikey", IntegrationTestGuard.GoogleGeminiApiKey!)],
+                CreateDetector: config => new GoogleGeminiDetector(config),
+                PreferredModelIds: ["flash", "gemini-2.0", "gemini-1.5"])
+        ];
+
+        yield return
+        [
+            new ApiKeyProviderCase(
+                Name: "mistral",
+                EnsureCredentials: IntegrationTestGuard.EnsureMistralKey,
+                BuildCredentials: () => [("mistral", "apikey", IntegrationTestGuard.MistralApiKey!)],
+                CreateDetector: config => new MistralDetector(config),
+                PreferredModelIds: ["small", "nemo", "codestral"])
+        ];
+
+        yield return
+        [
+            new ApiKeyProviderCase(
+                Name: "openrouter",
+                EnsureCredentials: IntegrationTestGuard.EnsureOpenRouterKey,
+                BuildCredentials: () => [("openrouter", "apikey", IntegrationTestGuard.OpenRouterApiKey!)],
+                CreateDetector: config => new OpenRouterDetector(config),
+                PreferredModelIds: ["mini", "flash", "haiku", "small"])
+        ];
+
+        yield return
+        [
+            new ApiKeyProviderCase(
+                Name: "bedrock",
+                EnsureCredentials: IntegrationTestGuard.EnsureBedrockCredentials,
+                BuildCredentials: () =>
+                [
+                    ("bedrock", "accesskey", IntegrationTestGuard.AwsAccessKeyId!),
+                    ("bedrock", "secretkey", IntegrationTestGuard.AwsSecretAccessKey!),
+                    ("bedrock", "region", IntegrationTestGuard.AwsRegion)
+                ],
+                CreateDetector: config => new AmazonBedrockDetector(config),
+                PreferredModelIds: ["haiku", "sonnet", "nova-lite", "nova"])
+        ];
+
+        yield return
+        [
+            new ApiKeyProviderCase(
+                Name: "openai-compat",
+                EnsureCredentials: IntegrationTestGuard.EnsureOpenAiCompatEndpoint,
+                BuildCredentials: () =>
+                {
+                    var alias = IntegrationTestGuard.OpenAICompatAlias;
+                    var provider = $"openai-compat:{alias}";
+                    return
+                    [
+                        (provider, "apikey", IntegrationTestGuard.OpenAICompatApiKey!),
+                        (provider, "baseurl", IntegrationTestGuard.OpenAICompatBaseUrl!)
+                    ];
+                },
+                CreateDetector: config => new OpenAICompatibleDetector(config))
+        ];
     }
 
-    [SkippableFact]
-    public async Task AzureOpenAI_Detects_BuildsKernel_AndCompletesToolTurn()
+    [SkippableTheory]
+    [MemberData(nameof(ApiKeyProviderCases))]
+    public async Task ApiKeyProvider_Detects_BuildsKernel_AndCompletesToolTurn(ApiKeyProviderCase providerCase)
     {
-        TuiIntegrationGuard.EnsureEnabled();
-        TuiIntegrationGuard.EnsureAzureOpenAi();
-
-        var creds = new List<(string Provider, string Field, string Value)>
-        {
-            ("azure-openai", "apikey", TuiIntegrationGuard.AzureOpenAIApiKey!),
-            ("azure-openai", "endpoint", TuiIntegrationGuard.AzureOpenAIEndpoint!)
-        };
-
-        if (!string.IsNullOrWhiteSpace(TuiIntegrationGuard.AzureOpenAIDeployments))
-        {
-            creds.Add(("azure-openai", "deployments", TuiIntegrationGuard.AzureOpenAIDeployments!));
-        }
+        IntegrationTestGuard.EnsureEnabled();
+        providerCase.EnsureCredentials();
 
         await RunApiKeyProviderToolSmokeAsync(
-            provider: "azure-openai",
-            credentials: creds,
-            createDetector: config => new AzureOpenAIDetector(config));
-    }
-
-    [SkippableFact]
-    public async Task Anthropic_Detects_BuildsKernel_AndCompletesToolTurn()
-    {
-        TuiIntegrationGuard.EnsureEnabled();
-        TuiIntegrationGuard.EnsureAnthropicKey();
-
-        await RunApiKeyProviderToolSmokeAsync(
-            provider: "anthropic",
-            credentials:
-            [
-                ("anthropic", "apikey", TuiIntegrationGuard.AnthropicApiKey!)
-            ],
-            createDetector: config => new AnthropicDetector(config),
-            preferredModelIds: ["haiku", "sonnet"]);
-    }
-
-    [SkippableFact]
-    public async Task GoogleGemini_Detects_BuildsKernel_AndCompletesToolTurn()
-    {
-        TuiIntegrationGuard.EnsureEnabled();
-        TuiIntegrationGuard.EnsureGoogleGeminiKey();
-
-        await RunApiKeyProviderToolSmokeAsync(
-            provider: "google-gemini",
-            credentials:
-            [
-                ("google-gemini", "apikey", TuiIntegrationGuard.GoogleGeminiApiKey!)
-            ],
-            createDetector: config => new GoogleGeminiDetector(config),
-            preferredModelIds: ["flash", "gemini-2.0", "gemini-1.5"]);
-    }
-
-    [SkippableFact]
-    public async Task Mistral_Detects_BuildsKernel_AndCompletesToolTurn()
-    {
-        TuiIntegrationGuard.EnsureEnabled();
-        TuiIntegrationGuard.EnsureMistralKey();
-
-        await RunApiKeyProviderToolSmokeAsync(
-            provider: "mistral",
-            credentials:
-            [
-                ("mistral", "apikey", TuiIntegrationGuard.MistralApiKey!)
-            ],
-            createDetector: config => new MistralDetector(config),
-            preferredModelIds: ["small", "nemo", "codestral"]);
-    }
-
-    [SkippableFact]
-    public async Task OpenRouter_Detects_BuildsKernel_AndCompletesToolTurn()
-    {
-        TuiIntegrationGuard.EnsureEnabled();
-        TuiIntegrationGuard.EnsureOpenRouterKey();
-
-        await RunApiKeyProviderToolSmokeAsync(
-            provider: "openrouter",
-            credentials:
-            [
-                ("openrouter", "apikey", TuiIntegrationGuard.OpenRouterApiKey!)
-            ],
-            createDetector: config => new OpenRouterDetector(config),
-            preferredModelIds: ["mini", "flash", "haiku", "small"]);
-    }
-
-    [SkippableFact]
-    public async Task Bedrock_Detects_BuildsKernel_AndCompletesToolTurn()
-    {
-        TuiIntegrationGuard.EnsureEnabled();
-        TuiIntegrationGuard.EnsureBedrockCredentials();
-
-        await RunApiKeyProviderToolSmokeAsync(
-            provider: "bedrock",
-            credentials:
-            [
-                ("bedrock", "accesskey", TuiIntegrationGuard.AwsAccessKeyId!),
-                ("bedrock", "secretkey", TuiIntegrationGuard.AwsSecretAccessKey!),
-                ("bedrock", "region", TuiIntegrationGuard.AwsRegion)
-            ],
-            createDetector: config => new AmazonBedrockDetector(config),
-            preferredModelIds: ["haiku", "sonnet", "nova-lite", "nova"]);
-    }
-
-    [SkippableFact]
-    public async Task OpenAICompatible_Detects_BuildsKernel_AndCompletesToolTurn()
-    {
-        TuiIntegrationGuard.EnsureEnabled();
-        TuiIntegrationGuard.EnsureOpenAiCompatEndpoint();
-
-        var alias = TuiIntegrationGuard.OpenAICompatAlias;
-        await RunApiKeyProviderToolSmokeAsync(
-            provider: $"openai-compat:{alias}",
-            credentials:
-            [
-                ($"openai-compat:{alias}", "apikey", TuiIntegrationGuard.OpenAICompatApiKey!),
-                ($"openai-compat:{alias}", "baseurl", TuiIntegrationGuard.OpenAICompatBaseUrl!)
-            ],
-            createDetector: config => new OpenAICompatibleDetector(config));
+            providerCase.Name,
+            providerCase.BuildCredentials(),
+            providerCase.CreateDetector,
+            providerCase.PreferredModelIds).ConfigureAwait(false);
     }
 
     [SkippableFact]
     public async Task ClaudeCode_WhenAuthenticated_BuildsKernel_AndCompletesToolTurn()
     {
-        TuiIntegrationGuard.EnsureEnabled();
+        IntegrationTestGuard.EnsureEnabled();
 
         var detector = new ClaudeCodeDetector();
-        var info = await detector.DetectAsync();
+        var info = await detector.DetectAsync().ConfigureAwait(false);
         Skip.IfNot(info.IsAvailable, $"Claude Code unavailable: {info.StatusMessage}");
 
-        await RunToolSmokeAsync(detector, info, preferredModelIds: ["haiku", "sonnet"]);
+        await RunToolSmokeAsync(detector, info, preferredModelIds: ["haiku", "sonnet"]).ConfigureAwait(false);
     }
 
     [SkippableFact]
     public async Task Copilot_WhenAuthenticated_BuildsKernel_AndCompletesToolTurn()
     {
-        TuiIntegrationGuard.EnsureEnabled();
+        IntegrationTestGuard.EnsureEnabled();
 
         var detector = new CopilotDetector();
-        var info = await detector.DetectAsync();
+        var info = await detector.DetectAsync().ConfigureAwait(false);
         Skip.IfNot(info.IsAvailable, $"GitHub Copilot unavailable: {info.StatusMessage}");
 
-        await RunToolSmokeAsync(detector, info, preferredModelIds: ["mini", "gpt-4.1"]);
+        await RunToolSmokeAsync(detector, info, preferredModelIds: ["mini", "gpt-4.1"]).ConfigureAwait(false);
     }
 
     [SkippableFact]
     public async Task Codex_WhenAuthenticated_BuildsKernel_AndCompletesToolTurn()
     {
-        TuiIntegrationGuard.EnsureEnabled();
+        IntegrationTestGuard.EnsureEnabled();
 
         var detector = new OpenAICodexDetector();
-        var info = await detector.DetectAsync();
+        var info = await detector.DetectAsync().ConfigureAwait(false);
         Skip.IfNot(info.IsAvailable, $"OpenAI Codex unavailable: {info.StatusMessage}");
 
-        await RunToolSmokeAsync(detector, info, preferredModelIds: ["mini", "gpt-5.1-codex-mini"]);
+        await RunToolSmokeAsync(detector, info, preferredModelIds: ["mini", "gpt-5.1-codex-mini"]).ConfigureAwait(false);
     }
 
     private static async Task RunApiKeyProviderToolSmokeAsync(
-        string provider,
+        string providerName,
         IEnumerable<(string Provider, string Field, string Value)> credentials,
         Func<ProviderConfigurationManager, IProviderDetector> createDetector,
         string[]? preferredModelIds = null)
     {
         using var temp = await ProviderIntegrationTestHelpers
-            .CreateTempProviderConfigurationAsync(provider, credentials)
+            .CreateTempProviderConfigurationAsync(providerName, credentials)
             .ConfigureAwait(false);
 
         var detector = createDetector(temp.Config);
-        var info = await detector.DetectAsync();
+        var info = await detector.DetectAsync().ConfigureAwait(false);
 
         Skip.IfNot(info.IsAvailable, $"{detector.ProviderName} unavailable: {info.StatusMessage}");
-        await RunToolSmokeAsync(detector, info, preferredModelIds);
+        await RunToolSmokeAsync(detector, info, preferredModelIds).ConfigureAwait(false);
     }
 
     private static async Task RunToolSmokeAsync(
@@ -215,11 +198,12 @@ public sealed class ProviderFeatureIntegrationTests
         Assert.NotEmpty(chatServices);
 
         var tempFile = Path.GetTempFileName();
-        await File.WriteAllTextAsync(tempFile, "provider integration test content");
+        await File.WriteAllTextAsync(tempFile, "provider integration test content").ConfigureAwait(false);
         try
         {
             var response = await harness.ExecuteTurnAsync(
-                $"Read the file at {tempFile} and summarize its contents in one short sentence.");
+                    $"Read the file at {tempFile} and summarize its contents in one short sentence.")
+                .ConfigureAwait(false);
             Assert.NotNull(response);
             Assert.True(harness.Session.History.Count >= 2,
                 "Session should contain user + assistant messages after provider tool smoke turn");
@@ -231,3 +215,10 @@ public sealed class ProviderFeatureIntegrationTests
     }
 
 }
+
+public sealed record ApiKeyProviderCase(
+    string Name,
+    Action EnsureCredentials,
+    Func<(string Provider, string Field, string Value)[]> BuildCredentials,
+    Func<ProviderConfigurationManager, IProviderDetector> CreateDetector,
+    string[]? PreferredModelIds = null);
