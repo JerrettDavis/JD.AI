@@ -41,7 +41,7 @@ public sealed class PrintModeRunnerBddTests : TinyBddXunitBase
                     PrintQuery = "say hello",
                     OutputFormat = "json",
                 };
-                return (ctx.session, ctx.model, ctx.skills, opts);
+                return (ctx.session, ctx.model, ctx.skills, ctx.governance, opts);
             })
             .When("running print mode", async Task (ctx) =>
             {
@@ -50,7 +50,8 @@ public sealed class PrintModeRunnerBddTests : TinyBddXunitBase
                         ctx.opts,
                         ctx.session,
                         ctx.model,
-                        ctx.skills));
+                        ctx.skills,
+                        ctx.governance));
             })
             .Then("exit code is zero and payload contains model/provider metadata", _ =>
             {
@@ -77,7 +78,7 @@ public sealed class PrintModeRunnerBddTests : TinyBddXunitBase
             {
                 var ctx = CreateRunnerContext("unused");
                 var opts = new CliOptions { PrintMode = true };
-                return (ctx.session, ctx.model, ctx.skills, opts);
+                return (ctx.session, ctx.model, ctx.skills, ctx.governance, opts);
             })
             .When("running print mode", async Task (ctx) =>
             {
@@ -86,7 +87,8 @@ public sealed class PrintModeRunnerBddTests : TinyBddXunitBase
                         ctx.opts,
                         ctx.session,
                         ctx.model,
-                        ctx.skills));
+                        ctx.skills,
+                        ctx.governance));
             })
             .Then("it returns exit code 1 and explains the missing query", _ =>
             {
@@ -112,7 +114,7 @@ public sealed class PrintModeRunnerBddTests : TinyBddXunitBase
                     PrintQuery = "trigger guardrail",
                     MaxTurns = 0,
                 };
-                return (ctx.session, ctx.model, ctx.skills, opts);
+                return (ctx.session, ctx.model, ctx.skills, ctx.governance, opts);
             })
             .When("running print mode", async Task (ctx) =>
             {
@@ -121,7 +123,8 @@ public sealed class PrintModeRunnerBddTests : TinyBddXunitBase
                         ctx.opts,
                         ctx.session,
                         ctx.model,
-                        ctx.skills));
+                        ctx.skills,
+                        ctx.governance));
             })
             .Then("it aborts before running turns and returns an error", _ =>
             {
@@ -132,7 +135,7 @@ public sealed class PrintModeRunnerBddTests : TinyBddXunitBase
             .AssertPassed();
     }
 
-    private static (AgentSession session, ProviderModelInfo model, SkillLifecycleManager skills)
+    private static (AgentSession session, ProviderModelInfo model, SkillLifecycleManager skills, GovernanceSetup governance)
         CreateRunnerContext(string assistantResponse)
     {
         var chat = Substitute.For<IChatCompletionService>();
@@ -158,7 +161,13 @@ public sealed class PrintModeRunnerBddTests : TinyBddXunitBase
         };
 
         var skills = new SkillLifecycleManager([]);
-        return (session, model, skills);
+        var governance = GovernanceInitializer.Initialize(
+            Directory.GetCurrentDirectory(),
+            session,
+            kernel,
+            new CliOptions { PrintMode = true },
+            maxBudgetUsd: null);
+        return (session, model, skills, governance);
     }
 
     private static async Task<(int ExitCode, string StdOut, string StdErr)> CaptureConsoleAsync(

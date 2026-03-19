@@ -301,7 +301,7 @@ session.CaptureOriginalSystemPromptIfUnset(systemPrompt);
 // 10. Print mode: non-interactive execution
 if (opts.PrintMode)
 {
-    return await PrintModeRunner.RunAsync(opts, session, selectedModel, skillLifecycleManager)
+    return await PrintModeRunner.RunAsync(opts, session, selectedModel, skillLifecycleManager, governance)
         .ConfigureAwait(false);
 }
 

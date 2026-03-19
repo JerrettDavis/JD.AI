@@ -13,7 +13,6 @@ using JD.AI.Core.Usage;
 using JD.AI.Rendering;
 using JD.AI.Workflows;
 using JD.AI.Workflows.Store;
-using JD.SemanticKernel.Extensions.Compaction;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.SemanticKernel;
 using Spectre.Console;
@@ -42,7 +41,7 @@ internal sealed class InteractiveLoop
     private readonly string _systemPrompt;
     private readonly PluginLoader _pluginLoader;
     private readonly IPluginLifecycleManager? _pluginManager;
-    private readonly ICostEstimator _costEstimator;
+    private readonly SessionTurnOrchestrator _turnOrchestrator;
 
     private FooterBar? _footerBar;
     private FooterStateProvider? _footerStateProvider;
@@ -80,7 +79,11 @@ internal sealed class InteractiveLoop
         _systemPrompt = systemPrompt;
         _pluginLoader = pluginLoader;
         _pluginManager = pluginManager;
-        _costEstimator = costEstimator ?? new DefaultCostEstimator();
+        _turnOrchestrator = new SessionTurnOrchestrator(
+            _session,
+            _governance,
+            _skillLifecycleManager,
+            costEstimator);
     }
 
     public async Task<int> RunAsync()
@@ -465,100 +468,38 @@ internal sealed class InteractiveLoop
         TurnMonitorBox monitorBox)
     {
         string? currentMessage = input;
-        var budgetPolicy = _governance.BudgetPolicy;
 
         while (currentMessage != null && !appCts.IsCancellationRequested)
         {
-            // Budget enforcement
-            if (budgetPolicy is not null)
-            {
-                if (budgetPolicy.MaxSessionUsd.HasValue &&
-                    _session.SessionSpendUsd >= budgetPolicy.MaxSessionUsd.Value)
-                {
-                    ChatRenderer.RenderWarning(
-                        $"Budget limit (${budgetPolicy.MaxSessionUsd:F2}) reached — spent ${_session.SessionSpendUsd:F2}.");
-                    break;
-                }
-
-                if (!await _governance.BudgetTracker.IsWithinBudgetAsync(budgetPolicy, appCts.Token).
-                        ConfigureAwait(false))
-                {
-                    var status = await _governance.BudgetTracker.GetStatusAsync(appCts.Token).ConfigureAwait(false);
-                    ChatRenderer.RenderWarning(
-                        $"Budget exceeded — daily: ${status.TodayUsd:F2}, monthly: ${status.MonthUsd:F2}.");
-                    break;
-                }
-            }
-
             using var turnMonitor = new TurnInputMonitor(appCts.Token);
             monitorBox.Value = turnMonitor;
 
+            var freshSettings = TuiSettings.Load();
+            var contextWindow = (_session.CurrentModel ?? _selectedModel).ContextWindowTokens;
+            var turnOptions = new SessionTurnExecutionOptions(
+                Streaming: true,
+                AutoCompact: freshSettings.AutoCompact,
+                CompactThresholdPercent: freshSettings.CompactThresholdPercent,
+                ContextWindowTokens: contextWindow,
+                OnInfo: ChatRenderer.RenderInfo,
+                OnWarning: ChatRenderer.RenderWarning);
+
             try
             {
-                using (_skillLifecycleManager.BeginRunScope())
-                {
-                    await agentLoop.RunTurnStreamingAsync(currentMessage, turnMonitor.Token).ConfigureAwait(false);
-                }
-            }
-            catch (OperationCanceledException) when (!appCts.IsCancellationRequested)
-            {
-                ChatRenderer.RenderWarning("Turn cancelled.");
-                break;
+                var result = await _turnOrchestrator
+                    .ExecuteAsync(agentLoop, currentMessage, turnOptions, turnMonitor.Token)
+                    .ConfigureAwait(false);
+                if (!result.Completed)
+                    break;
             }
             finally
             {
                 monitorBox.Value = null;
             }
 
-            // Cost estimation
-            if (budgetPolicy is not null && _session.CurrentModel is not null)
-            {
-                var lastTurn = _session.SessionInfo?.Turns.LastOrDefault();
-                if (lastTurn is not null)
-                {
-                    var estimatedCost = _costEstimator.EstimateTurnCostUsd(
-                        _session.CurrentModel,
-                        lastTurn.TokensIn,
-                        lastTurn.TokensOut);
-
-                    if (estimatedCost > 0m)
-                    {
-                        _session.SessionSpendUsd += estimatedCost;
-                        await _governance.BudgetTracker.RecordSpendAsync(
-                                estimatedCost,
-                                _session.CurrentModel.ProviderName,
-                                appCts.Token).
-                            ConfigureAwait(false);
-                    }
-                }
-            }
-
             currentMessage = turnMonitor.SteeringMessage;
             if (currentMessage != null)
                 ChatRenderer.RenderUserMessage(currentMessage);
-        }
-
-        // Auto-compaction
-        try
-        {
-            var freshSettings = TuiSettings.Load();
-            if (freshSettings.AutoCompact && freshSettings.CompactThresholdPercent > 0)
-            {
-                var estimatedTokens = TokenEstimator.EstimateTokens(_session.History);
-                var contextWindow = (_session.CurrentModel ?? _selectedModel).ContextWindowTokens;
-                var threshold = contextWindow > 0
-                    ? (long)(contextWindow * (freshSettings.CompactThresholdPercent / 100.0))
-                    : 3000L;
-                if (estimatedTokens > threshold)
-                {
-                    ChatRenderer.RenderInfo("Compacting context...");
-                    await _session.CompactAsync(appCts.Token).ConfigureAwait(false);
-                }
-            }
-        }
-        catch (OperationCanceledException) when (!appCts.IsCancellationRequested)
-        {
-            // Safe to continue
         }
 
         // Keep model metadata fresh for subsequent footer renders.

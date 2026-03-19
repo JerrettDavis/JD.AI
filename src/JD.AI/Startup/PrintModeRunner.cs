@@ -1,7 +1,7 @@
 using JD.AI.Core.Agents;
+using JD.AI.Core.Governance;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Skills;
-using Microsoft.SemanticKernel;
 
 namespace JD.AI.Startup;
 
@@ -15,7 +15,8 @@ internal static class PrintModeRunner
         CliOptions opts,
         AgentSession session,
         ProviderModelInfo selectedModel,
-        SkillLifecycleManager skillLifecycleManager)
+        SkillLifecycleManager skillLifecycleManager,
+        GovernanceSetup governance)
     {
         var query = new System.Text.StringBuilder();
         if (opts.PipedInput != null)
@@ -35,6 +36,7 @@ internal static class PrintModeRunner
         }
 
         var printAgentLoop = new AgentLoop(session);
+        var turnOrchestrator = new SessionTurnOrchestrator(session, governance, skillLifecycleManager);
         var turnCount = 0;
         var lastResponse = "";
         string? currentPrintMessage = query.ToString();
@@ -48,8 +50,21 @@ internal static class PrintModeRunner
                 return 1;
             }
 
-            using (skillLifecycleManager.BeginRunScope())
-                lastResponse = await printAgentLoop.RunTurnAsync(currentPrintMessage).ConfigureAwait(false);
+            var turnResult = await turnOrchestrator
+                .ExecuteAsync(
+                    printAgentLoop,
+                    currentPrintMessage,
+                    new SessionTurnExecutionOptions(
+                        Streaming: false,
+                        AutoCompact: false,
+                        CompactThresholdPercent: 0,
+                        ContextWindowTokens: selectedModel.ContextWindowTokens),
+                    CancellationToken.None)
+                .ConfigureAwait(false);
+            if (!turnResult.Completed)
+                return 1;
+
+            lastResponse = turnResult.Response ?? string.Empty;
             currentPrintMessage = null;
         }
 
