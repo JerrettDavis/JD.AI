@@ -992,6 +992,9 @@ public sealed class AgentLoop
     /// </summary>
     private static bool IsRetriableError(Exception ex)
     {
+        if (IsPermanentQuotaError(ex))
+            return false;
+
         if (ex is TaskCanceledException or TimeoutException)
             return true;
 
@@ -1020,6 +1023,23 @@ public sealed class AgentLoop
                msg.Contains("rate limit", StringComparison.OrdinalIgnoreCase) ||
                msg.Contains("overloaded", StringComparison.OrdinalIgnoreCase) ||
                msg.Contains("model: Field required", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsPermanentQuotaError(Exception ex)
+    {
+        static bool HasQuotaMarker(string? message) =>
+            !string.IsNullOrWhiteSpace(message) &&
+            (message.Contains("insufficient_quota", StringComparison.OrdinalIgnoreCase) ||
+             message.Contains("quota", StringComparison.OrdinalIgnoreCase) ||
+             message.Contains("billing", StringComparison.OrdinalIgnoreCase));
+
+        for (var current = ex; current != null; current = current.InnerException)
+        {
+            if (HasQuotaMarker(current.Message))
+                return true;
+        }
+
+        return false;
     }
 
     /// <summary>

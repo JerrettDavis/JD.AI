@@ -3,6 +3,7 @@ using JD.AI.Core.Agents;
 using JD.AI.Core.Config;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
+using System.Reflection;
 using Microsoft.SemanticKernel;
 using NSubstitute;
 using Xunit;
@@ -278,6 +279,28 @@ public sealed class SlashCommandRouterTests
         Assert.Contains("Ollama", result);
         Assert.Contains("✓", result);
         Assert.Contains("✗", result);
+    }
+
+    [Theory]
+    [InlineData("HTTP 429 insufficient_quota", "✗ Quota/Billing")]
+    [InlineData("billing required", "✗ Quota/Billing")]
+    [InlineData("rate limit exceeded", "✗ Rate Limited")]
+    [InlineData("HTTP 429 too many requests", "✗ Rate Limited")]
+    [InlineData("not authenticated", "✗ Not Authenticated")]
+    [InlineData("missing api key", "✗ Not Authenticated")]
+    [InlineData("token expired", "✗ Not Authenticated")]
+    [InlineData("credential unavailable", "✗ Not Authenticated")]
+    [InlineData("socket timeout", "✗ Unavailable")]
+    [InlineData(null, "✗ Unavailable")]
+    public void ProviderList_ClassifiesUnavailableStatuses(string? statusMessage, string expected)
+    {
+        var method = typeof(SlashCommandRouter).GetMethod(
+            "ClassifyUnavailableProviderStatus",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.NotNull(method);
+        var result = method!.Invoke(null, [statusMessage]) as string;
+        Assert.Equal(expected, result);
     }
 
     [Fact]
