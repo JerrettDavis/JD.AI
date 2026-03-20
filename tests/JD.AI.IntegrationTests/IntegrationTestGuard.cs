@@ -152,39 +152,45 @@ public static class IntegrationTestGuard
     private static bool IsTrue(string? value) =>
         string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
 
+    private static void EnsurePresent(string? value, string message) =>
+        Xunit.Skip.IfNot(value is not null, message);
+
+    private static void EnsureAllPresent(string message, params string?[] values) =>
+        Xunit.Skip.IfNot(values.All(v => v is not null), message);
+
     public static void EnsureHuggingFaceKey() =>
-        Xunit.Skip.IfNot(HuggingFaceApiKey is not null, "Set HF_API_KEY to run HuggingFace integration tests.");
+        EnsurePresent(HuggingFaceApiKey, "Set HF_API_KEY to run HuggingFace integration tests.");
 
     public static void EnsureOpenAiKey() =>
-        Xunit.Skip.IfNot(OpenAIApiKey is not null, "Set OPENAI_API_KEY to run OpenAI integration tests.");
+        EnsurePresent(OpenAIApiKey, "Set OPENAI_API_KEY to run OpenAI integration tests.");
 
     public static void EnsureAzureOpenAi() =>
-        Xunit.Skip.IfNot(
-            AzureOpenAIApiKey is not null &&
-            AzureOpenAIEndpoint is not null,
-            "Set AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT to run Azure OpenAI integration tests.");
+        EnsureAllPresent(
+            "Set AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT to run Azure OpenAI integration tests.",
+            AzureOpenAIApiKey,
+            AzureOpenAIEndpoint);
 
     public static void EnsureAnthropicKey() =>
-        Xunit.Skip.IfNot(AnthropicApiKey is not null, "Set ANTHROPIC_API_KEY to run Anthropic integration tests.");
+        EnsurePresent(AnthropicApiKey, "Set ANTHROPIC_API_KEY to run Anthropic integration tests.");
 
     public static void EnsureGoogleGeminiKey() =>
-        Xunit.Skip.IfNot(
-            GoogleGeminiApiKey is not null,
-            "Set GOOGLE_AI_API_KEY to run Google Gemini integration tests.");
+        EnsurePresent(GoogleGeminiApiKey, "Set GOOGLE_AI_API_KEY to run Google Gemini integration tests.");
 
     public static void EnsureMistralKey() =>
-        Xunit.Skip.IfNot(MistralApiKey is not null, "Set MISTRAL_API_KEY to run Mistral integration tests.");
+        EnsurePresent(MistralApiKey, "Set MISTRAL_API_KEY to run Mistral integration tests.");
 
     public static void EnsureOpenRouterKey() =>
-        Xunit.Skip.IfNot(OpenRouterApiKey is not null, "Set OPENROUTER_API_KEY to run OpenRouter integration tests.");
+        EnsurePresent(OpenRouterApiKey, "Set OPENROUTER_API_KEY to run OpenRouter integration tests.");
 
     public static void EnsureBedrockCredentials() =>
-        Xunit.Skip.IfNot(
-            AwsAccessKeyId is not null && AwsSecretAccessKey is not null,
-            "Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY to run Bedrock integration tests.");
+        EnsureAllPresent(
+            "Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY to run Bedrock integration tests.",
+            AwsAccessKeyId,
+            AwsSecretAccessKey);
 
     public static void EnsureOpenAiCompatEndpoint() =>
-        Xunit.Skip.IfNot(
-            OpenAICompatApiKey is not null && OpenAICompatBaseUrl is not null,
-            "Set OPENAI_COMPAT_API_KEY and OPENAI_COMPAT_BASE_URL to run OpenAI-compatible integration tests.");
+        EnsureAllPresent(
+            "Set OPENAI_COMPAT_API_KEY and OPENAI_COMPAT_BASE_URL to run OpenAI-compatible integration tests.",
+            OpenAICompatApiKey,
+            OpenAICompatBaseUrl);
 }
