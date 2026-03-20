@@ -411,7 +411,7 @@ public static class GatewayConfigEndpoints
         return deleted;
     }
 
-    private static IReadOnlyList<string> BuildManagedSessionPrefixes(OpenClawGatewayConfig config)
+    private static string[] BuildManagedSessionPrefixes(OpenClawGatewayConfig config)
     {
         var prefixes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {

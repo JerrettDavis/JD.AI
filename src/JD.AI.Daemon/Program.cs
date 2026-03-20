@@ -570,7 +570,7 @@ static async Task TryDisableBridgeRuntimeAsync(string appSettingsPath)
             .Build();
 
         var port = config.GetValue<int?>("Gateway:Server:Port") ?? 15790;
-        var disableUrl = $"http://127.0.0.1:{port}/api/gateway/openclaw/bridge/disable";
+        var disableUrl = new Uri($"http://127.0.0.1:{port}/api/gateway/openclaw/bridge/disable");
 
         using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(4) };
         var response = await client.PostAsync(disableUrl, null).ConfigureAwait(false);
