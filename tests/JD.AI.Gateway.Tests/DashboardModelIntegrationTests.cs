@@ -72,6 +72,8 @@ public sealed class DashboardModelIntegrationTests : IClassFixture<GatewayTestFa
         status.Should().NotBeNull();
         status!.OpenClaw.Should().NotBeNull();
         status.OpenClaw!.Enabled.Should().BeTrue("OpenClaw is enabled in test config");
+        status.OpenClaw.DefaultMode.Should().NotBeNullOrEmpty();
+        status.OpenClaw.OverrideChannels.Should().NotBeNull();
     }
 
     [Fact]

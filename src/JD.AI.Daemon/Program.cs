@@ -111,6 +111,21 @@ logsCommand.SetAction(async parseResult =>
 });
 rootCommand.Subcommands.Add(logsCommand);
 
+// ── bridge ─────────────────────────────────────────────────────────
+var bridgeCommand = new Command("bridge", "Manage OpenClaw bridge mode and enablement (status|enable|disable|passthrough)");
+var bridgeActionArg = new Argument<string>("action")
+{
+    Description = "Action: status, enable, disable, passthrough",
+};
+bridgeActionArg.Arity = ArgumentArity.ZeroOrOne;
+bridgeCommand.Arguments.Add(bridgeActionArg);
+bridgeCommand.SetAction(parseResult =>
+{
+    var action = parseResult.GetValue(bridgeActionArg);
+    return HandleBridgeCommand(action);
+});
+rootCommand.Subcommands.Add(bridgeCommand);
+
 return rootCommand.Parse(args).Invoke();
 
 // ════════════════════════════════════════════════════════════════════
@@ -470,4 +485,64 @@ static async Task RunUpdateCommandAsync(bool checkOnly)
     }
 
     Console.WriteLine($"✓ Updated to {update.LatestVersion}. Restart the service to apply.");
+}
+
+static int HandleBridgeCommand(string? action)
+{
+    var normalized = (action ?? "status").Trim().ToLowerInvariant();
+    var appSettingsPath = ResolveDaemonAppSettingsPath();
+
+    try
+    {
+        OpenClawBridgeState state;
+        switch (normalized)
+        {
+            case "status":
+                state = OpenClawBridgeConfigEditor.ReadState(appSettingsPath);
+                WriteBridgeStatus(state, appSettingsPath);
+                return 0;
+            case "enable":
+                state = OpenClawBridgeConfigEditor.SetEnabled(appSettingsPath, enabled: true);
+                WriteBridgeStatus(state, appSettingsPath);
+                return 0;
+            case "disable":
+                state = OpenClawBridgeConfigEditor.SetEnabled(appSettingsPath, enabled: false);
+                WriteBridgeStatus(state, appSettingsPath);
+                return 0;
+            case "passthrough":
+                state = OpenClawBridgeConfigEditor.SetPassthrough(appSettingsPath);
+                WriteBridgeStatus(state, appSettingsPath);
+                return 0;
+            default:
+                Console.Error.WriteLine("Usage: jdai-daemon bridge [status|enable|disable|passthrough]");
+                return 1;
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Bridge command failed: {ex.Message}");
+        return 1;
+    }
+}
+
+static string ResolveDaemonAppSettingsPath()
+{
+    var assemblyDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+    return Path.Combine(assemblyDir, "appsettings.json");
+}
+
+static void WriteBridgeStatus(OpenClawBridgeState state, string appSettingsPath)
+{
+    var mode = state.Enabled
+        ? state.OverrideActive ? "Override active" : "Passthrough/observe-only"
+        : "Disabled";
+
+    Console.WriteLine($"Config:          {appSettingsPath}");
+    Console.WriteLine($"Bridge enabled:  {state.Enabled}");
+    Console.WriteLine($"Auto-connect:    {state.AutoConnect}");
+    Console.WriteLine($"Default mode:    {state.DefaultMode}");
+    Console.WriteLine($"Override active: {state.OverrideActive}");
+    Console.WriteLine($"Effective mode:  {mode}");
+    if (state.OverrideChannels.Count > 0)
+        Console.WriteLine($"Override chans:  {string.Join(", ", state.OverrideChannels)}");
 }
