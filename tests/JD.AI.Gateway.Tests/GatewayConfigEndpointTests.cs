@@ -60,5 +60,9 @@ public sealed class GatewayConfigEndpointTests : IClassFixture<GatewayTestFactor
         json.TryGetProperty("channels", out _).Should().BeTrue();
         json.TryGetProperty("agents", out _).Should().BeTrue();
         json.TryGetProperty("routes", out _).Should().BeTrue();
+        json.TryGetProperty("openClaw", out var openClaw).Should().BeTrue();
+        openClaw.TryGetProperty("connected", out _).Should().BeTrue();
+        openClaw.TryGetProperty("overrideActive", out _).Should().BeTrue();
+        openClaw.TryGetProperty("overrideChannels", out _).Should().BeTrue();
     }
 }

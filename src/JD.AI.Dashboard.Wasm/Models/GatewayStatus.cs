@@ -62,12 +62,24 @@ public record OpenClawStatus
     [JsonPropertyName("enabled")]
     public bool Enabled { get; init; }
 
+    [JsonPropertyName("connected")]
+    public bool ConnectedRaw { get; init; }
+
+    [JsonPropertyName("defaultMode")]
+    public string? DefaultMode { get; init; }
+
+    [JsonPropertyName("overrideActive")]
+    public bool OverrideActive { get; init; }
+
+    [JsonPropertyName("overrideChannels")]
+    public string[] OverrideChannels { get; init; } = [];
+
     [JsonPropertyName("registeredAgents")]
     public string[] RegisteredAgents { get; init; } = [];
 
     // Computed
     [JsonIgnore]
-    public bool Connected => Enabled;
+    public bool Connected => ConnectedRaw || Enabled;
     [JsonIgnore]
     public int RegisteredAgentCount => RegisteredAgents.Length;
 }

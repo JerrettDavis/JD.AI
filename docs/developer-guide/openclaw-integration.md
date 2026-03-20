@@ -78,6 +78,32 @@ JD.AI supports two distinct integration shapes:
 
 Operationally, "hijacking OpenClaw" means using **Intercept** or **Proxy** so JD.AI generates the assistant response while OpenClaw remains the session transport.
 
+### Detecting active override mode
+
+Use gateway status endpoints to determine whether JD.AI is currently overriding OpenClaw traffic:
+
+- `GET /api/gateway/status`
+- `GET /api/gateway/openclaw/status`
+
+Both endpoints now include:
+
+- `openClaw.defaultMode`
+- `openClaw.overrideActive`
+- `openClaw.overrideChannels`
+
+If `overrideActive=true`, at least one routed path is running in `Intercept`, `Proxy`, or `Sidecar` (not pure `Passthrough`).
+
+### Fast operator controls
+
+Use daemon commands for quick bridge control without manually editing JSON:
+
+```text
+jdai-daemon bridge status
+jdai-daemon bridge enable
+jdai-daemon bridge disable
+jdai-daemon bridge passthrough
+```
+
 ## Fast switching and handoff commands
 
 You can switch routing/provider behavior at runtime without restarting either gateway.

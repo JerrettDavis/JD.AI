@@ -8,6 +8,108 @@ namespace JD.AI.Tests;
 
 public sealed class DaemonServiceTests
 {
+    [Fact]
+    public void OpenClawBridgeConfigEditor_ReadState_DetectsOverrides()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(path, """
+                                    {
+                                      "Gateway": {
+                                        "OpenClaw": {
+                                          "Enabled": true,
+                                          "AutoConnect": true,
+                                          "DefaultMode": "Passthrough",
+                                          "Channels": {
+                                            "discord": { "Mode": "Sidecar" },
+                                            "signal": { "Mode": "Passthrough" }
+                                          }
+                                        }
+                                      }
+                                    }
+                                    """);
+
+            var state = OpenClawBridgeConfigEditor.ReadState(path);
+            Assert.True(state.Enabled);
+            Assert.True(state.OverrideActive);
+            Assert.Single(state.OverrideChannels);
+            Assert.Equal("discord", state.OverrideChannels[0]);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void OpenClawBridgeConfigEditor_SetPassthrough_DisablesOverrides()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(path, """
+                                    {
+                                      "Gateway": {
+                                        "OpenClaw": {
+                                          "Enabled": true,
+                                          "AutoConnect": true,
+                                          "DefaultMode": "Intercept",
+                                          "Channels": {
+                                            "discord": { "Mode": "Sidecar" },
+                                            "signal": { "Mode": "Proxy" }
+                                          }
+                                        }
+                                      }
+                                    }
+                                    """);
+
+            var updated = OpenClawBridgeConfigEditor.SetPassthrough(path);
+
+            Assert.True(updated.Enabled);
+            Assert.True(updated.AutoConnect);
+            Assert.Equal("Passthrough", updated.DefaultMode);
+            Assert.False(updated.OverrideActive);
+            Assert.Empty(updated.OverrideChannels);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void OpenClawBridgeConfigEditor_SetEnabled_FlipsEnabledAndAutoConnect()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(path, """
+                                    {
+                                      "Gateway": {
+                                        "OpenClaw": {
+                                          "Enabled": true,
+                                          "AutoConnect": true,
+                                          "DefaultMode": "Passthrough"
+                                        }
+                                      }
+                                    }
+                                    """);
+
+            var disabled = OpenClawBridgeConfigEditor.SetEnabled(path, enabled: false);
+            Assert.False(disabled.Enabled);
+            Assert.False(disabled.AutoConnect);
+
+            var reEnabled = OpenClawBridgeConfigEditor.SetEnabled(path, enabled: true);
+            Assert.True(reEnabled.Enabled);
+            Assert.True(reEnabled.AutoConnect);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     // ── UpdateConfig defaults ──────────────────────────────────────
     [Fact]
     public void UpdateConfig_HasSensibleDefaults()

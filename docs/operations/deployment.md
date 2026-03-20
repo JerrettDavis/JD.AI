@@ -148,6 +148,30 @@ Caddy automatically provisions TLS certificates and handles WebSocket upgrades.
 | `jdai-daemon update` | Check/apply NuGet updates and refresh installed service/task config |
 | `jdai-daemon update --check-only` | Check for updates without applying |
 | `jdai-daemon logs [-n 50]` | Show recent service logs |
+| `jdai-daemon bridge status` | Show OpenClaw bridge enablement and override state |
+| `jdai-daemon bridge enable` | Enable OpenClaw bridge and auto-connect |
+| `jdai-daemon bridge disable` | Disable OpenClaw bridge and auto-connect |
+| `jdai-daemon bridge passthrough` | Keep bridge enabled but force passthrough mode on default + channels |
+
+### OpenClaw bridge emergency controls
+
+When OpenClaw traffic is being overridden by JD.AI (`Intercept`, `Proxy`, or `Sidecar`), use:
+
+```bash
+jdai-daemon bridge status
+```
+
+To immediately stop bridge routing entirely:
+
+```bash
+jdai-daemon bridge disable
+```
+
+To keep diagnostics/visibility but disable response hijacking:
+
+```bash
+jdai-daemon bridge passthrough
+```
 
 ## Auto-Updates
 
