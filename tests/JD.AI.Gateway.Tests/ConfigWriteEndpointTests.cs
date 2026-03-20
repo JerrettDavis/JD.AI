@@ -196,6 +196,16 @@ public sealed class ConfigWriteEndpointTests : IClassFixture<GatewayTestFactory>
     }
 
     [Fact]
+    public async Task PostOpenClawBridgeDisableEndpoint_ReturnsOk()
+    {
+        var response = await _client.PostAsync("/api/gateway/openclaw/bridge/disable", content: null);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("sessionCleanupDeleted");
+    }
+
+    [Fact]
     public async Task GetConfig_IncludesModelParametersField()
     {
         var response = await _client.GetAsync("/api/gateway/config");

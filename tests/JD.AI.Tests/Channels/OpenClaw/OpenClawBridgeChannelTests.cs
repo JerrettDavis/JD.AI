@@ -1851,6 +1851,14 @@ public sealed class OpenClawBridgeChannelRpcMethodTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task DeleteSessionsByPrefixAsync_WhenNotConnected_ThrowsInvalidOperationException()
+    {
+        var ex = await Record.ExceptionAsync(() =>
+            _channel.DeleteSessionsByPrefixAsync(["agent:jdai-"]));
+        ex.Should().BeOfType<InvalidOperationException>();
+    }
+
+    [Fact]
     public async Task ConnectAsync_WhenAlreadyConnected_Skips()
     {
         // Cannot be truly connected without a WebSocket, but we can test idempotency:

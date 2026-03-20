@@ -247,6 +247,38 @@ public static class GatewayConfigEndpoints
         .WithName("GetOpenClawStatus")
         .WithDescription("Diagnostic endpoint showing OpenClaw bridge connection status and recent events.");
 
+        // POST /api/gateway/openclaw/bridge/disable — runtime cleanup + disconnect
+        group.MapPost("/openclaw/bridge/disable", async (
+            GatewayConfig config,
+            CancellationToken ct) =>
+        {
+            var bridge = app.Services.GetService<OpenClawBridgeChannel>();
+            var registrar = app.Services.GetService<OpenClawAgentRegistrar>();
+            if (bridge is null)
+            {
+                return Results.Ok(new
+                {
+                    BridgeDisabled = false,
+                    SessionCleanupDeleted = 0,
+                    Message = "OpenClaw integration not enabled",
+                });
+            }
+
+            var deleted = await DisableOpenClawBridgeRuntimeAsync(
+                bridge,
+                registrar,
+                config.OpenClaw,
+                ct).ConfigureAwait(false);
+
+            return Results.Ok(new
+            {
+                BridgeDisabled = true,
+                SessionCleanupDeleted = deleted,
+            });
+        })
+        .WithName("DisableOpenClawBridgeRuntime")
+        .WithDescription("Clean JD.AI-managed OpenClaw sessions and disconnect bridge runtime.");
+
         // GET /api/gateway/config/raw — full typed config for editor (no redaction except secrets)
         group.MapGet("/config/raw", (GatewayConfig config) => Results.Ok(config))
             .WithName("GetGatewayConfigRaw")
@@ -329,6 +361,7 @@ public static class GatewayConfigEndpoints
             IConfiguration root,
             CancellationToken ct) =>
         {
+            var previousOpenClaw = config.OpenClaw;
             config.OpenClaw = update;
             WriteConfigSection(root, "Gateway:OpenClaw", update);
 
@@ -339,9 +372,11 @@ public static class GatewayConfigEndpoints
             {
                 if (!update.Enabled && bridge.IsConnected)
                 {
-                    await bridge.DisconnectAsync(ct).ConfigureAwait(false);
-                    if (registrar is not null)
-                        await registrar.UnregisterAgentsAsync(ct).ConfigureAwait(false);
+                    await DisableOpenClawBridgeRuntimeAsync(
+                        bridge,
+                        registrar,
+                        previousOpenClaw,
+                        ct).ConfigureAwait(false);
                 }
                 else if (update.Enabled && update.AutoConnect && !bridge.IsConnected)
                 {
@@ -353,6 +388,45 @@ public static class GatewayConfigEndpoints
         })
         .WithName("UpdateOpenClawConfig")
         .WithDescription("Update the OpenClaw bridge configuration.");
+    }
+
+    private static async Task<int> DisableOpenClawBridgeRuntimeAsync(
+        OpenClawBridgeChannel bridge,
+        OpenClawAgentRegistrar? registrar,
+        OpenClawGatewayConfig config,
+        CancellationToken ct)
+    {
+        if (!bridge.IsConnected)
+            return 0;
+
+        var deleted = await bridge.DeleteSessionsByPrefixAsync(
+            BuildManagedSessionPrefixes(config),
+            deleteTranscript: true,
+            ct).ConfigureAwait(false);
+
+        if (registrar is not null)
+            await registrar.UnregisterAgentsAsync(ct).ConfigureAwait(false);
+
+        await bridge.DisconnectAsync(ct).ConfigureAwait(false);
+        return deleted;
+    }
+
+    private static IReadOnlyList<string> BuildManagedSessionPrefixes(OpenClawGatewayConfig config)
+    {
+        var prefixes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            $"agent:{OpenClawAgentRegistrar.AgentIdPrefix}"
+        };
+
+        foreach (var registration in config.RegisterAgents)
+        {
+            if (string.IsNullOrWhiteSpace(registration.Id))
+                continue;
+
+            prefixes.Add($"agent:{registration.Id.Trim()}:");
+        }
+
+        return prefixes.ToArray();
     }
 
     /// <summary>Persists a config section to appsettings.json via JSON merge.</summary>
