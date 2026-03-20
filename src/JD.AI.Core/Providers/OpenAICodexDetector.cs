@@ -175,9 +175,10 @@ public sealed class OpenAICodexDetector : IProviderDetector
     /// Reads Codex auth.json (if present) and promotes file API keys into explicit
     /// connector options so they win over environment-variable fallback precedence.
     ///
-    /// We intentionally avoid setting explicit access tokens by default because doing so
-    /// bypasses auth.json-based token refresh paths in the connector. We only force an
-    /// explicit token when OPENAI_API_KEY is present and would otherwise shadow auth.json.
+    /// We set OAuth bearer tokens as <see cref="CodexSessionOptions.ApiKey"/> intentionally:
+    /// Semantic Kernel uses this value in an Authorization bearer header, which lets us
+    /// avoid connector-specific token-exchange paths that can produce billing-scoped API keys
+    /// and false 429 insufficient_quota results for ChatGPT-authenticated Codex sessions.
     /// </summary>
     internal static void ApplyCredentialOverridesFromAuthFile(
         CodexSessionOptions options,
@@ -185,9 +186,11 @@ public sealed class OpenAICodexDetector : IProviderDetector
     {
         if (!TryReadCodexCredentials(options, out var creds, out var authMode, out var source))
             return;
-        var token = !string.IsNullOrWhiteSpace(creds.EffectiveIdToken)
-            ? creds.EffectiveIdToken
-            : creds.EffectiveAccessToken;
+        // Prefer OAuth access_token over id_token so the connector can use direct
+        // bearer auth before falling back to token-exchange behavior.
+        var token = !string.IsNullOrWhiteSpace(creds.EffectiveAccessToken)
+            ? creds.EffectiveAccessToken
+            : creds.EffectiveIdToken;
         var envApiKey = envApiKeyOverride ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY");
 
         if (source == CredentialSource.Keyring)
@@ -196,8 +199,7 @@ public sealed class OpenAICodexDetector : IProviderDetector
             // explicit credentials resolved from the keyring snapshot.
             if (ShouldPreferTokens(creds, authMode, envApiKey, token))
             {
-                options.AccessToken = token;
-                options.ApiKey = null;
+                SetBearerTokenOverride(options, token!);
                 return;
             }
 
@@ -210,8 +212,7 @@ public sealed class OpenAICodexDetector : IProviderDetector
 
             if (!string.IsNullOrWhiteSpace(token))
             {
-                options.AccessToken = token;
-                options.ApiKey = null;
+                SetBearerTokenOverride(options, token);
             }
 
             return;
@@ -222,8 +223,7 @@ public sealed class OpenAICodexDetector : IProviderDetector
         // stale/billing-limited API keys in env or auth.json.
         if (ShouldPreferTokens(creds, authMode, envApiKey, token))
         {
-            options.AccessToken = token;
-            options.ApiKey = null;
+            SetBearerTokenOverride(options, token!);
             return;
         }
 
@@ -237,8 +237,7 @@ public sealed class OpenAICodexDetector : IProviderDetector
         if (!string.IsNullOrWhiteSpace(token) &&
             !string.IsNullOrWhiteSpace(envApiKey))
         {
-            options.AccessToken = token;
-            options.ApiKey = null;
+            SetBearerTokenOverride(options, token);
         }
     }
 
@@ -502,6 +501,9 @@ public sealed class OpenAICodexDetector : IProviderDetector
         if (string.IsNullOrWhiteSpace(token))
             return false;
 
+        if (IsChatGptAuthMode(authMode))
+            return true;
+
         var apiKeyWouldShadow = !string.IsNullOrWhiteSpace(creds.OpenAIApiKey) ||
                                 !string.IsNullOrWhiteSpace(envApiKey);
         if (!apiKeyWouldShadow)
@@ -510,7 +512,13 @@ public sealed class OpenAICodexDetector : IProviderDetector
         // Match Codex CLI behavior for explicit ChatGPT auth mode and also recover
         // cases where auth_mode is missing but token payload still looks like OAuth
         // JWT output from `codex login`.
-        return IsChatGptAuthMode(authMode) || LooksLikeOAuthJwt(token);
+        return LooksLikeOAuthJwt(token);
+    }
+
+    private static void SetBearerTokenOverride(CodexSessionOptions options, string token)
+    {
+        options.ApiKey = token;
+        options.AccessToken = null;
     }
 
     private static bool LooksLikeOAuthJwt(string token)
@@ -804,7 +812,8 @@ public sealed class OpenAICodexDetector : IProviderDetector
             message.Contains("billing", StringComparison.OrdinalIgnoreCase))
         {
             return "OpenAI quota/billing unavailable (429 insufficient_quota). " +
-                   "If Codex OAuth is configured, re-run `codex login` or unset `OPENAI_API_KEY`.";
+                   "Codex ChatGPT OAuth may be authenticated but still lack OpenAI API billing quota; " +
+                   "use an API key with available credits, or re-run `codex login` if the session is stale.";
         }
 
         if (message.Contains("429", StringComparison.OrdinalIgnoreCase) ||
