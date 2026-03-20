@@ -27,6 +27,11 @@ public static class OpenClawBridgeConfigEditor
         var autoConnect = openClawNode[AutoConnectKey]?.GetValue<bool?>() ?? true;
         var defaultMode = openClawNode[DefaultModeKey]?.GetValue<string>() ?? PassthroughMode;
         var (overrideActive, overrideChannels) = AnalyzeOverrides(openClawNode, defaultMode);
+        if (!enabled)
+        {
+            overrideActive = false;
+            overrideChannels = [];
+        }
 
         return new OpenClawBridgeState(
             Enabled: enabled,

@@ -176,6 +176,26 @@ public sealed class ConfigWriteEndpointTests : IClassFixture<GatewayTestFactory>
     }
 
     [Fact]
+    public async Task PutOpenClawConfig_Disable_ReportsNoActiveOverrideInStatus()
+    {
+        var update = new
+        {
+            Enabled = false,
+            WebSocketUrl = "ws://127.0.0.1:18789/ws/gateway",
+            AutoConnect = false,
+            DefaultMode = "Passthrough",
+        };
+
+        var putResponse = await _client.PutAsJsonAsync("/api/gateway/config/openclaw", update);
+        putResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var statusResponse = await _client.GetAsync("/api/gateway/status");
+        statusResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var statusJson = await statusResponse.Content.ReadAsStringAsync();
+        statusJson.Should().Contain("\"overrideActive\":false");
+    }
+
+    [Fact]
     public async Task GetConfig_IncludesModelParametersField()
     {
         var response = await _client.GetAsync("/api/gateway/config");

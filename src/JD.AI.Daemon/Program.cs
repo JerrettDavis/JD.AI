@@ -119,10 +119,10 @@ var bridgeActionArg = new Argument<string>("action")
 };
 bridgeActionArg.Arity = ArgumentArity.ZeroOrOne;
 bridgeCommand.Arguments.Add(bridgeActionArg);
-bridgeCommand.SetAction(parseResult =>
+bridgeCommand.SetAction(async parseResult =>
 {
     var action = parseResult.GetValue(bridgeActionArg);
-    return HandleBridgeCommand(action);
+    return await HandleBridgeCommandAsync(action);
 });
 rootCommand.Subcommands.Add(bridgeCommand);
 
@@ -487,7 +487,7 @@ static async Task RunUpdateCommandAsync(bool checkOnly)
     Console.WriteLine($"✓ Updated to {update.LatestVersion}. Restart the service to apply.");
 }
 
-static int HandleBridgeCommand(string? action)
+static async Task<int> HandleBridgeCommandAsync(string? action)
 {
     var normalized = (action ?? "status").Trim().ToLowerInvariant();
     var appSettingsPath = ResolveDaemonAppSettingsPath();
@@ -503,14 +503,17 @@ static int HandleBridgeCommand(string? action)
                 return 0;
             case "enable":
                 state = OpenClawBridgeConfigEditor.SetEnabled(appSettingsPath, enabled: true);
+                await TryRestartInstalledServiceAsync().ConfigureAwait(false);
                 WriteBridgeStatus(state, appSettingsPath);
                 return 0;
             case "disable":
                 state = OpenClawBridgeConfigEditor.SetEnabled(appSettingsPath, enabled: false);
+                await TryRestartInstalledServiceAsync().ConfigureAwait(false);
                 WriteBridgeStatus(state, appSettingsPath);
                 return 0;
             case "passthrough":
                 state = OpenClawBridgeConfigEditor.SetPassthrough(appSettingsPath);
+                await TryRestartInstalledServiceAsync().ConfigureAwait(false);
                 WriteBridgeStatus(state, appSettingsPath);
                 return 0;
             default:
@@ -522,6 +525,38 @@ static int HandleBridgeCommand(string? action)
     {
         Console.Error.WriteLine($"Bridge command failed: {ex.Message}");
         return 1;
+    }
+}
+
+static async Task TryRestartInstalledServiceAsync()
+{
+    try
+    {
+        var manager = CreateServiceManager();
+        var status = await manager.GetStatusAsync().ConfigureAwait(false);
+        if (status.State != ServiceState.Running)
+            return;
+
+        var stop = await manager.StopAsync().ConfigureAwait(false);
+        if (!stop.Success)
+        {
+            Console.WriteLine("Service restart note: could not stop running service automatically.");
+            return;
+        }
+
+        var start = await manager.StartAsync().ConfigureAwait(false);
+        if (!start.Success)
+            Console.WriteLine("Service restart note: service stopped but could not be restarted automatically.");
+        else
+            Console.WriteLine("Service restart note: running service was restarted to apply bridge changes.");
+    }
+    catch (PlatformNotSupportedException)
+    {
+        // Service-manager restart is only available on supported OSes.
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Service restart note: automatic restart failed ({ex.Message}).");
     }
 }
 
