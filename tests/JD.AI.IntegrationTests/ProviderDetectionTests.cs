@@ -100,14 +100,16 @@ public sealed class ProviderDetectionTests
         var registry = new ProviderRegistry([
             new ClaudeCodeDetector(),
             new CopilotDetector(),
+            new OpenAICodexDetector(),
             new OllamaDetector(),
         ]);
 
         var providers = await registry.DetectProvidersAsync();
 
-        Assert.Equal(3, providers.Count);
+        Assert.Equal(4, providers.Count);
         Assert.Contains(providers, p => string.Equals(p.Name, "Claude Code", StringComparison.Ordinal));
         Assert.Contains(providers, p => string.Equals(p.Name, "GitHub Copilot", StringComparison.Ordinal));
+        Assert.Contains(providers, p => string.Equals(p.Name, "OpenAI Codex", StringComparison.Ordinal));
         Assert.Contains(providers, p => string.Equals(p.Name, "Ollama", StringComparison.Ordinal));
     }
 
