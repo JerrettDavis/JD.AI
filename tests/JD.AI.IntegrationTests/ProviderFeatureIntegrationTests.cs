@@ -143,6 +143,18 @@ public sealed class ProviderFeatureIntegrationTests
     }
 
     [SkippableFact]
+    public async Task Ollama_WhenAvailable_BuildsKernel_AndCompletesToolTurn()
+    {
+        await IntegrationTestGuard.EnsureOllamaAsync();
+
+        var detector = new OllamaDetector();
+        var info = await detector.DetectAsync().ConfigureAwait(false);
+        Skip.IfNot(info.IsAvailable, $"Ollama unavailable: {info.StatusMessage}");
+
+        await RunToolSmokeAsync(detector, info, preferredModelIds: ["qwen", "llama", "phi"]).ConfigureAwait(false);
+    }
+
+    [SkippableFact]
     public async Task Copilot_WhenAuthenticated_BuildsKernel_AndCompletesToolTurn()
     {
         IntegrationTestGuard.EnsureEnabled();
