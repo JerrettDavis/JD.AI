@@ -1,5 +1,7 @@
 using JD.AI.Channels.OpenClaw;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Reflection;
+using System.Text.Json.Nodes;
 
 namespace JD.AI.Tests.Channels;
 
@@ -138,5 +140,80 @@ public sealed class OpenClawAgentRegistrarTests : IDisposable
 
         Assert.Contains(".jdai", backupDir);
         Assert.Contains("openclaw-config-backups", backupDir);
+    }
+
+    [Fact]
+    public void RemoveManagedAgentsAndBindings_RemovesJdAiEntries_ByPrefix()
+    {
+        var config = JsonNode.Parse(
+            """
+            {
+              "agents": {
+                "list": [
+                  { "id": "jdai-default", "name": "JD.AI Default" },
+                  { "id": "native-assistant", "name": "Native Assistant" },
+                  { "id": "jdai-research", "name": "JD.AI Research" }
+                ]
+              },
+              "bindings": [
+                { "agentId": "jdai-default", "match": { "channel": "signal" } },
+                { "agentId": "native-assistant", "match": { "channel": "discord" } }
+              ]
+            }
+            """)!;
+
+        var (removedAgents, removedBindings) = InvokeRemoveManagedAgentsAndBindings(config);
+
+        Assert.Equal(2, removedAgents);
+        Assert.Equal(1, removedBindings);
+
+        var remainingAgentIds = config["agents"]!["list"]!.AsArray()
+            .Select(node => node?["id"]?.GetValue<string>())
+            .ToArray();
+        Assert.Single(remainingAgentIds);
+        Assert.Equal("native-assistant", remainingAgentIds[0]);
+
+        var remainingBindingAgentIds = config["bindings"]!.AsArray()
+            .Select(node => node?["agentId"]?.GetValue<string>())
+            .ToArray();
+        Assert.Single(remainingBindingAgentIds);
+        Assert.Equal("native-assistant", remainingBindingAgentIds[0]);
+    }
+
+    [Fact]
+    public void RemoveManagedAgentsAndBindings_RemovesEmptyCollections_WhenAllManaged()
+    {
+        var config = JsonNode.Parse(
+            """
+            {
+              "agents": {
+                "list": [
+                  { "id": "jdai-default" }
+                ]
+              },
+              "bindings": [
+                { "agentId": "jdai-default", "match": { "channel": "signal" } }
+              ]
+            }
+            """)!;
+
+        var (removedAgents, removedBindings) = InvokeRemoveManagedAgentsAndBindings(config);
+
+        Assert.Equal(1, removedAgents);
+        Assert.Equal(1, removedBindings);
+        Assert.Null(config["agents"]?["list"]);
+        Assert.Null(config["bindings"]);
+    }
+
+    private static (int RemovedAgents, int RemovedBindings) InvokeRemoveManagedAgentsAndBindings(JsonNode config)
+    {
+        var method = typeof(OpenClawAgentRegistrar).GetMethod(
+            "RemoveManagedAgentsAndBindings",
+            BindingFlags.Static | BindingFlags.NonPublic);
+        Assert.NotNull(method);
+
+        var result = method!.Invoke(null, [config]);
+        Assert.NotNull(result);
+        return ((int RemovedAgents, int RemovedBindings))result!;
     }
 }
