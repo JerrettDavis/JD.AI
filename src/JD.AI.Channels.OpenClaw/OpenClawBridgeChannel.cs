@@ -146,6 +146,7 @@ public sealed class OpenClawBridgeChannel : IChannel
     /// </summary>
     public async Task<int> DeleteSessionsByPrefixAsync(
         IEnumerable<string> sessionKeyPrefixes,
+        IEnumerable<string>? sessionKeyContains = null,
         bool deleteTranscript = true,
         CancellationToken ct = default)
     {
@@ -157,7 +158,13 @@ public sealed class OpenClawBridgeChannel : IChannel
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        if (prefixes.Length == 0)
+        var containsParts = (sessionKeyContains ?? [])
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Select(p => p.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (prefixes.Length == 0 && containsParts.Length == 0)
             return 0;
 
         var listResponse = await ListSessionsAsync(ct).ConfigureAwait(false);
@@ -169,7 +176,9 @@ public sealed class OpenClawBridgeChannel : IChannel
         }
 
         var keys = ExtractSessionKeys(listResponse.Payload.Value)
-            .Where(key => prefixes.Any(prefix => key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
+            .Where(key =>
+                prefixes.Any(prefix => key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                || containsParts.Any(part => key.Contains(part, StringComparison.OrdinalIgnoreCase)))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 

@@ -1,4 +1,3 @@
-using System.Text.Json;
 using FluentAssertions;
 using JD.AI.Channels.OpenClaw;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -26,50 +25,14 @@ public sealed class OpenClawBridgeIntegrationTests : IAsyncDisposable
             SessionKey = "agent:main:main",
         };
 
-        // Load device identity from the default OpenClaw state directory
-        var stateDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".openclaw");
-        var devicePath = Path.Combine(stateDir, "identity", "device.json");
-        var authPath = Path.Combine(stateDir, "identity", "device-auth.json");
-
-        if (!File.Exists(devicePath) || !File.Exists(authPath))
-            return config;
-
-        using var deviceDoc = JsonDocument.Parse(File.ReadAllText(devicePath));
-        config.DeviceId = deviceDoc.RootElement.GetProperty("deviceId").GetString() ?? "";
-        config.PublicKeyPem = deviceDoc.RootElement.GetProperty("publicKeyPem").GetString() ?? "";
-        config.PrivateKeyPem = deviceDoc.RootElement.GetProperty("privateKeyPem").GetString() ?? "";
-
-        using var authDoc = JsonDocument.Parse(File.ReadAllText(authPath));
-        if (authDoc.RootElement.TryGetProperty("tokens", out var tokens)
-            && tokens.TryGetProperty("operator", out var op)
-            && op.TryGetProperty("token", out var token))
-        {
-            config.DeviceToken = token.GetString() ?? "";
-        }
-
-        // Load gateway shared token
-        var configPath = Path.Combine(stateDir, "openclaw.json");
-        if (File.Exists(configPath))
-        {
-            using var configDoc = JsonDocument.Parse(File.ReadAllText(configPath));
-            if (configDoc.RootElement.TryGetProperty("gateway", out var gw)
-                && gw.TryGetProperty("auth", out var gwAuth)
-                && gwAuth.TryGetProperty("token", out var gwToken))
-            {
-                config.GatewayToken = gwToken.GetString() ?? "";
-            }
-        }
-
+        OpenClawIdentityLoader.LoadDeviceIdentity(config);
         return config;
     }
 
     private static bool IsOpenClawAvailable()
     {
         var config = CreateConfig();
-        if (string.IsNullOrEmpty(config.DeviceId)
-            || string.IsNullOrEmpty(config.PrivateKeyPem)
-            || string.IsNullOrEmpty(config.DeviceToken))
+        if (!OpenClawIdentityLoader.HasRequiredIdentity(config))
             return false;
 
         // Check if OpenClaw is actually reachable
