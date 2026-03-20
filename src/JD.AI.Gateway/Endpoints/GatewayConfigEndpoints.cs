@@ -323,10 +323,32 @@ public static class GatewayConfigEndpoints
         .WithDescription("Update the gateway routing configuration.");
 
         // PUT /api/gateway/config/openclaw — update OpenClaw config
-        group.MapPut("/config/openclaw", (OpenClawGatewayConfig update, GatewayConfig config, IConfiguration root) =>
+        group.MapPut("/config/openclaw", async (
+            OpenClawGatewayConfig update,
+            GatewayConfig config,
+            IConfiguration root,
+            CancellationToken ct) =>
         {
             config.OpenClaw = update;
             WriteConfigSection(root, "Gateway:OpenClaw", update);
+
+            var bridge = app.Services.GetService<OpenClawBridgeChannel>();
+            var registrar = app.Services.GetService<OpenClawAgentRegistrar>();
+
+            if (bridge is not null)
+            {
+                if (!update.Enabled && bridge.IsConnected)
+                {
+                    await bridge.DisconnectAsync(ct).ConfigureAwait(false);
+                    if (registrar is not null)
+                        await registrar.UnregisterAgentsAsync(ct).ConfigureAwait(false);
+                }
+                else if (update.Enabled && update.AutoConnect && !bridge.IsConnected)
+                {
+                    await bridge.ConnectAsync(ct).ConfigureAwait(false);
+                }
+            }
+
             return Results.Ok(config.OpenClaw);
         })
         .WithName("UpdateOpenClawConfig")
@@ -387,6 +409,9 @@ public static class GatewayConfigEndpoints
     private static (bool OverrideActive, string[] OverrideChannels) AnalyzeOpenClawOverrides(
         OpenClawGatewayConfig config)
     {
+        if (!config.Enabled)
+            return (false, []);
+
         var overrideActive = !string.Equals(
             config.DefaultMode,
             "Passthrough",
