@@ -1,5 +1,7 @@
 using JD.AI.Channels.Telegram;
 using JD.AI.Core.Channels;
+using System.Reflection;
+using Telegram.Bot.Types;
 
 namespace JD.AI.Tests.Channels;
 
@@ -103,5 +105,99 @@ public sealed class TelegramChannelTests
         return;
 
         static Task HandleMessage(ChannelMessage _) => Task.CompletedTask;
+    }
+
+    [Fact]
+    public async Task SendMessageAsync_WhenNotConnected_ThrowsInvalidOperationException()
+    {
+        var ch = new TelegramChannel(FakeTelegramToken.Any);
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            ch.SendMessageAsync("12345", "hello"));
+    }
+
+    [Fact]
+    public async Task SendMessageAsync_WithInvalidConversationId_ThrowsFormatException()
+    {
+        var ch = new TelegramChannel(FakeTelegramToken.Valid);
+        await ch.ConnectAsync();
+
+        await Assert.ThrowsAsync<FormatException>(() =>
+            ch.SendMessageAsync("not-a-number", "hello"));
+    }
+
+    [Fact]
+    public async Task HandleUpdateAsync_WithText_RaisesMessageReceived()
+    {
+        var ch = new TelegramChannel(FakeTelegramToken.Any);
+
+        ChannelMessage? received = null;
+        ch.MessageReceived += message =>
+        {
+            received = message;
+            return Task.CompletedTask;
+        };
+
+        var update = new Update
+        {
+            Message = new Message
+            {
+                Id = 99,
+                Text = "hello from telegram",
+                Date = DateTime.SpecifyKind(new DateTime(2026, 3, 20, 12, 0, 0), DateTimeKind.Utc),
+                Chat = new Chat { Id = 42 },
+                From = new User { Id = 7, FirstName = "JD" },
+                MessageThreadId = 123
+            }
+        };
+
+        var method = typeof(TelegramChannel).GetMethod(
+            "HandleUpdateAsync",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(method);
+
+        var task = (Task?)method!.Invoke(ch, [null!, update, CancellationToken.None]);
+        Assert.NotNull(task);
+        await task!;
+
+        Assert.NotNull(received);
+        Assert.Equal("99", received!.Id);
+        Assert.Equal("42", received.ChannelId);
+        Assert.Equal("7", received.SenderId);
+        Assert.Equal("JD", received.SenderDisplayName);
+        Assert.Equal("hello from telegram", received.Content);
+        Assert.Equal("123", received.ThreadId);
+    }
+
+    [Fact]
+    public async Task HandleUpdateAsync_WithoutText_DoesNotRaiseMessageReceived()
+    {
+        var ch = new TelegramChannel(FakeTelegramToken.Any);
+        var invoked = false;
+        ch.MessageReceived += _ =>
+        {
+            invoked = true;
+            return Task.CompletedTask;
+        };
+
+        var update = new Update
+        {
+            Message = new Message
+            {
+                Id = 1,
+                Chat = new Chat { Id = 1 },
+                Date = DateTime.UtcNow
+            }
+        };
+
+        var method = typeof(TelegramChannel).GetMethod(
+            "HandleUpdateAsync",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(method);
+
+        var task = (Task?)method!.Invoke(ch, [null!, update, CancellationToken.None]);
+        Assert.NotNull(task);
+        await task!;
+
+        Assert.False(invoked);
     }
 }
