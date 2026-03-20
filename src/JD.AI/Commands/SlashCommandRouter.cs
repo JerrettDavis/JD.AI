@@ -1092,6 +1092,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                 Usage: /provider add <name>
                 Available providers: ollama, openai, azure-openai, anthropic, google-gemini,
                   mistral, bedrock, huggingface, openrouter, openai-compat
+                  oauth providers: copilot, codex
                 Example: /provider add openai
                 """;
         }
@@ -1193,9 +1194,93 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                     .ConfigureAwait(false);
                 return $"OpenAI-Compatible endpoint '{alias}' configured. Run /providers to verify.";
 
+            case "copilot":
+            case "github-copilot":
+                return await ConfigureCliOAuthProviderAsync(
+                    providerDisplayName: "GitHub Copilot",
+                    cliName: "gh",
+                    statusArgs: "auth status",
+                    loginArgs: "auth login --hostname github.com --web --git-protocol https",
+                    postLoginHint: "Run /providers and /provider test copilot to verify model/tool access.",
+                    ct).ConfigureAwait(false);
+
+            case "codex":
+            case "openai-codex":
+                return await ConfigureCliOAuthProviderAsync(
+                    providerDisplayName: "OpenAI Codex",
+                    cliName: "codex",
+                    statusArgs: "login status",
+                    loginArgs: "login",
+                    postLoginHint: "Run /providers and /provider test codex to verify model/tool access.",
+                    ct).ConfigureAwait(false);
+
             default:
                 return $"Unknown provider: {name}. Run /provider add for the list.";
         }
+    }
+
+    private static async Task<string> ConfigureCliOAuthProviderAsync(
+        string providerDisplayName,
+        string cliName,
+        string statusArgs,
+        string loginArgs,
+        string postLoginHint,
+        CancellationToken ct)
+    {
+        var cliPath = ClaudeCodeDetector.FindCli(cliName);
+        if (cliPath is null)
+            return $"{providerDisplayName} CLI '{cliName}' not found on PATH.";
+
+        var refresh = AnsiConsole.Confirm(
+            $"Force a fresh {providerDisplayName} OAuth login in your browser now?",
+            defaultValue: true);
+
+        if (refresh)
+        {
+            AnsiConsole.MarkupLine(
+                $"[dim]Starting {Markup.Escape(providerDisplayName)} OAuth flow (browser launch expected)...[/]");
+
+            var exitCode = await RunInteractiveProcessAsync(cliPath, loginArgs, ct).ConfigureAwait(false);
+            if (exitCode != 0)
+                return $"{providerDisplayName} login command exited with code {exitCode}.";
+        }
+
+        var status = await ProcessExecutor.RunAsync(
+                cliPath,
+                statusArgs,
+                timeout: TimeSpan.FromSeconds(20),
+                cancellationToken: ct)
+            .ConfigureAwait(false);
+
+        if (!status.Success)
+        {
+            return $"{providerDisplayName} status check failed. " +
+                   $"Try running `{cliName} {loginArgs}` manually, then retry.";
+        }
+
+        return $"{providerDisplayName} OAuth is authenticated. {postLoginHint}";
+    }
+
+    private static async Task<int> RunInteractiveProcessAsync(
+        string fileName,
+        string arguments,
+        CancellationToken ct)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = fileName,
+            Arguments = arguments,
+            UseShellExecute = false,
+            RedirectStandardInput = false,
+            RedirectStandardOutput = false,
+            RedirectStandardError = false,
+            CreateNoWindow = false,
+        };
+
+        using var process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException($"Failed to start process '{fileName}'.");
+        await process.WaitForExitAsync(ct).ConfigureAwait(false);
+        return process.ExitCode;
     }
 
     private async Task<string> ProviderRemoveAsync(string? providerName, CancellationToken ct)
