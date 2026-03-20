@@ -183,7 +183,7 @@ public sealed class OpenClawAgentRegistrar
     /// </summary>
     public async Task UnregisterAgentsAsync(CancellationToken ct = default)
     {
-        if (!_rpc.IsConnected || _registeredAgentIds.Count == 0)
+        if (!_rpc.IsConnected)
             return;
 
         try
@@ -195,46 +195,15 @@ public sealed class OpenClawAgentRegistrar
             // Snapshot before mutation for backup
             var preModificationRaw = configNode.ToJsonString(IndentedJson);
 
-            var list = configNode["agents"]?["list"]?.AsArray();
-            if (list is null)
+            var (removedAgents, removedBindings) = RemoveManagedAgentsAndBindings(configNode);
+            if (removedAgents > 0)
             {
-                _registeredAgentIds.Clear();
-                return;
+                _logger.LogInformation(
+                    "Unregistered {Count} JD.AI agent(s) from OpenClaw config",
+                    removedAgents);
             }
 
-            // Remove all JD.AI-managed agents (by prefix)
-            var removed = 0;
-            for (var i = list.Count - 1; i >= 0; i--)
-            {
-                var id = list[i]?["id"]?.GetValue<string>();
-                if (id is not null && id.StartsWith(AgentIdPrefix, StringComparison.Ordinal))
-                {
-                    list.RemoveAt(i);
-                    removed++;
-                    _logger.LogInformation("Unregistered agent '{Id}' from OpenClaw", id);
-                }
-            }
-
-            // Remove JD.AI-managed bindings
-            var bindings = configNode["bindings"]?.AsArray();
-            if (bindings is not null)
-            {
-                for (var i = bindings.Count - 1; i >= 0; i--)
-                {
-                    var agentId = bindings[i]?["agentId"]?.GetValue<string>();
-                    if (agentId is not null && agentId.StartsWith(AgentIdPrefix, StringComparison.Ordinal))
-                        bindings.RemoveAt(i);
-                }
-
-                if (bindings.Count == 0)
-                    configNode.AsObject().Remove("bindings");
-            }
-
-            // Remove empty list to keep config clean
-            if (list.Count == 0)
-                configNode["agents"]!.AsObject().Remove("list");
-
-            if (baseHash is not null && removed > 0)
+            if (baseHash is not null && (removedAgents > 0 || removedBindings > 0))
                 await WriteConfigAsync(configNode, baseHash, preModificationRaw, ct);
         }
         catch (Exception ex)
@@ -243,6 +212,54 @@ public sealed class OpenClawAgentRegistrar
         }
 
         _registeredAgentIds.Clear();
+    }
+
+    /// <summary>
+    /// Removes JD.AI-managed agents/bindings (prefixed with <see cref="AgentIdPrefix"/>)
+    /// from a parsed OpenClaw config document.
+    /// </summary>
+    internal static (int RemovedAgents, int RemovedBindings) RemoveManagedAgentsAndBindings(JsonNode configNode)
+    {
+        ArgumentNullException.ThrowIfNull(configNode);
+
+        var removedAgents = 0;
+        var removedBindings = 0;
+
+        var list = configNode["agents"]?["list"]?.AsArray();
+        if (list is not null)
+        {
+            for (var i = list.Count - 1; i >= 0; i--)
+            {
+                var id = list[i]?["id"]?.GetValue<string>();
+                if (id is not null && id.StartsWith(AgentIdPrefix, StringComparison.Ordinal))
+                {
+                    list.RemoveAt(i);
+                    removedAgents++;
+                }
+            }
+
+            if (list.Count == 0)
+                configNode["agents"]!.AsObject().Remove("list");
+        }
+
+        var bindings = configNode["bindings"]?.AsArray();
+        if (bindings is not null)
+        {
+            for (var i = bindings.Count - 1; i >= 0; i--)
+            {
+                var agentId = bindings[i]?["agentId"]?.GetValue<string>();
+                if (agentId is not null && agentId.StartsWith(AgentIdPrefix, StringComparison.Ordinal))
+                {
+                    bindings.RemoveAt(i);
+                    removedBindings++;
+                }
+            }
+
+            if (bindings.Count == 0)
+                configNode.AsObject().Remove("bindings");
+        }
+
+        return (removedAgents, removedBindings);
     }
 
     /// <summary>Gets the list of registered JD.AI agent IDs.</summary>
