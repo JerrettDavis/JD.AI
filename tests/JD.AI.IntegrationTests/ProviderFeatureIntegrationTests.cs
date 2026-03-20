@@ -205,6 +205,9 @@ public sealed class ProviderFeatureIntegrationTests
                     $"Read the file at {tempFile} and summarize its contents in one short sentence.")
                 .ConfigureAwait(false);
             Assert.NotNull(response);
+            Assert.NotEmpty(response.Trim());
+            Assert.DoesNotContain("error:", response, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("insufficient_quota", response, StringComparison.OrdinalIgnoreCase);
             Assert.True(harness.Session.History.Count >= 2,
                 "Session should contain user + assistant messages after provider tool smoke turn");
         }

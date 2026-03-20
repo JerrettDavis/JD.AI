@@ -259,8 +259,8 @@ public sealed class OpenAICodexDetectorAdditionalTests : IDisposable
         var options = new CodexSessionOptions { CredentialsPath = authPath };
         OpenAICodexDetector.ApplyCredentialOverridesFromAuthFile(options);
 
-        Assert.Equal("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.signature", options.AccessToken);
-        Assert.Null(options.ApiKey);
+        Assert.Equal("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.signature", options.ApiKey);
+        Assert.Null(options.AccessToken);
     }
 
     [Fact]
@@ -280,12 +280,12 @@ public sealed class OpenAICodexDetectorAdditionalTests : IDisposable
         var options = new CodexSessionOptions { CredentialsPath = authPath };
         OpenAICodexDetector.ApplyCredentialOverridesFromAuthFile(options);
 
-        Assert.Equal("id-token-from-chatgpt-mode", options.AccessToken);
-        Assert.Null(options.ApiKey);
+        Assert.Equal("id-token-from-chatgpt-mode", options.ApiKey);
+        Assert.Null(options.AccessToken);
     }
 
     [Fact]
-    public void ApplyCredentialOverridesFromAuthFile_ChatGptModeWithoutApiKey_DoesNotForceToken()
+    public void ApplyCredentialOverridesFromAuthFile_ChatGptModeWithoutApiKey_UsesBearerToken()
     {
         var authPath = Path.Combine(_fixture.DirectoryPath, "auth.json");
         File.WriteAllText(authPath, """
@@ -300,8 +300,8 @@ public sealed class OpenAICodexDetectorAdditionalTests : IDisposable
         var options = new CodexSessionOptions { CredentialsPath = authPath };
         OpenAICodexDetector.ApplyCredentialOverridesFromAuthFile(options);
 
+        Assert.Equal("id-token-from-chatgpt-mode", options.ApiKey);
         Assert.Null(options.AccessToken);
-        Assert.Null(options.ApiKey);
     }
 
     [Fact]
@@ -336,8 +336,29 @@ public sealed class OpenAICodexDetectorAdditionalTests : IDisposable
         var options = new CodexSessionOptions { CredentialsPath = authPath };
         OpenAICodexDetector.ApplyCredentialOverridesFromAuthFile(options, envApiKeyOverride: "stale-env-key");
 
-        Assert.Equal("id-token-from-file", options.AccessToken);
-        Assert.Null(options.ApiKey);
+        Assert.Equal("id-token-from-file", options.ApiKey);
+        Assert.Null(options.AccessToken);
+    }
+
+    [Fact]
+    public void ApplyCredentialOverridesFromAuthFile_PrefersAccessToken_WhenBothTokensPresent()
+    {
+        var authPath = Path.Combine(_fixture.DirectoryPath, "auth.json");
+        File.WriteAllText(authPath, """
+            {
+              "auth_mode": "chatgpt",
+              "tokens": {
+                "access_token": "access-token-preferred",
+                "id_token": "id-token-secondary"
+              }
+            }
+            """);
+
+        var options = new CodexSessionOptions { CredentialsPath = authPath };
+        OpenAICodexDetector.ApplyCredentialOverridesFromAuthFile(options, envApiKeyOverride: "stale-env-key");
+
+        Assert.Equal("access-token-preferred", options.ApiKey);
+        Assert.Null(options.AccessToken);
     }
 
     [Fact]
