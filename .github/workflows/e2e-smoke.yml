@@ -150,7 +150,7 @@ jobs:
 
           echo "ci-plugin-help.png missing after primary tape; rendering fallback screenshot."
           cat > /tmp/ci-plugin-help-fallback.tape <<'EOF'
-          Output /tmp/ci-plugin-help-fallback.gif
+          Output "/tmp/ci-plugin-help-fallback.gif"
           Set Shell "bash"
           Set Width 1200
           Set Height 700
