@@ -75,6 +75,8 @@ public static class GatewayConfigEndpoints
             JD.AI.Core.Channels.IChannelRegistry channels) =>
         {
             var registrar = app.Services.GetService<OpenClawAgentRegistrar>();
+            var bridge = app.Services.GetService<OpenClawBridgeChannel>();
+            var (overrideActive, overrideChannels) = AnalyzeOpenClawOverrides(config.OpenClaw);
             return Results.Ok(new
             {
                 Status = "running",
@@ -90,6 +92,10 @@ public static class GatewayConfigEndpoints
                 OpenClaw = new
                 {
                     config.OpenClaw.Enabled,
+                    Connected = bridge?.IsConnected ?? false,
+                    config.OpenClaw.DefaultMode,
+                    OverrideActive = overrideActive,
+                    OverrideChannels = overrideChannels,
                     RegisteredAgents = registrar?.RegisteredAgentIds ?? (IReadOnlyList<string>)[]
                 }
             });
@@ -210,7 +216,7 @@ public static class GatewayConfigEndpoints
         .WithDescription("Re-synchronize JD.AI agent registrations with the OpenClaw gateway.");
 
         // GET /api/gateway/openclaw/status — diagnostic endpoint for bridge status
-        group.MapGet("/openclaw/status", () =>
+        group.MapGet("/openclaw/status", (GatewayConfig config) =>
         {
             var bridge = app.Services.GetService<OpenClawBridgeChannel>();
             if (bridge is null)
@@ -221,11 +227,15 @@ public static class GatewayConfigEndpoints
                 .FirstOrDefault();
 
             var recentEvents = routingService?.GetRecentEvents() ?? [];
+            var (overrideActive, overrideChannels) = AnalyzeOpenClawOverrides(config.OpenClaw);
 
             return Results.Ok(new
             {
                 Enabled = true,
                 Connected = bridge.IsConnected,
+                config.OpenClaw.DefaultMode,
+                OverrideActive = overrideActive,
+                OverrideChannels = overrideChannels,
                 ChannelType = bridge.ChannelType,
                 DisplayName = bridge.DisplayName,
                 RecentEventCount = recentEvents.Count,
@@ -372,5 +382,29 @@ public static class GatewayConfigEndpoints
             }
         }
         writer.WriteEndObject();
+    }
+
+    private static (bool OverrideActive, string[] OverrideChannels) AnalyzeOpenClawOverrides(
+        OpenClawGatewayConfig config)
+    {
+        var overrideActive = !string.Equals(
+            config.DefaultMode,
+            "Passthrough",
+            StringComparison.OrdinalIgnoreCase);
+        var channels = new List<string>();
+
+        foreach (var (channelName, channelConfig) in config.Channels)
+        {
+            var mode = string.IsNullOrWhiteSpace(channelConfig.Mode)
+                ? config.DefaultMode
+                : channelConfig.Mode;
+            if (string.Equals(mode, "Passthrough", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            overrideActive = true;
+            channels.Add(channelName);
+        }
+
+        return (overrideActive, [.. channels.Order(StringComparer.OrdinalIgnoreCase)]);
     }
 }
