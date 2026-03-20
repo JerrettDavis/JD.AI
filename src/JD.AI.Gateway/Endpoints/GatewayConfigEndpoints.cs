@@ -397,17 +397,29 @@ public static class GatewayConfigEndpoints
         CancellationToken ct)
     {
         if (!bridge.IsConnected)
-            return 0;
+        {
+            try
+            {
+                await bridge.ConnectAsync(ct).ConfigureAwait(false);
+            }
+            catch
+            {
+                return 0;
+            }
+        }
 
         var deleted = await bridge.DeleteSessionsByPrefixAsync(
             BuildManagedSessionPrefixes(config),
+            BuildManagedSessionContains(config),
             deleteTranscript: true,
             ct).ConfigureAwait(false);
 
         if (registrar is not null)
             await registrar.UnregisterAgentsAsync(ct).ConfigureAwait(false);
 
-        await bridge.DisconnectAsync(ct).ConfigureAwait(false);
+        if (bridge.IsConnected)
+            await bridge.DisconnectAsync(ct).ConfigureAwait(false);
+
         return deleted;
     }
 
@@ -427,6 +439,34 @@ public static class GatewayConfigEndpoints
         }
 
         return prefixes.ToArray();
+    }
+
+    private static string[] BuildManagedSessionContains(OpenClawGatewayConfig config)
+    {
+        var fragments = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "g-agent-"
+        };
+
+        foreach (var registration in config.RegisterAgents)
+        {
+            if (!string.IsNullOrWhiteSpace(registration.Id))
+                fragments.Add(registration.Id.Trim());
+
+            foreach (var binding in registration.Bindings)
+            {
+                if (!string.IsNullOrWhiteSpace(binding.Channel))
+                    fragments.Add($"{binding.Channel.Trim()}:g-agent-");
+            }
+        }
+
+        foreach (var channel in config.Channels.Keys)
+        {
+            if (!string.IsNullOrWhiteSpace(channel))
+                fragments.Add($"{channel.Trim()}:g-agent-");
+        }
+
+        return fragments.ToArray();
     }
 
     /// <summary>Persists a config section to appsettings.json via JSON merge.</summary>

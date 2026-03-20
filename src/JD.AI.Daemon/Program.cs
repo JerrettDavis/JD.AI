@@ -19,6 +19,7 @@ using JD.AI.Gateway.Endpoints;
 using JD.AI.Gateway.Hubs;
 using JD.AI.Gateway.Middleware;
 using JD.AI.Gateway.Services;
+using Microsoft.Extensions.Logging.Abstractions;
 
 var rootCommand = new RootCommand("JD.AI Gateway Daemon — run as a system service with auto-updates");
 
@@ -503,17 +504,21 @@ static async Task<int> HandleBridgeCommandAsync(string? action)
                 return 0;
             case "enable":
                 state = OpenClawBridgeConfigEditor.SetEnabled(appSettingsPath, enabled: true);
+                await TrySetOpenClawGatewayTasksEnabledAsync(enabled: true).ConfigureAwait(false);
                 await TryRestartInstalledServiceAsync().ConfigureAwait(false);
                 WriteBridgeStatus(state, appSettingsPath);
                 return 0;
             case "disable":
                 await TryDisableBridgeRuntimeAsync(appSettingsPath).ConfigureAwait(false);
                 state = OpenClawBridgeConfigEditor.SetEnabled(appSettingsPath, enabled: false);
+                await TrySetOpenClawGatewayTasksEnabledAsync(enabled: false).ConfigureAwait(false);
+                await TryStopOpenClawGatewayTaskAsync().ConfigureAwait(false);
                 await TryRestartInstalledServiceAsync().ConfigureAwait(false);
                 WriteBridgeStatus(state, appSettingsPath);
                 return 0;
             case "passthrough":
                 state = OpenClawBridgeConfigEditor.SetPassthrough(appSettingsPath);
+                await TrySetOpenClawGatewayTasksEnabledAsync(enabled: true).ConfigureAwait(false);
                 await TryRestartInstalledServiceAsync().ConfigureAwait(false);
                 WriteBridgeStatus(state, appSettingsPath);
                 return 0;
@@ -563,12 +568,13 @@ static async Task TryRestartInstalledServiceAsync()
 
 static async Task TryDisableBridgeRuntimeAsync(string appSettingsPath)
 {
+    var runtimeCleanupSucceeded = false;
+    var config = new ConfigurationBuilder()
+        .AddJsonFile(appSettingsPath, optional: true, reloadOnChange: false)
+        .Build();
+
     try
     {
-        var config = new ConfigurationBuilder()
-            .AddJsonFile(appSettingsPath, optional: true, reloadOnChange: false)
-            .Build();
-
         var port = config.GetValue<int?>("Gateway:Server:Port") ?? GatewayRuntimeDefaults.DefaultPort;
         var disableUrl = new Uri($"http://127.0.0.1:{port}/api/gateway/openclaw/bridge/disable");
 
@@ -576,7 +582,10 @@ static async Task TryDisableBridgeRuntimeAsync(string appSettingsPath)
         var response = await client.PostAsync(disableUrl, null).ConfigureAwait(false);
 
         if (response.IsSuccessStatusCode)
+        {
             Console.WriteLine("Runtime bridge cleanup note: active OpenClaw sessions were cleaned.");
+            runtimeCleanupSucceeded = true;
+        }
         else
             Console.WriteLine($"Runtime bridge cleanup note: HTTP {(int)response.StatusCode}; continuing with config disable.");
     }
@@ -584,6 +593,11 @@ static async Task TryDisableBridgeRuntimeAsync(string appSettingsPath)
     {
         Console.WriteLine($"Runtime bridge cleanup note: skipped ({ex.Message}).");
     }
+
+    if (runtimeCleanupSucceeded)
+        return;
+
+    await TryDisableBridgeRuntimeDirectAsync(config).ConfigureAwait(false);
 }
 
 static string ResolveDaemonAppSettingsPath()
@@ -606,4 +620,114 @@ static void WriteBridgeStatus(OpenClawBridgeState state, string appSettingsPath)
     Console.WriteLine($"Effective mode:  {mode}");
     if (state.OverrideChannels.Count > 0)
         Console.WriteLine($"Override chans:  {string.Join(", ", state.OverrideChannels)}");
+}
+
+static async Task TryDisableBridgeRuntimeDirectAsync(IConfiguration config)
+{
+    try
+    {
+        var openClawGatewayConfig = config.GetSection("Gateway:OpenClaw").Get<OpenClawGatewayConfig>()
+                                  ?? new OpenClawGatewayConfig();
+        var openClawConfig = new OpenClawConfig
+        {
+            WebSocketUrl = openClawGatewayConfig.WebSocketUrl,
+            OpenClawStateDir = config["Gateway:OpenClaw:StateDir"],
+        };
+
+        OpenClawIdentityLoader.LoadDeviceIdentity(openClawConfig, openClawConfig.OpenClawStateDir);
+        if (!OpenClawIdentityLoader.HasRequiredIdentity(openClawConfig))
+        {
+            Console.WriteLine("Runtime bridge cleanup note: direct cleanup skipped (OpenClaw identity is incomplete).");
+            return;
+        }
+
+        await using var rpc = new OpenClawRpcClient(
+            openClawConfig,
+            NullLogger<OpenClawRpcClient>.Instance);
+        await using var bridge = new OpenClawBridgeChannel(
+            rpc,
+            NullLogger<OpenClawBridgeChannel>.Instance,
+            openClawConfig);
+
+        await bridge.ConnectAsync().ConfigureAwait(false);
+        var (prefixes, contains) = BuildManagedSessionFilters(openClawGatewayConfig);
+        var deleted = await bridge.DeleteSessionsByPrefixAsync(
+            prefixes,
+            contains,
+            deleteTranscript: true).ConfigureAwait(false);
+        await bridge.DisconnectAsync().ConfigureAwait(false);
+
+        Console.WriteLine($"Runtime bridge cleanup note: direct OpenClaw cleanup removed {deleted} managed session(s).");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Runtime bridge cleanup note: direct cleanup failed ({ex.Message}).");
+    }
+}
+
+static (string[] Prefixes, string[] Contains) BuildManagedSessionFilters(OpenClawGatewayConfig config)
+{
+    var prefixes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "agent:jdai-"
+    };
+    var contains = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "g-agent-"
+    };
+
+    foreach (var registration in config.RegisterAgents)
+    {
+        if (!string.IsNullOrWhiteSpace(registration.Id))
+        {
+            var agentId = registration.Id.Trim();
+            prefixes.Add($"agent:{agentId}:");
+            contains.Add(agentId);
+        }
+
+        foreach (var binding in registration.Bindings)
+        {
+            if (!string.IsNullOrWhiteSpace(binding.Channel))
+                contains.Add($"{binding.Channel.Trim()}:g-agent-");
+        }
+    }
+
+    foreach (var channel in config.Channels.Keys)
+    {
+        if (!string.IsNullOrWhiteSpace(channel))
+            contains.Add($"{channel.Trim()}:g-agent-");
+    }
+
+    return (prefixes.ToArray(), contains.ToArray());
+}
+
+static async Task TrySetOpenClawGatewayTasksEnabledAsync(bool enabled)
+{
+    if (!OperatingSystem.IsWindows())
+        return;
+
+    var mode = enabled ? "/enable" : "/disable";
+    foreach (var taskName in new[] { "\\OpenClaw Gateway Watchdog", "\\OpenClaw Gateway" })
+    {
+        var result = await JD.AI.Core.Infrastructure.ProcessExecutor.RunAsync(
+            "schtasks.exe",
+            $"/change /tn \"{taskName}\" {mode}",
+            timeout: TimeSpan.FromSeconds(8)).ConfigureAwait(false);
+
+        if (!result.Success)
+            Console.WriteLine($"Bridge task note: could not {(enabled ? "enable" : "disable")} {taskName} ({result.StandardError})");
+    }
+}
+
+static async Task TryStopOpenClawGatewayTaskAsync()
+{
+    if (!OperatingSystem.IsWindows())
+        return;
+
+    var result = await JD.AI.Core.Infrastructure.ProcessExecutor.RunAsync(
+        "schtasks.exe",
+        "/end /tn \"\\OpenClaw Gateway\"",
+        timeout: TimeSpan.FromSeconds(8)).ConfigureAwait(false);
+    if (!result.Success)
+        Console.WriteLine($"Bridge task note: could not end OpenClaw Gateway task ({result.StandardError})");
 }
