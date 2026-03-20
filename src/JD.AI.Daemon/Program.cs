@@ -507,6 +507,7 @@ static async Task<int> HandleBridgeCommandAsync(string? action)
                 WriteBridgeStatus(state, appSettingsPath);
                 return 0;
             case "disable":
+                await TryDisableBridgeRuntimeAsync(appSettingsPath).ConfigureAwait(false);
                 state = OpenClawBridgeConfigEditor.SetEnabled(appSettingsPath, enabled: false);
                 await TryRestartInstalledServiceAsync().ConfigureAwait(false);
                 WriteBridgeStatus(state, appSettingsPath);
@@ -557,6 +558,31 @@ static async Task TryRestartInstalledServiceAsync()
     catch (Exception ex)
     {
         Console.WriteLine($"Service restart note: automatic restart failed ({ex.Message}).");
+    }
+}
+
+static async Task TryDisableBridgeRuntimeAsync(string appSettingsPath)
+{
+    try
+    {
+        var config = new ConfigurationBuilder()
+            .AddJsonFile(appSettingsPath, optional: true, reloadOnChange: false)
+            .Build();
+
+        var port = config.GetValue<int?>("Gateway:Server:Port") ?? 15790;
+        var disableUrl = $"http://127.0.0.1:{port}/api/gateway/openclaw/bridge/disable";
+
+        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(4) };
+        var response = await client.PostAsync(disableUrl, null).ConfigureAwait(false);
+
+        if (response.IsSuccessStatusCode)
+            Console.WriteLine("Runtime bridge cleanup note: active OpenClaw sessions were cleaned.");
+        else
+            Console.WriteLine($"Runtime bridge cleanup note: HTTP {(int)response.StatusCode}; continuing with config disable.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Runtime bridge cleanup note: skipped ({ex.Message}).");
     }
 }
 

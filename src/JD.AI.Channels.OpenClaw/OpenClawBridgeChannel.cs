@@ -1,5 +1,6 @@
 using JD.AI.Core.Channels;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace JD.AI.Channels.OpenClaw;
 
@@ -138,6 +139,102 @@ public sealed class OpenClawBridgeChannel : IChannel
     /// <summary>Sends an arbitrary RPC request to the OpenClaw gateway.</summary>
     public Task<RpcResponse> RpcAsync(string method, object? parameters = null, CancellationToken ct = default) =>
         _rpc.RequestAsync(method, parameters, ct);
+
+    /// <summary>
+    /// Deletes OpenClaw sessions whose keys begin with one of the provided prefixes.
+    /// Intended for bridge-disable cleanup of JD.AI-managed session namespaces.
+    /// </summary>
+    public async Task<int> DeleteSessionsByPrefixAsync(
+        IEnumerable<string> sessionKeyPrefixes,
+        bool deleteTranscript = true,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(sessionKeyPrefixes);
+
+        var prefixes = sessionKeyPrefixes
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Select(p => p.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (prefixes.Length == 0)
+            return 0;
+
+        var listResponse = await ListSessionsAsync(ct).ConfigureAwait(false);
+        if (!listResponse.Ok || !listResponse.Payload.HasValue)
+        {
+            var error = listResponse.Error?.GetProperty("message").GetString() ?? "unknown error";
+            _logger.LogWarning("sessions.list failed during session cleanup: {Error}", error);
+            return 0;
+        }
+
+        var keys = ExtractSessionKeys(listResponse.Payload.Value)
+            .Where(key => prefixes.Any(prefix => key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var deleted = 0;
+        foreach (var key in keys)
+        {
+            var response = await _rpc.RequestAsync("sessions.delete", new
+            {
+                key,
+                deleteTranscript,
+            }, ct).ConfigureAwait(false);
+
+            if (response.Ok)
+            {
+                deleted++;
+                continue;
+            }
+
+            var error = response.Error?.GetProperty("message").GetString() ?? "unknown error";
+            _logger.LogWarning("sessions.delete failed for '{SessionKey}': {Error}", key, error);
+        }
+
+        return deleted;
+    }
+
+    private static IEnumerable<string> ExtractSessionKeys(JsonElement payload)
+    {
+        if (payload.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var key in ReadKeysFromArray(payload))
+                yield return key;
+            yield break;
+        }
+
+        if (payload.ValueKind != JsonValueKind.Object)
+            yield break;
+
+        if (payload.TryGetProperty("sessions", out var sessions) && sessions.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var key in ReadKeysFromArray(sessions))
+                yield return key;
+        }
+
+        if (payload.TryGetProperty("items", out var items) && items.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var key in ReadKeysFromArray(items))
+                yield return key;
+        }
+    }
+
+    private static IEnumerable<string> ReadKeysFromArray(JsonElement sessions)
+    {
+        foreach (var session in sessions.EnumerateArray())
+        {
+            if (session.ValueKind != JsonValueKind.Object)
+                continue;
+
+            if (session.TryGetProperty("key", out var keyEl))
+            {
+                var key = keyEl.GetString();
+                if (!string.IsNullOrWhiteSpace(key))
+                    yield return key;
+            }
+        }
+    }
 
     private void OnEvent(OpenClawEvent evt)
     {
