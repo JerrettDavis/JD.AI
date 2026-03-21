@@ -261,7 +261,7 @@ public sealed class OpenClawAgentRegistrarTests : IDisposable
     {
         var config = JsonNode.Parse("""{ "agents": {} }""")!;
 
-        var changed = OpenClawAgentRegistrar.EnsureDefaultMainAgent(config);
+        var changed = InvokeEnsureDefaultMainAgent(config);
 
         Assert.True(changed);
         Assert.Equal("main", config["agents"]!["list"]![0]!["id"]!.GetValue<string>());
@@ -284,7 +284,7 @@ public sealed class OpenClawAgentRegistrarTests : IDisposable
             }
             """)!;
 
-        var changed = OpenClawAgentRegistrar.EnsureDefaultMainAgent(config);
+        var changed = InvokeEnsureDefaultMainAgent(config);
 
         Assert.True(changed);
         Assert.True(config["agents"]!["list"]![0]!["default"]!.GetValue<bool>());
@@ -304,7 +304,7 @@ public sealed class OpenClawAgentRegistrarTests : IDisposable
             }
             """)!;
 
-        var changed = OpenClawAgentRegistrar.EnsureDefaultMainAgent(config);
+        var changed = InvokeEnsureDefaultMainAgent(config);
 
         Assert.False(changed);
         Assert.True(config["agents"]!["list"]![0]!["default"]!.GetValue<bool>());
@@ -320,6 +320,17 @@ public sealed class OpenClawAgentRegistrarTests : IDisposable
         var result = method!.Invoke(null, [config]);
         Assert.NotNull(result);
         return ((int RemovedAgents, int RemovedBindings))result!;
+    }
+
+    private static bool InvokeEnsureDefaultMainAgent(JsonNode config)
+    {
+        var method = typeof(OpenClawAgentRegistrar).GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
+            .Single(m => string.Equals(m.Name, "EnsureDefaultMainAgent", StringComparison.Ordinal) && m.GetParameters().Length == 1);
+        Assert.NotNull(method);
+
+        var result = method!.Invoke(null, [config]);
+        Assert.NotNull(result);
+        return (bool)result!;
     }
 
     private static (int RemovedAgents, int RemovedBindings) InvokeRemoveManagedAgentsAndBindings(
