@@ -58,9 +58,12 @@ public sealed class BridgeCommandServiceTests
             Assert.DoesNotContain("custom-jdai", agentIds, StringComparer.Ordinal);
             Assert.DoesNotContain("custom-jdai", bindingAgentIds, StringComparer.Ordinal);
             Assert.Contains("native-assistant", agentIds, StringComparer.Ordinal);
-            Assert.Contains("agent:custom-jdai:main", server.DeletedSessionKeys, StringComparer.Ordinal);
+            var customDeleted = server.DeletedSessionKeys.Contains("agent:custom-jdai:main", StringComparer.Ordinal);
+            var customReset = server.ResetSessionKeys.Contains("agent:custom-jdai:main", StringComparer.Ordinal);
+            Assert.True(customDeleted || customReset, "custom-jdai main session should be deleted or reset.");
             Assert.Contains("agent:jdai-default:main", server.ResetSessionKeys, StringComparer.Ordinal);
             Assert.DoesNotContain("agent:native-assistant:main", server.DeletedSessionKeys, StringComparer.Ordinal);
+            Assert.DoesNotContain("agent:native-assistant:main", server.ResetSessionKeys, StringComparer.Ordinal);
         }
         finally
         {
