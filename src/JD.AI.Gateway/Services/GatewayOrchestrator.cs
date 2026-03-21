@@ -23,6 +23,7 @@ public sealed class GatewayOrchestrator : IHostedService
     private readonly OpenClawAgentRegistrar? _agentRegistrar;
     private readonly OpenClawBridgeChannel? _openClawBridge;
     private readonly ICommandRegistry? _commandRegistry;
+    private readonly List<RegisteredChannel> _registeredChannels = [];
 
     // Track spawned agent IDs from config (definition.Id → pool agentId)
     private readonly Dictionary<string, string> _spawnedAgents = new(StringComparer.OrdinalIgnoreCase);
@@ -147,7 +148,14 @@ public sealed class GatewayOrchestrator : IHostedService
 
     private async Task RegisterChannelsAsync(CancellationToken ct)
     {
-        foreach (var channelConfig in _config.Channels.Where(c => c.Enabled))
+        _registeredChannels.Clear();
+        var enabledChannels = _config.Channels.Where(c => c.Enabled).ToList();
+        var typeCounts = enabledChannels
+            .GroupBy(c => c.Type, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
+        var typeOrdinals = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var channelConfig in enabledChannels)
         {
             try
             {
@@ -155,6 +163,8 @@ public sealed class GatewayOrchestrator : IHostedService
                 if (channel is null) continue;
 
                 _channels.Register(channel);
+                var routeKey = BuildRouteKey(channel, channelConfig, typeCounts, typeOrdinals);
+                _registeredChannels.Add(new RegisteredChannel(channel, channelConfig, routeKey));
                 _logger.LogInformation("Registered channel '{Type}' ({Name})",
                     channelConfig.Type, channelConfig.Name);
             }
@@ -162,6 +172,35 @@ public sealed class GatewayOrchestrator : IHostedService
             {
                 _logger.LogError(ex, "Failed to register channel '{Type}'", channelConfig.Type);
             }
+        }
+
+        // Include channels registered externally (e.g., tests/integration hosts) so
+        // default routing and command wiring still cover them.
+        var existingKeys = new HashSet<string>(
+            _registeredChannels.Select(c => c.RouteKey),
+            StringComparer.OrdinalIgnoreCase);
+        foreach (var channel in _channels.Channels)
+        {
+            if (_registeredChannels.Any(c => ReferenceEquals(c.Channel, channel)))
+                continue;
+
+            var fallbackConfig = enabledChannels.FirstOrDefault(c =>
+                                     string.Equals(c.Type, channel.ChannelType, StringComparison.OrdinalIgnoreCase))
+                                 ?? new ChannelConfig
+                                 {
+                                     Type = channel.ChannelType,
+                                     Name = channel.DisplayName,
+                                     Enabled = true,
+                                     AutoConnect = false
+                                 };
+
+            var routeKey = channel.ChannelType;
+            var suffix = 2;
+            while (existingKeys.Contains(routeKey))
+                routeKey = $"{channel.ChannelType}:{suffix++}";
+
+            _registeredChannels.Add(new RegisteredChannel(channel, fallbackConfig, routeKey));
+            existingKeys.Add(routeKey);
         }
     }
 
@@ -190,6 +229,8 @@ public sealed class GatewayOrchestrator : IHostedService
 
     private void WireRoutingRules()
     {
+        var mappedRouteKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var rule in _config.Routing.Rules)
         {
             var agentId = ResolveAgentId(rule.AgentId);
@@ -200,9 +241,22 @@ public sealed class GatewayOrchestrator : IHostedService
                 continue;
             }
 
-            _router.MapChannel(rule.ChannelType, agentId);
-            _logger.LogInformation("Mapped channel '{Channel}' → agent '{Agent}'",
-                rule.ChannelType, agentId);
+            var matches = ResolveRuleTargets(rule);
+            if (matches.Count == 0)
+            {
+                _logger.LogWarning(
+                    "Routing rule target not found for ChannelType='{ChannelType}', ChannelName='{ChannelName}'",
+                    rule.ChannelType, rule.ChannelName ?? "(none)");
+                continue;
+            }
+
+            foreach (var target in matches)
+            {
+                _router.MapChannel(target.RouteKey, agentId);
+                mappedRouteKeys.Add(target.RouteKey);
+                _logger.LogInformation("Mapped route '{RouteKey}' ({Type}/{Name}) → agent '{Agent}'",
+                    target.RouteKey, target.Channel.ChannelType, target.Config.Name, agentId);
+            }
         }
 
         // Wire default agent for any channel not explicitly mapped
@@ -211,38 +265,37 @@ public sealed class GatewayOrchestrator : IHostedService
             var defaultId = ResolveAgentId(_config.Routing.DefaultAgentId);
             if (defaultId is not null)
             {
-                foreach (var channel in _channels.Channels)
+                foreach (var registered in _registeredChannels)
                 {
-                    if (!_router.GetMappings().ContainsKey(channel.ChannelType))
+                    if (!mappedRouteKeys.Contains(registered.RouteKey))
                     {
-                        _router.MapChannel(channel.ChannelType, defaultId);
+                        _router.MapChannel(registered.RouteKey, defaultId);
+                        mappedRouteKeys.Add(registered.RouteKey);
                         _logger.LogDebug("Default-mapped channel '{Channel}' → agent '{Agent}'",
-                            channel.ChannelType, defaultId);
+                            registered.RouteKey, defaultId);
                     }
                 }
             }
         }
+
     }
 
     private async Task AutoConnectChannelsAsync(CancellationToken ct)
     {
-        var autoConnectTypes = _config.Channels
-            .Where(c => c.Enabled && c.AutoConnect)
-            .Select(c => c.Type.ToLowerInvariant())
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var channel in _channels.Channels)
+        foreach (var registered in _registeredChannels)
         {
-            if (!autoConnectTypes.Contains(channel.ChannelType)) continue;
+            if (!registered.Config.AutoConnect) continue;
 
             try
             {
-                await channel.ConnectAsync(ct);
-                _logger.LogInformation("Auto-connected channel '{Type}'", channel.ChannelType);
+                await registered.Channel.ConnectAsync(ct);
+                _logger.LogInformation("Auto-connected channel '{Type}' ({RouteKey})",
+                    registered.Channel.ChannelType, registered.RouteKey);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to auto-connect channel '{Type}'", channel.ChannelType);
+                _logger.LogError(ex, "Failed to auto-connect channel '{Type}' ({RouteKey})",
+                    registered.Channel.ChannelType, registered.RouteKey);
             }
         }
     }
@@ -251,8 +304,9 @@ public sealed class GatewayOrchestrator : IHostedService
     {
         if (_commandRegistry is null || _commandRegistry.Commands.Count == 0) return;
 
-        foreach (var channel in _channels.Channels)
+        foreach (var registered in _registeredChannels)
         {
+            var channel = registered.Channel;
             if (channel is ICommandAwareChannel commandChannel)
             {
                 try
@@ -273,26 +327,73 @@ public sealed class GatewayOrchestrator : IHostedService
 
     private void WireMessageRouting()
     {
-        foreach (var channel in _channels.Channels)
+        foreach (var registered in _registeredChannels)
         {
-            channel.MessageReceived += async msg =>
+            var channel = registered.Channel;
+            channel.MessageReceived += async originalMessage =>
             {
                 try
                 {
+                    var metadata = new Dictionary<string, string>(originalMessage.Metadata, StringComparer.OrdinalIgnoreCase)
+                    {
+                        [AgentRouter.RouteKeyMetadataKey] = registered.RouteKey,
+                        [AgentRouter.ChannelTypeMetadataKey] = channel.ChannelType,
+                    };
+                    var msg = originalMessage with { Metadata = metadata };
+
                     _logger.LogDebug("Routing message from {Channel}/{Sender}",
                         msg.ChannelId, msg.SenderDisplayName ?? msg.SenderId);
-                    await _router.RouteAsync(msg);
+                    await _router.RouteAsync(msg, channel);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error routing message from {Channel}", msg.ChannelId);
+                    _logger.LogError(ex, "Error routing message from {Channel}", originalMessage.ChannelId);
                 }
             };
         }
 
         _logger.LogDebug("Wired MessageReceived → AgentRouter for {Count} channels",
-            _channels.Channels.Count);
+            _registeredChannels.Count);
     }
+
+    private List<RegisteredChannel> ResolveRuleTargets(RoutingRule rule)
+    {
+        if (!string.IsNullOrWhiteSpace(rule.ChannelName))
+        {
+            return _registeredChannels
+                .Where(c => string.Equals(c.Config.Name, rule.ChannelName, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        return _registeredChannels
+            .Where(c => string.Equals(c.Channel.ChannelType, rule.ChannelType, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    private static string BuildRouteKey(
+        IChannel channel,
+        ChannelConfig config,
+        Dictionary<string, int> typeCounts,
+        Dictionary<string, int> typeOrdinals)
+    {
+        var type = channel.ChannelType;
+        var duplicateTypeCount = typeCounts.TryGetValue(type, out var count) ? count : 0;
+        if (duplicateTypeCount <= 1)
+            return type;
+
+        if (!typeOrdinals.TryGetValue(type, out var nextOrdinal))
+            nextOrdinal = 0;
+        nextOrdinal++;
+        typeOrdinals[type] = nextOrdinal;
+
+        var name = config.Name?.Trim();
+        if (!string.IsNullOrWhiteSpace(name))
+            return $"{type}:{name}";
+
+        return $"{type}:{nextOrdinal}";
+    }
+
+    private sealed record RegisteredChannel(IChannel Channel, ChannelConfig Config, string RouteKey);
 
     /// <summary>
     /// Resolves a config agent ID (e.g., "default") to the actual pool agent ID.

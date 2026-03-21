@@ -129,11 +129,13 @@ public sealed class GatewayConfigTests
         var rule = new RoutingRule
         {
             ChannelType = "discord",
+            ChannelName = "support-discord",
             AgentId = "my-agent",
             ConversationPattern = "general-*"
         };
 
         rule.ChannelType.Should().Be("discord");
+        rule.ChannelName.Should().Be("support-discord");
         rule.AgentId.Should().Be("my-agent");
         rule.ConversationPattern.Should().Be("general-*");
     }

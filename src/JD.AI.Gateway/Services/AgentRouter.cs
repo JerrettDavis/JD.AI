@@ -10,6 +10,9 @@ namespace JD.AI.Gateway.Services;
 /// </summary>
 public sealed class AgentRouter
 {
+    public const string RouteKeyMetadataKey = "gateway.routeKey";
+    public const string ChannelTypeMetadataKey = "gateway.channelType";
+
     private readonly AgentPoolService _pool;
     private readonly IChannelRegistry _channels;
     private readonly IEventBus _events;
@@ -40,10 +43,17 @@ public sealed class AgentRouter
 
     /// <summary>Route an inbound message to the mapped agent and return the response.</summary>
     public async Task<string?> RouteAsync(ChannelMessage message, CancellationToken ct = default)
+        => await RouteAsync(message, sourceChannel: null, ct);
+
+    /// <summary>
+    /// Route an inbound message to the mapped agent and send the response via the provided source channel.
+    /// </summary>
+    public async Task<string?> RouteAsync(
+        ChannelMessage message,
+        IChannel? sourceChannel,
+        CancellationToken ct = default)
     {
-        string? agentId;
-        lock (_lock)
-            _channelAgentMap.TryGetValue(message.ChannelId, out agentId);
+        var (agentId, routeKey) = ResolveAgentMapping(message);
 
         if (agentId is null)
         {
@@ -56,12 +66,13 @@ public sealed class AgentRouter
             return null;
         }
 
-        _logger.LogInformation("Routing message from {Channel} to agent {Agent}", message.ChannelId, agentId);
+        _logger.LogInformation("Routing message from {Channel} (route:{RouteKey}) to agent {Agent}",
+            message.ChannelId, routeKey ?? "none", agentId);
 
         var response = await _pool.SendMessageAsync(agentId, message.Content, ct);
 
         // Send response back through the channel
-        var channel = _channels.GetChannel(message.ChannelId);
+        var channel = sourceChannel ?? ResolveChannelForResponse(message);
         if (channel is not null && response is not null)
         {
             await channel.SendMessageAsync(message.ChannelId, response, ct);
@@ -82,5 +93,45 @@ public sealed class AgentRouter
     {
         lock (_lock)
             return _channelAgentMap.TryGetValue(channelId, out var agentId) ? agentId : null;
+    }
+
+    private (string? AgentId, string? RouteKey) ResolveAgentMapping(ChannelMessage message)
+    {
+        var keys = new List<string>(capacity: 3) { message.ChannelId };
+        if (TryGetMetadataValue(message, RouteKeyMetadataKey, out var routeKey))
+            keys.Add(routeKey);
+        if (TryGetMetadataValue(message, ChannelTypeMetadataKey, out var channelType))
+            keys.Add(channelType);
+
+        lock (_lock)
+        {
+            foreach (var key in keys)
+            {
+                if (_channelAgentMap.TryGetValue(key, out var agentId))
+                    return (agentId, key);
+            }
+        }
+
+        return (null, null);
+    }
+
+    private IChannel? ResolveChannelForResponse(ChannelMessage message)
+    {
+        if (TryGetMetadataValue(message, ChannelTypeMetadataKey, out var channelType))
+            return _channels.GetChannel(channelType);
+
+        return _channels.GetChannel(message.ChannelId);
+    }
+
+    private static bool TryGetMetadataValue(ChannelMessage message, string key, out string value)
+    {
+        if (message.Metadata.TryGetValue(key, out var raw) && !string.IsNullOrWhiteSpace(raw))
+        {
+            value = raw;
+            return true;
+        }
+
+        value = string.Empty;
+        return false;
     }
 }
