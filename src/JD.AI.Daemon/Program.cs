@@ -1,4 +1,6 @@
 using System.CommandLine;
+using System.Diagnostics;
+using System.Security.Principal;
 using JD.AI.Channels.OpenClaw;
 using JD.AI.Channels.OpenClaw.Routing;
 using JD.AI.Core.Channels;
@@ -90,11 +92,18 @@ rootCommand.Subcommands.Add(statusCommand);
 // ── update ─────────────────────────────────────────────────────────
 var updateCommand = new Command("update", "Check for and apply updates from NuGet");
 var checkOnlyOption = new Option<bool>("--check-only") { Description = "Only check — don't apply the update" };
+var elevatedOption = new Option<bool>("--elevated")
+{
+    Description = "Internal flag used after UAC/sudo relaunch.",
+    Hidden = true,
+};
 updateCommand.Options.Add(checkOnlyOption);
+updateCommand.Options.Add(elevatedOption);
 updateCommand.SetAction(async parseResult =>
 {
     var checkOnly = parseResult.GetValue(checkOnlyOption);
-    await RunUpdateCommandAsync(checkOnly);
+    var elevated = parseResult.GetValue(elevatedOption);
+    return await RunUpdateCommandAsync(checkOnly, elevated);
 });
 rootCommand.Subcommands.Add(updateCommand);
 
@@ -420,19 +429,42 @@ static void RunDaemon(string[] args)
     app.Run();
 }
 
-static async Task RunUpdateCommandAsync(bool checkOnly)
+static async Task<int> RunUpdateCommandAsync(bool checkOnly, bool elevatedAttempt)
 {
     IServiceManager? serviceManager = null;
     var shouldReconcileService = false;
+    var serviceWasRunning = false;
     try
     {
         serviceManager = CreateServiceManager();
         var status = await serviceManager.GetStatusAsync();
         shouldReconcileService = status.State != ServiceState.NotInstalled;
+        serviceWasRunning = status.State is ServiceState.Running or ServiceState.Starting;
     }
     catch (PlatformNotSupportedException)
     {
         // Update checks are supported on all platforms, but service reconciliation is Windows/Linux only.
+    }
+
+    var needsServiceControl = shouldReconcileService && !checkOnly;
+    if (needsServiceControl)
+    {
+        if (OperatingSystem.IsWindows() && !IsWindowsElevated())
+        {
+            if (!elevatedAttempt && TryRelaunchElevated(checkOnly))
+                return 0;
+
+            Console.WriteLine("✗ Admin rights are required to stop/start the daemon service during update.");
+            Console.WriteLine($"  Re-run from an elevated terminal: {DaemonServiceIdentity.ToolCommand} update");
+            return 1;
+        }
+
+        if (OperatingSystem.IsLinux() && !IsRunningAsRoot())
+        {
+            Console.WriteLine("✗ Root privileges are required to stop/start the daemon service during update.");
+            Console.WriteLine($"  Re-run with sudo: sudo {DaemonServiceIdentity.ToolCommand} update");
+            return 1;
+        }
     }
 
     // Build a minimal host just for the update checker
@@ -452,7 +484,7 @@ static async Task RunUpdateCommandAsync(bool checkOnly)
     if (update is null)
     {
         Console.WriteLine("✓ Already up-to-date.");
-        return;
+        return 0;
     }
 
     Console.WriteLine($"Update available: {update}");
@@ -460,7 +492,18 @@ static async Task RunUpdateCommandAsync(bool checkOnly)
     if (checkOnly)
     {
         Console.WriteLine($"Run '{DaemonServiceIdentity.ToolCommand} update' (without --check-only) to apply.");
-        return;
+        return 0;
+    }
+
+    if (serviceWasRunning && serviceManager is not null)
+    {
+        Console.WriteLine("Stopping daemon service to release locked tool files...");
+        var stopResult = await serviceManager.StopAsync();
+        if (!stopResult.Success)
+        {
+            Console.WriteLine($"✗ Failed to stop service before update: {stopResult.Message}");
+            return 1;
+        }
     }
 
     Console.WriteLine("Applying update via 'dotnet tool update'...");
@@ -471,8 +514,27 @@ static async Task RunUpdateCommandAsync(bool checkOnly)
 
     if (!updateResult.Success)
     {
-        Console.WriteLine($"✗ Update failed: {updateResult.StandardError}");
-        return;
+        var errorText = string.IsNullOrWhiteSpace(updateResult.StandardError)
+            ? updateResult.StandardOutput
+            : updateResult.StandardError;
+        Console.WriteLine($"✗ Update failed: {errorText}");
+
+        if (serviceWasRunning && serviceManager is not null)
+        {
+            Console.WriteLine("Attempting to restart daemon service after failed update...");
+            var restartResult = await serviceManager.StartAsync();
+            if (!restartResult.Success)
+                Console.WriteLine($"Warning: failed to restart service: {restartResult.Message}");
+        }
+
+        if (errorText.Contains("Access to the path", StringComparison.OrdinalIgnoreCase) ||
+            errorText.Contains("is denied", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine("Hint: this usually means the daemon/service still has the tool package locked.");
+            Console.WriteLine("      Ensure the service is stopped and rerun from an elevated shell.");
+        }
+
+        return 1;
     }
 
     if (shouldReconcileService && serviceManager is not null)
@@ -484,7 +546,72 @@ static async Task RunUpdateCommandAsync(bool checkOnly)
             Console.WriteLine($"Warning: package updated, but failed to refresh service/task config: {reconcileResult.Message}");
     }
 
-    Console.WriteLine($"✓ Updated to {update.LatestVersion}. Restart the service to apply.");
+    if (serviceWasRunning && serviceManager is not null)
+    {
+        Console.WriteLine("Starting daemon service...");
+        var startResult = await serviceManager.StartAsync();
+        if (!startResult.Success)
+            Console.WriteLine($"Warning: update succeeded, but service restart failed: {startResult.Message}");
+    }
+
+    Console.WriteLine($"✓ Updated to {update.LatestVersion}.");
+    return 0;
+}
+
+static bool IsWindowsElevated()
+{
+    if (!OperatingSystem.IsWindows())
+        return true;
+
+    try
+    {
+        using var identity = WindowsIdentity.GetCurrent();
+        var principal = new WindowsPrincipal(identity);
+        return principal.IsInRole(WindowsBuiltInRole.Administrator);
+    }
+    catch
+    {
+        return false;
+    }
+}
+
+static bool IsRunningAsRoot()
+{
+    if (!OperatingSystem.IsLinux())
+        return true;
+
+    return string.Equals(Environment.UserName, "root", StringComparison.Ordinal);
+}
+
+static bool TryRelaunchElevated(bool checkOnly)
+{
+    if (!OperatingSystem.IsWindows())
+        return false;
+
+    try
+    {
+        var exePath = Environment.ProcessPath;
+        if (string.IsNullOrWhiteSpace(exePath))
+            return false;
+
+        var arguments = checkOnly ? "update --check-only --elevated" : "update --elevated";
+        var psi = new ProcessStartInfo
+        {
+            FileName = exePath,
+            Arguments = arguments,
+            UseShellExecute = true,
+            Verb = "runas",
+        };
+
+        Process.Start(psi);
+        Console.WriteLine("Relaunched with elevation prompt. Continuing in elevated process...");
+        return true;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Unable to relaunch elevated: {ex.Message}");
+        return false;
+    }
 }
 
 static async Task<int> HandleBridgeCommandAsync(string? action)
