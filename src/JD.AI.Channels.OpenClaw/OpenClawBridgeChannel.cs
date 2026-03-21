@@ -48,7 +48,7 @@ public sealed class OpenClawBridgeChannel : IChannel
         await _rpc.ConnectAsync(ct);
 
         // Subscribe to chat events for the default session
-        var sub = await _rpc.RequestAsync("chat.history", new { sessionKey = _config.SessionKey, limit = 0 }, ct);
+        _ = await _rpc.RequestAsync("chat.history", new { sessionKey = _config.SessionKey, limit = 1 }, ct);
         _logger.LogInformation(
             "Connected to OpenClaw at {Url}, session={Session}",
             _config.WebSocketUrl, _config.SessionKey);
@@ -198,6 +198,15 @@ public sealed class OpenClawBridgeChannel : IChannel
             }
 
             var error = response.Error?.GetProperty("message").GetString() ?? "unknown error";
+            if (IsProtectedMainSessionError(key, error))
+            {
+                if (await TryResetSessionAsync(key, ct).ConfigureAwait(false))
+                {
+                    deleted++;
+                    continue;
+                }
+            }
+
             _logger.LogWarning("sessions.delete failed for '{SessionKey}': {Error}", key, error);
         }
 
@@ -243,6 +252,33 @@ public sealed class OpenClawBridgeChannel : IChannel
                     yield return key;
             }
         }
+    }
+
+    private static bool IsProtectedMainSessionError(string sessionKey, string error) =>
+        sessionKey.EndsWith(":main", StringComparison.OrdinalIgnoreCase)
+        && error.Contains("main session", StringComparison.OrdinalIgnoreCase);
+
+    private async Task<bool> TryResetSessionAsync(string key, CancellationToken ct)
+    {
+        // OpenClaw rejects deleting the active/main session; reset it instead.
+        var candidates = new object[]
+        {
+            new { key },
+            new { sessionKey = key },
+            new { id = key },
+        };
+
+        foreach (var parameters in candidates)
+        {
+            var response = await _rpc.RequestAsync("sessions.reset", parameters, ct).ConfigureAwait(false);
+            if (response.Ok)
+            {
+                _logger.LogInformation("sessions.reset succeeded for protected session '{SessionKey}'", key);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void OnEvent(OpenClawEvent evt)
