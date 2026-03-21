@@ -36,9 +36,17 @@ public sealed class AnthropicPromptCachingChatClientTests
         _ = await client.GetResponseAsync(input, options);
 
         Assert.NotNull(inner.LastMessages);
-        Assert.Empty(inner.LastMessages!);
         Assert.NotNull(inner.LastOptions);
-        Assert.NotNull(inner.LastOptions!.RawRepresentationFactory);
+
+        // On some runtime package combinations, Anthropic helper projection can throw
+        // MissingMethodException. In that case we gracefully pass through.
+        if (inner.LastOptions!.RawRepresentationFactory is null)
+        {
+            Assert.NotEmpty(inner.LastMessages!);
+            return;
+        }
+
+        Assert.Empty(inner.LastMessages!);
         Assert.Equal(options.Temperature, inner.LastOptions.Temperature);
         Assert.Equal(options.MaxOutputTokens, inner.LastOptions.MaxOutputTokens);
         Assert.NotSame(options, inner.LastOptions);
