@@ -227,14 +227,55 @@ public sealed class OpenClawAgentRegistrarTests : IDisposable
         Assert.Equal("untouched", config["name"]!.GetValue<string>());
     }
 
+    [Fact]
+    public void RemoveManagedAgentsAndBindings_RemovesExplicitManagedIds_WhenNotPrefixed()
+    {
+        var config = JsonNode.Parse(
+            """
+            {
+              "agents": {
+                "list": [
+                  { "id": "custom-jdai", "name": "Custom JD.AI agent" },
+                  { "id": "native-assistant", "name": "Native Assistant" }
+                ]
+              },
+              "bindings": [
+                { "agentId": "custom-jdai", "match": { "channel": "signal" } },
+                { "agentId": "native-assistant", "match": { "channel": "discord" } }
+              ]
+            }
+            """)!;
+
+        var (removedAgents, removedBindings) = InvokeRemoveManagedAgentsAndBindings(
+            config,
+            ["custom-jdai"]);
+
+        Assert.Equal(1, removedAgents);
+        Assert.Equal(1, removedBindings);
+        Assert.Equal("native-assistant", config["agents"]!["list"]![0]!["id"]!.GetValue<string>());
+        Assert.Equal("native-assistant", config["bindings"]![0]!["agentId"]!.GetValue<string>());
+    }
+
     private static (int RemovedAgents, int RemovedBindings) InvokeRemoveManagedAgentsAndBindings(JsonNode config)
     {
-        var method = typeof(OpenClawAgentRegistrar).GetMethod(
-            "RemoveManagedAgentsAndBindings",
-            BindingFlags.Static | BindingFlags.NonPublic);
+        var method = typeof(OpenClawAgentRegistrar).GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
+            .Single(m => m.Name == "RemoveManagedAgentsAndBindings" && m.GetParameters().Length == 1);
         Assert.NotNull(method);
 
         var result = method!.Invoke(null, [config]);
+        Assert.NotNull(result);
+        return ((int RemovedAgents, int RemovedBindings))result!;
+    }
+
+    private static (int RemovedAgents, int RemovedBindings) InvokeRemoveManagedAgentsAndBindings(
+        JsonNode config,
+        IEnumerable<string> managedIds)
+    {
+        var method = typeof(OpenClawAgentRegistrar).GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
+            .Single(m => m.Name == "RemoveManagedAgentsAndBindings" && m.GetParameters().Length == 2);
+        Assert.NotNull(method);
+
+        var result = method!.Invoke(null, [config, managedIds]);
         Assert.NotNull(result);
         return ((int RemovedAgents, int RemovedBindings))result!;
     }

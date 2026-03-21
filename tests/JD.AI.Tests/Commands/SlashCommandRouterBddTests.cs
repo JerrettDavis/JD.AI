@@ -1363,4 +1363,564 @@ public sealed class SlashCommandRouterBddTests : TinyBddXunitBase
 
         result.Should().NotContain("No models found");
     }
+
+    // ── 61. /agents create/list/set/delete roundtrip ─────────
+
+    [Scenario("Agents command supports create set list and delete workflow"), Fact]
+    public async Task AgentsCrudRoundtripWorks()
+    {
+        string? createResult = null;
+        string? setToolsResult = null;
+        string? setEnabledResult = null;
+        string? listResult = null;
+        string? deleteResult = null;
+        var tempDir = Path.Combine(Path.GetTempPath(), $"jdai-agents-crud-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        DataDirectories.SetRoot(tempDir);
+
+        try
+        {
+            await Given("an empty agents registry", () => CreateRouter()).
+                When("creating and updating an agent profile",
+                    async Task (router) =>
+                    {
+                        createResult = await router.ExecuteAsync("/agents create reviewer");
+                        setToolsResult = await router.ExecuteAsync("/agents set reviewer tools git_status,git_diff");
+                        setEnabledResult = await router.ExecuteAsync("/agents set reviewer enabled off");
+                        listResult = await router.ExecuteAsync("/agents list");
+                        deleteResult = await router.ExecuteAsync("/agents delete reviewer");
+                    }).
+                Then("all operations return expected confirmations",
+                    _ =>
+                    {
+                        createResult.Should().Contain("Created agent profile 'reviewer'");
+                        setToolsResult.Should().Contain("Updated agent 'reviewer' (tools)");
+                        setEnabledResult.Should().Contain("Updated agent 'reviewer' (enabled)");
+                        listResult.Should().Contain("reviewer");
+                        listResult.Should().Contain("disabled");
+                        deleteResult.Should().Contain("Deleted agent profile 'reviewer'");
+                        return true;
+                    }).
+                AssertPassed();
+        }
+        finally
+        {
+            DataDirectories.Reset();
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    // ── 62. /agents validation paths ─────────────────────────
+
+    [Scenario("Agents command returns usage and validation errors for invalid input"), Fact]
+    public async Task AgentsValidationErrorsReturnUsage()
+    {
+        string? createUsage = null;
+        string? unknownAction = null;
+        string? setUsage = null;
+        string? setUnknownField = null;
+        string? setInvalidEnabled = null;
+        string? duplicateResult = null;
+        var tempDir = Path.Combine(Path.GetTempPath(), $"jdai-agents-errors-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        DataDirectories.SetRoot(tempDir);
+
+        try
+        {
+            await Given("a router with one created agent", () => CreateRouter()).
+                When("executing invalid agents commands",
+                    async Task (router) =>
+                    {
+                        _ = await router.ExecuteAsync("/agents create qa");
+                        createUsage = await router.ExecuteAsync("/agents create");
+                        duplicateResult = await router.ExecuteAsync("/agents create qa");
+                        unknownAction = await router.ExecuteAsync("/agents unknown");
+                        setUsage = await router.ExecuteAsync("/agents set qa");
+                        setUnknownField = await router.ExecuteAsync("/agents set qa random value");
+                        setInvalidEnabled = await router.ExecuteAsync("/agents set qa enabled maybe");
+                    }).
+                Then("each invalid path returns a clear error message",
+                    _ =>
+                    {
+                        createUsage.Should().Contain("Usage: /agents create");
+                        duplicateResult.Should().Contain("already exists");
+                        unknownAction.Should().Contain("Usage: /agents [list|create");
+                        setUsage.Should().Contain("Usage: /agents set");
+                        setUnknownField.Should().Contain("Supported fields");
+                        setInvalidEnabled.Should().Contain("enabled expects on/off");
+                        return true;
+                    }).
+                AssertPassed();
+        }
+        finally
+        {
+            DataDirectories.Reset();
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    // ── 63. /hooks create/toggle/set/delete ─────────────────
+
+    [Scenario("Hooks command supports create toggle set list and delete"), Fact]
+    public async Task HooksCrudRoundtripWorks()
+    {
+        string? createResult = null;
+        string? toggleResult = null;
+        string? setEventResult = null;
+        string? setCommandResult = null;
+        string? setEnabledResult = null;
+        string? listResult = null;
+        string? deleteResult = null;
+        var tempDir = Path.Combine(Path.GetTempPath(), $"jdai-hooks-crud-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        DataDirectories.SetRoot(tempDir);
+
+        try
+        {
+            await Given("an empty hooks registry", () => CreateRouter()).
+                When("creating and modifying a hook",
+                    async Task (router) =>
+                    {
+                        createResult = await router.ExecuteAsync("/hooks create lint");
+                        toggleResult = await router.ExecuteAsync("/hooks toggle lint");
+                        setEventResult = await router.ExecuteAsync("/hooks set lint event pre-tool");
+                        setCommandResult = await router.ExecuteAsync("/hooks set lint command dotnet test");
+                        setEnabledResult = await router.ExecuteAsync("/hooks set lint enabled on");
+                        listResult = await router.ExecuteAsync("/hooks list");
+                        deleteResult = await router.ExecuteAsync("/hooks delete lint");
+                    }).
+                Then("the hook lifecycle operations succeed",
+                    _ =>
+                    {
+                        createResult.Should().Contain("Created hook 'lint'");
+                        toggleResult.Should().Contain("disabled");
+                        setEventResult.Should().Contain("Updated hook 'lint' (event)");
+                        setCommandResult.Should().Contain("Updated hook 'lint' (command)");
+                        setEnabledResult.Should().Contain("Updated hook 'lint' (enabled)");
+                        listResult.Should().Contain("lint");
+                        listResult.Should().Contain("pre-tool");
+                        listResult.Should().Contain("dotnet test");
+                        deleteResult.Should().Contain("Deleted hook 'lint'");
+                        return true;
+                    }).
+                AssertPassed();
+        }
+        finally
+        {
+            DataDirectories.Reset();
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    // ── 64. /hooks validation paths ─────────────────────────
+
+    [Scenario("Hooks command returns usage and validation errors for invalid input"), Fact]
+    public async Task HooksValidationErrorsReturnUsage()
+    {
+        string? createUsage = null;
+        string? duplicateResult = null;
+        string? toggleUsage = null;
+        string? toggleMissing = null;
+        string? setUsage = null;
+        string? setUnknownField = null;
+        string? setInvalidEnabled = null;
+        string? unknownAction = null;
+        var tempDir = Path.Combine(Path.GetTempPath(), $"jdai-hooks-errors-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        DataDirectories.SetRoot(tempDir);
+
+        try
+        {
+            await Given("a router with one hook", () => CreateRouter()).
+                When("executing invalid hooks commands",
+                    async Task (router) =>
+                    {
+                        _ = await router.ExecuteAsync("/hooks create build");
+                        createUsage = await router.ExecuteAsync("/hooks create");
+                        duplicateResult = await router.ExecuteAsync("/hooks create build");
+                        toggleUsage = await router.ExecuteAsync("/hooks toggle");
+                        toggleMissing = await router.ExecuteAsync("/hooks toggle missing");
+                        setUsage = await router.ExecuteAsync("/hooks set build");
+                        setUnknownField = await router.ExecuteAsync("/hooks set build random value");
+                        setInvalidEnabled = await router.ExecuteAsync("/hooks set build enabled maybe");
+                        unknownAction = await router.ExecuteAsync("/hooks wat");
+                    }).
+                Then("validation messages are returned consistently",
+                    _ =>
+                    {
+                        createUsage.Should().Contain("Usage: /hooks create");
+                        duplicateResult.Should().Contain("already exists");
+                        toggleUsage.Should().Contain("Usage: /hooks toggle");
+                        toggleMissing.Should().Contain("not found");
+                        setUsage.Should().Contain("Usage: /hooks set");
+                        setUnknownField.Should().Contain("Supported fields");
+                        setInvalidEnabled.Should().Contain("enabled expects on/off");
+                        unknownAction.Should().Contain("Usage: /hooks [list|create");
+                        return true;
+                    }).
+                AssertPassed();
+        }
+        finally
+        {
+            DataDirectories.Reset();
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    // ── 65. /memory edit append show reset ──────────────────
+
+    [Scenario("Memory command supports edit append show and reset"), Fact]
+    public async Task MemoryEditAppendShowAndResetWorks()
+    {
+        string? editResult = null;
+        string? appendResult = null;
+        string? showResult = null;
+        string? resetResult = null;
+        string? viewResult = null;
+        var tempDir = Path.Combine(Path.GetTempPath(), $"jdai-memory-crud-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        var originalDir = Directory.GetCurrentDirectory();
+
+        try
+        {
+            Directory.SetCurrentDirectory(tempDir);
+            await Given("a router in a temporary project directory", () => CreateRouter()).
+                When("editing and reading project memory",
+                    async Task (router) =>
+                    {
+                        editResult = await router.ExecuteAsync("/memory edit First line");
+                        appendResult = await router.ExecuteAsync("/memory append Second line");
+                        showResult = await router.ExecuteAsync("/memory show");
+                        resetResult = await router.ExecuteAsync("/memory reset");
+                        viewResult = await router.ExecuteAsync("/memory view");
+                    }).
+                Then("memory file operations persist expected content",
+                    _ =>
+                    {
+                        editResult.Should().Contain("Updated");
+                        appendResult.Should().Contain("Appended");
+                        showResult.Should().Contain("Project memory");
+                        showResult.Should().Contain("First line");
+                        showResult.Should().Contain("Second line");
+                        resetResult.Should().Contain("Reset");
+                        viewResult.Should().Contain("Project Instructions");
+                        return true;
+                    }).
+                AssertPassed();
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(originalDir);
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    // ── 66. /memory validation paths ────────────────────────
+
+    [Scenario("Memory command returns usage for invalid or missing args"), Fact]
+    public async Task MemoryValidationPathsReturnUsage()
+    {
+        string? editUsage = null;
+        string? appendUsage = null;
+        string? defaultUsage = null;
+        var tempDir = Path.Combine(Path.GetTempPath(), $"jdai-memory-errors-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        var originalDir = Directory.GetCurrentDirectory();
+
+        try
+        {
+            Directory.SetCurrentDirectory(tempDir);
+            await Given("a router in a temporary project directory", () => CreateRouter()).
+                When("running memory commands with invalid arguments",
+                    async Task (router) =>
+                    {
+                        editUsage = await router.ExecuteAsync("/memory edit");
+                        appendUsage = await router.ExecuteAsync("/memory append");
+                        defaultUsage = await router.ExecuteAsync("/memory unknown");
+                    }).
+                Then("each command returns the appropriate usage guidance",
+                    _ =>
+                    {
+                        editUsage.Should().Contain("Usage: /memory edit");
+                        appendUsage.Should().Contain("Usage: /memory append");
+                        defaultUsage.Should().Contain("Usage: /memory [show|edit");
+                        return true;
+                    }).
+                AssertPassed();
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(originalDir);
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    // ── 67. /default list with project settings ─────────────
+
+    [Scenario("Default command lists global and project settings"), Fact]
+    public async Task DefaultListsGlobalAndProjectSettings()
+    {
+        string? listResult = null;
+        var tempDir = Path.Combine(Path.GetTempPath(), $"jdai-default-list-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        var originalDir = Directory.GetCurrentDirectory();
+
+        try
+        {
+            Directory.SetCurrentDirectory(tempDir);
+            using var configStore = new AtomicConfigStore(Path.Combine(tempDir, "config.json"));
+            await configStore.SetDefaultProviderAsync("global-provider");
+            await configStore.SetDefaultModelAsync("global-model");
+            await configStore.SetDefaultShellAsync("pwsh");
+            await configStore.SetDefaultProviderAsync("project-provider", tempDir);
+            await configStore.SetDefaultModelAsync("project-model", tempDir);
+            await configStore.SetDefaultShellAsync("bash", tempDir);
+
+            await Given("a router with configured global and project defaults",
+                    () => CreateRouter(configStore: configStore)).
+                When("executing /default with no arguments",
+                    async Task (router) => { listResult = await router.ExecuteAsync("/default"); }).
+                Then("both global and project defaults are shown",
+                    _ =>
+                    {
+                        listResult.Should().Contain("Global defaults:");
+                        listResult.Should().Contain("global-provider");
+                        listResult.Should().Contain("global-model");
+                        listResult.Should().Contain("pwsh");
+                        listResult.Should().Contain($"Project defaults ({tempDir})");
+                        listResult.Should().Contain("project-provider");
+                        listResult.Should().Contain("project-model");
+                        listResult.Should().Contain("bash");
+                        return true;
+                    }).
+                AssertPassed();
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(originalDir);
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    // ── 68. /default provider/model/project commands ────────
+
+    [Scenario("Default command updates provider and model defaults"), Fact]
+    public async Task DefaultProviderAndModelCommandsPersistValues()
+    {
+        string? globalProviderResult = null;
+        string? globalModelResult = null;
+        string? projectProviderResult = null;
+        string? projectModelResult = null;
+        string? usageResult = null;
+        string? globalProvider = null;
+        string? globalModel = null;
+        string? projectProvider = null;
+        string? projectModel = null;
+        var tempDir = Path.Combine(Path.GetTempPath(), $"jdai-default-update-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        var originalDir = Directory.GetCurrentDirectory();
+
+        try
+        {
+            Directory.SetCurrentDirectory(tempDir);
+            using var configStore = new AtomicConfigStore(Path.Combine(tempDir, "config.json"));
+
+            await Given("a router with an empty config store",
+                    () => CreateRouter(configStore: configStore)).
+                When("updating global and project defaults",
+                    async Task (router) =>
+                    {
+                        globalProviderResult = await router.ExecuteAsync("/default provider openai");
+                        globalModelResult = await router.ExecuteAsync("/default model gpt-5.4");
+                        projectProviderResult = await router.ExecuteAsync("/default project provider ollama");
+                        projectModelResult = await router.ExecuteAsync("/default project model llama3.1");
+                        usageResult = await router.ExecuteAsync("/default project invalid value");
+                        globalProvider = await configStore.GetDefaultProviderAsync();
+                        globalModel = await configStore.GetDefaultModelAsync();
+                        projectProvider = await configStore.GetDefaultProviderAsync(tempDir);
+                        projectModel = await configStore.GetDefaultModelAsync(tempDir);
+                    }).
+                Then("all supported commands persist and unsupported command returns usage",
+                    _ =>
+                    {
+                        globalProviderResult.Should().Contain("Global default provider set");
+                        globalModelResult.Should().Contain("Global default model set");
+                        projectProviderResult.Should().Contain("Project default provider set");
+                        projectModelResult.Should().Contain("Project default model set");
+                        usageResult.Should().Contain("Usage: /default project provider");
+                        globalProvider.Should().Be("openai");
+                        globalModel.Should().Be("gpt-5.4");
+                        projectProvider.Should().Be("ollama");
+                        projectModel.Should().Be("llama3.1");
+                        return true;
+                    }).
+                AssertPassed();
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(originalDir);
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    // ── 69. /default invalid command returns usage ──────────
+
+    [Scenario("Default command returns usage for unknown arguments"), Fact]
+    public async Task DefaultUnknownArgumentsReturnUsage()
+    {
+        string? result = null;
+        var tempDir = Path.Combine(Path.GetTempPath(), $"jdai-default-usage-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            using var configStore = new AtomicConfigStore(Path.Combine(tempDir, "config.json"));
+            await Given("a router with a config store", () => CreateRouter(configStore: configStore)).
+                When("executing /default with an unsupported format",
+                    async Task (router) => { result = await router.ExecuteAsync("/default nope"); }).
+                Then("usage guidance is returned",
+                    _ =>
+                    {
+                        result.Should().Contain("Usage:");
+                        result.Should().Contain("/default provider <name>");
+                        return true;
+                    }).
+                AssertPassed();
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    // ── 70. /agents usage and not-found branches ────────────
+
+    [Scenario("Agents delete and set return usage and not-found messages"), Fact]
+    public async Task AgentsDeleteAndSetUsageAndNotFound()
+    {
+        string? deleteUsage = null;
+        string? setUsage = null;
+        string? notFound = null;
+        string? setDescription = null;
+        string? setProvider = null;
+        string? setModel = null;
+        string? listResult = null;
+        var tempDir = Path.Combine(Path.GetTempPath(), $"jdai-agents-branches-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        DataDirectories.SetRoot(tempDir);
+
+        try
+        {
+            await Given("a router with one created agent", () => CreateRouter()).
+                When("exercising usage, not-found, and setter branches",
+                    async Task (router) =>
+                    {
+                        deleteUsage = await router.ExecuteAsync("/agents delete");
+                        setUsage = await router.ExecuteAsync("/agents set");
+                        notFound = await router.ExecuteAsync("/agents set ghost description missing");
+                        _ = await router.ExecuteAsync("/agents create writer");
+                        setDescription = await router.ExecuteAsync("/agents set writer description Handles docs");
+                        setProvider = await router.ExecuteAsync("/agents set writer provider openai");
+                        setModel = await router.ExecuteAsync("/agents set writer model gpt-5.4");
+                        listResult = await router.ExecuteAsync("/agents list");
+                    }).
+                Then("all targeted branches return expected outputs",
+                    _ =>
+                    {
+                        deleteUsage.Should().Contain("Usage: /agents delete <name>");
+                        setUsage.Should().Contain("Usage: /agents set <name> <field> <value>");
+                        notFound.Should().Contain("Agent 'ghost' not found");
+                        setDescription.Should().Contain("Updated agent 'writer' (description)");
+                        setProvider.Should().Contain("Updated agent 'writer' (provider)");
+                        setModel.Should().Contain("Updated agent 'writer' (model)");
+                        listResult.Should().Contain("writer");
+                        listResult.Should().Contain("openai/gpt-5.4");
+                        return true;
+                    }).
+                AssertPassed();
+        }
+        finally
+        {
+            DataDirectories.Reset();
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    // ── 71. /hooks usage and not-found branches ─────────────
+
+    [Scenario("Hooks delete and set return usage and not-found messages"), Fact]
+    public async Task HooksDeleteAndSetUsageAndNotFound()
+    {
+        string? deleteUsage = null;
+        string? setUsage = null;
+        string? notFound = null;
+        var tempDir = Path.Combine(Path.GetTempPath(), $"jdai-hooks-branches-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        DataDirectories.SetRoot(tempDir);
+
+        try
+        {
+            await Given("a router with no hooks", () => CreateRouter()).
+                When("running hooks commands that target usage and not-found branches",
+                    async Task (router) =>
+                    {
+                        deleteUsage = await router.ExecuteAsync("/hooks delete");
+                        setUsage = await router.ExecuteAsync("/hooks set");
+                        notFound = await router.ExecuteAsync("/hooks set missing command echo hi");
+                    }).
+                Then("usage and not-found messages are returned",
+                    _ =>
+                    {
+                        deleteUsage.Should().Contain("Usage: /hooks delete <name>");
+                        setUsage.Should().Contain("Usage: /hooks set <name> <field> <value>");
+                        notFound.Should().Contain("Hook 'missing' not found");
+                        return true;
+                    }).
+                AssertPassed();
+        }
+        finally
+        {
+            DataDirectories.Reset();
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    // ── 72. /default project-empty and invalid-subcmd branches ──
+
+    [Scenario("Default command covers no-project-defaults and invalid subcommand fallback"), Fact]
+    public async Task DefaultNoProjectDefaultsAndInvalidSubcommandFallback()
+    {
+        string? listResult = null;
+        string? usageResult = null;
+        var tempDir = Path.Combine(Path.GetTempPath(), $"jdai-default-branches-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            using var configStore = new AtomicConfigStore(Path.Combine(tempDir, "config.json"));
+            await configStore.SetDefaultProviderAsync("global-provider");
+
+            await Given("a router with global defaults but no project overrides",
+                    () => CreateRouter(configStore: configStore)).
+                When("listing defaults and invoking unknown two-token subcommand",
+                    async Task (router) =>
+                    {
+                        listResult = await router.ExecuteAsync("/default");
+                        usageResult = await router.ExecuteAsync("/default invalid value");
+                    }).
+                Then("it reports no project defaults and shows usage fallback",
+                    _ =>
+                    {
+                        listResult.Should().Contain("No project defaults for");
+                        usageResult.Should().Contain("Usage:");
+                        usageResult.Should().Contain("/default model <id>");
+                        return true;
+                    }).
+                AssertPassed();
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
 }
