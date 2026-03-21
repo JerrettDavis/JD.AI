@@ -30,7 +30,7 @@ public sealed class FooterTemplateTests
         var template = FooterTemplate.Parse("{model} │ {session?} │ {mode}");
 
         var conditionalTokens = template.Tokens.Where(t => !t.IsLiteral && t.IsConditional).ToList();
-        var requiredTokens    = template.Tokens.Where(t => !t.IsLiteral && !t.IsConditional).ToList();
+        var requiredTokens = template.Tokens.Where(t => !t.IsLiteral && !t.IsConditional).ToList();
 
         conditionalTokens.Should().ContainSingle(t => t.SegmentKey == "session");
         requiredTokens.Should().HaveCount(2);
@@ -45,9 +45,9 @@ public sealed class FooterTemplateTests
         var template = FooterTemplate.Parse("{model} │ {session?} │ {mode}");
         var segments = new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            ["model"]   = "claude-3",
+            ["model"] = "claude-3",
             ["session"] = null,
-            ["mode"]    = "Normal",
+            ["mode"] = "Normal",
         };
 
         var result = template.Render(segments);
@@ -61,9 +61,9 @@ public sealed class FooterTemplateTests
         var template = FooterTemplate.Parse("{model} │ {session?} │ {mode}");
         var segments = new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            ["model"]   = "claude-3",
+            ["model"] = "claude-3",
             ["session"] = "abc-123",
-            ["mode"]    = "Normal",
+            ["mode"] = "Normal",
         };
 
         var result = template.Render(segments);

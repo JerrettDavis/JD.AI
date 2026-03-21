@@ -1,9 +1,9 @@
+using System.Reflection;
 using JD.AI.Core.Infrastructure;
 using JD.SemanticKernel.Connectors.GitHubCopilot;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.SemanticKernel;
-using System.Reflection;
 namespace JD.AI.Core.Providers;
 
 /// <summary>

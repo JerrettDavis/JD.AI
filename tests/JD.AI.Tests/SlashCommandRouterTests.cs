@@ -1,9 +1,9 @@
+using System.Reflection;
 using JD.AI.Commands;
 using JD.AI.Core.Agents;
 using JD.AI.Core.Config;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
-using System.Reflection;
 using Microsoft.SemanticKernel;
 using NSubstitute;
 using Xunit;

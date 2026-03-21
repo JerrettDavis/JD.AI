@@ -1,8 +1,8 @@
-using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Security.Cryptography;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using JD.AI.Core.Infrastructure;
 using JD.SemanticKernel.Connectors.OpenAICodex;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -48,11 +48,11 @@ public sealed class OpenAICodexDetector : IProviderDetector
 
                 if (!isAuth)
                 {
-                return new ProviderInfo(
-                    ProviderName,
-                    IsAvailable: false,
-                    StatusMessage: "Not authenticated — run 'codex login' (or 'codex login --device-auth')",
-                    Models: []);
+                    return new ProviderInfo(
+                        ProviderName,
+                        IsAvailable: false,
+                        StatusMessage: "Not authenticated — run 'codex login' (or 'codex login --device-auth')",
+                        Models: []);
                 }
             }
 
