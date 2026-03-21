@@ -370,6 +370,52 @@ public sealed class OpenClawAgentRegistrarTests : IDisposable
         Assert.Null(config["agents"]!["list"]![0]!["workspace"]);
     }
 
+    [Fact]
+    public void EnsureNonManagedDefaultAgent_WhenDefaultIsManaged_AssignsNativeDefault()
+    {
+        var config = JsonNode.Parse(
+            """
+            {
+              "agents": {
+                "list": [
+                  { "id": "jdai-default", "name": "JD.AI Assistant", "default": true, "workspace": "C:\\Users\\jd\\.jdai\\openclaw-workspaces\\jdai-default" },
+                  { "id": "native-assistant", "name": "Native Assistant", "default": false }
+                ]
+              }
+            }
+            """)!;
+
+        var changed = InvokeEnsureNonManagedDefaultAgent(config, ["jdai-default"]);
+
+        Assert.True(changed);
+        Assert.False(config["agents"]!["list"]![0]!["default"]!.GetValue<bool>());
+        Assert.True(config["agents"]!["list"]![1]!["default"]!.GetValue<bool>());
+    }
+
+    [Fact]
+    public void EnsureNonManagedDefaultAgent_WhenOnlyManagedAgentExists_CreatesNativeMainDefault()
+    {
+        var config = JsonNode.Parse(
+            """
+            {
+              "agents": {
+                "list": [
+                  { "id": "jdai-default", "name": "JD.AI Assistant", "default": true, "workspace": "C:\\Users\\jd\\.jdai\\openclaw-workspaces\\jdai-default" }
+                ]
+              }
+            }
+            """)!;
+
+        var changed = InvokeEnsureNonManagedDefaultAgent(config, ["jdai-default"]);
+
+        Assert.True(changed);
+        var list = config["agents"]!["list"]!.AsArray();
+        Assert.Equal(2, list.Count);
+        Assert.Equal("main", list[1]!["id"]!.GetValue<string>());
+        Assert.Equal("Assistant", list[1]!["name"]!.GetValue<string>());
+        Assert.True(list[1]!["default"]!.GetValue<bool>());
+    }
+
     private static (int RemovedAgents, int RemovedBindings) InvokeRemoveManagedAgentsAndBindings(JsonNode config)
     {
         var method = typeof(OpenClawAgentRegistrar).GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
@@ -388,6 +434,17 @@ public sealed class OpenClawAgentRegistrarTests : IDisposable
         Assert.NotNull(method);
 
         var result = method!.Invoke(null, [config]);
+        Assert.NotNull(result);
+        return (bool)result!;
+    }
+
+    private static bool InvokeEnsureNonManagedDefaultAgent(JsonNode config, IEnumerable<string> managedIds)
+    {
+        var method = typeof(OpenClawAgentRegistrar).GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
+            .Single(m => string.Equals(m.Name, "EnsureNonManagedDefaultAgent", StringComparison.Ordinal) && m.GetParameters().Length == 2);
+        Assert.NotNull(method);
+
+        var result = method!.Invoke(null, [config, managedIds]);
         Assert.NotNull(result);
         return (bool)result!;
     }

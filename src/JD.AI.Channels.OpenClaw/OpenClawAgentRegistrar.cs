@@ -148,6 +148,13 @@ public sealed class OpenClawAgentRegistrar
                 }
             }
 
+            var defaultAgentNormalized = EnsureNonManagedDefaultAgent(configNode, successfulIds);
+            if (defaultAgentNormalized)
+            {
+                _logger.LogInformation(
+                    "Normalized OpenClaw default agent to a non-JD.AI agent while registering bridge shims");
+            }
+
             // Write the updated config atomically
             if (baseHash is null)
             {
@@ -199,7 +206,7 @@ public sealed class OpenClawAgentRegistrar
             var preModificationRaw = configNode.ToJsonString(IndentedJson);
 
             var (removedAgents, removedBindings) = RemoveManagedAgentsAndBindings(configNode, managedAgentIds);
-            var defaultAgentRecovered = EnsureDefaultMainAgent(configNode);
+            var defaultAgentRecovered = EnsureNonManagedDefaultAgent(configNode);
             if (removedAgents > 0)
             {
                 _logger.LogInformation(
@@ -306,6 +313,13 @@ public sealed class OpenClawAgentRegistrar
 
     internal static bool EnsureDefaultMainAgent(JsonNode configNode)
     {
+        return EnsureNonManagedDefaultAgent(configNode);
+    }
+
+    internal static bool EnsureNonManagedDefaultAgent(
+        JsonNode configNode,
+        IEnumerable<string>? managedAgentIds = null)
+    {
         ArgumentNullException.ThrowIfNull(configNode);
 
         var root = configNode.AsObject();
@@ -321,9 +335,30 @@ public sealed class OpenClawAgentRegistrar
             agentsObject["list"] = list;
         }
 
+        var explicitManagedIds = managedAgentIds?
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id => id.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        static string NormalizeId(string id) => id.Trim();
+        var hasExplicitManagedIds = explicitManagedIds is { Count: > 0 };
+        bool IsManaged(JsonObject agent)
+        {
+            var id = agent["id"]?.GetValue<string>();
+            var workspace = agent["workspace"]?.GetValue<string>();
+            if (IsJdAiWorkspacePath(workspace))
+                return true;
+            if (string.IsNullOrWhiteSpace(id))
+                return false;
+
+            var normalized = NormalizeId(id);
+            return normalized.StartsWith(AgentIdPrefix, StringComparison.OrdinalIgnoreCase)
+                   || (hasExplicitManagedIds && explicitManagedIds!.Contains(normalized));
+        }
+
         var mainAgentIndex = -1;
-        var hasAnyAgent = false;
-        var hasDefault = false;
+        var nonManagedMainAgentIndex = -1;
+        var firstNonManagedAgentIndex = -1;
+        var defaultNonManagedAgentIndex = -1;
 
         for (var i = 0; i < list.Count; i++)
         {
@@ -335,47 +370,86 @@ public sealed class OpenClawAgentRegistrar
             if (string.IsNullOrWhiteSpace(id))
                 continue;
 
-            hasAnyAgent = true;
-
             if (string.Equals(id, OpenClawDefaultAgentId, StringComparison.OrdinalIgnoreCase))
                 mainAgentIndex = i;
 
             if (agent["default"]?.GetValue<bool>() == true)
-                hasDefault = true;
-        }
-
-        if (!hasAnyAgent)
-        {
-            list.Add(new JsonObject
             {
-                ["id"] = OpenClawDefaultAgentId,
-                ["name"] = "Assistant",
-                ["default"] = true,
-            });
-            return true;
+                if (IsManaged(agent))
+                    continue;
+            }
+            else if (IsManaged(agent))
+            {
+                continue;
+            }
+
+            if (firstNonManagedAgentIndex < 0)
+                firstNonManagedAgentIndex = i;
+
+            if (string.Equals(id, OpenClawDefaultAgentId, StringComparison.OrdinalIgnoreCase))
+                nonManagedMainAgentIndex = i;
+
+            if (agent["default"]?.GetValue<bool>() == true)
+                defaultNonManagedAgentIndex = i;
         }
 
         var changed = false;
-        if (mainAgentIndex >= 0 && list[mainAgentIndex] is JsonObject mainAgent)
+        if (firstNonManagedAgentIndex < 0)
         {
-            var mainWorkspace = mainAgent["workspace"]?.GetValue<string>();
-            if (IsJdAiWorkspacePath(mainWorkspace))
+            if (mainAgentIndex >= 0 && list[mainAgentIndex] is JsonObject contaminatedMain)
             {
-                mainAgent.Remove("workspace");
+                var contaminatedWorkspace = contaminatedMain["workspace"]?.GetValue<string>();
+                if (IsJdAiWorkspacePath(contaminatedWorkspace))
+                {
+                    contaminatedMain.Remove("workspace");
+                    changed = true;
+                }
+
+                var mainName = contaminatedMain["name"]?.GetValue<string>();
+                if (string.IsNullOrWhiteSpace(mainName)
+                    || mainName.StartsWith("JD.AI", StringComparison.OrdinalIgnoreCase))
+                {
+                    contaminatedMain["name"] = "Assistant";
+                    changed = true;
+                }
+
+                nonManagedMainAgentIndex = mainAgentIndex;
+                firstNonManagedAgentIndex = mainAgentIndex;
+            }
+            else
+            {
+                list.Add(new JsonObject
+                {
+                    ["id"] = OpenClawDefaultAgentId,
+                    ["name"] = "Assistant",
+                });
+                nonManagedMainAgentIndex = list.Count - 1;
+                firstNonManagedAgentIndex = nonManagedMainAgentIndex;
                 changed = true;
             }
+        }
 
-            var mainName = mainAgent["name"]?.GetValue<string>();
-            if (string.IsNullOrWhiteSpace(mainName)
-                || mainName.StartsWith("JD.AI", StringComparison.OrdinalIgnoreCase))
+        var preferredDefaultIndex = defaultNonManagedAgentIndex >= 0
+            ? defaultNonManagedAgentIndex
+            : nonManagedMainAgentIndex >= 0
+                ? nonManagedMainAgentIndex
+                : firstNonManagedAgentIndex;
+
+        for (var i = 0; i < list.Count; i++)
+        {
+            if (list[i] is not JsonObject agent)
+                continue;
+
+            var shouldBeDefault = i == preferredDefaultIndex;
+            var currentDefault = agent["default"]?.GetValue<bool>() == true;
+            if (shouldBeDefault && !currentDefault)
             {
-                mainAgent["name"] = "Assistant";
+                agent["default"] = true;
                 changed = true;
             }
-
-            if (!hasDefault)
+            else if (!shouldBeDefault && currentDefault)
             {
-                mainAgent["default"] = true;
+                agent["default"] = false;
                 changed = true;
             }
         }
