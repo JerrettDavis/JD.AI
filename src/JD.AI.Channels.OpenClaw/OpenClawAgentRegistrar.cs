@@ -79,6 +79,7 @@ public sealed class OpenClawAgentRegistrar
 {
     /// <summary>Prefix used to identify JD.AI-managed agents in OpenClaw config.</summary>
     public const string AgentIdPrefix = "jdai-";
+    internal const string OpenClawDefaultAgentId = "main";
 
     /// <summary>Directory for config backups before writes.</summary>
     public static string ConfigBackupDirectory =>
@@ -198,6 +199,7 @@ public sealed class OpenClawAgentRegistrar
             var preModificationRaw = configNode.ToJsonString(IndentedJson);
 
             var (removedAgents, removedBindings) = RemoveManagedAgentsAndBindings(configNode, managedAgentIds);
+            var defaultAgentRecovered = EnsureDefaultMainAgent(configNode);
             if (removedAgents > 0)
             {
                 _logger.LogInformation(
@@ -205,7 +207,14 @@ public sealed class OpenClawAgentRegistrar
                     removedAgents);
             }
 
-            if (baseHash is not null && (removedAgents > 0 || removedBindings > 0))
+            if (defaultAgentRecovered)
+            {
+                _logger.LogInformation(
+                    "Recovered OpenClaw default agent '{AgentId}' after JD.AI cleanup",
+                    OpenClawDefaultAgentId);
+            }
+
+            if (baseHash is not null && (removedAgents > 0 || removedBindings > 0 || defaultAgentRecovered))
                 await WriteConfigAsync(configNode, baseHash, preModificationRaw, ct);
         }
         catch (Exception ex)
@@ -288,6 +297,67 @@ public sealed class OpenClawAgentRegistrar
         }
 
         return (removedAgents, removedBindings);
+    }
+
+    internal static bool EnsureDefaultMainAgent(JsonNode configNode)
+    {
+        ArgumentNullException.ThrowIfNull(configNode);
+
+        var root = configNode.AsObject();
+        if (root["agents"] is not JsonObject agentsObject)
+        {
+            agentsObject = new JsonObject();
+            root["agents"] = agentsObject;
+        }
+
+        if (agentsObject["list"] is not JsonArray list)
+        {
+            list = [];
+            agentsObject["list"] = list;
+        }
+
+        var mainAgentIndex = -1;
+        var hasAnyAgent = false;
+        var hasDefault = false;
+
+        for (var i = 0; i < list.Count; i++)
+        {
+            var node = list[i];
+            if (node is not JsonObject agent)
+                continue;
+
+            var id = agent["id"]?.GetValue<string>()?.Trim();
+            if (string.IsNullOrWhiteSpace(id))
+                continue;
+
+            hasAnyAgent = true;
+
+            if (string.Equals(id, OpenClawDefaultAgentId, StringComparison.OrdinalIgnoreCase))
+                mainAgentIndex = i;
+
+            if (agent["default"]?.GetValue<bool>() == true)
+                hasDefault = true;
+        }
+
+        if (!hasAnyAgent)
+        {
+            list.Add(new JsonObject
+            {
+                ["id"] = OpenClawDefaultAgentId,
+                ["name"] = "Assistant",
+                ["default"] = true,
+            });
+            return true;
+        }
+
+        if (mainAgentIndex >= 0 && !hasDefault)
+        {
+            if (list[mainAgentIndex] is JsonObject mainAgent)
+                mainAgent["default"] = true;
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>Gets the list of registered JD.AI agent IDs.</summary>

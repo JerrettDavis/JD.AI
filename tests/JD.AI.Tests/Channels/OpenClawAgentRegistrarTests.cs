@@ -256,6 +256,61 @@ public sealed class OpenClawAgentRegistrarTests : IDisposable
         Assert.Equal("native-assistant", config["bindings"]![0]!["agentId"]!.GetValue<string>());
     }
 
+    [Fact]
+    public void EnsureDefaultMainAgent_WhenNoAgentsExist_AddsMainDefaultAgent()
+    {
+        var config = JsonNode.Parse("""{ "agents": {} }""")!;
+
+        var changed = OpenClawAgentRegistrar.EnsureDefaultMainAgent(config);
+
+        Assert.True(changed);
+        Assert.Equal("main", config["agents"]!["list"]![0]!["id"]!.GetValue<string>());
+        Assert.Equal("Assistant", config["agents"]!["list"]![0]!["name"]!.GetValue<string>());
+        Assert.True(config["agents"]!["list"]![0]!["default"]!.GetValue<bool>());
+    }
+
+    [Fact]
+    public void EnsureDefaultMainAgent_WhenMainExistsWithoutDefault_MarksMainAsDefault()
+    {
+        var config = JsonNode.Parse(
+            """
+            {
+              "agents": {
+                "list": [
+                  { "id": "main", "name": "Main Assistant" },
+                  { "id": "native-assistant", "name": "Native Assistant" }
+                ]
+              }
+            }
+            """)!;
+
+        var changed = OpenClawAgentRegistrar.EnsureDefaultMainAgent(config);
+
+        Assert.True(changed);
+        Assert.True(config["agents"]!["list"]![0]!["default"]!.GetValue<bool>());
+    }
+
+    [Fact]
+    public void EnsureDefaultMainAgent_WhenDefaultAlreadySet_DoesNotModifyConfig()
+    {
+        var config = JsonNode.Parse(
+            """
+            {
+              "agents": {
+                "list": [
+                  { "id": "native-assistant", "name": "Native Assistant", "default": true }
+                ]
+              }
+            }
+            """)!;
+
+        var changed = OpenClawAgentRegistrar.EnsureDefaultMainAgent(config);
+
+        Assert.False(changed);
+        Assert.True(config["agents"]!["list"]![0]!["default"]!.GetValue<bool>());
+        Assert.Equal("native-assistant", config["agents"]!["list"]![0]!["id"]!.GetValue<string>());
+    }
+
     private static (int RemovedAgents, int RemovedBindings) InvokeRemoveManagedAgentsAndBindings(JsonNode config)
     {
         var method = typeof(OpenClawAgentRegistrar).GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
