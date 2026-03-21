@@ -503,7 +503,7 @@ public sealed class BridgeCommandServiceTests
 
         public async ValueTask DisposeAsync()
         {
-            _cts.Cancel();
+            await _cts.CancelAsync().ConfigureAwait(false);
             _listener.Stop();
             _listener.Close();
             try
@@ -538,7 +538,7 @@ public sealed class BridgeCommandServiceTests
                 if (ctx is null)
                     continue;
 
-                if (ctx.Request.IsWebSocketRequest && ctx.Request.Url?.AbsolutePath == "/ws/")
+                if (ctx.Request.IsWebSocketRequest && string.Equals(ctx.Request.Url?.AbsolutePath, "/ws/", StringComparison.Ordinal))
                 {
                     var wsCtx = await ctx.AcceptWebSocketAsync(subProtocol: null).ConfigureAwait(false);
                     await HandleWebSocketAsync(wsCtx.WebSocket).ConfigureAwait(false);
@@ -563,7 +563,7 @@ public sealed class BridgeCommandServiceTests
 
                 using var doc = JsonDocument.Parse(text);
                 var root = doc.RootElement;
-                if (!root.TryGetProperty("type", out var type) || type.GetString() != "req")
+                if (!root.TryGetProperty("type", out var type) || !string.Equals(type.GetString(), "req", StringComparison.Ordinal))
                     continue;
 
                 var id = root.GetProperty("id").GetString() ?? "unknown";
@@ -663,7 +663,7 @@ public sealed class BridgeCommandServiceTests
                 if (result.MessageType == WebSocketMessageType.Close)
                     return null;
 
-                ms.Write(buffer, 0, result.Count);
+                await ms.WriteAsync(buffer.AsMemory(0, result.Count), CancellationToken.None).ConfigureAwait(false);
                 if (result.EndOfMessage)
                     break;
             }
