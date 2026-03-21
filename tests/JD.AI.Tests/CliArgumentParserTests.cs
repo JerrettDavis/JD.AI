@@ -23,6 +23,15 @@ public sealed class CliArgumentParserTests
     }
 
     [Fact]
+    public async Task ParseAsync_Setup_SubcommandArgsAreCaptured()
+    {
+        var opts = await CliArgumentParser.ParseAsync(["setup", "--daemon-only", "--bridge", "disable"]);
+
+        Assert.Equal("setup", opts.Subcommand);
+        Assert.Equal(["--daemon-only", "--bridge", "disable"], opts.SubcommandArgs);
+    }
+
+    [Fact]
     public async Task ParseAsync_RegularFlags_DoNotBecomeSubcommand()
     {
         var opts = await CliArgumentParser.ParseAsync(["--provider", "openai", "--model", "gpt-4.1"]);
