@@ -56,7 +56,19 @@ internal sealed class AnthropicPromptCachingChatClient : IChatClient
             return (messages, options);
         }
 
-        var parameters = ChatClientHelper.CreateMessageParameters(_inner, messages, options);
+        MessageParameters parameters;
+        try
+        {
+            parameters = ChatClientHelper.CreateMessageParameters(_inner, messages, options);
+        }
+        catch (MissingMethodException)
+        {
+            // Some Microsoft.Extensions.AI package combinations can surface
+            // runtime API mismatches in ChatClientHelper's tool projection path.
+            // Fall back to normal request execution rather than failing the call.
+            return (messages, options);
+        }
+
         parameters.PromptCaching = PromptCacheType.AutomaticToolsAndSystem;
         ApplyCacheControls(parameters, ttl);
 
