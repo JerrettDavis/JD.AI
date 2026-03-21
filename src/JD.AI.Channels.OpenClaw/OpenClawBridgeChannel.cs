@@ -185,6 +185,18 @@ public sealed class OpenClawBridgeChannel : IChannel
         var deleted = 0;
         foreach (var key in keys)
         {
+            if (key.EndsWith(":main", StringComparison.OrdinalIgnoreCase))
+            {
+                if (await TryResetSessionAsync(key, ct).ConfigureAwait(false))
+                {
+                    deleted++;
+                    continue;
+                }
+
+                _logger.LogWarning("sessions.reset failed for protected main session '{SessionKey}'", key);
+                continue;
+            }
+
             var response = await _rpc.RequestAsync("sessions.delete", new
             {
                 key,
@@ -198,15 +210,6 @@ public sealed class OpenClawBridgeChannel : IChannel
             }
 
             var error = response.Error?.GetProperty("message").GetString() ?? "unknown error";
-            if (IsProtectedMainSessionError(key, error))
-            {
-                if (await TryResetSessionAsync(key, ct).ConfigureAwait(false))
-                {
-                    deleted++;
-                    continue;
-                }
-            }
-
             _logger.LogWarning("sessions.delete failed for '{SessionKey}': {Error}", key, error);
         }
 
@@ -253,10 +256,6 @@ public sealed class OpenClawBridgeChannel : IChannel
             }
         }
     }
-
-    private static bool IsProtectedMainSessionError(string sessionKey, string error) =>
-        sessionKey.EndsWith(":main", StringComparison.OrdinalIgnoreCase)
-        && error.Contains("main session", StringComparison.OrdinalIgnoreCase);
 
     private async Task<bool> TryResetSessionAsync(string key, CancellationToken ct)
     {
