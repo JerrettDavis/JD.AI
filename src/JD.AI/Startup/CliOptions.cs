@@ -84,6 +84,7 @@ internal static class CliArgumentParser
                 string.Equals(candidate, "plugin", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(candidate, "onboard", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(candidate, "wizard", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(candidate, "setup", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(candidate, "update", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(candidate, "install", StringComparison.OrdinalIgnoreCase))
             {

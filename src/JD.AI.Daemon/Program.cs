@@ -24,6 +24,11 @@ using JD.AI.Gateway.Middleware;
 using JD.AI.Gateway.Services;
 
 var rootCommand = new RootCommand("JD.AI Gateway Daemon — run as a system service with auto-updates");
+var serviceElevatedOption = new Option<bool>("--elevated")
+{
+    Description = "Internal flag used after UAC/sudo relaunch.",
+    Hidden = true,
+};
 
 // ── run (default) ──────────────────────────────────────────────────
 var runCommand = new Command("run", "Start the daemon (default when no subcommand is given)");
@@ -35,8 +40,13 @@ rootCommand.SetAction(_ => RunDaemon(args));
 
 // ── install ────────────────────────────────────────────────────────
 var installCommand = new Command("install", "Install as a Windows Service or systemd unit");
-installCommand.SetAction(async _ =>
+installCommand.Options.Add(serviceElevatedOption);
+installCommand.SetAction(async parseResult =>
 {
+    var privilegeExitCode = EnsureServicePrivilegesForAction("install", parseResult.GetValue(serviceElevatedOption));
+    if (privilegeExitCode.HasValue)
+        return privilegeExitCode.Value;
+
     var mgr = CreateServiceManager();
     var result = await mgr.InstallAsync();
     Console.WriteLine(result.Message);
@@ -46,8 +56,13 @@ rootCommand.Subcommands.Add(installCommand);
 
 // ── uninstall ──────────────────────────────────────────────────────
 var uninstallCommand = new Command("uninstall", "Remove the system service");
-uninstallCommand.SetAction(async _ =>
+uninstallCommand.Options.Add(serviceElevatedOption);
+uninstallCommand.SetAction(async parseResult =>
 {
+    var privilegeExitCode = EnsureServicePrivilegesForAction("uninstall", parseResult.GetValue(serviceElevatedOption));
+    if (privilegeExitCode.HasValue)
+        return privilegeExitCode.Value;
+
     var mgr = CreateServiceManager();
     var result = await mgr.UninstallAsync();
     Console.WriteLine(result.Message);
@@ -57,8 +72,13 @@ rootCommand.Subcommands.Add(uninstallCommand);
 
 // ── start ──────────────────────────────────────────────────────────
 var startCommand = new Command("start", "Start the installed service");
-startCommand.SetAction(async _ =>
+startCommand.Options.Add(serviceElevatedOption);
+startCommand.SetAction(async parseResult =>
 {
+    var privilegeExitCode = EnsureServicePrivilegesForAction("start", parseResult.GetValue(serviceElevatedOption));
+    if (privilegeExitCode.HasValue)
+        return privilegeExitCode.Value;
+
     var mgr = CreateServiceManager();
     var result = await mgr.StartAsync();
     Console.WriteLine(result.Message);
@@ -68,8 +88,13 @@ rootCommand.Subcommands.Add(startCommand);
 
 // ── stop ───────────────────────────────────────────────────────────
 var stopCommand = new Command("stop", "Stop the running service");
-stopCommand.SetAction(async _ =>
+stopCommand.Options.Add(serviceElevatedOption);
+stopCommand.SetAction(async parseResult =>
 {
+    var privilegeExitCode = EnsureServicePrivilegesForAction("stop", parseResult.GetValue(serviceElevatedOption));
+    if (privilegeExitCode.HasValue)
+        return privilegeExitCode.Value;
+
     var mgr = CreateServiceManager();
     var result = await mgr.StopAsync();
     Console.WriteLine(result.Message);
@@ -651,6 +676,29 @@ static bool TryRelaunchElevatedWithArgs(string arguments)
         Console.WriteLine($"Unable to relaunch elevated: {ex.Message}");
         return false;
     }
+}
+
+static int? EnsureServicePrivilegesForAction(string action, bool elevatedAttempt)
+{
+    if (OperatingSystem.IsWindows() && !IsWindowsElevated())
+    {
+        var cmdArgs = $"{action} --elevated";
+        if (!elevatedAttempt && TryRelaunchElevatedWithArgs(cmdArgs))
+            return 0;
+
+        Console.WriteLine($"✗ Admin rights are required for '{DaemonServiceIdentity.ToolCommand} {action}'.");
+        Console.WriteLine($"  Re-run from an elevated terminal: {DaemonServiceIdentity.ToolCommand} {action}");
+        return 1;
+    }
+
+    if (OperatingSystem.IsLinux() && !IsRunningAsRoot())
+    {
+        Console.WriteLine($"✗ Root privileges are required for '{DaemonServiceIdentity.ToolCommand} {action}'.");
+        Console.WriteLine($"  Re-run with sudo: sudo {DaemonServiceIdentity.ToolCommand} {action}");
+        return 1;
+    }
+
+    return null;
 }
 
 static async Task<int> HandleBridgeCommandAsync(string? action, bool elevatedAttempt)
