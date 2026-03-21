@@ -145,6 +145,11 @@ public sealed class RoutingConfig
 public sealed class RoutingRule
 {
     public string ChannelType { get; set; } = "";
+    /// <summary>
+    /// Optional channel instance name (from <see cref="ChannelConfig.Name"/>).
+    /// When set, this rule targets only the named channel instance.
+    /// </summary>
+    public string? ChannelName { get; set; }
     public string AgentId { get; set; } = "";
     public string? ConversationPattern { get; set; }
 }
