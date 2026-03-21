@@ -173,3 +173,13 @@ TDD done criteria:
 4. Slash router + startup orchestration branch tests.
 5. Add dashboard bUnit baseline for settings pages.
 
+## Checkpoint (2026-03-20)
+
+- Coverage swarm progress recorded before OpenClaw side-mission:
+- `JD.AI.Tests` line coverage: `66.2%`
+- `JD.AI.Tests` branch coverage: `57.1%`
+- `JD.AI.Commands.SlashCommandRouter` line coverage: `53.8%`
+- Artifacts:
+- `coverage-report/jdai-tests-after-wave2/Summary.txt`
+- `coverage-report/jdai-tests-after-wave2/uncovered-classes-top200.txt`
+- `coverage-report/jdai-tests-after-wave2/uncovered-lines-top500.txt`

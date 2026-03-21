@@ -181,7 +181,9 @@ public sealed class OpenClawAgentRegistrar
     /// <summary>
     /// Removes previously registered JD.AI agents from the OpenClaw gateway.
     /// </summary>
-    public async Task UnregisterAgentsAsync(CancellationToken ct = default)
+    public async Task UnregisterAgentsAsync(
+        IEnumerable<string>? managedAgentIds = null,
+        CancellationToken ct = default)
     {
         if (!_rpc.IsConnected)
             return;
@@ -195,7 +197,7 @@ public sealed class OpenClawAgentRegistrar
             // Snapshot before mutation for backup
             var preModificationRaw = configNode.ToJsonString(IndentedJson);
 
-            var (removedAgents, removedBindings) = RemoveManagedAgentsAndBindings(configNode);
+            var (removedAgents, removedBindings) = RemoveManagedAgentsAndBindings(configNode, managedAgentIds);
             if (removedAgents > 0)
             {
                 _logger.LogInformation(
@@ -218,9 +220,35 @@ public sealed class OpenClawAgentRegistrar
     /// Removes JD.AI-managed agents/bindings (prefixed with <see cref="AgentIdPrefix"/>)
     /// from a parsed OpenClaw config document.
     /// </summary>
-    internal static (int RemovedAgents, int RemovedBindings) RemoveManagedAgentsAndBindings(JsonNode configNode)
+    internal static (int RemovedAgents, int RemovedBindings) RemoveManagedAgentsAndBindings(JsonNode configNode) =>
+        RemoveManagedAgentsAndBindings(configNode, managedAgentIds: null);
+
+    /// <summary>
+    /// Removes JD.AI-managed agents/bindings from a parsed OpenClaw config document.
+    /// Managed entries are those with the JD.AI prefix and any explicit IDs supplied.
+    /// </summary>
+    internal static (int RemovedAgents, int RemovedBindings) RemoveManagedAgentsAndBindings(
+        JsonNode configNode,
+        IEnumerable<string>? managedAgentIds)
     {
         ArgumentNullException.ThrowIfNull(configNode);
+
+        var explicitManagedIds = managedAgentIds?
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id => id.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        static string NormalizeId(string id) => id.Trim();
+        var hasExplicitManagedIds = explicitManagedIds is { Count: > 0 };
+        bool IsManaged(string? agentId)
+        {
+            if (string.IsNullOrWhiteSpace(agentId))
+                return false;
+
+            var normalized = NormalizeId(agentId);
+            return normalized.StartsWith(AgentIdPrefix, StringComparison.Ordinal)
+                || (hasExplicitManagedIds && explicitManagedIds!.Contains(normalized));
+        }
 
         var removedAgents = 0;
         var removedBindings = 0;
@@ -231,7 +259,7 @@ public sealed class OpenClawAgentRegistrar
             for (var i = list.Count - 1; i >= 0; i--)
             {
                 var id = list[i]?["id"]?.GetValue<string>();
-                if (id is not null && id.StartsWith(AgentIdPrefix, StringComparison.Ordinal))
+                if (IsManaged(id))
                 {
                     list.RemoveAt(i);
                     removedAgents++;
@@ -248,7 +276,7 @@ public sealed class OpenClawAgentRegistrar
             for (var i = bindings.Count - 1; i >= 0; i--)
             {
                 var agentId = bindings[i]?["agentId"]?.GetValue<string>();
-                if (agentId is not null && agentId.StartsWith(AgentIdPrefix, StringComparison.Ordinal))
+                if (IsManaged(agentId))
                 {
                     bindings.RemoveAt(i);
                     removedBindings++;

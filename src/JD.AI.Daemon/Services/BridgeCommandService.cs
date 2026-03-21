@@ -1,4 +1,5 @@
 using JD.AI.Channels.OpenClaw;
+using JD.AI.Core.Config;
 using JD.AI.Core.Infrastructure;
 using JD.AI.Gateway.Config;
 using Microsoft.Extensions.Configuration;
@@ -129,6 +130,8 @@ public class BridgeCommandService
         var config = new ConfigurationBuilder()
             .AddJsonFile(appSettingsPath, optional: true, reloadOnChange: false)
             .Build();
+        var openClawGatewayConfig = config.GetSection("Gateway:OpenClaw").Get<OpenClawGatewayConfig>()
+                                  ?? new OpenClawGatewayConfig();
 
         try
         {
@@ -151,10 +154,10 @@ public class BridgeCommandService
             Console.WriteLine($"Runtime bridge cleanup note: skipped ({ex.Message}).");
         }
 
-        if (runtimeCleanupSucceeded)
-            return;
+        if (!runtimeCleanupSucceeded)
+            await DisableBridgeRuntimeDirectAsync(config).ConfigureAwait(false);
 
-        await DisableBridgeRuntimeDirectAsync(config).ConfigureAwait(false);
+        CleanupManagedOpenClawArtifacts(openClawGatewayConfig);
     }
 
     protected virtual async Task DisableBridgeRuntimeDirectAsync(IConfiguration config)
@@ -185,6 +188,11 @@ public class BridgeCommandService
                 openClawConfig);
 
             await bridge.ConnectAsync().ConfigureAwait(false);
+            var managedAgentIds = BuildManagedAgentIds(openClawGatewayConfig);
+            var registrar = new OpenClawAgentRegistrar(
+                rpc,
+                NullLogger<OpenClawAgentRegistrar>.Instance);
+            await registrar.UnregisterAgentsAsync(managedAgentIds).ConfigureAwait(false);
             var (prefixes, contains) = BuildManagedSessionFilters(openClawGatewayConfig);
             var deleted = await bridge.DeleteSessionsByPrefixAsync(
                 prefixes,
@@ -192,7 +200,7 @@ public class BridgeCommandService
                 deleteTranscript: true).ConfigureAwait(false);
             await bridge.DisconnectAsync().ConfigureAwait(false);
 
-            Console.WriteLine($"Runtime bridge cleanup note: direct OpenClaw cleanup removed {deleted} managed session(s).");
+            Console.WriteLine($"Runtime bridge cleanup note: direct OpenClaw cleanup removed {deleted} managed session(s) and deregistered managed agents.");
         }
         catch (Exception ex)
         {
@@ -234,6 +242,63 @@ public class BridgeCommandService
         }
 
         return (prefixes.ToArray(), contains.ToArray());
+    }
+
+    private static string[] BuildManagedAgentIds(OpenClawGatewayConfig config) =>
+        config.RegisterAgents
+            .Select(reg => reg.Id?.Trim())
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Cast<string>()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+    private static void CleanupManagedOpenClawArtifacts(OpenClawGatewayConfig config)
+    {
+        var managedIds = BuildManagedAgentIds(config);
+
+        foreach (var agentId in managedIds)
+        {
+            try
+            {
+                var workspacePath = DataDirectories.OpenClawWorkspace(agentId);
+                if (Directory.Exists(workspacePath))
+                    Directory.Delete(workspacePath, recursive: true);
+            }
+            catch
+            {
+                // Workspace cleanup is best-effort.
+            }
+        }
+
+        var workspacesRoot = Path.Combine(DataDirectories.Root, "openclaw-workspaces");
+        if (!Directory.Exists(workspacesRoot))
+            return;
+
+        try
+        {
+            foreach (var directory in Directory.EnumerateDirectories(workspacesRoot))
+            {
+                var name = Path.GetFileName(directory);
+                if (!name.StartsWith(OpenClawAgentRegistrar.AgentIdPrefix, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (managedIds.Contains(name, StringComparer.OrdinalIgnoreCase))
+                    continue;
+
+                try
+                {
+                    Directory.Delete(directory, recursive: true);
+                }
+                catch
+                {
+                    // Best-effort cleanup of prefixed workspaces.
+                }
+            }
+        }
+        catch
+        {
+            // Best-effort cleanup.
+        }
     }
 
     protected virtual async Task SetOpenClawGatewayTasksEnabledAsync(bool enabled)

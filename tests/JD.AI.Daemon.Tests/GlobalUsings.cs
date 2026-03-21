@@ -1,6 +1,10 @@
 global using System.Net;
 global using System.Net.Sockets;
+global using System.Net.WebSockets;
+global using System.Security.Cryptography;
 global using System.Text;
+global using System.Text.Json;
+global using System.Text.Json.Nodes;
 global using JD.AI.Core.Security;
 global using JD.AI.Daemon.Config;
 global using JD.AI.Daemon.Services;

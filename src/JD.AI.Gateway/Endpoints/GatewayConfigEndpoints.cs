@@ -184,7 +184,7 @@ public static class GatewayConfigEndpoints
                 return Results.BadRequest(new { Error = "OpenClaw integration not enabled" });
 
             // Unregister current, then re-register from config
-            await registrar.UnregisterAgentsAsync(ct);
+            await registrar.UnregisterAgentsAsync(BuildManagedAgentIds(config.OpenClaw), ct);
 
             var definitions = config.OpenClaw.RegisterAgents.Select(reg => new JdAiAgentDefinition
             {
@@ -415,7 +415,7 @@ public static class GatewayConfigEndpoints
             ct).ConfigureAwait(false);
 
         if (registrar is not null)
-            await registrar.UnregisterAgentsAsync(ct).ConfigureAwait(false);
+            await registrar.UnregisterAgentsAsync(BuildManagedAgentIds(config), ct).ConfigureAwait(false);
 
         if (bridge.IsConnected)
             await bridge.DisconnectAsync(ct).ConfigureAwait(false);
@@ -440,6 +440,14 @@ public static class GatewayConfigEndpoints
 
         return prefixes.ToArray();
     }
+
+    private static string[] BuildManagedAgentIds(OpenClawGatewayConfig config) =>
+        config.RegisterAgents
+            .Select(reg => reg.Id?.Trim())
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Cast<string>()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
     private static string[] BuildManagedSessionContains(OpenClawGatewayConfig config)
     {

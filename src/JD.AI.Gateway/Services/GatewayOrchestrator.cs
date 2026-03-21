@@ -102,7 +102,13 @@ public sealed class GatewayOrchestrator : IHostedService
             {
                 try
                 {
-                    await _agentRegistrar.UnregisterAgentsAsync(cancellationToken);
+                    var managedIds = _config.OpenClaw.RegisterAgents
+                        .Select(reg => reg.Id?.Trim())
+                        .Where(id => !string.IsNullOrWhiteSpace(id))
+                        .Cast<string>()
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToArray();
+                    await _agentRegistrar.UnregisterAgentsAsync(managedIds, cancellationToken);
                 }
                 catch (Exception ex)
                 {
