@@ -4,6 +4,18 @@ namespace JD.AI.Tests.Daemon.Services;
 
 public sealed class BridgeCommandServiceTests
 {
+    [Theory]
+    [InlineData(null)]
+    public async Task ExecuteAsync_DefaultAction_TreatsNullAsStatus(string? action)
+    {
+        var sut = new TestBridgeCommandService();
+
+        var code = await sut.ExecuteAsync(action);
+
+        Assert.Equal(0, code);
+        Assert.Equal(["read", "write"], sut.Calls);
+    }
+
     [Fact]
     public async Task ExecuteAsync_Status_ReadsAndWritesState()
     {

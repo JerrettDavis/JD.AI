@@ -135,6 +135,28 @@ public sealed class AgentSessionTests
     }
 
     [Fact]
+    public void TryResetSystemPrompt_ReturnsFalse_WhenNoSystemPromptExists()
+    {
+        var session = CreateSession();
+
+        var reset = session.TryResetSystemPrompt();
+
+        Assert.False(reset);
+        Assert.Empty(session.History);
+    }
+
+    [Fact]
+    public void ResetTurnState_ClearsWorkflowDeclinedFlag()
+    {
+        var session = CreateSession();
+        session.WorkflowDeclinedThisTurn = true;
+
+        session.ResetTurnState();
+
+        Assert.False(session.WorkflowDeclinedThisTurn);
+    }
+
+    [Fact]
     public void ReplaceSystemPrompt_ReplacesFirstSystemMessageInPlace()
     {
         var session = CreateSession();
