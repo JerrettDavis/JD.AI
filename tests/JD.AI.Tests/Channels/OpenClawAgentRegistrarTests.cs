@@ -33,6 +33,16 @@ public sealed class OpenClawAgentRegistrarTests : IDisposable
     }
 
     [Fact]
+    public async Task RegisterAgentsAsync_WhenAgentListIsEmpty_ReturnsBeforeConfigRead()
+    {
+        SetRpcConnected(true);
+
+        await _registrar.RegisterAgentsAsync([]);
+
+        Assert.Empty(_registrar.RegisteredAgentIds);
+    }
+
+    [Fact]
     public async Task UnregisterAgentsAsync_WhenNotConnected_ReturnsGracefully()
     {
         await _registrar.UnregisterAgentsAsync();
@@ -205,6 +215,18 @@ public sealed class OpenClawAgentRegistrarTests : IDisposable
         Assert.Null(config["bindings"]);
     }
 
+    [Fact]
+    public void RemoveManagedAgentsAndBindings_WhenCollectionsAreMissing_ReturnsZeroCounts()
+    {
+        var config = JsonNode.Parse("""{"name":"untouched"}""")!;
+
+        var (removedAgents, removedBindings) = InvokeRemoveManagedAgentsAndBindings(config);
+
+        Assert.Equal(0, removedAgents);
+        Assert.Equal(0, removedBindings);
+        Assert.Equal("untouched", config["name"]!.GetValue<string>());
+    }
+
     private static (int RemovedAgents, int RemovedBindings) InvokeRemoveManagedAgentsAndBindings(JsonNode config)
     {
         var method = typeof(OpenClawAgentRegistrar).GetMethod(
@@ -215,5 +237,12 @@ public sealed class OpenClawAgentRegistrarTests : IDisposable
         var result = method!.Invoke(null, [config]);
         Assert.NotNull(result);
         return ((int RemovedAgents, int RemovedBindings))result!;
+    }
+
+    private void SetRpcConnected(bool connected)
+    {
+        var field = typeof(OpenClawRpcClient).GetField("<IsConnected>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(field);
+        field!.SetValue(_rpc, connected);
     }
 }
