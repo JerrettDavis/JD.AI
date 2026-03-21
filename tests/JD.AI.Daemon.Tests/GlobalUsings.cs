@@ -1,0 +1,11 @@
+global using System.Net;
+global using System.Net.Sockets;
+global using System.Text;
+global using JD.AI.Core.Security;
+global using JD.AI.Daemon.Config;
+global using JD.AI.Daemon.Services;
+global using JD.AI.Gateway.Config;
+global using Microsoft.Extensions.Configuration;
+global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Extensions.Options;
+global using Xunit;

@@ -1200,7 +1200,23 @@ public sealed class SlashCommandRouterBddTests : TinyBddXunitBase
         session.History[0].Content.Should().Contain("Always cite files");
     }
 
-    // ── 53. /prompt drop removes selected message ───────────
+    // ── 53. /system-prompt reset restores the original prompt ───────────────
+
+    [Scenario("System-prompt reset restores the original startup prompt"), Fact]
+    public async Task SystemPromptResetRestoresOriginalPrompt()
+    {
+        var (router, session) = CreateRouterWithSession();
+        session.History.AddSystemMessage("Base prompt");
+        session.CaptureOriginalSystemPromptIfUnset();
+        await router.ExecuteAsync("/system-prompt append Add more detail");
+
+        var result = await router.ExecuteAsync("/system-prompt reset");
+
+        result.Should().Contain("reset to original startup text");
+        session.History[0].Content.Should().Be("Base prompt");
+    }
+
+    // ── 54. /prompt drop removes selected message ───────────
 
     [Scenario("Prompt drop removes a selected context message"), Fact]
     public async Task PromptDropRemovesMessage()
@@ -1217,7 +1233,7 @@ public sealed class SlashCommandRouterBddTests : TinyBddXunitBase
         session.History.Last().Content.Should().Be("Assistant one");
     }
 
-    // ── 54. /prompt inject --system augments prompt ─────────
+    // ── 55. /prompt inject --system augments prompt ─────────
 
     [Scenario("Prompt inject system augments current system prompt"), Fact]
     public async Task PromptInjectSystemAugmentsPrompt()
@@ -1233,7 +1249,7 @@ public sealed class SlashCommandRouterBddTests : TinyBddXunitBase
         session.History[0].Content.Should().Contain("Additional system directive");
     }
 
-    // ── 55. /reasoning set updates session override ────────
+    // ── 56. /reasoning set updates session override ────────
 
     [Scenario("Reasoning command updates session override"), Fact]
     public async Task ReasoningCommandSetsOverride()
@@ -1246,7 +1262,7 @@ public sealed class SlashCommandRouterBddTests : TinyBddXunitBase
         session.ReasoningEffortOverride.Should().Be(ReasoningEffort.High);
     }
 
-    // ── 56. /reasoning with no arg shows current level ─────
+    // ── 57. /reasoning with no arg shows current level ─────
 
     [Scenario("Reasoning command with no args shows current level"), Fact]
     public async Task ReasoningCommandShowsCurrentLevel()
