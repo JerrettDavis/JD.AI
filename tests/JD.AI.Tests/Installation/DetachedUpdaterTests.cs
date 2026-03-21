@@ -1,5 +1,5 @@
-using JD.AI.Core.Installation;
 using System.Reflection;
+using JD.AI.Core.Installation;
 
 namespace JD.AI.Tests.Installation;
 

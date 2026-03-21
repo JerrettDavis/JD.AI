@@ -1,6 +1,6 @@
+using System.Reflection;
 using JD.AI.Channels.Telegram;
 using JD.AI.Core.Channels;
-using System.Reflection;
 using Telegram.Bot.Types;
 
 namespace JD.AI.Tests.Channels;

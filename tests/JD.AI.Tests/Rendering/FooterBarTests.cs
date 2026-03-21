@@ -48,10 +48,10 @@ public sealed class FooterBarTests
     [Fact]
     public void ToRenderable_ContainsAllDefaultSegments_WhenStateIsPopulated()
     {
-        var footer   = new FooterBar(DefaultTemplate);
-        var state    = CreateState();
+        var footer = new FooterBar(DefaultTemplate);
+        var state = CreateState();
         var rendered = footer.ToRenderable(state);
-        var markup   = RenderToString(rendered);
+        var markup = RenderToString(rendered);
 
         // Key rendered values that should appear
         markup.Should().Contain("app");          // folder (shortened path)
@@ -65,7 +65,7 @@ public sealed class FooterBarTests
     public void ToRenderable_OmitsBranch_WhenGitBranchIsNull()
     {
         var footer = new FooterBar(DefaultTemplate);
-        var state  = CreateState() with { GitBranch = null };
+        var state = CreateState() with { GitBranch = null };
         var markup = RenderToString(footer.ToRenderable(state));
 
         // The branch value should be absent from the rendered output
@@ -79,7 +79,7 @@ public sealed class FooterBarTests
     public void ToRenderable_ShowsBranch_WhenGitBranchIsPresent()
     {
         var footer = new FooterBar(DefaultTemplate);
-        var state  = CreateState(); // GitBranch = "main"
+        var state = CreateState(); // GitBranch = "main"
         var markup = RenderToString(footer.ToRenderable(state));
 
         markup.Should().Contain("main");
@@ -90,7 +90,7 @@ public sealed class FooterBarTests
     [Fact]
     public void ToRenderable_ReturnsEmptyRenderable_WhenFooterIsDisabled()
     {
-        var footer   = new FooterBar(DefaultTemplate, enabled: false);
+        var footer = new FooterBar(DefaultTemplate, enabled: false);
         var rendered = footer.ToRenderable(CreateState());
 
         // Should return an empty Text, not a Markup with content

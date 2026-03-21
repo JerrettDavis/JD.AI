@@ -65,8 +65,8 @@ public sealed partial class FooterTemplate
             return new FooterTemplate([TemplateToken.Literal(string.Empty)]);
 
         var tokens = new List<TemplateToken>();
-        var regex  = TokenPattern();
-        var pos    = 0;
+        var regex = TokenPattern();
+        var pos = 0;
 
         foreach (Match match in regex.Matches(template))
         {
@@ -74,7 +74,7 @@ public sealed partial class FooterTemplate
             if (match.Index > pos)
                 tokens.Add(TemplateToken.Literal(template[pos..match.Index]));
 
-            var key         = match.Groups["key"].Value;
+            var key = match.Groups["key"].Value;
             var conditional = match.Groups["cond"].Success;
             tokens.Add(TemplateToken.Segment(key, conditional));
             pos = match.Index + match.Length;
