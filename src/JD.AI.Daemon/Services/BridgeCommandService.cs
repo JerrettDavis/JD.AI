@@ -157,7 +157,9 @@ public class BridgeCommandService
         if (!runtimeCleanupSucceeded)
             await DisableBridgeRuntimeDirectAsync(config).ConfigureAwait(false);
 
-        CleanupManagedOpenClawArtifacts(openClawGatewayConfig);
+        CleanupManagedOpenClawArtifacts(
+            openClawGatewayConfig,
+            configuredOpenClawStateDir: config["Gateway:OpenClaw:StateDir"]);
     }
 
     protected virtual async Task DisableBridgeRuntimeDirectAsync(IConfiguration config)
@@ -252,9 +254,11 @@ public class BridgeCommandService
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-    private static void CleanupManagedOpenClawArtifacts(OpenClawGatewayConfig config)
+    private static void CleanupManagedOpenClawArtifacts(
+        OpenClawGatewayConfig config,
+        string? configuredOpenClawStateDir)
     {
-        var managedIds = BuildManagedAgentIds(config);
+        var managedIds = new HashSet<string>(BuildManagedAgentIds(config), StringComparer.OrdinalIgnoreCase);
 
         foreach (var agentId in managedIds)
         {
@@ -282,7 +286,7 @@ public class BridgeCommandService
                 if (!name.StartsWith(OpenClawAgentRegistrar.AgentIdPrefix, StringComparison.OrdinalIgnoreCase))
                     continue;
 
-                if (managedIds.Contains(name, StringComparer.OrdinalIgnoreCase))
+                if (managedIds.Contains(name))
                     continue;
 
                 try
@@ -292,6 +296,44 @@ public class BridgeCommandService
                 catch
                 {
                     // Best-effort cleanup of prefixed workspaces.
+                }
+            }
+        }
+        catch
+        {
+            // Best-effort cleanup.
+        }
+
+        var openClawStateDir = OpenClawIdentityLoader.ResolveStateDir(configuredOpenClawStateDir);
+        CleanupManagedOpenClawAgentState(openClawStateDir, managedIds);
+    }
+
+    internal static void CleanupManagedOpenClawAgentState(
+        string openClawStateDir,
+        IReadOnlySet<string> managedIds)
+    {
+        var agentsRoot = Path.Combine(openClawStateDir, "agents");
+        if (!Directory.Exists(agentsRoot))
+            return;
+
+        try
+        {
+            foreach (var directory in Directory.EnumerateDirectories(agentsRoot))
+            {
+                var name = Path.GetFileName(directory);
+                if (!managedIds.Contains(name)
+                    && !name.StartsWith(OpenClawAgentRegistrar.AgentIdPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    Directory.Delete(directory, recursive: true);
+                }
+                catch
+                {
+                    // Best-effort cleanup of managed OpenClaw agent state.
                 }
             }
         }

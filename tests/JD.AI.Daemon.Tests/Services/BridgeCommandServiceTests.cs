@@ -1,3 +1,6 @@
+using System.Reflection;
+using JD.AI.Channels.OpenClaw;
+
 namespace JD.AI.Daemon.Tests.Services;
 
 public sealed class BridgeCommandServiceTests
@@ -252,6 +255,35 @@ public sealed class BridgeCommandServiceTests
         }
     }
 
+    [Fact]
+    public void CleanupManagedOpenClawAgentState_RemovesManagedAndPrefixedAgentDirectories()
+    {
+        var stateDir = Directory.CreateTempSubdirectory("jdai-daemon-openclaw-state-");
+        try
+        {
+            var agentsRoot = Directory.CreateDirectory(Path.Combine(stateDir.FullName, "agents"));
+            var managedAgentId = "custom-managed-agent";
+            var prefixedStaleAgentId = $"{OpenClawAgentRegistrar.AgentIdPrefix}stale";
+            var nativeAgentId = "main";
+
+            Directory.CreateDirectory(Path.Combine(agentsRoot.FullName, managedAgentId));
+            Directory.CreateDirectory(Path.Combine(agentsRoot.FullName, prefixedStaleAgentId));
+            Directory.CreateDirectory(Path.Combine(agentsRoot.FullName, nativeAgentId));
+
+            InvokeCleanupManagedOpenClawAgentState(
+                stateDir.FullName,
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase) { managedAgentId });
+
+            Assert.False(Directory.Exists(Path.Combine(agentsRoot.FullName, managedAgentId)));
+            Assert.False(Directory.Exists(Path.Combine(agentsRoot.FullName, prefixedStaleAgentId)));
+            Assert.True(Directory.Exists(Path.Combine(agentsRoot.FullName, nativeAgentId)));
+        }
+        finally
+        {
+            stateDir.Delete(recursive: true);
+        }
+    }
+
     private sealed class SpyBridgeCommandService : BridgeCommandService
     {
         public List<string> Calls { get; } = [];
@@ -271,6 +303,16 @@ public sealed class BridgeCommandServiceTests
         {
             Calls.Add("write");
         }
+    }
+
+    private static void InvokeCleanupManagedOpenClawAgentState(string stateDir, IReadOnlySet<string> managedIds)
+    {
+        var method = typeof(BridgeCommandService)
+            .GetMethod(
+                "CleanupManagedOpenClawAgentState",
+                BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+        Assert.NotNull(method);
+        method.Invoke(null, [stateDir, managedIds]);
     }
 
     private sealed class StatusBridgeCommandService : BridgeCommandService
