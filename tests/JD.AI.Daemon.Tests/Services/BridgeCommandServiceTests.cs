@@ -59,7 +59,7 @@ public sealed class BridgeCommandServiceTests
             Assert.DoesNotContain("custom-jdai", bindingAgentIds, StringComparer.Ordinal);
             Assert.Contains("native-assistant", agentIds, StringComparer.Ordinal);
             Assert.Contains("agent:custom-jdai:main", server.DeletedSessionKeys, StringComparer.Ordinal);
-            Assert.Contains("agent:jdai-default:main", server.DeletedSessionKeys, StringComparer.Ordinal);
+            Assert.Contains("agent:jdai-default:main", server.ResetSessionKeys, StringComparer.Ordinal);
             Assert.DoesNotContain("agent:native-assistant:main", server.DeletedSessionKeys, StringComparer.Ordinal);
         }
         finally
@@ -500,6 +500,7 @@ public sealed class BridgeCommandServiceTests
         public JsonObject CurrentConfig { get; private set; }
         public List<string> Sessions { get; }
         public List<string> DeletedSessionKeys { get; } = [];
+        public List<string> ResetSessionKeys { get; } = [];
 
         public async ValueTask DisposeAsync()
         {
@@ -602,9 +603,33 @@ public sealed class BridgeCommandServiceTests
                         var key = @params.GetProperty("key").GetString();
                         if (!string.IsNullOrWhiteSpace(key))
                         {
+                            if (key.EndsWith(":main", StringComparison.OrdinalIgnoreCase))
+                            {
+                                await SendResponseAsync(
+                                    socket,
+                                    id,
+                                    ok: false,
+                                    payloadJson: null,
+                                    errorJson: """{"message":"Cannot delete the main session."}"""
+                                ).ConfigureAwait(false);
+                                break;
+                            }
+
                             DeletedSessionKeys.Add(key);
                             Sessions.RemoveAll(x => string.Equals(x, key, StringComparison.OrdinalIgnoreCase));
                         }
+                        await SendResponseAsync(socket, id, ok: true, payloadJson: """{}""").ConfigureAwait(false);
+                        break;
+                    case "sessions.reset":
+                        var resetKey = @params.TryGetProperty("key", out var keyParam)
+                            ? keyParam.GetString()
+                            : @params.TryGetProperty("sessionKey", out var sessionKeyParam)
+                                ? sessionKeyParam.GetString()
+                                : @params.TryGetProperty("id", out var idParam)
+                                    ? idParam.GetString()
+                                    : null;
+                        if (!string.IsNullOrWhiteSpace(resetKey))
+                            ResetSessionKeys.Add(resetKey);
                         await SendResponseAsync(socket, id, ok: true, payloadJson: """{}""").ConfigureAwait(false);
                         break;
                     default:
