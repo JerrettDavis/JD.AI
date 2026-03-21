@@ -91,6 +91,8 @@ internal static class SetupCliHandler
         string? bridgeAction,
         CancellationToken ct)
     {
+        var daemonCommand = DaemonServiceIdentity.ToolCommand;
+
         AnsiConsole.WriteLine();
         AnsiConsole.Write(new Rule("[dim]Daemon + Gateway[/]").LeftJustified());
 
@@ -103,7 +105,7 @@ internal static class SetupCliHandler
 
         if (!noUpdate)
         {
-            var daemonInstalled = await IsToolAvailableAsync("jdai-daemon", ct).ConfigureAwait(false);
+            var daemonInstalled = await IsToolAvailableAsync(daemonCommand, ct).ConfigureAwait(false);
             if (daemonInstalled)
             {
                 if (await RunCommandStepAsync(
@@ -131,7 +133,7 @@ internal static class SetupCliHandler
 
         var installServiceRc = await RunCommandStepAsync(
             "Installing/refreshing daemon service",
-            "jdai-daemon",
+            daemonCommand,
             "install",
             failOnError: true,
             ct).ConfigureAwait(false);
@@ -142,7 +144,7 @@ internal static class SetupCliHandler
         {
             var startRc = await RunCommandStepAsync(
                 "Starting daemon service",
-                "jdai-daemon",
+                daemonCommand,
                 "start",
                 failOnError: true,
                 ct).ConfigureAwait(false);
@@ -152,7 +154,7 @@ internal static class SetupCliHandler
 
         var statusRc = await RunCommandStepAsync(
             "Daemon status",
-            "jdai-daemon",
+            daemonCommand,
             "status",
             failOnError: false,
             ct).ConfigureAwait(false);
@@ -160,7 +162,7 @@ internal static class SetupCliHandler
         var normalizedBridge = string.IsNullOrWhiteSpace(bridgeAction) ? "status" : bridgeAction.Trim().ToLowerInvariant();
         var bridgeRc = await RunCommandStepAsync(
             "Bridge status",
-            "jdai-daemon",
+            daemonCommand,
             $"bridge {normalizedBridge}",
             failOnError: false,
             ct).ConfigureAwait(false);
