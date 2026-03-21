@@ -22,13 +22,18 @@ public sealed class ProviderAuthRefreshTests : IDisposable
     public async Task ClaudeCodeRefresh_InvokesClaudeCli()
     {
         var logPath = _fixture.GetPath("claude.log");
-        CreateCliShim(
-            "claude",
-            $"""
-            @echo off
-            echo claude %*>>"{logPath}"
-            exit /b 0
-            """);
+        var script = OperatingSystem.IsWindows()
+            ? $"""
+              @echo off
+              echo claude %*>>"{logPath}"
+              exit /b 0
+              """
+            : $"""
+              #!/bin/sh
+              echo "claude $*" >> "{logPath}"
+              exit 0
+              """;
+        CreateCliShim("claude", script);
 
         using var _ = PushPathPrefix(_fixture.DirectoryPath);
 
@@ -42,13 +47,18 @@ public sealed class ProviderAuthRefreshTests : IDisposable
     public async Task CopilotRefresh_InvokesGhCli()
     {
         var logPath = _fixture.GetPath("gh.log");
-        CreateCliShim(
-            "gh",
-            $"""
-            @echo off
-            echo gh %*>>"{logPath}"
-            exit /b 0
-            """);
+        var script = OperatingSystem.IsWindows()
+            ? $"""
+              @echo off
+              echo gh %*>>"{logPath}"
+              exit /b 0
+              """
+            : $"""
+              #!/bin/sh
+              echo "gh $*" >> "{logPath}"
+              exit 0
+              """;
+        CreateCliShim("gh", script);
 
         using var _ = PushPathPrefix(_fixture.DirectoryPath);
 
@@ -62,14 +72,22 @@ public sealed class ProviderAuthRefreshTests : IDisposable
     public async Task OpenAICodexRefresh_FallsBackToVersionProbeWhenStatusFails()
     {
         var logPath = _fixture.GetPath("codex.log");
-        CreateCliShim(
-            "codex",
-            $"""
-            @echo off
-            echo codex %*>>"{logPath}"
-            if /I "%~1 %~2"=="login status" exit /b 1
-            exit /b 0
-            """);
+        var script = OperatingSystem.IsWindows()
+            ? $"""
+              @echo off
+              echo codex %*>>"{logPath}"
+              if /I "%~1 %~2"=="login status" exit /b 1
+              exit /b 0
+              """
+            : $"""
+              #!/bin/sh
+              echo "codex $*" >> "{logPath}"
+              if [ "$1 $2" = "login status" ]; then
+                exit 1
+              fi
+              exit 0
+              """;
+        CreateCliShim("codex", script);
 
         using var _ = PushPathPrefix(_fixture.DirectoryPath);
 
@@ -83,14 +101,40 @@ public sealed class ProviderAuthRefreshTests : IDisposable
 
     private void CreateCliShim(string toolName, string scriptBody)
     {
-        var shimPath = _fixture.GetPath($"{toolName}.cmd");
         var normalized = string.Join(
             Environment.NewLine,
             scriptBody
                 .Trim()
                 .Split(LineSeparators, StringSplitOptions.None)
                 .Select(line => line.TrimStart()));
-        File.WriteAllText(shimPath, normalized);
+
+        if (OperatingSystem.IsWindows())
+        {
+            var shimPath = _fixture.GetPath($"{toolName}.cmd");
+            File.WriteAllText(shimPath, normalized);
+            return;
+        }
+
+        var unixShim = _fixture.GetPath(toolName);
+        File.WriteAllText(unixShim, normalized);
+        TryMakeExecutable(unixShim);
+    }
+
+    private static void TryMakeExecutable(string path)
+    {
+        if (OperatingSystem.IsWindows())
+            return;
+
+        try
+        {
+            var mode = File.GetUnixFileMode(path);
+            mode |= UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;
+            File.SetUnixFileMode(path, mode);
+        }
+        catch
+        {
+            // Best effort for environments that do not support Unix mode APIs.
+        }
     }
 
     private DisposableAction PushPathPrefix(string directory)

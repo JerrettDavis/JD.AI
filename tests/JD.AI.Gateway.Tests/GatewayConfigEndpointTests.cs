@@ -113,6 +113,7 @@ public sealed class GatewayConfigEndpointTests : IClassFixture<GatewayTestFactor
         var update = new OpenClawGatewayConfig
         {
             Enabled = true,
+            AutoConnect = false,
             DefaultMode = "Passthrough",
             Channels = new Dictionary<string, OpenClawChannelConfig>(StringComparer.Ordinal)
             {
