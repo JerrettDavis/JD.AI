@@ -72,6 +72,17 @@ public sealed class DiscordChannelTests
     }
 
     [Fact]
+    public async Task RegisterCommandsAsync_WhenNotConnected_DoesNotTouchRegistry()
+    {
+        var channel = new DiscordChannel("token");
+        var registry = Substitute.For<ICommandRegistry>();
+
+        await channel.RegisterCommandsAsync(registry);
+
+        Assert.Empty(registry.ReceivedCalls());
+    }
+
+    [Fact]
     public void MessageReceived_CanSubscribeAndUnsubscribe()
     {
         var channel = new DiscordChannel("token");
@@ -129,12 +140,36 @@ public sealed class DiscordChannelTests
     }
 
     [Fact]
+    public void MapParameterType_UnknownValue_FallsBackToString()
+    {
+        var method = typeof(DiscordChannel).GetMethod("MapParameterType", BindingFlags.Static | BindingFlags.NonPublic);
+        Assert.NotNull(method);
+
+        var result = method!.Invoke(null, [ (CommandParameterType)999 ]);
+
+        Assert.NotNull(result);
+        Assert.Equal("String", result!.ToString());
+    }
+
+    [Fact]
     public void Truncate_WhenValueWithinMax_ReturnsOriginal()
     {
         var method = typeof(DiscordChannel).GetMethod("Truncate", BindingFlags.Static | BindingFlags.NonPublic);
         Assert.NotNull(method);
 
         var value = "short";
+        var result = (string?)method!.Invoke(null, [value, 10]);
+
+        Assert.Equal(value, result);
+    }
+
+    [Fact]
+    public void Truncate_WhenValueEqualsMaxLength_ReturnsOriginal()
+    {
+        var method = typeof(DiscordChannel).GetMethod("Truncate", BindingFlags.Static | BindingFlags.NonPublic);
+        Assert.NotNull(method);
+
+        var value = "1234567890";
         var result = (string?)method!.Invoke(null, [value, 10]);
 
         Assert.Equal(value, result);
