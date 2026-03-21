@@ -75,7 +75,52 @@ AI-powered terminal assistant and multi-channel platform built on [Semantic Kern
 
 ```bash
 dotnet tool install -g JD.AI   # Install globally
+jdai setup                      # One-command setup (daemon + onboarding + MCP)
 jdai                            # Launch the TUI
+```
+
+## First-Class Setup
+
+`jdai setup` is the recommended, repeatable setup path. It is safe to run multiple times.
+
+What it does:
+
+- Ensures `jdai-daemon` is installed/updated (unless `--no-update`)
+- Installs/refreshes the daemon service and starts it (unless `--no-start`)
+- Shows daemon and bridge status
+- Runs onboarding (`jdai onboard`) to set provider/model defaults and MCP servers
+
+```bash
+# Full setup (recommended)
+jdai setup
+
+# Change provider/model defaults and save globally
+jdai setup --skip-daemon --provider "OpenAI Codex" --model gpt-5.3-codex --global
+
+# Daemon/gateway only
+jdai setup --daemon-only
+
+# Set bridge mode while setting up daemon
+jdai setup --daemon-only --bridge disable
+jdai setup --daemon-only --bridge passthrough
+```
+
+Setup flags:
+
+- `--daemon-only`: run daemon/gateway setup only
+- `--skip-daemon`: run onboarding only
+- `--skip-onboard`: run daemon/gateway only
+- `--no-update`: skip `jdai-daemon` tool install/update
+- `--no-start`: do not start the daemon service
+- `--bridge <status|enable|disable|passthrough>`: set/check bridge mode
+- onboarding flags are forwarded: `--provider`, `--model`, `--global`, `--skip-mcp`, `--skip-import`
+
+> On Windows and Linux, daemon service operations may require elevation.
+> `jdai-daemon` will prompt/recommend UAC/sudo as needed.
+
+## TUI Quick Commands
+
+```text
 /provider add                   # Add an AI provider
 /help                           # List all commands
 ```

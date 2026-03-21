@@ -367,6 +367,8 @@ For faster startup, save a project default provider/model with the onboarding wi
 jdai onboard
 # alias:
 jdai wizard
+# unified setup route:
+jdai setup --skip-daemon
 ```
 
 This stores your selected provider/model as project defaults so startup can refresh only that provider.

@@ -57,6 +57,7 @@ if (opts.Subcommand != null)
         "agents" or "agent" => await AgentsCliHandler.RunAsync(opts.SubcommandArgs).ConfigureAwait(false),
         "policy" => await PolicySubcommandHandler.RunAsync(opts.SubcommandArgs).ConfigureAwait(false),
         "onboard" or "wizard" => await OnboardingCliHandler.RunAsync(opts.SubcommandArgs).ConfigureAwait(false),
+        "setup" => await SetupCliHandler.RunAsync(opts.SubcommandArgs).ConfigureAwait(false),
         "update" or "install" => await UpdateCliHandler.RunAsync(opts.Subcommand, opts.SubcommandArgs).ConfigureAwait(false),
         _ => 1,
     };

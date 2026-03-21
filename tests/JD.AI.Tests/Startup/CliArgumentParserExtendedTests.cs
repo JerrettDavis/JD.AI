@@ -272,6 +272,7 @@ public sealed class CliArgumentParserExtendedTests
     [InlineData("plugin")]
     [InlineData("onboard")]
     [InlineData("wizard")]
+    [InlineData("setup")]
     [InlineData("update")]
     [InlineData("install")]
     public async Task ParseAsync_AllSubcommands_AreDetected(string cmd)
