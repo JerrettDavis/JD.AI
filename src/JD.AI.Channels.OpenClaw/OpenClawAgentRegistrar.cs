@@ -261,6 +261,7 @@ public sealed class OpenClawAgentRegistrar
 
         var removedAgents = 0;
         var removedBindings = 0;
+        var removedAgentIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         var list = configNode["agents"]?["list"]?.AsArray();
         if (list is not null)
@@ -268,8 +269,11 @@ public sealed class OpenClawAgentRegistrar
             for (var i = list.Count - 1; i >= 0; i--)
             {
                 var id = list[i]?["id"]?.GetValue<string>();
-                if (IsManaged(id))
+                var workspace = list[i]?["workspace"]?.GetValue<string>();
+                if (IsManaged(id) || IsJdAiWorkspacePath(workspace))
                 {
+                    if (!string.IsNullOrWhiteSpace(id))
+                        removedAgentIds.Add(NormalizeId(id));
                     list.RemoveAt(i);
                     removedAgents++;
                 }
@@ -285,7 +289,8 @@ public sealed class OpenClawAgentRegistrar
             for (var i = bindings.Count - 1; i >= 0; i--)
             {
                 var agentId = bindings[i]?["agentId"]?.GetValue<string>();
-                if (IsManaged(agentId))
+                if (IsManaged(agentId)
+                    || (!string.IsNullOrWhiteSpace(agentId) && removedAgentIds.Contains(NormalizeId(agentId))))
                 {
                     bindings.RemoveAt(i);
                     removedBindings++;
@@ -350,14 +355,42 @@ public sealed class OpenClawAgentRegistrar
             return true;
         }
 
-        if (mainAgentIndex >= 0 && !hasDefault)
+        var changed = false;
+        if (mainAgentIndex >= 0 && list[mainAgentIndex] is JsonObject mainAgent)
         {
-            if (list[mainAgentIndex] is JsonObject mainAgent)
+            var mainWorkspace = mainAgent["workspace"]?.GetValue<string>();
+            if (IsJdAiWorkspacePath(mainWorkspace))
+            {
+                mainAgent.Remove("workspace");
+                changed = true;
+            }
+
+            var mainName = mainAgent["name"]?.GetValue<string>();
+            if (string.IsNullOrWhiteSpace(mainName)
+                || mainName.StartsWith("JD.AI", StringComparison.OrdinalIgnoreCase))
+            {
+                mainAgent["name"] = "Assistant";
+                changed = true;
+            }
+
+            if (!hasDefault)
+            {
                 mainAgent["default"] = true;
-            return true;
+                changed = true;
+            }
         }
 
-        return false;
+        return changed;
+    }
+
+    private static bool IsJdAiWorkspacePath(string? workspacePath)
+    {
+        if (string.IsNullOrWhiteSpace(workspacePath))
+            return false;
+
+        var normalized = workspacePath.Trim().Replace('\\', '/');
+        return normalized.Contains("/.jdai/openclaw-workspaces/", StringComparison.OrdinalIgnoreCase)
+               || normalized.EndsWith("/.jdai/openclaw-workspaces", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Gets the list of registered JD.AI agent IDs.</summary>

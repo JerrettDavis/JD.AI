@@ -257,6 +257,37 @@ public sealed class OpenClawAgentRegistrarTests : IDisposable
     }
 
     [Fact]
+    public void RemoveManagedAgentsAndBindings_RemovesContaminatedWorkspaceAgents_AndBindings()
+    {
+        var config = JsonNode.Parse(
+            """
+            {
+              "agents": {
+                "list": [
+                  {
+                    "id": "main",
+                    "name": "JD.AI Assistant",
+                    "workspace": "C:\\Users\\jd\\.jdai\\openclaw-workspaces\\jdai-default"
+                  },
+                  { "id": "native-assistant", "name": "Native Assistant" }
+                ]
+              },
+              "bindings": [
+                { "agentId": "main", "match": { "channel": "signal" } },
+                { "agentId": "native-assistant", "match": { "channel": "discord" } }
+              ]
+            }
+            """)!;
+
+        var (removedAgents, removedBindings) = InvokeRemoveManagedAgentsAndBindings(config);
+
+        Assert.Equal(1, removedAgents);
+        Assert.Equal(1, removedBindings);
+        Assert.Equal("native-assistant", config["agents"]!["list"]![0]!["id"]!.GetValue<string>());
+        Assert.Equal("native-assistant", config["bindings"]![0]!["agentId"]!.GetValue<string>());
+    }
+
+    [Fact]
     public void EnsureDefaultMainAgent_WhenNoAgentsExist_AddsMainDefaultAgent()
     {
         var config = JsonNode.Parse("""{ "agents": {} }""")!;
@@ -309,6 +340,34 @@ public sealed class OpenClawAgentRegistrarTests : IDisposable
         Assert.False(changed);
         Assert.True(config["agents"]!["list"]![0]!["default"]!.GetValue<bool>());
         Assert.Equal("native-assistant", config["agents"]!["list"]![0]!["id"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void EnsureDefaultMainAgent_WhenMainAgentUsesJdAiWorkspace_NormalizesMainAgent()
+    {
+        var config = JsonNode.Parse(
+            """
+            {
+              "agents": {
+                "list": [
+                  {
+                    "id": "main",
+                    "name": "JD.AI Assistant",
+                    "workspace": "C:\\Users\\jd\\.jdai\\openclaw-workspaces\\jdai-default",
+                    "default": true
+                  }
+                ]
+              }
+            }
+            """)!;
+
+        var changed = InvokeEnsureDefaultMainAgent(config);
+
+        Assert.True(changed);
+        Assert.Equal("main", config["agents"]!["list"]![0]!["id"]!.GetValue<string>());
+        Assert.Equal("Assistant", config["agents"]!["list"]![0]!["name"]!.GetValue<string>());
+        Assert.True(config["agents"]!["list"]![0]!["default"]!.GetValue<bool>());
+        Assert.Null(config["agents"]!["list"]![0]!["workspace"]);
     }
 
     private static (int RemovedAgents, int RemovedBindings) InvokeRemoveManagedAgentsAndBindings(JsonNode config)
