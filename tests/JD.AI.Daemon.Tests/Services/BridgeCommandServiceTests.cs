@@ -3,6 +3,72 @@ namespace JD.AI.Daemon.Tests.Services;
 public sealed class BridgeCommandServiceTests
 {
     [Fact]
+    public async Task DisableBridgeRuntimeDirectAsync_RemovesConfiguredNonPrefixedAgentAndSessions()
+    {
+        var tempDir = Directory.CreateTempSubdirectory("jdai-daemon-openclaw-");
+        await using var server = new FakeOpenClawRpcServer(
+            configJson: """
+                        {
+                          "agents": {
+                            "list": [
+                              { "id": "custom-jdai", "name": "JD.AI Custom" },
+                              { "id": "native-assistant", "name": "Native" }
+                            ]
+                          },
+                          "bindings": [
+                            { "agentId": "custom-jdai", "match": { "channel": "signal" } },
+                            { "agentId": "native-assistant", "match": { "channel": "discord" } }
+                          ]
+                        }
+                        """,
+            sessions:
+            [
+                "agent:custom-jdai:main",
+                "agent:jdai-default:main",
+                "agent:native-assistant:main",
+            ]);
+
+        try
+        {
+            WriteTestOpenClawIdentity(tempDir.FullName);
+
+            var config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal)
+                {
+                    ["Gateway:OpenClaw:WebSocketUrl"] = server.WebSocketUrl,
+                    ["Gateway:OpenClaw:StateDir"] = tempDir.FullName,
+                    ["Gateway:OpenClaw:RegisterAgents:0:Id"] = "custom-jdai",
+                    ["Gateway:OpenClaw:RegisterAgents:0:Bindings:0:Channel"] = "signal",
+                })
+                .Build();
+
+            var sut = new DirectCleanupBridgeCommandService();
+            await sut.InvokeDisableBridgeRuntimeDirectAsync(config);
+
+            var configAfter = server.CurrentConfig;
+            var agentIds = configAfter["agents"]?["list"]?.AsArray()
+                .Select(node => node?["id"]?.GetValue<string>())
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .ToArray() ?? [];
+            var bindingAgentIds = configAfter["bindings"]?.AsArray()
+                .Select(node => node?["agentId"]?.GetValue<string>())
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .ToArray() ?? [];
+
+            Assert.DoesNotContain("custom-jdai", agentIds, StringComparer.Ordinal);
+            Assert.DoesNotContain("custom-jdai", bindingAgentIds, StringComparer.Ordinal);
+            Assert.Contains("native-assistant", agentIds, StringComparer.Ordinal);
+            Assert.Contains("agent:custom-jdai:main", server.DeletedSessionKeys, StringComparer.Ordinal);
+            Assert.Contains("agent:jdai-default:main", server.DeletedSessionKeys, StringComparer.Ordinal);
+            Assert.DoesNotContain("agent:native-assistant:main", server.DeletedSessionKeys, StringComparer.Ordinal);
+        }
+        finally
+        {
+            tempDir.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task ExecuteAsync_NullActionFallsBackToStatus()
     {
         var sut = new SpyBridgeCommandService();
@@ -363,6 +429,255 @@ public sealed class BridgeCommandServiceTests
             var bytes = Encoding.ASCII.GetBytes(response);
             await stream.WriteAsync(bytes);
             await stream.FlushAsync();
+        }
+    }
+
+    private static void WriteTestOpenClawIdentity(string stateDir)
+    {
+        var identityDir = Path.Combine(stateDir, "identity");
+        Directory.CreateDirectory(identityDir);
+
+        Span<byte> privateRaw = stackalloc byte[32];
+        Span<byte> publicRaw = stackalloc byte[32];
+        RandomNumberGenerator.Fill(privateRaw);
+        RandomNumberGenerator.Fill(publicRaw);
+
+        var privatePkcs8Like = new byte[48];
+        privateRaw.CopyTo(privatePkcs8Like.AsSpan(privatePkcs8Like.Length - 32));
+        var publicSpkiLike = new byte[44];
+        publicRaw.CopyTo(publicSpkiLike.AsSpan(publicSpkiLike.Length - 32));
+
+        var privatePem = ToPem("PRIVATE KEY", privatePkcs8Like);
+        var publicPem = ToPem("PUBLIC KEY", publicSpkiLike);
+
+        File.WriteAllText(Path.Combine(identityDir, "device.json"), $$"""
+            {
+              "deviceId": "test-device",
+              "publicKeyPem": {{System.Text.Json.JsonSerializer.Serialize(publicPem)}},
+              "privateKeyPem": {{System.Text.Json.JsonSerializer.Serialize(privatePem)}}
+            }
+            """);
+
+        File.WriteAllText(Path.Combine(identityDir, "device-auth.json"), """
+            {
+              "tokens": {
+                "operator": {
+                  "token": "test-device-token"
+                }
+              }
+            }
+            """);
+    }
+
+    private static string ToPem(string label, byte[] data)
+    {
+        var b64 = Convert.ToBase64String(data);
+        return $"-----BEGIN {label}-----\n{b64}\n-----END {label}-----";
+    }
+
+    private sealed class FakeOpenClawRpcServer : IAsyncDisposable
+    {
+        private readonly HttpListener _listener = new();
+        private readonly CancellationTokenSource _cts = new();
+        private readonly Task _serverTask;
+        private string _hash = "h0";
+
+        public FakeOpenClawRpcServer(string configJson, IReadOnlyList<string> sessions)
+        {
+            var port = GetEphemeralPort();
+            BaseHttpUrl = $"http://127.0.0.1:{port}/";
+            WebSocketUrl = $"ws://127.0.0.1:{port}/ws/";
+            _listener.Prefixes.Add(BaseHttpUrl);
+            _listener.Start();
+
+            CurrentConfig = JsonNode.Parse(configJson)!.AsObject();
+            Sessions = sessions.ToList();
+            _serverTask = Task.Run(ServerLoopAsync);
+        }
+
+        public string BaseHttpUrl { get; }
+        public string WebSocketUrl { get; }
+        public JsonObject CurrentConfig { get; private set; }
+        public List<string> Sessions { get; }
+        public List<string> DeletedSessionKeys { get; } = [];
+
+        public async ValueTask DisposeAsync()
+        {
+            _cts.Cancel();
+            _listener.Stop();
+            _listener.Close();
+            try
+            {
+                await _serverTask.ConfigureAwait(false);
+            }
+            catch
+            {
+                // Best effort test server shutdown.
+            }
+            _cts.Dispose();
+        }
+
+        private async Task ServerLoopAsync()
+        {
+            while (!_cts.IsCancellationRequested)
+            {
+                HttpListenerContext? ctx = null;
+                try
+                {
+                    ctx = await _listener.GetContextAsync().ConfigureAwait(false);
+                }
+                catch when (_cts.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch
+                {
+                    break;
+                }
+
+                if (ctx is null)
+                    continue;
+
+                if (ctx.Request.IsWebSocketRequest && ctx.Request.Url?.AbsolutePath == "/ws/")
+                {
+                    var wsCtx = await ctx.AcceptWebSocketAsync(subProtocol: null).ConfigureAwait(false);
+                    await HandleWebSocketAsync(wsCtx.WebSocket).ConfigureAwait(false);
+                }
+                else
+                {
+                    ctx.Response.StatusCode = 404;
+                    ctx.Response.Close();
+                }
+            }
+        }
+
+        private async Task HandleWebSocketAsync(WebSocket socket)
+        {
+            await SendEventAsync(socket, "connect.challenge", new { nonce = "nonce-1" }).ConfigureAwait(false);
+
+            while (socket.State == WebSocketState.Open && !_cts.IsCancellationRequested)
+            {
+                var text = await ReceiveTextAsync(socket).ConfigureAwait(false);
+                if (text is null)
+                    break;
+
+                using var doc = JsonDocument.Parse(text);
+                var root = doc.RootElement;
+                if (!root.TryGetProperty("type", out var type) || type.GetString() != "req")
+                    continue;
+
+                var id = root.GetProperty("id").GetString() ?? "unknown";
+                var method = root.GetProperty("method").GetString() ?? string.Empty;
+                var @params = root.TryGetProperty("params", out var p) ? p : default;
+
+                switch (method)
+                {
+                    case "connect":
+                        await SendResponseAsync(socket, id, ok: true, payloadJson: "{}").ConfigureAwait(false);
+                        break;
+                    case "chat.history":
+                        await SendResponseAsync(socket, id, ok: true, payloadJson: """{"items":[]}""").ConfigureAwait(false);
+                        break;
+                    case "config.get":
+                        var configRaw = CurrentConfig.ToJsonString();
+                        await SendResponseAsync(
+                            socket,
+                            id,
+                            ok: true,
+                            payloadJson: $$"""{"raw":{{System.Text.Json.JsonSerializer.Serialize(configRaw)}},"hash":{{System.Text.Json.JsonSerializer.Serialize(_hash)}}}"""
+                        ).ConfigureAwait(false);
+                        break;
+                    case "config.set":
+                        var raw = @params.GetProperty("raw").GetString() ?? "{}";
+                        CurrentConfig = JsonNode.Parse(raw)!.AsObject();
+                        _hash = "h" + Guid.NewGuid().ToString("N");
+                        await SendResponseAsync(socket, id, ok: true, payloadJson: """{}""").ConfigureAwait(false);
+                        break;
+                    case "sessions.list":
+                        var sessionsJson = System.Text.Json.JsonSerializer.Serialize(
+                            Sessions.Select(key => new { key }));
+                        await SendResponseAsync(socket, id, ok: true, payloadJson: $$"""{"sessions":{{sessionsJson}}}""").ConfigureAwait(false);
+                        break;
+                    case "sessions.delete":
+                        var key = @params.GetProperty("key").GetString();
+                        if (!string.IsNullOrWhiteSpace(key))
+                        {
+                            DeletedSessionKeys.Add(key);
+                            Sessions.RemoveAll(x => string.Equals(x, key, StringComparison.OrdinalIgnoreCase));
+                        }
+                        await SendResponseAsync(socket, id, ok: true, payloadJson: """{}""").ConfigureAwait(false);
+                        break;
+                    default:
+                        await SendResponseAsync(
+                            socket,
+                            id,
+                            ok: false,
+                            payloadJson: null,
+                            errorJson: $$"""{"message":"unsupported method: {{method}}"}"""
+                        ).ConfigureAwait(false);
+                        break;
+                }
+            }
+
+            if (socket.State == WebSocketState.Open)
+                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "done", CancellationToken.None).ConfigureAwait(false);
+            socket.Dispose();
+        }
+
+        private static async Task SendEventAsync(WebSocket socket, string eventName, object payload)
+        {
+            var json = $$"""{"type":"event","event":{{System.Text.Json.JsonSerializer.Serialize(eventName)}},"payload":{{System.Text.Json.JsonSerializer.Serialize(payload)}}}""";
+            await SendTextAsync(socket, json).ConfigureAwait(false);
+        }
+
+        private static async Task SendResponseAsync(
+            WebSocket socket,
+            string id,
+            bool ok,
+            string? payloadJson = null,
+            string? errorJson = null)
+        {
+            string json;
+            if (ok)
+                json = $$"""{"type":"res","id":{{System.Text.Json.JsonSerializer.Serialize(id)}},"ok":true,"payload":{{payloadJson ?? "{}"}}}""";
+            else
+                json = $$"""{"type":"res","id":{{System.Text.Json.JsonSerializer.Serialize(id)}},"ok":false,"error":{{errorJson ?? """{"message":"error"}"""}}}""";
+
+            await SendTextAsync(socket, json).ConfigureAwait(false);
+        }
+
+        private static async Task SendTextAsync(WebSocket socket, string text)
+        {
+            var bytes = Encoding.UTF8.GetBytes(text);
+            await socket.SendAsync(bytes, WebSocketMessageType.Text, endOfMessage: true, CancellationToken.None).ConfigureAwait(false);
+        }
+
+        private static async Task<string?> ReceiveTextAsync(WebSocket socket)
+        {
+            var buffer = new byte[16 * 1024];
+            using var ms = new MemoryStream();
+
+            while (true)
+            {
+                var result = await socket.ReceiveAsync(buffer, CancellationToken.None).ConfigureAwait(false);
+                if (result.MessageType == WebSocketMessageType.Close)
+                    return null;
+
+                ms.Write(buffer, 0, result.Count);
+                if (result.EndOfMessage)
+                    break;
+            }
+
+            return Encoding.UTF8.GetString(ms.ToArray());
+        }
+
+        private static int GetEphemeralPort()
+        {
+            var listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            listener.Stop();
+            return port;
         }
     }
 }
