@@ -196,6 +196,61 @@ public sealed class GatewayOrchestratorTests
         _pool.ListAgents().Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task StartAsync_WithMultipleSameTypeChannels_UsesChannelNameForDedicatedRouting()
+    {
+        _config.Channels =
+        [
+            new ChannelConfig
+            {
+                Type = "web",
+                Name = "support",
+                Enabled = true,
+                AutoConnect = false,
+            },
+            new ChannelConfig
+            {
+                Type = "web",
+                Name = "sales",
+                Enabled = true,
+                AutoConnect = false,
+            },
+        ];
+        _config.Agents =
+        [
+            new AgentDefinition
+            {
+                Id = "assistant-a",
+                Provider = "fake",
+                Model = "model-a",
+                AutoSpawn = true,
+            },
+            new AgentDefinition
+            {
+                Id = "assistant-b",
+                Provider = "fake",
+                Model = "model-a",
+                AutoSpawn = true,
+            }
+        ];
+        _config.Routing = new RoutingConfig
+        {
+            Rules =
+            [
+                new RoutingRule { ChannelType = "web", ChannelName = "support", AgentId = "assistant-a" },
+                new RoutingRule { ChannelType = "web", ChannelName = "sales", AgentId = "assistant-b" }
+            ]
+        };
+
+        var orchestrator = CreateOrchestrator();
+        await orchestrator.StartAsync(CancellationToken.None);
+
+        var mappings = _router.GetMappings();
+        mappings.Should().ContainKey("web:support");
+        mappings.Should().ContainKey("web:sales");
+        mappings["web:support"].Should().NotBe(mappings["web:sales"]);
+    }
+
     private GatewayOrchestrator CreateOrchestrator(ICommandRegistry? commandRegistry = null) => new(
         _config,
         _factory,
