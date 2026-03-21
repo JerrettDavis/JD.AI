@@ -127,11 +127,18 @@ var bridgeActionArg = new Argument<string>("action")
     Description = "Action: status, enable, disable, passthrough",
 };
 bridgeActionArg.Arity = ArgumentArity.ZeroOrOne;
+var bridgeElevatedOption = new Option<bool>("--elevated")
+{
+    Description = "Internal flag used after UAC/sudo relaunch.",
+    Hidden = true,
+};
 bridgeCommand.Arguments.Add(bridgeActionArg);
+bridgeCommand.Options.Add(bridgeElevatedOption);
 bridgeCommand.SetAction(async parseResult =>
 {
     var action = parseResult.GetValue(bridgeActionArg);
-    return await HandleBridgeCommandAsync(action);
+    var elevated = parseResult.GetValue(bridgeElevatedOption);
+    return await HandleBridgeCommandAsync(action, elevated);
 });
 rootCommand.Subcommands.Add(bridgeCommand);
 
@@ -451,7 +458,8 @@ static async Task<int> RunUpdateCommandAsync(bool checkOnly, bool elevatedAttemp
     {
         if (OperatingSystem.IsWindows() && !IsWindowsElevated())
         {
-            if (!elevatedAttempt && TryRelaunchElevated(checkOnly))
+            var updateArguments = checkOnly ? "update --check-only --elevated" : "update --elevated";
+            if (!elevatedAttempt && TryRelaunchElevatedWithArgs(updateArguments))
                 return 0;
 
             Console.WriteLine("✗ Admin rights are required to stop/start the daemon service during update.");
@@ -583,7 +591,7 @@ static bool IsRunningAsRoot()
     return string.Equals(Environment.UserName, "root", StringComparison.Ordinal);
 }
 
-static bool TryRelaunchElevated(bool checkOnly)
+static bool TryRelaunchElevatedWithArgs(string arguments)
 {
     if (!OperatingSystem.IsWindows())
         return false;
@@ -594,7 +602,6 @@ static bool TryRelaunchElevated(bool checkOnly)
         if (string.IsNullOrWhiteSpace(exePath))
             return false;
 
-        var arguments = checkOnly ? "update --check-only --elevated" : "update --elevated";
         var psi = new ProcessStartInfo
         {
             FileName = exePath,
@@ -614,8 +621,34 @@ static bool TryRelaunchElevated(bool checkOnly)
     }
 }
 
-static async Task<int> HandleBridgeCommandAsync(string? action)
+static async Task<int> HandleBridgeCommandAsync(string? action, bool elevatedAttempt)
 {
+    var normalizedAction = (action ?? "status").Trim().ToLowerInvariant();
+    var needsServiceControl = normalizedAction is "enable" or "disable" or "passthrough";
+
+    if (needsServiceControl)
+    {
+        if (OperatingSystem.IsWindows() && !IsWindowsElevated())
+        {
+            var bridgeArguments = string.IsNullOrWhiteSpace(action)
+                ? "bridge --elevated"
+                : $"bridge {action.Trim()} --elevated";
+            if (!elevatedAttempt && TryRelaunchElevatedWithArgs(bridgeArguments))
+                return 0;
+
+            Console.WriteLine("✗ Admin rights are required for bridge task/service operations.");
+            Console.WriteLine($"  Re-run from an elevated terminal: {DaemonServiceIdentity.ToolCommand} bridge {normalizedAction}");
+            return 1;
+        }
+
+        if (OperatingSystem.IsLinux() && !IsRunningAsRoot())
+        {
+            Console.WriteLine("✗ Root privileges are required for bridge task/service operations.");
+            Console.WriteLine($"  Re-run with sudo: sudo {DaemonServiceIdentity.ToolCommand} bridge {normalizedAction}");
+            return 1;
+        }
+    }
+
     var service = new BridgeCommandService(ResolveDaemonAppSettingsPath(), CreateServiceManager);
     return await service.ExecuteAsync(action).ConfigureAwait(false);
 }
