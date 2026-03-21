@@ -8,6 +8,7 @@ using JD.AI.Core.Commands;
 using JD.AI.Core.Config;
 using JD.AI.Core.Events;
 using JD.AI.Core.Infrastructure;
+using JD.AI.Core.Installation;
 using JD.AI.Core.Memory;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
@@ -514,8 +515,39 @@ static async Task<int> RunUpdateCommandAsync(bool checkOnly, bool elevatedAttemp
         }
     }
 
-    Console.WriteLine("Applying update via 'dotnet tool update'...");
     var packageId = host.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<UpdateConfig>>().Value.PackageId;
+    Console.WriteLine("Applying update...");
+
+    if (OperatingSystem.IsWindows())
+    {
+        var detached = DetachedUpdater.Launch(
+            packageId,
+            targetVersion: update.LatestVersion.ToString(),
+            visibleWindow: true,
+            pauseOnExit: true);
+
+        if (!detached.Success)
+        {
+            Console.WriteLine($"✗ Failed to launch updater: {detached.Output}");
+
+            if (serviceWasRunning && serviceManager is not null)
+            {
+                Console.WriteLine("Attempting to restart daemon service after failed updater launch...");
+                var restartResult = await serviceManager.StartAsync();
+                if (!restartResult.Success)
+                    Console.WriteLine($"Warning: failed to restart service: {restartResult.Message}");
+            }
+
+            return 1;
+        }
+
+        Console.WriteLine(detached.Output);
+        if (serviceWasRunning)
+            Console.WriteLine("After the updater completes, run 'jdai-daemon start' if the service does not auto-start.");
+        return 0;
+    }
+
+    Console.WriteLine("Running in-process update via 'dotnet tool update'...");
     var updateResult = await JD.AI.Core.Infrastructure.ProcessExecutor.RunAsync(
         "dotnet", $"tool update -g {packageId}",
         timeout: TimeSpan.FromSeconds(120)).ConfigureAwait(false);
