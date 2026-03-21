@@ -259,7 +259,7 @@ public sealed class OpenClawAgentRegistrarTests : IDisposable
     private static (int RemovedAgents, int RemovedBindings) InvokeRemoveManagedAgentsAndBindings(JsonNode config)
     {
         var method = typeof(OpenClawAgentRegistrar).GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
-            .Single(m => m.Name == "RemoveManagedAgentsAndBindings" && m.GetParameters().Length == 1);
+            .Single(m => string.Equals(m.Name, "RemoveManagedAgentsAndBindings", StringComparison.Ordinal) && m.GetParameters().Length == 1);
         Assert.NotNull(method);
 
         var result = method!.Invoke(null, [config]);
@@ -272,7 +272,7 @@ public sealed class OpenClawAgentRegistrarTests : IDisposable
         IEnumerable<string> managedIds)
     {
         var method = typeof(OpenClawAgentRegistrar).GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
-            .Single(m => m.Name == "RemoveManagedAgentsAndBindings" && m.GetParameters().Length == 2);
+            .Single(m => string.Equals(m.Name, "RemoveManagedAgentsAndBindings", StringComparison.Ordinal) && m.GetParameters().Length == 2);
         Assert.NotNull(method);
 
         var result = method!.Invoke(null, [config, managedIds]);
