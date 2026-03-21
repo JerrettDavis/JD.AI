@@ -158,49 +158,49 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         using var tempDir = new TempTestDirectory("jdai-wf-test");
         var catalog = tempDir.CreateWorkflowCatalog();
 
-            var definition = new AgentWorkflowDefinition
-            {
-                Name = "test-workflow",
-                Version = "1.0",
-                Description = "A test workflow",
-                Tags = ["test", "demo"],
-                Steps =
-                [
-                    AgentStepDefinition.RunSkill("step1"),
+        var definition = new AgentWorkflowDefinition
+        {
+            Name = "test-workflow",
+            Version = "1.0",
+            Description = "A test workflow",
+            Tags = ["test", "demo"],
+            Steps =
+            [
+                AgentStepDefinition.RunSkill("step1"),
                     AgentStepDefinition.InvokeTool("tool1"),
                 ],
-            };
+        };
 
-            await catalog.SaveAsync(definition).ConfigureAwait(false);
+        await catalog.SaveAsync(definition).ConfigureAwait(false);
 
-            // Retrieve by name + version
-            var retrieved = await catalog.GetAsync("test-workflow", "1.0").ConfigureAwait(false);
-            retrieved.Should().NotBeNull();
-            retrieved!.Name.Should().Be("test-workflow");
-            retrieved.Steps.Should().HaveCount(2);
-            retrieved.Tags.Should().Contain("test");
+        // Retrieve by name + version
+        var retrieved = await catalog.GetAsync("test-workflow", "1.0").ConfigureAwait(false);
+        retrieved.Should().NotBeNull();
+        retrieved!.Name.Should().Be("test-workflow");
+        retrieved.Steps.Should().HaveCount(2);
+        retrieved.Tags.Should().Contain("test");
 
-            // Retrieve latest (no version)
-            var latest = await catalog.GetAsync("test-workflow").ConfigureAwait(false);
-            latest.Should().NotBeNull();
-            latest!.Version.Should().Be("1.0");
+        // Retrieve latest (no version)
+        var latest = await catalog.GetAsync("test-workflow").ConfigureAwait(false);
+        latest.Should().NotBeNull();
+        latest!.Version.Should().Be("1.0");
 
-            // List all
-            var all = await catalog.ListAsync().ConfigureAwait(false);
-            all.Should().HaveCount(1);
+        // List all
+        var all = await catalog.ListAsync().ConfigureAwait(false);
+        all.Should().HaveCount(1);
 
-            // Save v2 and verify both exist
-            definition.Version = "2.0";
-            await catalog.SaveAsync(definition).ConfigureAwait(false);
+        // Save v2 and verify both exist
+        definition.Version = "2.0";
+        await catalog.SaveAsync(definition).ConfigureAwait(false);
 
-            all = await catalog.ListAsync().ConfigureAwait(false);
-            all.Should().HaveCount(2);
+        all = await catalog.ListAsync().ConfigureAwait(false);
+        all.Should().HaveCount(2);
 
-            // Delete v1
-            var deleted = await catalog.DeleteAsync("test-workflow", "1.0").ConfigureAwait(false);
-            deleted.Should().BeTrue();
-            all = await catalog.ListAsync().ConfigureAwait(false);
-            all.Should().HaveCount(1);
+        // Delete v1
+        var deleted = await catalog.DeleteAsync("test-workflow", "1.0").ConfigureAwait(false);
+        deleted.Should().BeTrue();
+        all = await catalog.ListAsync().ConfigureAwait(false);
+        all.Should().HaveCount(1);
     }
 
     // ── Matcher: tag-based workflow reuse ────────────────────────────────
@@ -213,32 +213,32 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         using var tempDir = new TempTestDirectory("jdai-wf-match");
         var catalog = tempDir.CreateWorkflowCatalog();
 
-            await catalog.SaveAsync(new AgentWorkflowDefinition
-            {
-                Name = "code-review",
-                Tags = ["review", "code", "pr"],
-                Steps = [AgentStepDefinition.RunSkill("review-code")],
-            }).ConfigureAwait(false);
+        await catalog.SaveAsync(new AgentWorkflowDefinition
+        {
+            Name = "code-review",
+            Tags = ["review", "code", "pr"],
+            Steps = [AgentStepDefinition.RunSkill("review-code")],
+        }).ConfigureAwait(false);
 
-            await catalog.SaveAsync(new AgentWorkflowDefinition
-            {
-                Name = "deploy",
-                Tags = ["deploy", "release", "infrastructure"],
-                Steps = [AgentStepDefinition.RunSkill("deploy-app")],
-            }).ConfigureAwait(false);
+        await catalog.SaveAsync(new AgentWorkflowDefinition
+        {
+            Name = "deploy",
+            Tags = ["deploy", "release", "infrastructure"],
+            Steps = [AgentStepDefinition.RunSkill("deploy-app")],
+        }).ConfigureAwait(false);
 
-            var matcher = new TagWorkflowMatcher(catalog);
+        var matcher = new TagWorkflowMatcher(catalog);
 
-            var match = await matcher.MatchAsync(
-                new AgentRequest("Please review the code in this PR")).ConfigureAwait(false);
-            match.Should().NotBeNull();
-            match!.Definition.Name.Should().Be("code-review");
-            match.Score.Should().BeGreaterThan(0);
+        var match = await matcher.MatchAsync(
+            new AgentRequest("Please review the code in this PR")).ConfigureAwait(false);
+        match.Should().NotBeNull();
+        match!.Definition.Name.Should().Be("code-review");
+        match.Score.Should().BeGreaterThan(0);
 
-            var deployMatch = await matcher.MatchAsync(
-                new AgentRequest("deploy the new release to production infrastructure")).ConfigureAwait(false);
-            deployMatch.Should().NotBeNull();
-            deployMatch!.Definition.Name.Should().Be("deploy");
+        var deployMatch = await matcher.MatchAsync(
+            new AgentRequest("deploy the new release to production infrastructure")).ConfigureAwait(false);
+        deployMatch.Should().NotBeNull();
+        deployMatch!.Definition.Name.Should().Be("deploy");
     }
 
     // ── Emitter: JSON, C#, Mermaid ─────────────────────────────────────
@@ -281,41 +281,41 @@ public class WorkflowIntegrationTests : IAsyncLifetime
         using var tempDir = new TempTestDirectory("jdai-wf-replay");
         var catalog = tempDir.CreateWorkflowCatalog();
 
-            // First execution: build, run, save
-            var definition = new AgentWorkflowDefinition
-            {
-                Name = "replay-test",
-                Version = "1.0",
-                Steps = [AgentStepDefinition.RunSkill("greet")],
-            };
+        // First execution: build, run, save
+        var definition = new AgentWorkflowDefinition
+        {
+            Name = "replay-test",
+            Version = "1.0",
+            Steps = [AgentStepDefinition.RunSkill("greet")],
+        };
 
-            await catalog.SaveAsync(definition).ConfigureAwait(false);
+        await catalog.SaveAsync(definition).ConfigureAwait(false);
 
-            var builder = new AgentWorkflowBuilder(_kernel);
-            var workflow1 = Workflow.Create<AgentWorkflowData>("replay-test")
-                .Step(new RunSkillStep("greet", "Say hello briefly: {prompt}"))
-                .Build();
+        var builder = new AgentWorkflowBuilder(_kernel);
+        var workflow1 = Workflow.Create<AgentWorkflowData>("replay-test")
+            .Step(new RunSkillStep("greet", "Say hello briefly: {prompt}"))
+            .Build();
 
-            var data1 = builder.CreateData("world");
-            var result1 = await workflow1.ExecuteAsync(new WorkflowContext<AgentWorkflowData>(data1))
-                .ConfigureAwait(false);
-            result1.IsSuccess.Should().BeTrue();
+        var data1 = builder.CreateData("world");
+        var result1 = await workflow1.ExecuteAsync(new WorkflowContext<AgentWorkflowData>(data1))
+            .ConfigureAwait(false);
+        result1.IsSuccess.Should().BeTrue();
 
-            // Replay: retrieve from catalog and re-execute
-            var retrieved = await catalog.GetAsync("replay-test").ConfigureAwait(false);
-            retrieved.Should().NotBeNull();
+        // Replay: retrieve from catalog and re-execute
+        var retrieved = await catalog.GetAsync("replay-test").ConfigureAwait(false);
+        retrieved.Should().NotBeNull();
 
-            // Rebuild the workflow with same structure
-            var workflow2 = Workflow.Create<AgentWorkflowData>("replay-test")
-                .Step(new RunSkillStep("greet", "Say hello briefly: {prompt}"))
-                .Build();
+        // Rebuild the workflow with same structure
+        var workflow2 = Workflow.Create<AgentWorkflowData>("replay-test")
+            .Step(new RunSkillStep("greet", "Say hello briefly: {prompt}"))
+            .Build();
 
-            var data2 = builder.CreateData("world");
-            var result2 = await workflow2.ExecuteAsync(new WorkflowContext<AgentWorkflowData>(data2))
-                .ConfigureAwait(false);
+        var data2 = builder.CreateData("world");
+        var result2 = await workflow2.ExecuteAsync(new WorkflowContext<AgentWorkflowData>(data2))
+            .ConfigureAwait(false);
 
-            result2.IsSuccess.Should().BeTrue();
-            result2.Data.StepOutputs.Should().ContainKey("greet");
+        result2.IsSuccess.Should().BeTrue();
+        result2.Data.StepOutputs.Should().ContainKey("greet");
     }
 
     // ── Validation step aborts workflow ─────────────────────────────────

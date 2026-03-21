@@ -1,8 +1,8 @@
+using System.Reflection;
 using JD.AI.Channels.Discord;
 using JD.AI.Core.Channels;
 using JD.AI.Core.Commands;
 using NSubstitute;
-using System.Reflection;
 
 namespace JD.AI.Tests.Channels;
 
@@ -145,7 +145,7 @@ public sealed class DiscordChannelTests
         var method = typeof(DiscordChannel).GetMethod("MapParameterType", BindingFlags.Static | BindingFlags.NonPublic);
         Assert.NotNull(method);
 
-        var result = method!.Invoke(null, [ (CommandParameterType)999 ]);
+        var result = method!.Invoke(null, [(CommandParameterType)999]);
 
         Assert.NotNull(result);
         Assert.Equal("String", result!.ToString());

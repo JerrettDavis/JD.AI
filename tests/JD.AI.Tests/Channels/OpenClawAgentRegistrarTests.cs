@@ -1,7 +1,7 @@
-using JD.AI.Channels.OpenClaw;
-using Microsoft.Extensions.Logging.Abstractions;
 using System.Reflection;
 using System.Text.Json.Nodes;
+using JD.AI.Channels.OpenClaw;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace JD.AI.Tests.Channels;
 
