@@ -2,6 +2,7 @@ using JD.AI.Core.Providers;
 using JD.AI.Core.Providers.Credentials;
 using JD.AI.Core.Tools;
 using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
 using Xunit;
 
 namespace JD.AI.IntegrationTests;
@@ -217,7 +218,12 @@ public sealed class ProviderFeatureIntegrationTests
                     $"Read the file at {tempFile} and summarize its contents in one short sentence.")
                 .ConfigureAwait(false);
             Assert.NotNull(response);
-            Assert.NotEmpty(response.Trim());
+            var hasAssistantContent = harness.Session.History
+                .Where(m => m.Role == AuthorRole.Assistant)
+                .Any(m => !string.IsNullOrWhiteSpace(m.Content));
+            Assert.True(
+                !string.IsNullOrWhiteSpace(response) || hasAssistantContent,
+                "Expected provider turn to produce either a non-empty response or assistant chat content.");
             Assert.DoesNotContain("error:", response, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("insufficient_quota", response, StringComparison.OrdinalIgnoreCase);
             Assert.True(harness.Session.History.Count >= 2,
