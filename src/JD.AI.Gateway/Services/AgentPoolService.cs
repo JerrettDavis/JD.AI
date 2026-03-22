@@ -406,7 +406,7 @@ public sealed class AgentPoolService : IHostedService
         var settings = new OpenAIPromptExecutionSettings
         {
             MaxTokens = p?.MaxTokens ?? 4096,
-            FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(),
+            FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(autoInvoke: true),
         };
 
         if (p is null) return settings;
