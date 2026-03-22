@@ -13,6 +13,8 @@ namespace JD.AI.Channels.Discord;
 public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChannel
 {
     private readonly string _botToken;
+    private readonly bool _allowBots;
+    private readonly HashSet<ulong> _allowedBotIds;
     private DiscordSocketClient? _client;
     private TaskCompletionSource? _readyTcs;
     private ICommandRegistry? _commandRegistry;
@@ -20,9 +22,11 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
     /// <summary>Prefix used for slash commands (e.g., "jdai-help").</summary>
     public const string CommandPrefix = "jdai-";
 
-    public DiscordChannel(string botToken)
+    public DiscordChannel(string botToken, bool allowBots = false, IEnumerable<ulong>? allowedBotIds = null)
     {
         _botToken = botToken;
+        _allowBots = allowBots;
+        _allowedBotIds = allowedBotIds != null ? new HashSet<ulong>(allowedBotIds) : new HashSet<ulong>();
     }
 
     public string ChannelType => "discord";
@@ -182,7 +186,12 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
 
     private async Task OnMessageReceivedAsync(SocketMessage msg)
     {
-        if (msg.Author.IsBot) return;
+        // Skip bot messages unless explicitly allowed
+        if (msg.Author.IsBot)
+        {
+            if (!_allowBots && !_allowedBotIds.Contains(msg.Author.Id))
+                return;
+        }
 
         var channelMessage = new ChannelMessage
         {

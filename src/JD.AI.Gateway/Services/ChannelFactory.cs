@@ -52,7 +52,21 @@ public sealed class ChannelFactory
     {
         var token = ResolveSetting(config, "BotToken")
             ?? throw new InvalidOperationException("Discord channel requires 'BotToken' setting.");
-        return new DiscordChannel(token);
+
+        var allowBots = bool.TryParse(ResolveSetting(config, "AllowBots"), out var ab) && ab;
+
+        var allowedBotIds = new List<ulong>();
+        var idsStr = ResolveSetting(config, "AllowedBotIds");
+        if (!string.IsNullOrWhiteSpace(idsStr))
+        {
+            foreach (var id in idsStr.Split(',', StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (ulong.TryParse(id.Trim(), out var botId))
+                    allowedBotIds.Add(botId);
+            }
+        }
+
+        return new DiscordChannel(token, allowBots, allowedBotIds);
     }
 
     private SignalChannel CreateSignal(ChannelConfig config)
