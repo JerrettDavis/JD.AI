@@ -17,6 +17,7 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
     private readonly HashSet<ulong> _allowedBotIds;
     private readonly bool _enableReactions;
     private readonly Dictionary<ulong, string> _activeReactionByMessageId = new();
+    private readonly Dictionary<string, ulong> _pendingInboundByChannelId = new();
     private DiscordSocketClient? _client;
     private TaskCompletionSource? _readyTcs;
     private ICommandRegistry? _commandRegistry;
@@ -93,7 +94,26 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
         if (ulong.TryParse(conversationId, out var channelId)
             && await _client.GetChannelAsync(channelId) is IMessageChannel channel)
         {
-            await channel.SendMessageAsync(content);
+            try
+            {
+                if (_enableReactions && _pendingInboundByChannelId.TryGetValue(conversationId, out var inboundMsgId))
+                {
+                    if (await channel.GetMessageAsync(inboundMsgId) is IUserMessage inbound)
+                        await SetStatusReactionAsync(inbound, "✍️");
+                }
+
+                await channel.SendMessageAsync(content);
+
+                if (_enableReactions && _pendingInboundByChannelId.TryGetValue(conversationId, out var sentInboundMsgId))
+                {
+                    if (await channel.GetMessageAsync(sentInboundMsgId) is IUserMessage inbound)
+                        await SetStatusReactionAsync(inbound, "✅");
+                }
+            }
+            finally
+            {
+                _pendingInboundByChannelId.Remove(conversationId);
+            }
         }
     }
 
@@ -200,8 +220,8 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
                 return;
         }
 
-        if (_enableReactions)
-            await SetStatusReactionAsync(msg, "👀");
+        if (_enableReactions && msg is IUserMessage inboundUserMessage)
+            await SetStatusReactionAsync(inboundUserMessage, "👀");
 
         var channelMessage = new ChannelMessage
         {
@@ -228,19 +248,19 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
 
         try
         {
-            if (_enableReactions)
-                await SetStatusReactionAsync(msg, "🧠");
+            if (_enableReactions && msg is IUserMessage inboundUserMessage2)
+            {
+                _pendingInboundByChannelId[channelMessage.ChannelId] = inboundUserMessage2.Id;
+                await SetStatusReactionAsync(inboundUserMessage2, "🧠");
+            }
 
             await MessageReceived.Invoke(channelMessage);
-
-            if (_enableReactions)
-                await SetStatusReactionAsync(msg, "✅");
         }
 #pragma warning disable CA1031
         catch
         {
-            if (_enableReactions)
-                await SetStatusReactionAsync(msg, "❌");
+            if (_enableReactions && msg is IUserMessage inboundUserMessage3)
+                await SetStatusReactionAsync(inboundUserMessage3, "❌");
             throw;
         }
 #pragma warning restore CA1031
@@ -255,17 +275,17 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
         }
     }
 
-    private async Task SetStatusReactionAsync(SocketMessage msg, string emoji)
+    private async Task SetStatusReactionAsync(IUserMessage msg, string emoji)
     {
-        if (msg is not IUserMessage userMessage || _client?.CurrentUser is null)
+        if (_client?.CurrentUser is null)
             return;
 
         if (_activeReactionByMessageId.TryGetValue(msg.Id, out var previous) && !string.Equals(previous, emoji, StringComparison.Ordinal))
         {
-            await TryRemoveReactionAsync(userMessage, previous);
+            await TryRemoveReactionAsync(msg, previous);
         }
 
-        await TryAddReactionAsync(userMessage, emoji);
+        await TryAddReactionAsync(msg, emoji);
         _activeReactionByMessageId[msg.Id] = emoji;
     }
 
