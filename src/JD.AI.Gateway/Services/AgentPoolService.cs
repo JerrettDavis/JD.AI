@@ -252,7 +252,7 @@ public sealed class AgentPoolService : IHostedService
                     ttl: PromptCacheTtl.FiveMinutes);
 
                 var result = await fbChat.GetChatMessageContentAsync(
-                    agent.History, fallbackSettings, cancellationToken: ct).ConfigureAwait(false);
+                    agent.History, fallbackSettings, fbKernel, cancellationToken: ct).ConfigureAwait(false);
 
                 return result.Content ?? "";
             }
@@ -299,7 +299,7 @@ public sealed class AgentPoolService : IHostedService
             try
             {
                 var result = await chat.GetChatMessageContentAsync(
-                    agent.History, settings, cancellationToken: ct).ConfigureAwait(false);
+                    agent.History, settings, agent.Kernel, cancellationToken: ct).ConfigureAwait(false);
 
                 sw.Stop();
                 providerActivity?.SetStatus(ActivityStatusCode.Ok);
