@@ -16,6 +16,7 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
     private readonly bool _allowBots;
     private readonly HashSet<ulong> _allowedBotIds;
     private readonly bool _enableReactions;
+    private readonly bool _requireMention;
     private readonly Dictionary<ulong, string> _activeReactionByMessageId = new();
     private readonly Dictionary<string, ulong> _pendingInboundByChannelId = new();
     private DiscordSocketClient? _client;
@@ -29,12 +30,14 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
         string botToken,
         bool allowBots = false,
         IEnumerable<ulong>? allowedBotIds = null,
-        bool enableReactions = false)
+        bool enableReactions = false,
+        bool requireMention = true)
     {
         _botToken = botToken;
         _allowBots = allowBots;
         _allowedBotIds = allowedBotIds != null ? new HashSet<ulong>(allowedBotIds) : new HashSet<ulong>();
         _enableReactions = enableReactions;
+        _requireMention = requireMention;
     }
 
     public string ChannelType => "discord";
@@ -102,7 +105,11 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
                         await SetStatusReactionAsync(inbound, "✍️");
                 }
 
-                await channel.SendMessageAsync(content);
+                var outbound = string.IsNullOrWhiteSpace(content)
+                    ? "I processed your message but produced no text output. Please retry your request."
+                    : content;
+
+                await channel.SendMessageAsync(outbound);
 
                 if (_enableReactions && _pendingInboundByChannelId.TryGetValue(conversationId, out var sentInboundMsgId))
                 {
@@ -217,6 +224,14 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
         if (msg.Author.IsBot)
         {
             if (!_allowBots && !_allowedBotIds.Contains(msg.Author.Id))
+                return;
+        }
+
+        // In guild channels, only process messages that explicitly mention this bot when requireMention is enabled.
+        if (_requireMention && msg.Channel is SocketGuildChannel && _client?.CurrentUser is not null)
+        {
+            var explicitlyMentioned = msg.MentionedUsers.Any(u => u.Id == _client.CurrentUser.Id);
+            if (!explicitlyMentioned)
                 return;
         }
 

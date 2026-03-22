@@ -55,6 +55,7 @@ public sealed class ChannelFactory
 
         var allowBots = bool.TryParse(ResolveSetting(config, "AllowBots"), out var ab) && ab;
         var enableReactions = bool.TryParse(ResolveSetting(config, "EnableReactions"), out var er) && er;
+        var requireMention = !bool.TryParse(ResolveSetting(config, "RequireMention"), out var rm) || rm;
 
         var allowedBotIds = new List<ulong>();
         var idsStr = ResolveSetting(config, "AllowedBotIds");
@@ -67,7 +68,7 @@ public sealed class ChannelFactory
             }
         }
 
-        return new DiscordChannel(token, allowBots, allowedBotIds, enableReactions);
+        return new DiscordChannel(token, allowBots, allowedBotIds, enableReactions, requireMention);
     }
 
     private SignalChannel CreateSignal(ChannelConfig config)
