@@ -1,5 +1,6 @@
 using JD.AI.Channels.OpenClaw;
 using JD.AI.Channels.OpenClaw.Routing;
+using JD.AI.Core.Config;
 using JD.AI.Gateway.Config;
 using JD.AI.Gateway.Services;
 
@@ -325,10 +326,11 @@ public static class GatewayConfigEndpoints
         .WithDescription("Update the gateway providers configuration.");
 
         // PUT /api/gateway/config/agents — update agent definitions
-        group.MapPut("/config/agents", (List<AgentDefinition> update, GatewayConfig config, IConfiguration root) =>
+        group.MapPut("/config/agents", async (List<AgentDefinition> update, GatewayConfig config, IConfiguration root, CancellationToken ct) =>
         {
             config.Agents = update;
             WriteConfigSection(root, "Gateway:Agents", update);
+            await PersistSharedGatewayDefaultAsync(config, ct).ConfigureAwait(false);
             return Results.Ok(config.Agents);
         })
         .WithName("UpdateAgentsConfig")
@@ -345,10 +347,11 @@ public static class GatewayConfigEndpoints
         .WithDescription("Update the gateway channels configuration.");
 
         // PUT /api/gateway/config/routing — update routing config
-        group.MapPut("/config/routing", (RoutingConfig update, GatewayConfig config, IConfiguration root) =>
+        group.MapPut("/config/routing", async (RoutingConfig update, GatewayConfig config, IConfiguration root, CancellationToken ct) =>
         {
             config.Routing = update;
             WriteConfigSection(root, "Gateway:Routing", update);
+            await PersistSharedGatewayDefaultAsync(config, ct).ConfigureAwait(false);
             return Results.Ok(config.Routing);
         })
         .WithName("UpdateRoutingConfig")
@@ -475,6 +478,46 @@ public static class GatewayConfigEndpoints
         }
 
         return fragments.ToArray();
+    }
+
+    private static async Task PersistSharedGatewayDefaultAsync(
+        GatewayConfig config,
+        CancellationToken ct)
+    {
+        var (agentId, agent) = ResolveSharedDefaultAgent(config);
+        if (agent is null ||
+            string.IsNullOrWhiteSpace(agent.Provider) ||
+            string.IsNullOrWhiteSpace(agent.Model))
+        {
+            return;
+        }
+
+        using var configStore = new AtomicConfigStore();
+        await configStore
+            .SetGatewayDefaultAgentAsync(agent.Provider, agent.Model, agentId, ct)
+            .ConfigureAwait(false);
+    }
+
+    private static (string AgentId, AgentDefinition? Agent) ResolveSharedDefaultAgent(GatewayConfig config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+
+        var preferredId = string.IsNullOrWhiteSpace(config.Routing.DefaultAgentId)
+            ? "default"
+            : config.Routing.DefaultAgentId.Trim();
+
+        var selected = config.Agents.FirstOrDefault(agent =>
+            string.Equals(agent.Id, preferredId, StringComparison.OrdinalIgnoreCase));
+        if (selected is not null)
+            return (preferredId, selected);
+
+        selected = config.Agents.FirstOrDefault(agent =>
+            string.Equals(agent.Id, "default", StringComparison.OrdinalIgnoreCase));
+        if (selected is not null)
+            return (selected.Id, selected);
+
+        selected = config.Agents.FirstOrDefault();
+        return selected is null ? (preferredId, null) : (selected.Id, selected);
     }
 
     /// <summary>Persists a config section to appsettings.json via JSON merge.</summary>

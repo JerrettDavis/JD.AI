@@ -4,6 +4,11 @@
     <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
         Define agents that can handle conversations. Auto-spawn agents start when the gateway boots.
     </MudText>
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+        Unified default agent:
+        <span style="font-weight:600;">@EffectiveDefaultAgentId</span>.
+        Updating this agent's provider/model is shared with `jdai` CLI and daemon startup.
+    </MudAlert>
 
     @for (var i = 0; i < Agents.Count; i++)
     {
@@ -14,6 +19,12 @@
                 <MudText Typo="Typo.subtitle2" Style="font-weight:600;">
                     @(string.IsNullOrEmpty(agent.Id) ? "New Agent" : agent.Id)
                 </MudText>
+                @if (IsUnifiedDefault(agent))
+                {
+                    <MudChip T="string" Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Small">
+                        Unified Default
+                    </MudChip>
+                }
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
                                OnClick="@(() => RemoveAgent(idx))" />
             </MudStack>
@@ -178,11 +189,18 @@
 @code {
     [Parameter] public IList<AgentDefinition> Agents { get; set; } = new List<AgentDefinition>();
     [Parameter] public IList<ProviderConfigModel> AvailableProviders { get; set; } = new List<ProviderConfigModel>();
+    [Parameter] public string? DefaultAgentId { get; set; }
     [Parameter] public GatewayApiClient Api { get; set; } = null!;
 
     private readonly Dictionary<string, ProviderModelInfo[]> _providerModels = [];
     private readonly Dictionary<int, string> _stopSeqText = [];
     private bool _saving;
+    private string EffectiveDefaultAgentId =>
+        string.IsNullOrWhiteSpace(DefaultAgentId) ? "default" : DefaultAgentId.Trim();
+
+    private bool IsUnifiedDefault(AgentDefinition agent) =>
+        !string.IsNullOrWhiteSpace(agent.Id) &&
+        string.Equals(agent.Id, EffectiveDefaultAgentId, StringComparison.OrdinalIgnoreCase);
 
     protected override async Task OnInitializedAsync()
     {

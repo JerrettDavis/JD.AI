@@ -35,7 +35,7 @@ else
             <SettingsProvidersTab Providers="_config.Providers" Api="Api" />
         </MudTabPanel>
         <MudTabPanel Text="Agents" Icon="@Icons.Material.Filled.SmartToy" ToolTip="Agent definitions and auto-spawn settings">
-            <SettingsAgentsTab Agents="_config.Agents" AvailableProviders="_config.Providers" Api="Api" />
+            <SettingsAgentsTab Agents="_config.Agents" AvailableProviders="_config.Providers" DefaultAgentId="_config.Routing.DefaultAgentId" Api="Api" />
         </MudTabPanel>
         <MudTabPanel Text="Channels" Icon="@Icons.Material.Filled.Cable" ToolTip="Messaging channel connections">
             <SettingsChannelsTab Channels="_config.Channels" Api="Api" />

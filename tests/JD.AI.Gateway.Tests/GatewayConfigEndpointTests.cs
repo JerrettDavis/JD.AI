@@ -194,6 +194,46 @@ public sealed class GatewayConfigEndpointTests : IClassFixture<GatewayTestFactor
         fragments.Should().Contain("signal:g-agent-");
     }
 
+    [Fact]
+    public void ResolveSharedDefaultAgent_UsesRoutingDefaultWhenPresent()
+    {
+        var config = new GatewayConfig
+        {
+            Agents =
+            [
+                new AgentDefinition { Id = "default", Provider = "ollama", Model = "qwen3.5:27b" },
+                new AgentDefinition { Id = "coder", Provider = "OpenAI Codex", Model = "gpt-5.3-codex" },
+            ],
+            Routing = new RoutingConfig { DefaultAgentId = "coder" }
+        };
+
+        var resolved = InvokePrivateStatic<(string AgentId, AgentDefinition? Agent)>("ResolveSharedDefaultAgent", config);
+
+        resolved.AgentId.Should().Be("coder");
+        resolved.Agent.Should().NotBeNull();
+        resolved.Agent!.Provider.Should().Be("OpenAI Codex");
+    }
+
+    [Fact]
+    public void ResolveSharedDefaultAgent_FallsBackToDefaultId()
+    {
+        var config = new GatewayConfig
+        {
+            Agents =
+            [
+                new AgentDefinition { Id = "default", Provider = "OpenAI Codex", Model = "gpt-5.1-codex-mini" },
+                new AgentDefinition { Id = "aux", Provider = "ollama", Model = "qwen3.5:27b" },
+            ],
+            Routing = new RoutingConfig { DefaultAgentId = "missing" }
+        };
+
+        var resolved = InvokePrivateStatic<(string AgentId, AgentDefinition? Agent)>("ResolveSharedDefaultAgent", config);
+
+        resolved.AgentId.Should().Be("default");
+        resolved.Agent.Should().NotBeNull();
+        resolved.Agent!.Model.Should().Be("gpt-5.1-codex-mini");
+    }
+
     private static T InvokePrivateStatic<T>(string methodName, params object?[] args)
     {
         var method = typeof(GatewayConfigEndpoints).GetMethod(
