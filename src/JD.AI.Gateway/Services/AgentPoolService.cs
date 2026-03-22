@@ -5,6 +5,7 @@ using JD.AI.Core.Events;
 using JD.AI.Core.PromptCaching;
 using JD.AI.Core.Providers;
 using JD.AI.Gateway.Config;
+using JD.AI.Core.Tools;
 using JD.AI.Telemetry;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
@@ -71,6 +72,20 @@ public sealed class AgentPoolService : IHostedService
             ?? throw new InvalidOperationException($"No detector for provider '{provider}'.");
 
         var kernel = detector.BuildKernel(modelInfo);
+
+        // Register core tools (file, exec, web search, memory, tasks)
+        // Uses the shared CoreToolRegistrar from JD.AI.Core — works without session infrastructure
+        try
+        {
+            CoreToolRegistrar.Register(kernel);
+            _logger.LogInformation("Registered core tools for agent ({Provider}/{Model})",
+                provider, model);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to register core tools for agent — agent will run without tools");
+        }
+
         var history = new ChatHistory();
 
         if (!string.IsNullOrWhiteSpace(systemPrompt))
@@ -391,6 +406,7 @@ public sealed class AgentPoolService : IHostedService
         var settings = new OpenAIPromptExecutionSettings
         {
             MaxTokens = p?.MaxTokens ?? 4096,
+            FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(),
         };
 
         if (p is null) return settings;
