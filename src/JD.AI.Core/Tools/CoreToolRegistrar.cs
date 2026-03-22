@@ -52,6 +52,10 @@ public static class CoreToolRegistrar
         // Scheduler
         kernel.Plugins.AddFromObject(new SchedulerTools(), "scheduler");
 
+        // Gateway ops (optional — works with or without a configured gateway URL)
+        kernel.Plugins.AddFromObject(
+            new GatewayOpsTools(Environment.GetEnvironmentVariable("JDAI_GATEWAY_URL")), "gateway");
+
         return new CoreToolRegistration(taskTools, webSearchTools, processSessionManager);
     }
 }
