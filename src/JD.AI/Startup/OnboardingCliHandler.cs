@@ -59,6 +59,9 @@ internal static class OnboardingCliHandler
 
         await configStore.SetDefaultProviderAsync(provider.Name, projectPath).ConfigureAwait(false);
         await configStore.SetDefaultModelAsync(model.Id, projectPath).ConfigureAwait(false);
+        await configStore
+            .SetGatewayDefaultAgentAsync(provider.Name, model.Id)
+            .ConfigureAwait(false);
 
         if (useGlobalDefaults)
         {

@@ -42,11 +42,35 @@ public sealed class InProcessEventBus : IEventBus, IDisposable
 
         using var sub = Subscribe(eventTypeFilter, async evt =>
         {
-            await channel.Writer.WriteAsync(evt, ct).ConfigureAwait(false);
+            if (ct.IsCancellationRequested)
+                return;
+
+            try
+            {
+                await channel.Writer.WriteAsync(evt, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (ChannelClosedException)
+            {
+                // Stream has already been torn down.
+            }
         });
 
-        await foreach (var evt in channel.Reader.ReadAllAsync(ct).ConfigureAwait(false))
+        while (true)
         {
+            GatewayEvent evt;
+            try
+            {
+                evt = await channel.Reader.ReadAsync(ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                yield break;
+            }
+            catch (ChannelClosedException)
+            {
+                yield break;
+            }
+
             yield return evt;
         }
     }

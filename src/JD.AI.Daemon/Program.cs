@@ -198,6 +198,7 @@ static void RunDaemon(string[] args)
 
     // --- Gateway configuration ---
     var gatewayConfig = builder.Configuration.GetSection("Gateway").Get<GatewayConfig>() ?? new GatewayConfig();
+    GatewaySharedAgentDefaults.ApplyAsync(gatewayConfig).GetAwaiter().GetResult();
     builder.Services.AddSingleton(gatewayConfig);
 
     // --- Security services ---
@@ -233,6 +234,7 @@ static void RunDaemon(string[] args)
     builder.Services.AddSingleton<IChannelRegistry, ChannelRegistry>();
     builder.Services.AddSingleton<IProviderDetector, ClaudeCodeDetector>();
     builder.Services.AddSingleton<IProviderDetector, CopilotDetector>();
+    builder.Services.AddSingleton<IProviderDetector, OpenAICodexDetector>();
     builder.Services.AddSingleton<IProviderDetector, OllamaDetector>();
     builder.Services.AddSingleton<IProviderRegistry>(sp =>
         new ProviderRegistry(sp.GetServices<IProviderDetector>()));

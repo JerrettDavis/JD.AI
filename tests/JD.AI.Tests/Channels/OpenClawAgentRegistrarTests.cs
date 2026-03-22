@@ -291,7 +291,7 @@ public sealed class OpenClawAgentRegistrarTests : IDisposable
     }
 
     [Fact]
-    public void EnsureDefaultMainAgent_WhenDefaultAlreadySet_DoesNotModifyConfig()
+    public void EnsureDefaultMainAgent_WhenDefaultAlreadySet_AddsMainWithoutChangingDefault()
     {
         var config = JsonNode.Parse(
             """
@@ -306,9 +306,13 @@ public sealed class OpenClawAgentRegistrarTests : IDisposable
 
         var changed = InvokeEnsureDefaultMainAgent(config);
 
-        Assert.False(changed);
-        Assert.True(config["agents"]!["list"]![0]!["default"]!.GetValue<bool>());
-        Assert.Equal("native-assistant", config["agents"]!["list"]![0]!["id"]!.GetValue<string>());
+        Assert.True(changed);
+        var agents = config["agents"]!["list"]!.AsArray();
+        Assert.Equal(2, agents.Count);
+        Assert.Equal("native-assistant", agents[0]!["id"]!.GetValue<string>());
+        Assert.True(agents[0]!["default"]!.GetValue<bool>());
+        Assert.Equal("main", agents[1]!["id"]!.GetValue<string>());
+        Assert.False(agents[1]!["default"]!.GetValue<bool>());
     }
 
     private static (int RemovedAgents, int RemovedBindings) InvokeRemoveManagedAgentsAndBindings(JsonNode config)

@@ -339,25 +339,27 @@ public sealed class OpenClawAgentRegistrar
                 hasDefault = true;
         }
 
-        if (!hasAnyAgent)
+        var changed = false;
+
+        if (!hasAnyAgent || mainAgentIndex < 0)
         {
             list.Add(new JsonObject
             {
                 ["id"] = OpenClawDefaultAgentId,
                 ["name"] = "Assistant",
-                ["default"] = true,
+                ["default"] = !hasDefault,
             });
-            return true;
+            mainAgentIndex = list.Count - 1;
+            changed = true;
         }
 
-        if (mainAgentIndex >= 0 && !hasDefault)
+        if (!hasDefault && mainAgentIndex >= 0 && list[mainAgentIndex] is JsonObject mainAgent)
         {
-            if (list[mainAgentIndex] is JsonObject mainAgent)
-                mainAgent["default"] = true;
-            return true;
+            mainAgent["default"] = true;
+            changed = true;
         }
 
-        return false;
+        return changed;
     }
 
     /// <summary>Gets the list of registered JD.AI agent IDs.</summary>

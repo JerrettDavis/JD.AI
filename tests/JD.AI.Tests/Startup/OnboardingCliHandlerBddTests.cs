@@ -36,6 +36,7 @@ public sealed class OnboardingCliHandlerBddTests : TinyBddXunitBase
         int exitCode = -1;
         string? projectDefaultProvider = null;
         string? projectDefaultModel = null;
+        GatewayDefaultAgentConfig? gatewayDefaults = null;
 
         await WithTempProjectAsync(async (projectDir, configPath) =>
         {
@@ -55,12 +56,17 @@ public sealed class OnboardingCliHandlerBddTests : TinyBddXunitBase
                     using var store = new AtomicConfigStore(configPath);
                     projectDefaultProvider = await store.GetDefaultProviderAsync(projectDir).ConfigureAwait(false);
                     projectDefaultModel = await store.GetDefaultModelAsync(projectDir).ConfigureAwait(false);
+                    gatewayDefaults = await store.GetGatewayDefaultAgentAsync().ConfigureAwait(false);
                 })
                 .Then("project defaults are persisted", _ =>
                 {
                     exitCode.Should().Be(0);
                     projectDefaultProvider.Should().Be("OpenAI Codex");
                     projectDefaultModel.Should().Be("gpt-5.3-codex");
+                    gatewayDefaults.Should().NotBeNull();
+                    gatewayDefaults!.Provider.Should().Be("OpenAI Codex");
+                    gatewayDefaults.Model.Should().Be("gpt-5.3-codex");
+                    gatewayDefaults.AgentId.Should().Be("default");
                     return true;
                 })
                 .AssertPassed();
@@ -75,6 +81,7 @@ public sealed class OnboardingCliHandlerBddTests : TinyBddXunitBase
         string? projectDefaultModel = null;
         string? globalDefaultProvider = null;
         string? globalDefaultModel = null;
+        GatewayDefaultAgentConfig? gatewayDefaults = null;
 
         await WithTempProjectAsync(async (projectDir, configPath) =>
         {
@@ -97,6 +104,7 @@ public sealed class OnboardingCliHandlerBddTests : TinyBddXunitBase
                     projectDefaultModel = await store.GetDefaultModelAsync(projectDir).ConfigureAwait(false);
                     globalDefaultProvider = await store.GetDefaultProviderAsync().ConfigureAwait(false);
                     globalDefaultModel = await store.GetDefaultModelAsync().ConfigureAwait(false);
+                    gatewayDefaults = await store.GetGatewayDefaultAgentAsync().ConfigureAwait(false);
                 })
                 .Then("project and global defaults are both saved", _ =>
                 {
@@ -105,6 +113,9 @@ public sealed class OnboardingCliHandlerBddTests : TinyBddXunitBase
                     projectDefaultModel.Should().Be("gpt-5.2-codex");
                     globalDefaultProvider.Should().Be("OpenAI Codex");
                     globalDefaultModel.Should().Be("gpt-5.2-codex");
+                    gatewayDefaults.Should().NotBeNull();
+                    gatewayDefaults!.Provider.Should().Be("OpenAI Codex");
+                    gatewayDefaults.Model.Should().Be("gpt-5.2-codex");
                     return true;
                 })
                 .AssertPassed();

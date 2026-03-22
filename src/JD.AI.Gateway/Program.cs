@@ -26,6 +26,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // --- Gateway configuration ---
 var gatewayConfig = builder.Configuration.GetSection("Gateway").Get<GatewayConfig>() ?? new GatewayConfig();
+await GatewaySharedAgentDefaults.ApplyAsync(gatewayConfig).ConfigureAwait(false);
 builder.Services.AddSingleton(gatewayConfig);
 
 // --- Security services ---

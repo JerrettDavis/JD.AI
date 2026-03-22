@@ -205,6 +205,31 @@ public sealed class AtomicConfigStore : IDisposable
         }, ct).ConfigureAwait(false);
     }
 
+    /// <summary>Gets the shared gateway default agent preference.</summary>
+    public async Task<GatewayDefaultAgentConfig> GetGatewayDefaultAgentAsync(CancellationToken ct = default)
+    {
+        var config = await ReadAsync(ct).ConfigureAwait(false);
+        return config.GatewayDefaults;
+    }
+
+    /// <summary>Sets the shared gateway default agent preference.</summary>
+    public async Task SetGatewayDefaultAgentAsync(
+        string provider,
+        string model,
+        string? agentId = null,
+        CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(provider);
+        ArgumentException.ThrowIfNullOrWhiteSpace(model);
+
+        await WriteAsync(cfg =>
+        {
+            cfg.GatewayDefaults.Provider = provider;
+            cfg.GatewayDefaults.Model = model;
+            cfg.GatewayDefaults.AgentId = string.IsNullOrWhiteSpace(agentId) ? "default" : agentId;
+        }, ct).ConfigureAwait(false);
+    }
+
     /// <summary>Gets explicit tool permissions resolved for global + project scope.</summary>
     public async Task<ToolPermissionProfile> GetToolPermissionProfileAsync(
         string? projectPath = null,
@@ -341,6 +366,9 @@ public sealed class JdAiConfig
 
     /// <summary>Explicit tool allow/deny permissions.</summary>
     public ToolPermissionsConfig ToolPermissions { get; set; } = new();
+
+    /// <summary>Shared gateway agent defaults used by daemon/gateway runtimes.</summary>
+    public GatewayDefaultAgentConfig GatewayDefaults { get; set; } = new();
 }
 
 /// <summary>Provider and model defaults.</summary>
@@ -357,6 +385,19 @@ public sealed class DefaultsConfig
     /// "powershell", "cmd", "bash", or a custom template with {command}).
     /// </summary>
     public string? Shell { get; set; }
+}
+
+/// <summary>Shared gateway default agent preference persisted in the JD.AI config store.</summary>
+public sealed class GatewayDefaultAgentConfig
+{
+    /// <summary>Gateway agent ID to apply defaults to (typically "default").</summary>
+    public string AgentId { get; set; } = "default";
+
+    /// <summary>Provider display name used by provider registry matching.</summary>
+    public string? Provider { get; set; }
+
+    /// <summary>Model identifier or display name resolved within the provider.</summary>
+    public string? Model { get; set; }
 }
 
 /// <summary>Config root for explicit tool permission rules.</summary>

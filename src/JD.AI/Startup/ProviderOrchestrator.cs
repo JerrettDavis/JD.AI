@@ -486,6 +486,9 @@ internal static class ProviderOrchestrator
         {
             await configStore.SetDefaultProviderAsync(selectedModel.ProviderName, projectPath).ConfigureAwait(false);
             await configStore.SetDefaultModelAsync(selectedModel.Id, projectPath).ConfigureAwait(false);
+            await configStore
+                .SetGatewayDefaultAgentAsync(selectedModel.ProviderName, selectedModel.Id)
+                .ConfigureAwait(false);
         }
 #pragma warning disable CA1031 // selection persistence should never block startup
         catch
