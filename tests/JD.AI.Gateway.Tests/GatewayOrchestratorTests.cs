@@ -112,6 +112,7 @@ public sealed class GatewayOrchestratorTests
         await orchestrator.StartAsync(CancellationToken.None);
 
         var agentId = _pool.ListAgents().Should().ContainSingle().Which.Id;
+        agentId.Should().Be("assistant");
         var mappings = _router.GetMappings();
         mappings.Should().ContainKey("web");
         mappings.Should().ContainKey("manual");

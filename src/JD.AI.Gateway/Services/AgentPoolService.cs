@@ -1,9 +1,11 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using JD.AI.Core.Agents;
+using JD.AI.Core.Config;
 using JD.AI.Core.Events;
 using JD.AI.Core.PromptCaching;
 using JD.AI.Core.Providers;
+using JD.AI.Core.Sessions;
 using JD.AI.Gateway.Config;
 using JD.AI.Telemetry;
 using Microsoft.Extensions.Logging;
@@ -19,8 +21,11 @@ namespace JD.AI.Gateway.Services;
 /// </summary>
 public sealed class AgentPoolService : IHostedService
 {
+    private const string MainSessionSuffix = "main";
+
     private readonly IProviderRegistry _providers;
     private readonly IEventBus _eventBus;
+    private readonly SessionStore _sessionStore;
     private readonly ILogger<AgentPoolService> _logger;
     private readonly ConcurrentDictionary<string, AgentInstance> _agents = new();
 
@@ -33,13 +38,26 @@ public sealed class AgentPoolService : IHostedService
     public AgentPoolService(
         IProviderRegistry providers, IEventBus eventBus,
         ILogger<AgentPoolService> logger)
+        : this(providers, eventBus, logger, sessionStore: null)
+    {
+    }
+
+    public AgentPoolService(
+        IProviderRegistry providers,
+        IEventBus eventBus,
+        ILogger<AgentPoolService> logger,
+        SessionStore? sessionStore)
     {
         _providers = providers;
         _eventBus = eventBus;
+        _sessionStore = sessionStore ?? new SessionStore();
         _logger = logger;
     }
 
-    public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        await _sessionStore.InitializeAsync().ConfigureAwait(false);
+    }
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
@@ -53,7 +71,8 @@ public sealed class AgentPoolService : IHostedService
     public async Task<string> SpawnAgentAsync(
         string provider, string model, string? systemPrompt,
         CancellationToken ct, ModelParameters? parameters = null,
-        IReadOnlyList<string>? fallbackProviders = null)
+        IReadOnlyList<string>? fallbackProviders = null,
+        string? preferredAgentId = null)
     {
         var allProviders = await _providers.DetectProvidersAsync(ct);
         var providerInfo = allProviders.FirstOrDefault(p =>
@@ -73,11 +92,38 @@ public sealed class AgentPoolService : IHostedService
         var kernel = detector.BuildKernel(modelInfo);
         var history = new ChatHistory();
 
-        if (!string.IsNullOrWhiteSpace(systemPrompt))
-            history.AddSystemMessage(systemPrompt);
+        var id = ResolveAgentId(preferredAgentId);
+        var session = await EnsureSessionAsync(id, provider, model, systemPrompt, ct).ConfigureAwait(false);
+        var nextTurnIndex = session.Turns.Count;
+        foreach (var turn in session.Turns.OrderBy(t => t.TurnIndex))
+        {
+            if (string.IsNullOrWhiteSpace(turn.Content))
+                continue;
 
-        var id = Guid.NewGuid().ToString("N")[..12];
-        var instance = new AgentInstance(id, provider, model, kernel, history, parameters, fallbackProviders);
+            switch (turn.Role.Trim().ToLowerInvariant())
+            {
+                case "system":
+                    history.AddSystemMessage(turn.Content);
+                    break;
+                case "user":
+                    history.AddUserMessage(turn.Content);
+                    break;
+                default:
+                    history.AddAssistantMessage(turn.Content);
+                    break;
+            }
+        }
+
+        var instance = new AgentInstance(
+            id,
+            provider,
+            model,
+            kernel,
+            history,
+            parameters,
+            fallbackProviders,
+            session.Id,
+            nextTurnIndex);
         _agents[id] = instance;
 
         await _eventBus.PublishAsync(
@@ -91,6 +137,7 @@ public sealed class AgentPoolService : IHostedService
         if (!_agents.TryGetValue(agentId, out var agent)) return null;
 
         agent.History.AddUserMessage(message);
+        await SaveTurnAsync(agent, role: "user", content: message, durationMs: 0, ct).ConfigureAwait(false);
         var chat = agent.Kernel.GetRequiredService<IChatCompletionService>();
         var settings = BuildExecutionSettings(agent.Parameters, agent.Provider, agent.Model);
         PromptCachePolicy.Apply(
@@ -117,6 +164,8 @@ public sealed class AgentPoolService : IHostedService
             content = response.Content ?? "";
             agent.History.AddAssistantMessage(content);
             agent.TurnCount++;
+            await SaveTurnAsync(agent, role: "assistant", content: content, durationMs: (long)sw.Elapsed.TotalMilliseconds, ct)
+                .ConfigureAwait(false);
 
             sw.Stop();
 
@@ -146,9 +195,18 @@ public sealed class AgentPoolService : IHostedService
             var fallbackResult = await TryFallbackProvidersAsync(agent, ct).ConfigureAwait(false);
             if (fallbackResult is not null)
             {
-                content = fallbackResult;
+                content = fallbackResult.Content;
                 agent.History.AddAssistantMessage(content);
                 agent.TurnCount++;
+                await SaveTurnAsync(
+                        agent,
+                        role: "assistant",
+                        content: content,
+                        durationMs: (long)sw.Elapsed.TotalMilliseconds,
+                        ct,
+                        providerOverride: fallbackResult.Provider,
+                        modelOverride: fallbackResult.Model)
+                    .ConfigureAwait(false);
 
                 turnActivity?.SetTag("jdai.agent.fallback_used", "true");
 
@@ -173,7 +231,7 @@ public sealed class AgentPoolService : IHostedService
     /// Tries each configured fallback provider/model in order. Returns the
     /// response content on first success, or <c>null</c> if all fallbacks fail.
     /// </summary>
-    private async Task<string?> TryFallbackProvidersAsync(
+    private async Task<FallbackResponse?> TryFallbackProvidersAsync(
         AgentInstance agent, CancellationToken ct)
     {
         if (agent.FallbackProviders.Count == 0)
@@ -239,7 +297,10 @@ public sealed class AgentPoolService : IHostedService
                 var result = await fbChat.GetChatMessageContentAsync(
                     agent.History, fallbackSettings, cancellationToken: ct).ConfigureAwait(false);
 
-                return result.Content ?? "";
+                return new FallbackResponse(
+                    result.Content ?? "",
+                    fbProvider,
+                    modelInfo.Id);
             }
 #pragma warning disable CA1031
             catch (Exception fbEx)
@@ -377,7 +438,10 @@ public sealed class AgentPoolService : IHostedService
 
     public void StopAgent(string agentId)
     {
-        _agents.TryRemove(agentId, out _);
+        if (_agents.TryRemove(agentId, out var removed))
+        {
+            _ = CloseSessionBestEffortAsync(removed.SessionId);
+        }
     }
 
     public IProviderDetector? GetDetector(string provider) =>
@@ -422,7 +486,9 @@ public sealed class AgentPoolService : IHostedService
         string id, string provider, string model,
         Kernel kernel, ChatHistory history,
         ModelParameters? parameters = null,
-        IReadOnlyList<string>? fallbackProviders = null)
+        IReadOnlyList<string>? fallbackProviders = null,
+        string? sessionId = null,
+        int nextTurnIndex = 0)
     {
         public string Id => id;
         public string Provider => provider;
@@ -431,8 +497,136 @@ public sealed class AgentPoolService : IHostedService
         public ChatHistory History => history;
         public ModelParameters? Parameters => parameters;
         public IReadOnlyList<string> FallbackProviders => fallbackProviders ?? [];
+        public string SessionId => sessionId ?? BuildSessionId(id);
+        public int NextTurnIndex { get; set; } = nextTurnIndex;
         public int TurnCount { get; set; }
         public DateTimeOffset CreatedAt { get; } = DateTimeOffset.UtcNow;
+    }
+
+    private sealed record FallbackResponse(string Content, string Provider, string Model);
+
+    private static string BuildSessionId(string agentId) =>
+        $"agent:{agentId}:{MainSessionSuffix}";
+
+    private string ResolveAgentId(string? preferredAgentId)
+    {
+        if (string.IsNullOrWhiteSpace(preferredAgentId))
+            return Guid.NewGuid().ToString("N")[..12];
+
+        var baseId = preferredAgentId.Trim();
+        if (!_agents.ContainsKey(baseId))
+            return baseId;
+
+        for (var suffix = 2; suffix < 1000; suffix++)
+        {
+            var candidate = $"{baseId}-{suffix}";
+            if (!_agents.ContainsKey(candidate))
+                return candidate;
+        }
+
+        return Guid.NewGuid().ToString("N")[..12];
+    }
+
+    private async Task<SessionInfo> EnsureSessionAsync(
+        string agentId,
+        string provider,
+        string model,
+        string? systemPrompt,
+        CancellationToken ct)
+    {
+        await _sessionStore.InitializeAsync().ConfigureAwait(false);
+        var sessionId = BuildSessionId(agentId);
+        var existing = await _sessionStore.GetSessionAsync(sessionId).ConfigureAwait(false);
+        if (existing is not null)
+        {
+            existing.IsActive = true;
+            existing.UpdatedAt = DateTime.UtcNow;
+            await _sessionStore.UpdateSessionAsync(existing).ConfigureAwait(false);
+            return existing;
+        }
+
+        var projectPath = DataDirectories.Root;
+        var created = new SessionInfo
+        {
+            Id = sessionId,
+            Name = $"{agentId} ({MainSessionSuffix})",
+            ProjectPath = projectPath,
+            ProjectHash = ProjectHasher.Hash(projectPath),
+            ProviderName = provider,
+            ModelId = model,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            IsActive = true,
+            MessageCount = 0,
+            TotalTokens = 0,
+        };
+        await _sessionStore.CreateSessionAsync(created).ConfigureAwait(false);
+
+        if (!string.IsNullOrWhiteSpace(systemPrompt))
+        {
+            var systemTurn = new TurnRecord
+            {
+                SessionId = created.Id,
+                TurnIndex = 0,
+                Role = "system",
+                Content = systemPrompt,
+                ProviderName = provider,
+                ModelId = model,
+                DurationMs = 0,
+            };
+            await _sessionStore.SaveTurnAsync(systemTurn).ConfigureAwait(false);
+            created.MessageCount = 1;
+            created.UpdatedAt = DateTime.UtcNow;
+            await _sessionStore.UpdateSessionAsync(created).ConfigureAwait(false);
+        }
+
+        return await _sessionStore.GetSessionAsync(sessionId).ConfigureAwait(false) ?? created;
+    }
+
+    private async Task SaveTurnAsync(
+        AgentInstance agent,
+        string role,
+        string content,
+        long durationMs,
+        CancellationToken ct,
+        string? providerOverride = null,
+        string? modelOverride = null)
+    {
+        ct.ThrowIfCancellationRequested();
+        var turn = new TurnRecord
+        {
+            SessionId = agent.SessionId,
+            TurnIndex = agent.NextTurnIndex++,
+            Role = role,
+            Content = content,
+            ProviderName = providerOverride ?? agent.Provider,
+            ModelId = modelOverride ?? agent.Model,
+            DurationMs = durationMs,
+        };
+        await _sessionStore.SaveTurnAsync(turn).ConfigureAwait(false);
+
+        var session = await _sessionStore.GetSessionAsync(agent.SessionId).ConfigureAwait(false);
+        if (session is null)
+            return;
+
+        session.IsActive = true;
+        session.UpdatedAt = DateTime.UtcNow;
+        session.MessageCount = Math.Max(session.MessageCount, agent.NextTurnIndex);
+        await _sessionStore.UpdateSessionAsync(session).ConfigureAwait(false);
+    }
+
+    private async Task CloseSessionBestEffortAsync(string sessionId)
+    {
+        try
+        {
+            await _sessionStore.CloseSessionAsync(sessionId).ConfigureAwait(false);
+        }
+#pragma warning disable CA1031
+        catch
+        {
+            // Session close is best-effort during shutdown/removal.
+        }
+#pragma warning restore CA1031
     }
 }
 
