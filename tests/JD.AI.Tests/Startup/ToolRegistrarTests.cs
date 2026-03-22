@@ -29,8 +29,9 @@ public sealed class ToolRegistrarTests
         Assert.Contains(kernel.Plugins, p => p.Name.Equals("tasks", StringComparison.Ordinal));
         Assert.Contains(kernel.Plugins, p => p.Name.Equals("usage", StringComparison.Ordinal));
         Assert.Contains(kernel.Plugins, p => p.Name.Equals("runtime", StringComparison.Ordinal));
+        Assert.Contains(kernel.Plugins, p => p.Name.Equals("WebSearchTools", StringComparison.Ordinal));
         Assert.Contains(kernel.Plugins, p => p.Name.Equals("channels", StringComparison.Ordinal));
-        Assert.Contains(kernel.Plugins, p => p.Name.Equals("gateway", StringComparison.Ordinal));
         Assert.Contains(kernel.Plugins, p => p.Name.Equals("openclaw", StringComparison.Ordinal));
+        Assert.Contains(kernel.Plugins, p => p.Name.Equals("sessions", StringComparison.Ordinal));
     }
 }
