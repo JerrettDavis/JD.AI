@@ -133,6 +133,43 @@ public sealed class ConfigWriteEndpointTests : IClassFixture<GatewayTestFactory>
     }
 
     [Fact]
+    public async Task PutAgentsConfig_WhenRoutingReferencesMissingAgents_NormalizesRouting()
+    {
+        var routingUpdate = new
+        {
+            DefaultAgentId = "ghost",
+            Rules = new[]
+            {
+                new { ChannelType = "web", AgentId = "ghost", ConversationPattern = (string?)null },
+                new { ChannelType = "discord", AgentId = "kept", ConversationPattern = (string?)null }
+            }
+        };
+        var routingResponse = await _client.PutAsJsonAsync("/api/gateway/config/routing", routingUpdate);
+        routingResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var agentsUpdate = new[]
+        {
+            new AgentDefinition
+            {
+                Id = "kept",
+                Provider = "OpenAI Codex",
+                Model = "gpt-5.3-codex",
+                AutoSpawn = true
+            }
+        };
+        var agentsResponse = await _client.PutAsJsonAsync("/api/gateway/config/agents", agentsUpdate);
+        agentsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var configResponse = await _client.GetAsync("/api/gateway/config/raw");
+        configResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var config = await configResponse.Content.ReadFromJsonAsync<GatewayConfig>();
+        config.Should().NotBeNull();
+        config!.Routing.DefaultAgentId.Should().Be("kept");
+        config.Routing.Rules.Should().ContainSingle();
+        config.Routing.Rules[0].AgentId.Should().Be("kept");
+    }
+
+    [Fact]
     public async Task PutChannelsConfig_ReturnsOk()
     {
         var update = new[]

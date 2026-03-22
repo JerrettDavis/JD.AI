@@ -330,6 +330,8 @@ public static class GatewayConfigEndpoints
         {
             config.Agents = update;
             WriteConfigSection(root, "Gateway:Agents", update);
+            if (NormalizeRoutingForAgentSet(config))
+                WriteConfigSection(root, "Gateway:Routing", config.Routing);
             await PersistSharedGatewayDefaultAsync(config, ct).ConfigureAwait(false);
             return Results.Ok(config.Agents);
         })
@@ -518,6 +520,62 @@ public static class GatewayConfigEndpoints
 
         selected = config.Agents.FirstOrDefault();
         return selected is null ? (preferredId, null) : (selected.Id, selected);
+    }
+
+    private static bool NormalizeRoutingForAgentSet(GatewayConfig config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+
+        var changed = false;
+        var validIds = config.Agents
+            .Select(agent => agent.Id?.Trim())
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Cast<string>()
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (validIds.Count == 0)
+        {
+            if (!string.IsNullOrWhiteSpace(config.Routing.DefaultAgentId))
+            {
+                config.Routing.DefaultAgentId = string.Empty;
+                changed = true;
+            }
+
+            if (config.Routing.Rules.Count > 0)
+            {
+                config.Routing.Rules = [];
+                changed = true;
+            }
+
+            return changed;
+        }
+
+        var currentDefault = config.Routing.DefaultAgentId?.Trim();
+        if (string.IsNullOrWhiteSpace(currentDefault) || !validIds.Contains(currentDefault))
+        {
+            var fallbackDefault = config.Agents
+                .FirstOrDefault(agent => string.Equals(agent.Id, "default", StringComparison.OrdinalIgnoreCase))
+                ?.Id;
+            fallbackDefault ??= config.Agents
+                .FirstOrDefault(agent => !string.IsNullOrWhiteSpace(agent.Id))
+                ?.Id;
+            fallbackDefault ??= string.Empty;
+
+            if (!string.Equals(config.Routing.DefaultAgentId, fallbackDefault, StringComparison.Ordinal))
+            {
+                config.Routing.DefaultAgentId = fallbackDefault;
+                changed = true;
+            }
+        }
+
+        var initialRuleCount = config.Routing.Rules.Count;
+        config.Routing.Rules = config.Routing.Rules
+            .Where(rule => !string.IsNullOrWhiteSpace(rule.AgentId) && validIds.Contains(rule.AgentId.Trim()))
+            .ToList();
+        if (config.Routing.Rules.Count != initialRuleCount)
+            changed = true;
+
+        return changed;
     }
 
     /// <summary>Persists a config section to appsettings.json via JSON merge.</summary>
