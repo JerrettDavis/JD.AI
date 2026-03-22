@@ -260,7 +260,7 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
         if (msg is not IUserMessage userMessage || _client?.CurrentUser is null)
             return;
 
-        if (_activeReactionByMessageId.TryGetValue(msg.Id, out var previous) && previous != emoji)
+        if (_activeReactionByMessageId.TryGetValue(msg.Id, out var previous) && !string.Equals(previous, emoji, StringComparison.Ordinal))
         {
             await TryRemoveReactionAsync(userMessage, previous);
         }
