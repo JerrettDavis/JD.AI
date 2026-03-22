@@ -20,8 +20,9 @@ internal sealed record ToolRegistration(
     ProcessSessionManager ProcessSessionManager);
 
 /// <summary>
-/// Registers all built-in kernel tool plugins.
-/// Extracted from Program.cs lines 103-148.
+/// Registers all built-in kernel tool plugins for the CLI.
+/// Delegates core tool registration to <see cref="CoreToolRegistrar"/>
+/// (shared with Daemon/Gateway), then adds CLI-specific session-dependent tools.
 /// </summary>
 internal static class ToolRegistrar
 {
@@ -30,43 +31,30 @@ internal static class ToolRegistrar
         AgentSession session,
         ProviderModelInfo selectedModel)
     {
-        // Stateless tools — auto-discovered via [ToolPlugin(RequiresInjection = false)]
-        ToolAssemblyScanner.RegisterStaticPlugins(kernel, typeof(FileTools).Assembly);
+        // Register core tools (shared path — also used by Daemon/Gateway)
+        var core = CoreToolRegistrar.Register(kernel);
 
-        // Stateful tools
-        kernel.Plugins.AddFromObject(new MemoryTools(), "memory");
-
-        var taskTools = new TaskTools();
-        kernel.Plugins.AddFromObject(taskTools, "tasks");
+        // CLI-only session-dependent tools below
 
         var usageTools = new UsageTools();
         usageTools.SetModel(selectedModel);
         session.ModelChanged += (_, model) => usageTools.SetModel(model);
         kernel.Plugins.AddFromObject(usageTools, "usage");
 
-        var capabilityTools = new CapabilityTools(kernel);
-        kernel.Plugins.AddFromObject(capabilityTools, "capabilities");
         kernel.Plugins.AddFromObject(new BenchmarkTools(kernel), "benchmark");
         kernel.Plugins.AddFromObject(
             new QuestionTools(req => QuestionnaireSession.Run(req)), "questions");
 
-        var processSessionManager = new ProcessSessionManager();
-        kernel.Plugins.AddFromObject(new ExecProcessTools(processSessionManager), "runtime");
-
-        var webSearchTools = new WebSearchTools();
-        kernel.ImportPluginFromObject(webSearchTools, "WebSearchTools");
         kernel.ImportPluginFromObject(
-            new OpenClawCompatibilityTools(taskTools, webSearchTools), "openclaw");
+            new OpenClawCompatibilityTools(core.TaskTools, core.WebSearchTools), "openclaw");
 
         kernel.Plugins.AddFromObject(new SessionOrchestrationTools(session), "sessions");
-        kernel.Plugins.AddFromObject(new SchedulerTools(), "scheduler");
-        kernel.Plugins.AddFromObject(
-            new GatewayOpsTools(Environment.GetEnvironmentVariable("JDAI_GATEWAY_URL")), "gateway");
 
         // Channel ops
         var channelRegistry = new ChannelRegistry();
         kernel.Plugins.AddFromObject(new ChannelOpsTools(channelRegistry), "channels");
 
-        return new ToolRegistration(usageTools, taskTools, webSearchTools, processSessionManager);
+        return new ToolRegistration(
+            usageTools, core.TaskTools, core.WebSearchTools, core.ProcessSessionManager);
     }
 }
