@@ -54,6 +54,7 @@ public sealed class ChannelFactory
             ?? throw new InvalidOperationException("Discord channel requires 'BotToken' setting.");
 
         var allowBots = bool.TryParse(ResolveSetting(config, "AllowBots"), out var ab) && ab;
+        var enableReactions = bool.TryParse(ResolveSetting(config, "EnableReactions"), out var er) && er;
 
         var allowedBotIds = new List<ulong>();
         var idsStr = ResolveSetting(config, "AllowedBotIds");
@@ -66,7 +67,7 @@ public sealed class ChannelFactory
             }
         }
 
-        return new DiscordChannel(token, allowBots, allowedBotIds);
+        return new DiscordChannel(token, allowBots, allowedBotIds, enableReactions);
     }
 
     private SignalChannel CreateSignal(ChannelConfig config)

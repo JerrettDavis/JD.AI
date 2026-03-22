@@ -15,6 +15,8 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
     private readonly string _botToken;
     private readonly bool _allowBots;
     private readonly HashSet<ulong> _allowedBotIds;
+    private readonly bool _enableReactions;
+    private readonly Dictionary<ulong, string> _activeReactionByMessageId = new();
     private DiscordSocketClient? _client;
     private TaskCompletionSource? _readyTcs;
     private ICommandRegistry? _commandRegistry;
@@ -22,11 +24,16 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
     /// <summary>Prefix used for slash commands (e.g., "jdai-help").</summary>
     public const string CommandPrefix = "jdai-";
 
-    public DiscordChannel(string botToken, bool allowBots = false, IEnumerable<ulong>? allowedBotIds = null)
+    public DiscordChannel(
+        string botToken,
+        bool allowBots = false,
+        IEnumerable<ulong>? allowedBotIds = null,
+        bool enableReactions = false)
     {
         _botToken = botToken;
         _allowBots = allowBots;
         _allowedBotIds = allowedBotIds != null ? new HashSet<ulong>(allowedBotIds) : new HashSet<ulong>();
+        _enableReactions = enableReactions;
     }
 
     public string ChannelType => "discord";
@@ -193,6 +200,9 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
                 return;
         }
 
+        if (_enableReactions)
+            await SetStatusReactionAsync(msg, "👀");
+
         var channelMessage = new ChannelMessage
         {
             Id = msg.Id.ToString(),
@@ -213,8 +223,27 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
                 })).ToList()
         };
 
-        if (MessageReceived is not null)
+        if (MessageReceived is null)
+            return;
+
+        try
+        {
+            if (_enableReactions)
+                await SetStatusReactionAsync(msg, "🧠");
+
             await MessageReceived.Invoke(channelMessage);
+
+            if (_enableReactions)
+                await SetStatusReactionAsync(msg, "✅");
+        }
+#pragma warning disable CA1031
+        catch
+        {
+            if (_enableReactions)
+                await SetStatusReactionAsync(msg, "❌");
+            throw;
+        }
+#pragma warning restore CA1031
     }
 
     public async ValueTask DisposeAsync()
@@ -223,6 +252,44 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
         {
             await _client.StopAsync();
             _client.Dispose();
+        }
+    }
+
+    private async Task SetStatusReactionAsync(SocketMessage msg, string emoji)
+    {
+        if (msg is not IUserMessage userMessage || _client?.CurrentUser is null)
+            return;
+
+        if (_activeReactionByMessageId.TryGetValue(msg.Id, out var previous) && previous != emoji)
+        {
+            await TryRemoveReactionAsync(userMessage, previous);
+        }
+
+        await TryAddReactionAsync(userMessage, emoji);
+        _activeReactionByMessageId[msg.Id] = emoji;
+    }
+
+    private async Task TryAddReactionAsync(IUserMessage msg, string emoji)
+    {
+        try
+        {
+            await msg.AddReactionAsync(new Emoji(emoji));
+        }
+        catch
+        {
+            // best-effort only
+        }
+    }
+
+    private async Task TryRemoveReactionAsync(IUserMessage msg, string emoji)
+    {
+        try
+        {
+            await msg.RemoveReactionAsync(new Emoji(emoji), _client!.CurrentUser);
+        }
+        catch
+        {
+            // best-effort only
         }
     }
 
