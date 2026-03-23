@@ -1,5 +1,6 @@
 using JD.AI.Core.Channels;
 using JD.AI.Core.Events;
+using JD.AI.Core.Tools;
 using Microsoft.Extensions.Logging;
 
 namespace JD.AI.Gateway.Services;
@@ -69,7 +70,7 @@ public sealed class AgentRouter
         _logger.LogInformation("Routing message from {Channel} (route:{RouteKey}) to agent {Agent}",
             message.ChannelId, routeKey ?? "none", agentId);
 
-        var inboundPrompt = BuildInboundPrompt(message);
+        var inboundPrompt = await BuildInboundPromptAsync(message);
         var response = await _pool.SendMessageAsync(agentId, inboundPrompt, ct);
 
         // Send response back through the channel
@@ -136,7 +137,7 @@ public sealed class AgentRouter
         return false;
     }
 
-    private static string BuildInboundPrompt(ChannelMessage message)
+    private static async Task<string> BuildInboundPromptAsync(ChannelMessage message)
     {
         var lines = new List<string>
         {
@@ -160,9 +161,23 @@ public sealed class AgentRouter
                 message.Metadata.TryGetValue($"attachment.{i}.url", out var url);
 
                 lines.Add($"- {a.FileName} ({a.ContentType}, {a.SizeBytes} bytes){(string.IsNullOrWhiteSpace(url) ? string.Empty : $" URL: {url}")}");
+
+                if (!string.IsNullOrWhiteSpace(url) && a.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        var analysis = await MultimodalTools.AnalyzeImageAsync(url, includeData: false).ConfigureAwait(false);
+                        lines.Add("  [Gateway image metadata]");
+                        lines.AddRange(analysis.Split('\n').Select(s => "  " + s.TrimEnd('\r')));
+                    }
+                    catch (Exception ex)
+                    {
+                        lines.Add($"  [Gateway image metadata unavailable: {ex.Message}]");
+                    }
+                }
             }
 
-            lines.Add("If analysis is requested, inspect only the above attachment URLs or metadata.");
+            lines.Add("If analysis is requested, inspect only the above current-turn attachments and metadata.");
         }
 
         return string.Join(Environment.NewLine, lines);
