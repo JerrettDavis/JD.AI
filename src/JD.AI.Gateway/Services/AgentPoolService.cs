@@ -161,9 +161,20 @@ public sealed class AgentPoolService : IHostedService
 
             if (string.IsNullOrWhiteSpace(content))
             {
-                // Final fallback to deterministic operator-facing text with trace id.
-                content = $"[JD.AI turn produced empty output after retry. trace={turnTraceId}. Please retry your request.]";
                 turnActivity?.SetTag("jdai.turn.empty_after_retry", true);
+
+                // Try configured fallback providers before surfacing a retry message.
+                var emptyFallback = await TryFallbackProvidersAsync(agent, ct).ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(emptyFallback))
+                {
+                    content = emptyFallback;
+                    turnActivity?.SetTag("jdai.turn.empty_fallback_used", true);
+                }
+                else
+                {
+                    // Final fallback to deterministic operator-facing text with trace id.
+                    content = $"[JD.AI turn produced empty output after retry. trace={turnTraceId}. Please retry your request.]";
+                }
             }
 
             agent.History.AddAssistantMessage(content);
