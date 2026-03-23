@@ -105,6 +105,9 @@ public sealed class AgentPoolService : IHostedService
     {
         if (!_agents.TryGetValue(agentId, out var agent)) return null;
 
+        var turnTraceId = Guid.NewGuid().ToString("N")[..8];
+        var toolIntent = LooksLikeToolIntent(message);
+
         agent.History.AddUserMessage(message);
         var chat = agent.Kernel.GetRequiredService<IChatCompletionService>();
         var settings = BuildExecutionSettings(agent.Parameters, agent.Provider, agent.Model);
@@ -121,6 +124,8 @@ public sealed class AgentPoolService : IHostedService
         turnActivity?.SetTag("jdai.turn.index", agent.TurnCount);
         turnActivity?.SetTag("gen_ai.system", agent.Provider);
         turnActivity?.SetTag("gen_ai.request.model", agent.Model);
+        turnActivity?.SetTag("jdai.turn.trace_id", turnTraceId);
+        turnActivity?.SetTag("jdai.turn.tool_intent", toolIntent);
 
         var sw = Stopwatch.StartNew();
         string? content;
@@ -131,13 +136,34 @@ public sealed class AgentPoolService : IHostedService
 
             content = response.Content ?? "";
 
-            // Empty-response guardrail: if the model returned empty text
-            // (common with thinking-mode models), provide a fallback message.
             if (string.IsNullOrWhiteSpace(content))
             {
-                _logger.LogWarning("Model returned empty response for agent {AgentId} ({Provider}/{Model})",
-                    agentId, agent.Provider, agent.Model);
-                content = "[The model produced an empty response. This may be caused by thinking-mode token consumption. Please try rephrasing or simplifying your request.]";
+                _logger.LogWarning(
+                    "Empty model response on first attempt. trace={TraceId} agent={AgentId} provider={Provider} model={Model} toolIntent={ToolIntent} promptChars={PromptChars}",
+                    turnTraceId, agentId, agent.Provider, agent.Model, toolIntent, message.Length);
+
+                // Retry once with strict low-latency settings to reduce blank-turn risk.
+                var retrySettings = BuildExecutionSettings(agent.Parameters, agent.Provider, agent.Model);
+                retrySettings.MaxTokens = Math.Min(retrySettings.MaxTokens ?? 512, 512);
+                retrySettings.Temperature = 0.2;
+                PromptCachePolicy.Apply(
+                    retrySettings,
+                    agent.Provider,
+                    agent.Model,
+                    agent.History,
+                    enabled: true,
+                    ttl: PromptCacheTtl.FiveMinutes);
+
+                var retryResponse = await SendWithRetryAsync(
+                    chat, agent, retrySettings, ct).ConfigureAwait(false);
+                content = retryResponse.Content ?? "";
+            }
+
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                // Final fallback to deterministic operator-facing text with trace id.
+                content = $"[JD.AI turn produced empty output after retry. trace={turnTraceId}. Please retry your request.]";
+                turnActivity?.SetTag("jdai.turn.empty_after_retry", true);
             }
 
             agent.History.AddAssistantMessage(content);
@@ -179,7 +205,7 @@ public sealed class AgentPoolService : IHostedService
 
                 await _eventBus.PublishAsync(
                     new GatewayEvent("agent.turn_complete", agentId, DateTimeOffset.UtcNow,
-                        new { Turn = agent.TurnCount, Fallback = true }), ct);
+                        new { Turn = agent.TurnCount, Fallback = true, Trace = turnTraceId }), ct);
 
                 return content;
             }
@@ -189,7 +215,7 @@ public sealed class AgentPoolService : IHostedService
 
         await _eventBus.PublishAsync(
             new GatewayEvent("agent.turn_complete", agentId, DateTimeOffset.UtcNow,
-                new { Turn = agent.TurnCount }), ct);
+                new { Turn = agent.TurnCount, Trace = turnTraceId }), ct);
 
         return content;
     }
@@ -277,6 +303,21 @@ public sealed class AgentPoolService : IHostedService
         }
 
         return null;
+    }
+
+    private static bool LooksLikeToolIntent(string message)
+    {
+        if (string.IsNullOrWhiteSpace(message)) return false;
+        var m = message.ToLowerInvariant();
+        return m.Contains("run ")
+            || m.Contains("execute")
+            || m.Contains("echo ")
+            || m.Contains("ls")
+            || m.Contains("dir")
+            || m.Contains("web_search")
+            || m.Contains("search")
+            || m.Contains("read ")
+            || m.Contains("file");
     }
 
     /// <summary>
