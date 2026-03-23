@@ -250,6 +250,16 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
         if (_enableReactions && msg is IUserMessage inboundUserMessage)
             await SetStatusReactionAsync(inboundUserMessage, "👀");
 
+        var metadata = new Dictionary<string, string>();
+        for (var i = 0; i < msg.Attachments.Count; i++)
+        {
+            var a = msg.Attachments.ElementAt(i);
+            metadata[$"attachment.{i}.url"] = a.Url;
+            metadata[$"attachment.{i}.filename"] = a.Filename;
+            metadata[$"attachment.{i}.contentType"] = a.ContentType ?? "application/octet-stream";
+            metadata[$"attachment.{i}.sizeBytes"] = a.Size.ToString();
+        }
+
         var channelMessage = new ChannelMessage
         {
             Id = msg.Id.ToString(),
@@ -259,6 +269,7 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
             Content = msg.Content,
             Timestamp = msg.Timestamp,
             ThreadId = msg.Thread?.Id.ToString(),
+            Metadata = metadata,
             Attachments = msg.Attachments.Select(a => new ChannelAttachment(
                 a.Filename,
                 a.ContentType ?? "application/octet-stream",
