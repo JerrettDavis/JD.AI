@@ -1,6 +1,5 @@
 using JD.AI.Core.Channels;
 using JD.AI.Core.Events;
-using JD.AI.Core.Tools;
 using Microsoft.Extensions.Logging;
 
 namespace JD.AI.Gateway.Services;
@@ -70,8 +69,7 @@ public sealed class AgentRouter
         _logger.LogInformation("Routing message from {Channel} (route:{RouteKey}) to agent {Agent}",
             message.ChannelId, routeKey ?? "none", agentId);
 
-        var inboundPrompt = await BuildInboundPromptAsync(message);
-        var response = await _pool.SendMessageAsync(agentId, inboundPrompt, ct);
+        var response = await _pool.SendMessageAsync(agentId, message, ct);
 
         // Send response back through the channel
         var channel = sourceChannel ?? ResolveChannelForResponse(message);
@@ -137,49 +135,4 @@ public sealed class AgentRouter
         return false;
     }
 
-    private static async Task<string> BuildInboundPromptAsync(ChannelMessage message)
-    {
-        var lines = new List<string>
-        {
-            "[Current turn context]",
-            $"- MessageId: {message.Id}",
-            $"- AttachmentCount: {message.Attachments.Count}",
-            "- Rule: Only analyze attachments from this current turn. Do NOT infer image contents from prior turns.",
-            "- If the user asks to analyze an image/file but AttachmentCount is 0, ask them to reattach it.",
-            string.Empty,
-            message.Content
-        };
-
-        if (message.Attachments.Count > 0)
-        {
-            lines.Add(string.Empty);
-            lines.Add("[Attachments received this turn]");
-
-            for (var i = 0; i < message.Attachments.Count; i++)
-            {
-                var a = message.Attachments[i];
-                message.Metadata.TryGetValue($"attachment.{i}.url", out var url);
-
-                lines.Add($"- {a.FileName} ({a.ContentType}, {a.SizeBytes} bytes){(string.IsNullOrWhiteSpace(url) ? string.Empty : $" URL: {url}")}");
-
-                if (!string.IsNullOrWhiteSpace(url) && a.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-                {
-                    try
-                    {
-                        var analysis = await MultimodalTools.AnalyzeImageAsync(url, includeData: true, maxDimension: 512).ConfigureAwait(false);
-                        lines.Add("  [Gateway image metadata]");
-                        lines.AddRange(analysis.Split('\n').Select(s => "  " + s.TrimEnd('\r')));
-                    }
-                    catch (Exception ex)
-                    {
-                        lines.Add($"  [Gateway image metadata unavailable: {ex.Message}]");
-                    }
-                }
-            }
-
-            lines.Add("If analysis is requested, inspect only the above current-turn attachments and metadata.");
-        }
-
-        return string.Join(Environment.NewLine, lines);
-    }
 }

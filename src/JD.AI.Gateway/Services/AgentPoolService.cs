@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using JD.AI.Core.Agents;
+using JD.AI.Core.Channels;
 using JD.AI.Core.Events;
 using JD.AI.Core.PromptCaching;
 using JD.AI.Core.Providers;
@@ -101,14 +102,24 @@ public sealed class AgentPoolService : IHostedService
         return id;
     }
 
-    public async Task<string?> SendMessageAsync(string agentId, string message, CancellationToken ct)
+    public Task<string?> SendMessageAsync(string agentId, string message, CancellationToken ct)
+        => SendMessageAsync(agentId, message, attachments: null, ct);
+
+    public Task<string?> SendMessageAsync(string agentId, ChannelMessage message, CancellationToken ct)
+        => SendMessageAsync(agentId, message.Content, message.Attachments, ct);
+
+    private async Task<string?> SendMessageAsync(
+        string agentId,
+        string message,
+        IReadOnlyList<ChannelAttachment>? attachments,
+        CancellationToken ct)
     {
         if (!_agents.TryGetValue(agentId, out var agent)) return null;
 
         var turnTraceId = Guid.NewGuid().ToString("N")[..8];
         var toolIntent = LooksLikeToolIntent(message);
 
-        agent.History.AddUserMessage(message);
+        await AddUserTurnToHistoryAsync(agent.History, message, attachments, ct).ConfigureAwait(false);
         var chat = agent.Kernel.GetRequiredService<IChatCompletionService>();
         var settings = BuildExecutionSettings(agent.Parameters, agent.Provider, agent.Model);
         PromptCachePolicy.Apply(
@@ -314,6 +325,50 @@ public sealed class AgentPoolService : IHostedService
         }
 
         return null;
+    }
+
+    private static async Task AddUserTurnToHistoryAsync(
+        ChatHistory history,
+        string message,
+        IReadOnlyList<ChannelAttachment>? attachments,
+        CancellationToken ct)
+    {
+        var imageAttachments = attachments?
+            .Where(a => a.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            .Take(3)
+            .ToList();
+
+        if (imageAttachments is null || imageAttachments.Count == 0)
+        {
+            history.AddUserMessage(message);
+            return;
+        }
+
+        var items = new ChatMessageContentItemCollection
+        {
+            new TextContent(message)
+        };
+
+        foreach (var attachment in imageAttachments)
+        {
+            const long maxImageBytes = 8 * 1024 * 1024; // 8 MB per image item
+            if (attachment.SizeBytes > maxImageBytes)
+                continue;
+
+            await using var stream = await attachment.OpenReadAsync(ct).ConfigureAwait(false);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms, ct).ConfigureAwait(false);
+            items.Add(new ImageContent(ms.ToArray(), attachment.ContentType));
+        }
+
+        if (items.Count == 1)
+        {
+            // All images were filtered out (size/stream issues), keep text-only behavior.
+            history.AddUserMessage(message);
+            return;
+        }
+
+        history.AddUserMessage(items);
     }
 
     private static bool LooksLikeToolIntent(string message)
