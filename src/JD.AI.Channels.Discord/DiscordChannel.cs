@@ -17,6 +17,7 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
     private readonly HashSet<ulong> _allowedBotIds;
     private readonly bool _enableReactions;
     private readonly bool _requireMention;
+    private readonly HashSet<ulong> _allowedMentionRoleIds;
     private readonly Dictionary<ulong, string> _activeReactionByMessageId = new();
     private readonly Dictionary<string, ulong> _pendingInboundByChannelId = new();
     private DiscordSocketClient? _client;
@@ -31,13 +32,15 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
         bool allowBots = false,
         IEnumerable<ulong>? allowedBotIds = null,
         bool enableReactions = false,
-        bool requireMention = true)
+        bool requireMention = true,
+        IEnumerable<ulong>? allowedMentionRoleIds = null)
     {
         _botToken = botToken;
         _allowBots = allowBots;
         _allowedBotIds = allowedBotIds != null ? new HashSet<ulong>(allowedBotIds) : new HashSet<ulong>();
         _enableReactions = enableReactions;
         _requireMention = requireMention;
+        _allowedMentionRoleIds = allowedMentionRoleIds != null ? new HashSet<ulong>(allowedMentionRoleIds) : new HashSet<ulong>();
     }
 
     public string ChannelType => "discord";
@@ -227,11 +230,20 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
                 return;
         }
 
-        // In guild channels, only process messages that explicitly mention this bot when requireMention is enabled.
+        // In guild channels, only process messages with an explicit mention token when requireMention is enabled.
+        // This intentionally ignores implicit/reply mentions so random replies don't trigger the bot.
         if (_requireMention && msg.Channel is SocketGuildChannel && _client?.CurrentUser is not null)
         {
-            var explicitlyMentioned = msg.MentionedUsers.Any(u => u.Id == _client.CurrentUser.Id);
-            if (!explicitlyMentioned)
+            var content = msg.Content ?? string.Empty;
+            var userMentionToken = $"<@{_client.CurrentUser.Id}>";
+            var userNicknameMentionToken = $"<@!{_client.CurrentUser.Id}>";
+            var explicitlyMentioned = content.Contains(userMentionToken, StringComparison.Ordinal)
+                || content.Contains(userNicknameMentionToken, StringComparison.Ordinal);
+
+            var roleMentioned = _allowedMentionRoleIds.Any(roleId =>
+                content.Contains($"<@&{roleId}>", StringComparison.Ordinal));
+
+            if (!explicitlyMentioned && !roleMentioned)
                 return;
         }
 
