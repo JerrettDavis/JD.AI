@@ -138,25 +138,33 @@ public sealed class AgentRouter
 
     private static string BuildInboundPrompt(ChannelMessage message)
     {
-        if (message.Attachments.Count == 0)
-            return message.Content;
-
         var lines = new List<string>
         {
-            message.Content,
+            "[Current turn context]",
+            $"- MessageId: {message.Id}",
+            $"- AttachmentCount: {message.Attachments.Count}",
+            "- Rule: Only analyze attachments from this current turn. Do NOT infer image contents from prior turns.",
+            "- If the user asks to analyze an image/file but AttachmentCount is 0, ask them to reattach it.",
             string.Empty,
-            "[Attachments received]"
+            message.Content
         };
 
-        for (var i = 0; i < message.Attachments.Count; i++)
+        if (message.Attachments.Count > 0)
         {
-            var a = message.Attachments[i];
-            message.Metadata.TryGetValue($"attachment.{i}.url", out var url);
+            lines.Add(string.Empty);
+            lines.Add("[Attachments received this turn]");
 
-            lines.Add($"- {a.FileName} ({a.ContentType}, {a.SizeBytes} bytes){(string.IsNullOrWhiteSpace(url) ? string.Empty : $" URL: {url}")}");
+            for (var i = 0; i < message.Attachments.Count; i++)
+            {
+                var a = message.Attachments[i];
+                message.Metadata.TryGetValue($"attachment.{i}.url", out var url);
+
+                lines.Add($"- {a.FileName} ({a.ContentType}, {a.SizeBytes} bytes){(string.IsNullOrWhiteSpace(url) ? string.Empty : $" URL: {url}")}");
+            }
+
+            lines.Add("If analysis is requested, inspect only the above attachment URLs or metadata.");
         }
 
-        lines.Add("If analysis is requested, use available tools to inspect provided attachment URLs or file metadata.");
         return string.Join(Environment.NewLine, lines);
     }
 }
