@@ -130,6 +130,16 @@ public sealed class AgentPoolService : IHostedService
                 chat, agent, settings, ct).ConfigureAwait(false);
 
             content = response.Content ?? "";
+
+            // Empty-response guardrail: if the model returned empty text
+            // (common with thinking-mode models), provide a fallback message.
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                _logger.LogWarning("Model returned empty response for agent {AgentId} ({Provider}/{Model})",
+                    agentId, agent.Provider, agent.Model);
+                content = "[The model produced an empty response. This may be caused by thinking-mode token consumption. Please try rephrasing or simplifying your request.]";
+            }
+
             agent.History.AddAssistantMessage(content);
             agent.TurnCount++;
 
@@ -423,6 +433,12 @@ public sealed class AgentPoolService : IHostedService
         if (p.TopK.HasValue) extra["top_k"] = p.TopK.Value;
         if (p.ContextWindowSize is > 0) extra["num_ctx"] = p.ContextWindowSize.Value;
         if (p.RepeatPenalty.HasValue) extra["repeat_penalty"] = p.RepeatPenalty.Value;
+
+        // Disable thinking mode for Ollama models in daemon/gateway path.
+        // Qwen3.5 thinking tokens consume the token budget and produce empty
+        // visible responses, causing silent failures on Discord.
+        if (string.Equals(providerName, "Ollama", StringComparison.OrdinalIgnoreCase))
+            extra["think"] = false;
 
         if (extra.Count > 0) settings.ExtensionData = extra;
 
