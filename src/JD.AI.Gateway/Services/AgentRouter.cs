@@ -69,7 +69,8 @@ public sealed class AgentRouter
         _logger.LogInformation("Routing message from {Channel} (route:{RouteKey}) to agent {Agent}",
             message.ChannelId, routeKey ?? "none", agentId);
 
-        var response = await _pool.SendMessageAsync(agentId, message.Content, ct);
+        var inboundPrompt = BuildInboundPrompt(message);
+        var response = await _pool.SendMessageAsync(agentId, inboundPrompt, ct);
 
         // Send response back through the channel
         var channel = sourceChannel ?? ResolveChannelForResponse(message);
@@ -133,5 +134,29 @@ public sealed class AgentRouter
 
         value = string.Empty;
         return false;
+    }
+
+    private static string BuildInboundPrompt(ChannelMessage message)
+    {
+        if (message.Attachments.Count == 0)
+            return message.Content;
+
+        var lines = new List<string>
+        {
+            message.Content,
+            string.Empty,
+            "[Attachments received]"
+        };
+
+        for (var i = 0; i < message.Attachments.Count; i++)
+        {
+            var a = message.Attachments[i];
+            message.Metadata.TryGetValue($"attachment.{i}.url", out var url);
+
+            lines.Add($"- {a.FileName} ({a.ContentType}, {a.SizeBytes} bytes){(string.IsNullOrWhiteSpace(url) ? string.Empty : $" URL: {url}")}");
+        }
+
+        lines.Add("If analysis is requested, use available tools to inspect provided attachment URLs or file metadata.");
+        return string.Join(Environment.NewLine, lines);
     }
 }
