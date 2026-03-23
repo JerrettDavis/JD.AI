@@ -381,6 +381,11 @@ public sealed class AgentPoolService : IHostedService
             || m.Contains("ls")
             || m.Contains("dir")
             || m.Contains("web_search")
+            || m.Contains("web_fetch")
+            || m.Contains("fetch")
+            || m.Contains("http://")
+            || m.Contains("https://")
+            || m.Contains("url")
             || m.Contains("search")
             || m.Contains("read ")
             || m.Contains("file");
