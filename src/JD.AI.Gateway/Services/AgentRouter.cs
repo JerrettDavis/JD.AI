@@ -166,7 +166,7 @@ public sealed class AgentRouter
                 {
                     try
                     {
-                        var analysis = await MultimodalTools.AnalyzeImageAsync(url, includeData: false).ConfigureAwait(false);
+                        var analysis = await MultimodalTools.AnalyzeImageAsync(url, includeData: true, maxDimension: 512).ConfigureAwait(false);
                         lines.Add("  [Gateway image metadata]");
                         lines.AddRange(analysis.Split('\n').Select(s => "  " + s.TrimEnd('\r')));
                     }
