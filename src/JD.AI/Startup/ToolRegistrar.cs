@@ -32,7 +32,10 @@ internal static class ToolRegistrar
         ProviderModelInfo selectedModel)
     {
         // Register core tools (shared path — also used by Daemon/Gateway)
-        var core = CoreToolRegistrar.Register(kernel);
+        var core = CoreToolRegistrar.Register(kernel, selectedModel);
+
+        // Keep SystemInfoTools in sync when the model changes
+        session.ModelChanged += (_, model) => core.SystemInfoTools.SetModel(model);
 
         // CLI-only session-dependent tools below
 
