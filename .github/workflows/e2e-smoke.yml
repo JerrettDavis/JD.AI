@@ -160,9 +160,10 @@ jobs:
           Set Theme "Dracula"
           Type "./artifacts/vhs-smoke/JD.AI plugin --help"
           Enter
-          Sleep 2s
+          Sleep 5s
           Screenshot docs/images/ci-plugin-help.png
           EOF
+          sed -i 's/^          //' /tmp/ci-plugin-help-fallback.tape
           vhs /tmp/ci-plugin-help-fallback.tape
 
       - name: Verify generated VHS outputs
