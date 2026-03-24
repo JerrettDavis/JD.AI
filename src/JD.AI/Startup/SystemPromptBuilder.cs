@@ -6,6 +6,21 @@ namespace JD.AI.Startup;
 /// </summary>
 internal static class SystemPromptBuilder
 {
+    /// <summary>
+    /// Prepends model identity to the system prompt so the agent can self-identify.
+    /// </summary>
+    public static string PrependIdentity(string prompt, JD.AI.Core.Providers.ProviderModelInfo model)
+    {
+        var identity = $"[System Identity] You are JDAI, powered by {model.ProviderName}/{model.Id}. " +
+                       $"Context window: {model.ContextWindowTokens:N0} tokens. " +
+                       $"Max output: {model.MaxOutputTokens:N0} tokens. " +
+                       $"Capabilities: {model.Capabilities.ToLabel()}. " +
+                       "When asked what model you are, answer with this information. " +
+                       "You can also use the system.get_identity tool for detailed metadata.";
+
+        return identity + "\n\n" + prompt;
+    }
+
     public static async Task<string> BuildAsync(CliOptions opts, InstructionsResult instructions, bool planMode)
     {
         string systemPrompt;
