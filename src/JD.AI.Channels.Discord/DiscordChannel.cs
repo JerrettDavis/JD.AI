@@ -266,7 +266,7 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
             ChannelId = msg.Channel.Id.ToString(),
             SenderId = msg.Author.Id.ToString(),
             SenderDisplayName = msg.Author.GlobalName ?? msg.Author.Username,
-            Content = msg.Content,
+            Content = msg.Content ?? string.Empty,
             Timestamp = msg.Timestamp,
             ThreadId = msg.Thread?.Id.ToString(),
             Metadata = metadata,
