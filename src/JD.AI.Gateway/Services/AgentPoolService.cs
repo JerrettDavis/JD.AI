@@ -74,11 +74,11 @@ public sealed class AgentPoolService : IHostedService
 
         var kernel = detector.BuildKernel(modelInfo);
 
-        // Register core tools (file, exec, web search, memory, tasks)
-        // Uses the shared CoreToolRegistrar from JD.AI.Core — works without session infrastructure
+        // Register core tools with model identity for self-awareness
+        CoreToolRegistration? coreReg = null;
         try
         {
-            CoreToolRegistrar.Register(kernel);
+            coreReg = CoreToolRegistrar.Register(kernel, modelInfo);
             _logger.LogInformation("Registered core tools for agent ({Provider}/{Model})",
                 provider, model);
         }
@@ -89,10 +89,15 @@ public sealed class AgentPoolService : IHostedService
 
         var history = new ChatHistory();
 
-        if (!string.IsNullOrWhiteSpace(systemPrompt))
-            history.AddSystemMessage(systemPrompt);
+        // Enrich system prompt with model identity
+        var enrichedPrompt = EnrichSystemPrompt(systemPrompt, modelInfo);
+        if (!string.IsNullOrWhiteSpace(enrichedPrompt))
+            history.AddSystemMessage(enrichedPrompt);
 
         var id = Guid.NewGuid().ToString("N")[..12];
+
+        // Wire agent ID into SystemInfoTools
+        coreReg?.SystemInfoTools.SetAgentId(id);
         var instance = new AgentInstance(id, provider, model, kernel, history, parameters, fallbackProviders);
         _agents[id] = instance;
 
@@ -560,6 +565,21 @@ public sealed class AgentPoolService : IHostedService
             p.ReasoningEffort);
 
         return settings;
+    }
+
+    private static string? EnrichSystemPrompt(string? basePrompt, ProviderModelInfo modelInfo)
+    {
+        var identity = $"[System Identity] You are JDAI, powered by {modelInfo.ProviderName}/{modelInfo.Id}. " +
+                       $"Context window: {modelInfo.ContextWindowTokens:N0} tokens. " +
+                       $"Max output: {modelInfo.MaxOutputTokens:N0} tokens. " +
+                       $"Capabilities: {modelInfo.Capabilities.ToLabel()}. " +
+                       "When asked what model you are, answer with this information. " +
+                       "You can also use the system.get_identity tool for detailed metadata.";
+
+        if (string.IsNullOrWhiteSpace(basePrompt))
+            return identity;
+
+        return identity + "\n\n" + basePrompt;
     }
 
     internal sealed class AgentInstance(

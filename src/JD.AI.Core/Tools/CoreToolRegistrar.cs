@@ -1,4 +1,5 @@
 using JD.AI.Core.Infrastructure;
+using JD.AI.Core.Providers;
 using JD.AI.Core.Tools;
 using Microsoft.SemanticKernel;
 
@@ -11,7 +12,8 @@ namespace JD.AI.Core.Tools;
 public sealed record CoreToolRegistration(
     TaskTools TaskTools,
     WebSearchTools WebSearchTools,
-    ProcessSessionManager ProcessSessionManager);
+    ProcessSessionManager ProcessSessionManager,
+    SystemInfoTools SystemInfoTools);
 
 /// <summary>
 /// Registers essential kernel tool plugins that work without session infrastructure.
@@ -21,13 +23,15 @@ public static class CoreToolRegistrar
 {
     /// <summary>
     /// Registers core tools on a Semantic Kernel instance.
-    /// Includes: file ops, exec/shell, web search, memory, tasks, capabilities, scheduler.
-    /// Does NOT require <c>AgentSession</c> or <c>ProviderModelInfo</c>.
     /// </summary>
-    public static CoreToolRegistration Register(Kernel kernel)
+    /// <param name="kernel">The Semantic Kernel to register tools on.</param>
+    /// <param name="modelInfo">
+    /// Optional model metadata. When provided, the agent can answer
+    /// "what model am I?" via the <c>system.get_identity</c> tool.
+    /// </param>
+    public static CoreToolRegistration Register(Kernel kernel, ProviderModelInfo? modelInfo = null)
     {
-        // Stateless tools — auto-discovered via [ToolPlugin(RequiresInjection = false)]
-        // This picks up FileTools and other [ToolPlugin]-attributed classes
+        // Stateless tools � auto-discovered via [ToolPlugin(RequiresInjection = false)]
         ToolAssemblyScanner.RegisterStaticPlugins(kernel, typeof(FileTools).Assembly);
 
         // Memory
@@ -37,7 +41,7 @@ public static class CoreToolRegistrar
         var taskTools = new TaskTools();
         kernel.Plugins.AddFromObject(taskTools, "tasks");
 
-        // Capabilities (introspection — lets the agent discover what tools it has)
+        // Capabilities (introspection)
         var capabilityTools = new CapabilityTools(kernel);
         kernel.Plugins.AddFromObject(capabilityTools, "capabilities");
 
@@ -52,10 +56,16 @@ public static class CoreToolRegistrar
         // Scheduler
         kernel.Plugins.AddFromObject(new SchedulerTools(), "scheduler");
 
-        // Gateway ops (optional — works with or without a configured gateway URL)
+        // Gateway ops
         kernel.Plugins.AddFromObject(
             new GatewayOpsTools(Environment.GetEnvironmentVariable("JDAI_GATEWAY_URL")), "gateway");
 
-        return new CoreToolRegistration(taskTools, webSearchTools, processSessionManager);
+        // System info / self-identity
+        var systemInfoTools = new SystemInfoTools();
+        if (modelInfo is not null)
+            systemInfoTools.SetModel(modelInfo);
+        kernel.Plugins.AddFromObject(systemInfoTools, "system");
+
+        return new CoreToolRegistration(taskTools, webSearchTools, processSessionManager, systemInfoTools);
     }
 }

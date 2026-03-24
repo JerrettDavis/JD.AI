@@ -296,6 +296,7 @@ using var _fileAuditSink = governance.FileAuditSink;
 // 9. Build system prompt
 var systemPrompt = await SystemPromptBuilder.BuildAsync(opts, governance.Instructions, session.PlanMode)
     .ConfigureAwait(false);
+systemPrompt = SystemPromptBuilder.PrependIdentity(systemPrompt, selectedModel);
 session.History.AddSystemMessage(systemPrompt);
 session.CaptureOriginalSystemPromptIfUnset(systemPrompt);
 
