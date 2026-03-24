@@ -1,0 +1,106 @@
+name: Regenerate Screenshots
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/tapes/**'
+      - 'src/JD.AI/Rendering/**'
+      - 'src/JD.AI/Commands/**'
+      - 'src/JD.AI/Startup/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: regenerate-screenshots
+  cancel-in-progress: true
+
+jobs:
+  regenerate:
+    name: Render VHS tapes
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Publish JD.AI CLI (self-contained)
+        run: >
+          dotnet publish src/JD.AI/JD.AI.csproj
+          --configuration Release
+          --runtime linux-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          --output artifacts/cli
+
+      - name: Make CLI executable and add to PATH
+        run: |
+          chmod +x artifacts/cli/JD.AI
+          # Demo tapes use "jdai", CI tape uses full path — support both
+          sudo ln -sf "$PWD/artifacts/cli/JD.AI" /usr/local/bin/jdai
+
+      - name: Install VHS, ttyd, and ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          sudo mkdir -p /etc/apt/keyrings
+          curl -fsSL https://repo.charm.sh/apt/gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/charm.gpg
+          echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | sudo tee /etc/apt/sources.list.d/charm.list
+          sudo apt-get update
+          sudo apt-get install -y vhs
+          TTYD_VERSION="1.7.7"
+          curl -fsSL "https://github.com/tsl0922/ttyd/releases/download/${TTYD_VERSION}/ttyd.x86_64" -o /usr/local/bin/ttyd
+          sudo chmod +x /usr/local/bin/ttyd
+
+      - name: Render all VHS tapes
+        run: |
+          failed=0
+          for tape in docs/tapes/*.tape; do
+            echo "=== Rendering: $tape ==="
+            if vhs "$tape"; then
+              echo "  OK"
+            else
+              echo "  FAILED (non-fatal)"
+              failed=$((failed + 1))
+            fi
+          done
+          echo "Rendered all tapes ($failed failures)"
+
+      - name: Check for changed screenshots
+        id: changes
+        run: |
+          git add docs/images/
+          if git diff --cached --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No screenshot changes detected."
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Changed screenshots:"
+            git diff --cached --name-only
+          fi
+
+      - name: Commit updated screenshots
+        if: steps.changes.outputs.has_changes == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "docs: auto-regenerate VHS screenshots [skip ci]"
+          git push
+
+      - name: Upload screenshots as artifact
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: screenshots
+          path: docs/images/
+          retention-days: 7
