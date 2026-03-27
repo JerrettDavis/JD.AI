@@ -28,6 +28,12 @@ public sealed class AgentPoolService : IHostedService
     private readonly ConcurrentDictionary<string, AgentInstance> _agents = new();
     private readonly ConcurrentDictionary<string, ChannelReactionTools> _reactionTools = new();
 
+    /// <summary>Daemon version info — set by Daemon host for agent identity enrichment.</summary>
+    public string? DaemonVersion { get; set; }
+
+    /// <summary>Latest available daemon version from NuGet — set by Daemon host.</summary>
+    public string? LatestDaemonVersion { get; set; }
+
     /// <summary>Maximum retry attempts for transient Ollama errors.</summary>
     internal const int MaxRetries = 3;
 
@@ -104,8 +110,10 @@ public sealed class AgentPoolService : IHostedService
         kernel.Plugins.AddFromObject(reactionTools, "reactions");
         _reactionTools[id] = reactionTools;
 
-        // Wire agent ID into SystemInfoTools
+        // Wire agent ID + daemon version into SystemInfoTools
         coreReg?.SystemInfoTools.SetAgentId(id);
+        if (DaemonVersion is not null)
+            coreReg?.SystemInfoTools.SetDaemonVersion(DaemonVersion, LatestDaemonVersion);
         var instance = new AgentInstance(id, provider, model, kernel, history, parameters, fallbackProviders);
         _agents[id] = instance;
 
