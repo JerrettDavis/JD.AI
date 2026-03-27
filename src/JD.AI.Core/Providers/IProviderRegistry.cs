@@ -14,6 +14,13 @@ public interface IProviderRegistry
         CancellationToken ct = default);
 
     /// <summary>
+    /// Probes all known provider backends, optionally forcing a cache refresh.
+    /// </summary>
+    Task<IReadOnlyList<ProviderInfo>> DetectProvidersAsync(
+        bool forceRefresh,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Returns all models across all available providers.
     /// </summary>
     Task<IReadOnlyList<ProviderModelInfo>> GetModelsAsync(
