@@ -18,6 +18,9 @@ public sealed class SystemInfoTools
     private ProviderModelInfo? _model;
     private string? _agentId;
     private DateTimeOffset _startedAt = DateTimeOffset.UtcNow;
+    private string? _daemonVersion;
+    private string? _latestDaemonVersion;
+    private DateTimeOffset? _versionCheckedAt;
 
     /// <summary>Sets the active model info (called during registration).</summary>
     public void SetModel(ProviderModelInfo model) => _model = model;
@@ -27,6 +30,14 @@ public sealed class SystemInfoTools
 
     /// <summary>Sets the agent start time.</summary>
     public void SetStartedAt(DateTimeOffset startedAt) => _startedAt = startedAt;
+
+    /// <summary>Sets the daemon version info for identity reporting.</summary>
+    public void SetDaemonVersion(string currentVersion, string? latestVersion = null)
+    {
+        _daemonVersion = currentVersion;
+        _latestDaemonVersion = latestVersion;
+        _versionCheckedAt = DateTimeOffset.UtcNow;
+    }
 
     [KernelFunction("get_identity")]
     [ToolSafetyTier(SafetyTier.AutoApprove)]
@@ -66,6 +77,21 @@ public sealed class SystemInfoTools
             sb.AppendLine($"Agent ID: {_agentId}");
 
         sb.AppendLine($"Platform: JD.AI");
+
+        if (!string.IsNullOrEmpty(_daemonVersion))
+        {
+            sb.AppendLine($"Daemon Version: {_daemonVersion}");
+            if (!string.IsNullOrEmpty(_latestDaemonVersion))
+            {
+                var isLatest = string.Equals(_daemonVersion, _latestDaemonVersion, StringComparison.Ordinal);
+                sb.AppendLine(isLatest
+                    ? $"Latest Version: {_latestDaemonVersion} (up-to-date ✓)"
+                    : $"Latest Version: {_latestDaemonVersion} (UPDATE AVAILABLE)");
+            }
+            if (_versionCheckedAt.HasValue)
+                sb.AppendLine($"Version Checked: {_versionCheckedAt.Value:u}");
+        }
+
         sb.AppendLine($"Runtime: {System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}");
 
         return sb.ToString();
@@ -93,6 +119,17 @@ public sealed class SystemInfoTools
         {
             sb.AppendLine($"Model: {_model.ProviderName}/{_model.Id}");
             sb.AppendLine($"Capabilities: {_model.Capabilities.ToLabel()}");
+        }
+
+        if (!string.IsNullOrEmpty(_daemonVersion))
+        {
+            sb.AppendLine($"Daemon Version: {_daemonVersion}");
+            if (!string.IsNullOrEmpty(_latestDaemonVersion))
+            {
+                var isLatest = string.Equals(_daemonVersion, _latestDaemonVersion, StringComparison.Ordinal);
+                sb.Append(isLatest ? "Update: Up-to-date ✓" : $"Update: {_latestDaemonVersion} available!");
+                sb.AppendLine();
+            }
         }
 
         sb.AppendLine($"OS: {System.Runtime.InteropServices.RuntimeInformation.OSDescription}");
