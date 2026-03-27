@@ -31,7 +31,7 @@ public static class CoreToolRegistrar
     /// </param>
     public static CoreToolRegistration Register(Kernel kernel, ProviderModelInfo? modelInfo = null)
     {
-        // Stateless tools — auto-discovered via [ToolPlugin(RequiresInjection = false)]
+        // Stateless tools â€” auto-discovered via [ToolPlugin(RequiresInjection = false)]
         ToolAssemblyScanner.RegisterStaticPlugins(kernel, typeof(FileTools).Assembly);
 
         // Memory
