@@ -315,6 +315,45 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
         }
     }
 
+    public async Task SendMessageWithAttachmentsAsync(
+        string conversationId,
+        string? content,
+        IReadOnlyList<OutboundAttachment> attachments,
+        CancellationToken ct = default)
+    {
+        if (_client is null) throw new InvalidOperationException("Not connected.");
+
+        if (ulong.TryParse(conversationId, out var channelId)
+            && await _client.GetChannelAsync(channelId) is IMessageChannel channel)
+        {
+            try
+            {
+                if (_enableReactions && _pendingInboundByChannelId.TryGetValue(conversationId, out var inboundMsgId))
+                {
+                    if (await channel.GetMessageAsync(inboundMsgId) is IUserMessage inbound)
+                        await SetStatusReactionAsync(inbound, "✍️");
+                }
+
+                var fileAttachments = attachments.Select(a =>
+                    new FileAttachment(a.Content, a.FileName, a.Description)).ToArray();
+
+                await channel.SendFilesAsync(
+                    fileAttachments,
+                    text: string.IsNullOrWhiteSpace(content) ? null : content);
+
+                if (_enableReactions && _pendingInboundByChannelId.TryGetValue(conversationId, out var sentInboundMsgId))
+                {
+                    if (await channel.GetMessageAsync(sentInboundMsgId) is IUserMessage inbound)
+                        await SetStatusReactionAsync(inbound, "✅");
+                }
+            }
+            finally
+            {
+                _pendingInboundByChannelId.Remove(conversationId);
+            }
+        }
+    }
+
     public async Task ReactAsync(string conversationId, string messageId, string emoji, CancellationToken ct = default)
     {
         if (_client is null) throw new InvalidOperationException("Not connected.");

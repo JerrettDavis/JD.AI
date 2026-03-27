@@ -18,12 +18,18 @@ public record ChannelMessage
         new Dictionary<string, string>();
 }
 
-/// <summary>File or image attachment on a channel message.</summary>
+/// <summary>File or image attachment on an inbound channel message.</summary>
 public record ChannelAttachment(
     string FileName,
     string ContentType,
     long SizeBytes,
     Func<CancellationToken, Task<Stream>> OpenReadAsync);
+
+/// <summary>File attachment for outbound messages.</summary>
+public record OutboundAttachment(
+    string FileName,
+    Stream Content,
+    string? Description = null);
 
 /// <summary>
 /// Unified abstraction for a messaging channel (Discord, Slack, Signal, Web, etc.).
@@ -47,6 +53,17 @@ public interface IChannel : IAsyncDisposable
 
     /// <summary>Sends a message to the specified conversation/thread.</summary>
     Task SendMessageAsync(string conversationId, string content, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sends a message with file attachments. Channels that don't support attachments
+    /// fall back to sending the text content only.
+    /// </summary>
+    Task SendMessageWithAttachmentsAsync(
+        string conversationId,
+        string? content,
+        IReadOnlyList<OutboundAttachment> attachments,
+        CancellationToken ct = default)
+        => SendMessageAsync(conversationId, content ?? string.Empty, ct);
 
     /// <summary>
     /// Adds a reaction emoji to a message. Not all channels support this — default is no-op.
