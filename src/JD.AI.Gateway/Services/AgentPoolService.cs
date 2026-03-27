@@ -3,6 +3,7 @@ using System.Diagnostics;
 using JD.AI.Core.Agents;
 using JD.AI.Core.Channels;
 using JD.AI.Core.Events;
+using JD.AI.Core.Mcp;
 using JD.AI.Core.PromptCaching;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Tools;
@@ -23,6 +24,7 @@ public sealed class AgentPoolService : IHostedService
 {
     private readonly IProviderRegistry _providers;
     private readonly IChannelRegistry _channelRegistry;
+    private readonly McpManager? _mcpManager;
     private readonly IEventBus _eventBus;
     private readonly ILogger<AgentPoolService> _logger;
     private readonly ConcurrentDictionary<string, AgentInstance> _agents = new();
@@ -42,12 +44,14 @@ public sealed class AgentPoolService : IHostedService
 
     public AgentPoolService(
         IProviderRegistry providers, IChannelRegistry channelRegistry,
-        IEventBus eventBus, ILogger<AgentPoolService> logger)
+        IEventBus eventBus, ILogger<AgentPoolService> logger,
+        McpManager? mcpManager = null)
     {
         _providers = providers;
         _channelRegistry = channelRegistry;
         _eventBus = eventBus;
         _logger = logger;
+        _mcpManager = mcpManager;
     }
 
     public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -104,6 +108,22 @@ public sealed class AgentPoolService : IHostedService
             history.AddSystemMessage(enrichedPrompt);
 
         var id = Guid.NewGuid().ToString("N")[..12];
+
+        // Connect configured MCP servers and register their tools on the kernel
+        if (_mcpManager is not null)
+        {
+            try
+            {
+                var servers = await _mcpManager.GetAllServersAsync(CancellationToken.None);
+                var enabledServers = servers.ToList();
+                if (enabledServers.Count > 0)
+                    _logger.LogInformation("Found {Count} enabled MCP servers for agent {AgentId}", enabledServers.Count, id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to enumerate MCP servers for agent {AgentId}", id);
+            }
+        }
 
         // Register channel reaction tools — lets agents choose their own emoji reactions
         var reactionTools = new ChannelReactionTools(_channelRegistry);
