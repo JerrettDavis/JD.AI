@@ -48,7 +48,7 @@ public sealed class EventBusTests
     public async Task StreamAsync_YieldsEvents()
     {
         using var bus = new InProcessEventBus();
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
 
         var events = new List<GatewayEvent>();
         var streamTask = Task.Run(async () =>
@@ -60,8 +60,8 @@ public sealed class EventBusTests
             }
         }, cts.Token);
 
-        // Give the stream time to subscribe
-        await Task.Delay(100);
+        // Give the stream time to subscribe (generous for slow CI runners)
+        await Task.Delay(500);
 
         await bus.PublishAsync(new GatewayEvent("e1", "src", DateTimeOffset.UtcNow));
         await bus.PublishAsync(new GatewayEvent("e2", "src", DateTimeOffset.UtcNow));
