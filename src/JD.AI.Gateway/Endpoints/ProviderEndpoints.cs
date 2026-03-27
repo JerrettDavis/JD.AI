@@ -33,5 +33,19 @@ public static class ProviderEndpoints
         })
         .WithName("GetProviderModels")
         .WithDescription("Get models for a specific provider.");
+
+        group.MapPost("/refresh", async (IProviderRegistry registry, CancellationToken ct) =>
+        {
+            var providers = await registry.DetectProvidersAsync(forceRefresh: true, ct);
+            return Results.Ok(providers.Select(p => new
+            {
+                p.Name,
+                p.IsAvailable,
+                p.StatusMessage,
+                Models = p.Models.Select(m => new { m.Id, m.DisplayName, m.ProviderName })
+            }));
+        })
+        .WithName("RefreshProviders")
+        .WithDescription("Force re-detection of all providers, invalidating cache.");
     }
 }
