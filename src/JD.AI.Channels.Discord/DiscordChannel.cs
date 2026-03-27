@@ -284,6 +284,11 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
         if (MessageReceived is null)
             return;
 
+        // Start typing indicator loop — shows "<bot> is typing..." in Discord
+        // while the agent processes the message. Refreshes every 8s (indicator lasts ~10s).
+        using var typingCts = new CancellationTokenSource();
+        var typingTask = RunTypingIndicatorAsync(msg.Channel, typingCts.Token);
+
         try
         {
             if (_enableReactions && msg is IUserMessage inboundUserMessage2)
@@ -302,6 +307,12 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
             throw;
         }
 #pragma warning restore CA1031
+        finally
+        {
+            // Stop typing indicator when response is ready
+            await typingCts.CancelAsync();
+            try { await typingTask; } catch (OperationCanceledException) { /* expected */ }
+        }
     }
 
     public async ValueTask DisposeAsync()
@@ -311,6 +322,26 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
             await _client.StopAsync();
             _client.Dispose();
         }
+    }
+
+    /// <summary>
+    /// Triggers the Discord "is typing..." indicator repeatedly until cancelled.
+    /// Each trigger lasts ~10 seconds; we refresh every 8 seconds for continuity.
+    /// </summary>
+    private static async Task RunTypingIndicatorAsync(ISocketMessageChannel channel, CancellationToken ct)
+    {
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                await channel.TriggerTypingAsync();
+                await Task.Delay(TimeSpan.FromSeconds(8), ct);
+            }
+        }
+        catch (OperationCanceledException) { /* expected — typing stopped */ }
+#pragma warning disable CA1031
+        catch { /* best-effort — don't crash on typing failures */ }
+#pragma warning restore CA1031
     }
 
     private async Task SetStatusReactionAsync(IUserMessage msg, string emoji)
