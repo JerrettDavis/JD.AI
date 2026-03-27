@@ -29,19 +29,22 @@ public sealed class GatewayOrchestratorTests
         _providerRegistry = Substitute.For<IProviderRegistry>();
         _providerDetector = Substitute.For<IProviderDetector>();
         _providerDetector.ProviderName.Returns("fake");
-        _providerDetector.BuildKernel(Arg.Any<ProviderModelInfo>()).Returns(CreateKernel());
+        _providerDetector.BuildKernel(Arg.Any<ProviderModelInfo>()).Returns(_ => CreateKernel());
 
+        var fakeProviders = Task.FromResult<IReadOnlyList<ProviderInfo>>(
+            [
+                new ProviderInfo(
+                    "fake",
+                    true,
+                    "ready",
+                    [
+                        new ProviderModelInfo("model-a", "Model A", "fake"),
+                    ])
+            ]);
         _providerRegistry.DetectProvidersAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<ProviderInfo>>(
-                [
-                    new ProviderInfo(
-                        "fake",
-                        true,
-                        "ready",
-                        [
-                            new ProviderModelInfo("model-a", "Model A", "fake"),
-                        ])
-                ]));
+            .Returns(fakeProviders);
+        _providerRegistry.DetectProvidersAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(fakeProviders);
         _providerRegistry.GetDetector(Arg.Any<string>()).Returns((IProviderDetector?)null);
         _providerRegistry.GetDetector("fake").Returns(_providerDetector);
 
