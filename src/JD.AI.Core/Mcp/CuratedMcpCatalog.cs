@@ -251,10 +251,10 @@ public static class CuratedMcpCatalog
             InstallNote: "Requires Node.js. Uses your Discord bot token for authentication. Gives the agent full access to read history, manage channels, create threads, and react to messages."),
 
         new(
-            Id: "slack",
-            DisplayName: "Slack MCP",
+            Id: "slack-anthropic",
+            DisplayName: "Slack MCP (Anthropic)",
             Category: "Communication",
-            Description: "Read and send Slack messages, manage channels, and search workspace history.",
+            Description: "Read and send Slack messages, manage channels, and search workspace history via Anthropic's Slack MCP server.",
             Transport: CuratedMcpTransport.Stdio,
             Command: "npx",
             DefaultArgs: ["-y", "@anthropic/slack-mcp"],
