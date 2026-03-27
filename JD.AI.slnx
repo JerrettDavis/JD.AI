@@ -5,6 +5,7 @@
     <Project Path="src/JD.AI.Core/JD.AI.Core.csproj" />
     <Project Path="src/JD.AI.Telemetry/JD.AI.Telemetry.csproj" />
     <Project Path="src/JD.AI.Dashboard.Wasm/JD.AI.Dashboard.Wasm.csproj" />
+    <Project Path="src/JD.AI.Gateway.Client/JD.AI.Gateway.Client.csproj" />
     <Project Path="src/JD.AI.Gateway/JD.AI.Gateway.csproj" />
     <Project Path="src/JD.AI.Credentials.Aws/JD.AI.Credentials.Aws.csproj" />
     <Project Path="src/JD.AI.Credentials.Azure/JD.AI.Credentials.Azure.csproj" />
