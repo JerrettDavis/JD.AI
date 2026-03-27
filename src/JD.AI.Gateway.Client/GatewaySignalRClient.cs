@@ -9,14 +9,31 @@ namespace JD.AI.Gateway.Client;
 /// SignalR client for JD.AI Gateway real-time communication.
 /// Provides agent chat streaming and event subscriptions.
 /// </summary>
+public sealed class ActivityEventArgs(ActivityEvent activityEvent) : EventArgs
+{
+    public ActivityEvent ActivityEvent { get; } = activityEvent;
+}
+
+public sealed class ChannelStatusEventArgs(string channel, bool connected) : EventArgs
+{
+    public string Channel { get; } = channel;
+    public bool Connected { get; } = connected;
+}
+
+public sealed class AgentMessageEventArgs(string agentId, string message) : EventArgs
+{
+    public string AgentId { get; } = agentId;
+    public string Message { get; } = message;
+}
+
 public sealed class GatewaySignalRClient : IAsyncDisposable
 {
     private readonly HubConnection _agentHub;
     private readonly HubConnection _eventHub;
 
-    public event Action<ActivityEvent>? OnActivityEvent;
-    public event Action<string, bool>? OnChannelStatusChanged;
-    public event Action<string, string>? OnAgentMessage;
+    public event EventHandler<ActivityEventArgs>? OnActivityEvent;
+    public event EventHandler<ChannelStatusEventArgs>? OnChannelStatusChanged;
+    public event EventHandler<AgentMessageEventArgs>? OnAgentMessage;
     public event EventHandler? OnConnected;
     public event EventHandler? OnDisconnected;
 
@@ -39,12 +56,13 @@ public sealed class GatewaySignalRClient : IAsyncDisposable
             .AddJsonProtocol()
             .Build();
 
-        _eventHub.On<ActivityEvent>("ActivityEvent", evt => OnActivityEvent?.Invoke(evt));
+        _eventHub.On<ActivityEvent>("ActivityEvent", evt =>
+            OnActivityEvent?.Invoke(this, new ActivityEventArgs(evt)));
         _eventHub.On<string, bool>("ChannelStatusChanged", (ch, connected) =>
-            OnChannelStatusChanged?.Invoke(ch, connected));
+            OnChannelStatusChanged?.Invoke(this, new ChannelStatusEventArgs(ch, connected)));
 
         _agentHub.On<string, string>("AgentMessage", (agentId, msg) =>
-            OnAgentMessage?.Invoke(agentId, msg));
+            OnAgentMessage?.Invoke(this, new AgentMessageEventArgs(agentId, msg)));
 
         _eventHub.Reconnected += _ => { OnConnected?.Invoke(this, EventArgs.Empty); return Task.CompletedTask; };
         _eventHub.Closed += _ => { OnDisconnected?.Invoke(this, EventArgs.Empty); return Task.CompletedTask; };
