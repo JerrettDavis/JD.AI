@@ -419,6 +419,21 @@ static void RunDaemon(string[] args)
     // --- Initialize stores ---
     app.Services.GetRequiredService<SessionStore>().InitializeAsync().GetAwaiter().GetResult();
 
+    // --- Set daemon version metadata on agent pool for identity enrichment ---
+    var agentPool = app.Services.GetRequiredService<AgentPoolService>();
+    var updateChecker = app.Services.GetRequiredService<UpdateChecker>();
+    agentPool.DaemonVersion = updateChecker.CurrentVersion.ToString();
+    _ = Task.Run(async () =>
+    {
+        try
+        {
+            var update = await updateChecker.CheckForUpdateAsync();
+            agentPool.LatestDaemonVersion = update?.LatestVersion.ToString()
+                ?? updateChecker.CurrentVersion.ToString();
+        }
+        catch { agentPool.LatestDaemonVersion = "check failed"; }
+    });
+
     // --- Middleware pipeline ---
     // API version rewrite must precede routing so /api/* → /api/v1/* happens first
     app.UseMiddleware<ApiVersionRewriteMiddleware>();
