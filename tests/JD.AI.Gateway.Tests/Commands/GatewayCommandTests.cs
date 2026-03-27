@@ -44,7 +44,7 @@ public class GatewayCommandTests
         _providers.GetDetector(Arg.Any<string>()).Returns(detector);
 
         var eventBus = Substitute.For<IEventBus>();
-        _pool = new AgentPoolService(_providers, eventBus, NullLogger<AgentPoolService>.Instance);
+        _pool = new AgentPoolService(_providers, new ChannelRegistry(), eventBus, NullLogger<AgentPoolService>.Instance);
         _channels = new ChannelRegistry();
         _router = new AgentRouter(_pool, _channels, eventBus, NullLogger<AgentRouter>.Instance);
         _config = new GatewayConfig
