@@ -1,4 +1,5 @@
 using FluentAssertions;
+using JD.AI.Core.Channels;
 using JD.AI.Core.Events;
 using JD.AI.Core.Providers;
 using JD.AI.Gateway.Services;
@@ -15,7 +16,7 @@ public sealed class GatewayHealthCheckTests
         var providers = Substitute.For<IProviderRegistry>();
         var events = Substitute.For<IEventBus>();
         var logger = NullLogger<AgentPoolService>.Instance;
-        return new AgentPoolService(providers, events, logger);
+        return new AgentPoolService(providers, new ChannelRegistry(), events, logger);
     }
 
     [Fact]
