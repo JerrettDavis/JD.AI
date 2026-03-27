@@ -40,6 +40,7 @@
   <!-- Core library (agents, orchestration, checkpointing) -->
   <ItemGroup>
     <ProjectReference Include="..\JD.AI.Core\JD.AI.Core.csproj" />
+    <ProjectReference Include="..\JD.AI.Gateway.Client\JD.AI.Gateway.Client.csproj" />
     <ProjectReference Include="..\JD.AI.Telemetry\JD.AI.Telemetry.csproj" />
     <ProjectReference Include="..\JD.AI.Workflows\JD.AI.Workflows.csproj" />
   </ItemGroup>
