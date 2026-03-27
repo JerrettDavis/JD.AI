@@ -108,11 +108,27 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
                         await SetStatusReactionAsync(inbound, "✍️");
                 }
 
-                var outbound = string.IsNullOrWhiteSpace(content)
-                    ? "I processed your message but produced no text output. Please retry your request."
-                    : content;
+                // Handle rich message types (polls, embeds, threads)
+                if (content.StartsWith("__POLL__:", StringComparison.Ordinal))
+                {
+                    await HandlePollMessageAsync(channel, content);
+                }
+                else if (content.StartsWith("__EMBED__:", StringComparison.Ordinal))
+                {
+                    await HandleEmbedMessageAsync(channel, content);
+                }
+                else if (content.StartsWith("__THREAD__:", StringComparison.Ordinal))
+                {
+                    await HandleThreadMessageAsync(channel, content);
+                }
+                else
+                {
+                    var outbound = string.IsNullOrWhiteSpace(content)
+                        ? "I processed your message but produced no text output. Please retry your request."
+                        : content;
 
-                await channel.SendMessageAsync(outbound);
+                    await channel.SendMessageAsync(outbound);
+                }
 
                 if (_enableReactions && _pendingInboundByChannelId.TryGetValue(conversationId, out var sentInboundMsgId))
                 {
@@ -373,6 +389,101 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
         {
             await _client.StopAsync();
             _client.Dispose();
+        }
+    }
+
+    // --- Rich message handlers ---
+
+    private static async Task HandlePollMessageAsync(IMessageChannel channel, string content)
+    {
+        // Format: __POLL__:question|option1|option2|...|durationHours|multiSelect
+        var payload = content["__POLL__:".Length..];
+        var parts = payload.Split('|');
+        if (parts.Length < 4) { await channel.SendMessageAsync("Invalid poll format."); return; }
+
+        var question = parts[0];
+        var multiSelect = bool.TryParse(parts[^1], out var ms) && ms;
+        var durationHours = int.TryParse(parts[^2], out var dh) ? dh : 24;
+        var options = parts[1..^2];
+
+        var pollBuilder = new PollProperties
+        {
+            Question = new PollMediaProperties { Text = question },
+            Duration = (uint)Math.Clamp(durationHours, 1, 168),
+            AllowMultiselect = multiSelect,
+            LayoutType = PollLayout.Default,
+            Answers = [.. options.Select(o => new PollMediaProperties { Text = o })],
+        };
+
+        await channel.SendMessageAsync(string.Empty, poll: pollBuilder);
+    }
+
+    private static async Task HandleEmbedMessageAsync(IMessageChannel channel, string content)
+    {
+        // Format: __EMBED__:title|description|color[|FIELDS:name:value;name:value][|FOOTER:text]
+        var payload = content["__EMBED__:".Length..];
+        var segments = payload.Split('|');
+        if (segments.Length < 3) { await channel.SendMessageAsync("Invalid embed format."); return; }
+
+        var title = segments[0];
+        var description = segments[1];
+        var colorHex = segments[2].TrimStart('#');
+
+        var builder = new EmbedBuilder()
+            .WithTitle(title)
+            .WithDescription(description)
+            .WithCurrentTimestamp();
+
+        if (uint.TryParse(colorHex, System.Globalization.NumberStyles.HexNumber, null, out var colorVal))
+            builder.WithColor(new Color(colorVal));
+        else
+            builder.WithColor(Color.Blue);
+
+        // Parse optional fields and footer
+        foreach (var segment in segments.Skip(3))
+        {
+            if (segment.StartsWith("FIELDS:", StringComparison.Ordinal))
+            {
+                var fieldPairs = segment["FIELDS:".Length..].Split(';', StringSplitOptions.RemoveEmptyEntries);
+                foreach (var pair in fieldPairs)
+                {
+                    var colonIdx = pair.IndexOf(':', StringComparison.Ordinal);
+                    if (colonIdx > 0)
+                        builder.AddField(pair[..colonIdx].Trim(), pair[(colonIdx + 1)..].Trim(), inline: true);
+                }
+            }
+            else if (segment.StartsWith("FOOTER:", StringComparison.Ordinal))
+            {
+                builder.WithFooter(segment["FOOTER:".Length..]);
+            }
+        }
+
+        await channel.SendMessageAsync(embed: builder.Build());
+    }
+
+    private static async Task HandleThreadMessageAsync(IMessageChannel channel, string content)
+    {
+        // Format: __THREAD__:name|message|archiveMinutes
+        var payload = content["__THREAD__:".Length..];
+        var parts = payload.Split('|');
+        if (parts.Length < 2) { await channel.SendMessageAsync("Invalid thread format."); return; }
+
+        var threadName = parts[0];
+        var message = parts[1];
+        var archiveMinutes = parts.Length > 2 && int.TryParse(parts[2], out var am)
+            ? (ThreadArchiveDuration)am
+            : ThreadArchiveDuration.OneDay;
+
+        if (channel is ITextChannel textChannel)
+        {
+            var thread = await textChannel.CreateThreadAsync(
+                threadName,
+                autoArchiveDuration: archiveMinutes);
+            await thread.SendMessageAsync(message);
+        }
+        else
+        {
+            await channel.SendMessageAsync($"**{threadName}**\n{message}");
         }
     }
 
