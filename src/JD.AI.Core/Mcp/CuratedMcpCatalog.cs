@@ -233,5 +233,36 @@ public static class CuratedMcpCatalog
             DefaultArgs: ["-y", "@azure/mcp"],
             DocsUrl: "https://github.com/Azure/azure-mcp",
             InstallNote: "Requires Node.js and Azure CLI (az login)."),
+
+        // ── Communication ────────────────────────────────────────────────────
+        new(
+            Id: "discord",
+            DisplayName: "Discord MCP",
+            Category: "Communication",
+            Description: "Read messages, manage channels, create threads, send embeds, manage reactions, and interact with Discord servers via the bot's authenticated session.",
+            Transport: CuratedMcpTransport.Stdio,
+            Command: "npx",
+            DefaultArgs: ["-y", "@punkpeye/discord-mcp"],
+            RequiredEnvVars:
+            [
+                new("DISCORD_TOKEN", "Discord Bot Token", IsSecret: true),
+            ],
+            DocsUrl: "https://github.com/punkpeye/discord-mcp",
+            InstallNote: "Requires Node.js. Uses your Discord bot token for authentication. Gives the agent full access to read history, manage channels, create threads, and react to messages."),
+
+        new(
+            Id: "slack",
+            DisplayName: "Slack MCP",
+            Category: "Communication",
+            Description: "Read and send Slack messages, manage channels, and search workspace history.",
+            Transport: CuratedMcpTransport.Stdio,
+            Command: "npx",
+            DefaultArgs: ["-y", "@anthropic/slack-mcp"],
+            RequiredEnvVars:
+            [
+                new("SLACK_BOT_TOKEN", "Slack Bot Token (xoxb-...)", IsSecret: true),
+            ],
+            DocsUrl: "https://github.com/anthropics/slack-mcp",
+            InstallNote: "Requires Node.js. Needs a Slack app with bot token scope."),
     ];
 }

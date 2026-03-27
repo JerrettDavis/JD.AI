@@ -9,6 +9,7 @@ using JD.AI.Core.Config;
 using JD.AI.Core.Events;
 using JD.AI.Core.Infrastructure;
 using JD.AI.Core.Installation;
+using JD.AI.Core.Mcp;
 using JD.AI.Core.Memory;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
@@ -263,6 +264,7 @@ static void RunDaemon(string[] args)
         new ProviderRegistry(sp.GetServices<IProviderDetector>()));
     builder.Services.AddSingleton<SessionStore>(_ =>
         new SessionStore(DataDirectories.SessionsDb));
+    builder.Services.AddSingleton<McpManager>();
     builder.Services.AddSingleton<AgentPoolService>();
     builder.Services.AddHostedService(sp => sp.GetRequiredService<AgentPoolService>());
 
