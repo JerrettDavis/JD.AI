@@ -315,6 +315,19 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
         }
     }
 
+    public async Task ReactAsync(string conversationId, string messageId, string emoji, CancellationToken ct = default)
+    {
+        if (_client is null) throw new InvalidOperationException("Not connected.");
+
+        if (ulong.TryParse(conversationId, out var channelId)
+            && ulong.TryParse(messageId, out var msgId)
+            && await _client.GetChannelAsync(channelId) is IMessageChannel channel
+            && await channel.GetMessageAsync(msgId) is IUserMessage message)
+        {
+            await TryAddReactionAsync(message, emoji);
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_client is not null)

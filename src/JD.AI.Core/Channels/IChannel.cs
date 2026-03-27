@@ -48,6 +48,12 @@ public interface IChannel : IAsyncDisposable
     /// <summary>Sends a message to the specified conversation/thread.</summary>
     Task SendMessageAsync(string conversationId, string content, CancellationToken ct = default);
 
+    /// <summary>
+    /// Adds a reaction emoji to a message. Not all channels support this — default is no-op.
+    /// </summary>
+    Task ReactAsync(string conversationId, string messageId, string emoji, CancellationToken ct = default)
+        => Task.CompletedTask;
+
     /// <summary>Raised when a new inbound message arrives.</summary>
     /// <remarks>Uses <c>Func&lt;ChannelMessage, Task&gt;</c> instead of <c>EventHandler</c> to support async handlers.</remarks>
 #pragma warning disable CA1003 // Async event pattern requires Func<T, Task> delegate
