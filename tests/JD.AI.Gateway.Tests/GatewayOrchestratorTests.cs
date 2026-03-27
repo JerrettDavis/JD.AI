@@ -47,6 +47,7 @@ public sealed class GatewayOrchestratorTests
 
         _pool = new AgentPoolService(
             _providerRegistry,
+            _channels,
             _events,
             NullLogger<AgentPoolService>.Instance);
         _router = new AgentRouter(
