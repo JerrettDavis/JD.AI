@@ -22,9 +22,11 @@ namespace JD.AI.Gateway.Services;
 public sealed class AgentPoolService : IHostedService
 {
     private readonly IProviderRegistry _providers;
+    private readonly IChannelRegistry _channelRegistry;
     private readonly IEventBus _eventBus;
     private readonly ILogger<AgentPoolService> _logger;
     private readonly ConcurrentDictionary<string, AgentInstance> _agents = new();
+    private readonly ConcurrentDictionary<string, ChannelReactionTools> _reactionTools = new();
 
     /// <summary>Maximum retry attempts for transient Ollama errors.</summary>
     internal const int MaxRetries = 3;
@@ -33,10 +35,11 @@ public sealed class AgentPoolService : IHostedService
     internal static readonly TimeSpan BaseRetryDelay = TimeSpan.FromSeconds(2);
 
     public AgentPoolService(
-        IProviderRegistry providers, IEventBus eventBus,
-        ILogger<AgentPoolService> logger)
+        IProviderRegistry providers, IChannelRegistry channelRegistry,
+        IEventBus eventBus, ILogger<AgentPoolService> logger)
     {
         _providers = providers;
+        _channelRegistry = channelRegistry;
         _eventBus = eventBus;
         _logger = logger;
     }
@@ -96,6 +99,11 @@ public sealed class AgentPoolService : IHostedService
 
         var id = Guid.NewGuid().ToString("N")[..12];
 
+        // Register channel reaction tools — lets agents choose their own emoji reactions
+        var reactionTools = new ChannelReactionTools(_channelRegistry);
+        kernel.Plugins.AddFromObject(reactionTools, "reactions");
+        _reactionTools[id] = reactionTools;
+
         // Wire agent ID into SystemInfoTools
         coreReg?.SystemInfoTools.SetAgentId(id);
         var instance = new AgentInstance(id, provider, model, kernel, history, parameters, fallbackProviders);
@@ -108,12 +116,30 @@ public sealed class AgentPoolService : IHostedService
     }
 
     public Task<string?> SendMessageAsync(string agentId, string message, CancellationToken ct)
-        => SendMessageAsync(agentId, message, attachments: null, ct);
+        => SendMessageCoreAsync(agentId, message, attachments: null, ct);
 
     public Task<string?> SendMessageAsync(string agentId, ChannelMessage message, CancellationToken ct)
-        => SendMessageAsync(agentId, message.Content, message.Attachments, ct);
+        => SendMessageAsync(agentId, message, message.Content, message.Attachments, ct);
 
-    private async Task<string?> SendMessageAsync(
+    public Task<string?> SendMessageAsync(string agentId, ChannelMessage message, string channelType, CancellationToken ct)
+        => SendMessageAsync(agentId, message, message.Content, message.Attachments, ct, channelType);
+
+    private Task<string?> SendMessageAsync(
+        string agentId, ChannelMessage? sourceMessage, string message,
+        IReadOnlyList<ChannelAttachment>? attachments, CancellationToken ct, string? channelType = null)
+    {
+        // Set reaction context so agent can react to the inbound message
+        if (sourceMessage is not null && _reactionTools.TryGetValue(agentId, out var reactionTools))
+        {
+            reactionTools.ActiveConversationId = sourceMessage.ChannelId;
+            reactionTools.ActiveMessageId = sourceMessage.Id;
+            reactionTools.ActiveChannelType = channelType;
+        }
+
+        return SendMessageCoreAsync(agentId, message, attachments, ct);
+    }
+
+    private async Task<string?> SendMessageCoreAsync(
         string agentId,
         string message,
         IReadOnlyList<ChannelAttachment>? attachments,

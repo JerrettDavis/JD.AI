@@ -69,7 +69,10 @@ public sealed class AgentRouter
         _logger.LogInformation("Routing message from {Channel} (route:{RouteKey}) to agent {Agent}",
             message.ChannelId, routeKey ?? "none", agentId);
 
-        var response = await _pool.SendMessageAsync(agentId, message, ct);
+        var channelType = sourceChannel?.ChannelType ?? ResolveChannelForResponse(message)?.ChannelType;
+        var response = channelType is not null
+            ? await _pool.SendMessageAsync(agentId, message, channelType, ct)
+            : await _pool.SendMessageAsync(agentId, message, ct);
 
         // Send response back through the channel
         var channel = sourceChannel ?? ResolveChannelForResponse(message);
