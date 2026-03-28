@@ -141,6 +141,19 @@ Inside an OpenClaw conversation, send `/jdai-...` commands. The bridge intercept
 /jdai-status
 ```
 
+For Discord channels, model commands also support a bang fast path:
+
+```text
+!model list
+!model current
+!model set gpt-4o
+@Jarvis !model list
+<@123456789012345678> !model current
+<@!123456789012345678> !model set llama3.2:latest
+```
+
+These Discord bang/`/model` fast-path commands are handled directly by command routing and **bypass LLM inference** (token-saving path).
+
 ### Practical switching behavior
 
 - In **Sidecar** mode, plain messages continue to OpenClaw; `/jdai-...` commands and configured triggers route to JD.AI.

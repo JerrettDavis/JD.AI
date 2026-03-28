@@ -1524,6 +1524,68 @@ public sealed class OpenClawRoutingServiceStripMetadataTests
     }
 }
 
+public sealed class OpenClawRoutingServiceModelFastPathTests
+{
+    private static (bool Ok, string Command, string[] Args) Map(string message)
+    {
+        var method = typeof(OpenClawRoutingService).GetMethod(
+            "TryMapDiscordModelCommand",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+
+        var args = new object[] { message, string.Empty, Array.Empty<string>() };
+        var ok = (bool)method.Invoke(null, args)!;
+        return (ok, (string)args[1], (string[])args[2]);
+    }
+
+    [Theory]
+    [InlineData("!model list", "models")]
+    [InlineData("!model current", "status")]
+    [InlineData("/model list", "models")]
+    [InlineData("/model current", "status")]
+    public void TryMapDiscordModelCommand_ParsesBangAndSlashCommands(string message, string expectedCommand)
+    {
+        var mapped = Map(message);
+
+        mapped.Ok.Should().BeTrue();
+        mapped.Command.Should().Be(expectedCommand);
+        mapped.Args.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("@Jarvis !model list")]
+    [InlineData("<@123456789> !model list")]
+    [InlineData("<@!123456789> !model set gpt-4o")]
+    public void TryMapDiscordModelCommand_StripsLeadingMentions(string message)
+    {
+        var mapped = Map(message);
+
+        mapped.Ok.Should().BeTrue();
+        mapped.Command.Should().BeOneOf("models", "switch");
+    }
+
+    [Fact]
+    public void TryMapDiscordModelCommand_ModelSet_MapsToSwitchWithArgument()
+    {
+        var mapped = Map("!model set gpt-4o");
+
+        mapped.Ok.Should().BeTrue();
+        mapped.Command.Should().Be("switch");
+        mapped.Args.Should().ContainSingle().Which.Should().Be("gpt-4o");
+    }
+
+    [Theory]
+    [InlineData("hello there")]
+    [InlineData("!help")]
+    [InlineData("/status")]
+    [InlineData("!model set")]
+    public void TryMapDiscordModelCommand_NonCommandMessagesReturnFalse(string message)
+    {
+        var mapped = Map(message);
+
+        mapped.Ok.Should().BeFalse();
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  OpenClawRoutingService — GetRecentEvents test
 // ─────────────────────────────────────────────────────────────────────────────
