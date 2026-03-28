@@ -45,6 +45,8 @@ public sealed partial class TfIdfIntentClassifier : IPromptIntentClassifier
         "publish", "release", "monitor", "connect", "send", "notify",
         "review", "audit", "validate", "approve", "merge", "rollback",
         "backup", "restore", "onboard", "setup", "teardown", "clean",
+        "implement", "design", "architect", "plan", "develop", "refactor",
+        "integrate", "bootstrap", "analyze", "inspect", "debug", "fix",
     };
 
     private static readonly string[] MultiWordSignals =
