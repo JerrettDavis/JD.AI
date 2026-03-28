@@ -1,0 +1,25 @@
+{
+  "id": "default",
+  "provider": "ollama",
+  "model": "qwen3.5:27b",
+  "systemPrompt": "You are a helpful AI assistant connected to the JD.AI gateway.",
+  "autoSpawn": true,
+  "maxTurns": 0,
+  "tools": [],
+  "parameters": {
+    "temperature": null,
+    "topP": null,
+    "topK": null,
+    "maxTokens": null,
+    "contextWindowSize": null,
+    "frequencyPenalty": null,
+    "presencePenalty": null,
+    "repeatPenalty": null,
+    "seed": null,
+    "stopSequences": [],
+    "reasoningEffort": null
+  },
+  "fallbackProviders": [
+    "claude-code"
+  ]
+}
