@@ -1,36 +1,21 @@
 namespace JD.AI.Workflows;
 
 /// <summary>
-/// Rule-based, deterministic workflow detector.
-/// A request is classified as workflow-worthy when it contains at least one
-/// recognised lifecycle keyword and is substantive in length.
+/// Workflow detector that delegates to an <see cref="IPromptIntentClassifier"/>
+/// for TF-IDF-based intent classification.
 /// </summary>
 public sealed class AgentWorkflowDetector : IAgentWorkflowDetector
 {
-    private static readonly string[] WorkflowKeywords =
-    [
-        "implement", "create", "scaffold", "build", "review",
-        "test", "deploy", "generate", "design", "architect",
-        "plan", "develop", "refactor", "migrate", "integrate",
-        "setup", "initialize", "bootstrap",
-    ];
+    private readonly IPromptIntentClassifier _classifier;
 
-    private const int MinMessageLength = 30;
+    public AgentWorkflowDetector() : this(new TfIdfIntentClassifier()) { }
+    public AgentWorkflowDetector(IPromptIntentClassifier classifier) => _classifier = classifier;
 
     /// <inheritdoc/>
     public bool IsWorkflowRequired(AgentRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Message) ||
-            request.Message.Length < MinMessageLength)
+        if (string.IsNullOrWhiteSpace(request.Message))
             return false;
-
-        var message = request.Message.AsSpan();
-        foreach (var keyword in WorkflowKeywords)
-        {
-            if (message.Contains(keyword, StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-
-        return false;
+        return _classifier.Classify(request.Message).IsWorkflow;
     }
 }

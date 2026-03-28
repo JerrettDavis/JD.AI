@@ -21,31 +21,25 @@ public sealed class AgentWorkflowDetectorTests
     public void WhitespaceMessage_ReturnsFalse() =>
         _detector.IsWorkflowRequired(new AgentRequest("   \t  \n  ")).Should().BeFalse();
 
-    // ── Minimum length boundary ───────────────────────────────────────────
+    // ── Short prompts with action verbs are workflow-worthy ────────────────
+    // No minimum length — "deploy" alone implies a repeatable process.
 
     [Fact]
-    public void MessageWith29Chars_ContainingKeyword_ReturnsFalse()
+    public void ShortActionPrompt_IsDetected()
     {
-        // 29 chars: "implement this very short msg" (28) + pad
-        var msg = "implement " + new string('x', 19); // 10 + 19 = 29
-        msg.Length.Should().Be(29);
-        _detector.IsWorkflowRequired(new AgentRequest(msg)).Should().BeFalse();
+        _detector.IsWorkflowRequired(new AgentRequest("deploy the app")).Should().BeTrue();
     }
 
     [Fact]
-    public void MessageWith30Chars_ContainingKeyword_ReturnsTrue()
+    public void VeryShortActionPrompt_IsDetected()
     {
-        var msg = "implement " + new string('x', 20); // 10 + 20 = 30
-        msg.Length.Should().Be(30);
-        _detector.IsWorkflowRequired(new AgentRequest(msg)).Should().BeTrue();
+        _detector.IsWorkflowRequired(new AgentRequest("deploy")).Should().BeTrue();
     }
 
     [Fact]
-    public void MessageWith31Chars_ContainingKeyword_ReturnsTrue()
+    public void ShortNonActionPrompt_IsNotDetected()
     {
-        var msg = "implement " + new string('x', 21); // 10 + 21 = 31
-        msg.Length.Should().Be(31);
-        _detector.IsWorkflowRequired(new AgentRequest(msg)).Should().BeTrue();
+        _detector.IsWorkflowRequired(new AgentRequest("hello there")).Should().BeFalse();
     }
 
     // ── All 18 keywords individually ──────────────────────────────────────

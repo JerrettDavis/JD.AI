@@ -1,0 +1,1 @@
+{"enabled":false,"webSocketUrl":"ws://127.0.0.1:18789/ws/gateway","autoConnect":false,"defaultMode":"Passthrough","channels":{},"registerAgents":[]}
