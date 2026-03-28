@@ -6,6 +6,18 @@ public interface IAgentWorkflowDetector
     bool IsWorkflowRequired(AgentRequest request);
 }
 
+/// <summary>Classifies prompt intent before it reaches an LLM agent.</summary>
+public interface IPromptIntentClassifier
+{
+    IntentClassification Classify(string prompt);
+}
+
+/// <summary>Result of intent classification indicating whether a prompt represents a workflow.</summary>
+public readonly record struct IntentClassification(
+    bool IsWorkflow,
+    double Confidence,
+    IReadOnlyList<string> SignalWords);
+
 /// <summary>Persists and retrieves versioned workflow definitions.</summary>
 public interface IWorkflowCatalog
 {
