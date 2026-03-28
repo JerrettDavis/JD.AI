@@ -38,7 +38,6 @@ public class WorkflowClassifierTests
     [InlineData("Explain the difference between async and parallel")]
     [InlineData("How does the garbage collector work in .NET?")]
     [InlineData("Do you think we should use PostgreSQL or SQL Server?")]
-    [InlineData("Fix the null reference exception in UserService.cs")]
     [InlineData("Hello")]
     [InlineData("Thanks!")]
     public void Conversation_Prompts_Are_Not_Classified_As_Workflow(string prompt)
@@ -49,17 +48,24 @@ public class WorkflowClassifierTests
             because: $"'{prompt}' is a conversation prompt, not a workflow (confidence: {result.Confidence:F3})");
     }
 
-    // ── Edge cases ──────────────────────────────────────────────────────
+    // ── Process-worthy single actions (SHOULD classify as workflow) ────
+    // "Deploy the app" and "Review this PR" imply repeatable, multi-step
+    // processes that should be defined workflows. If the workflow doesn't
+    // exist yet, the pipeline prompts the user to enter planning mode.
 
     [Theory]
     [InlineData("Deploy the app")]
     [InlineData("Review this PR")]
-    public void Single_Action_Prompts_Are_Not_Workflow(string prompt)
+    [InlineData("Onboard the new hire")]
+    [InlineData("Rollback the release")]
+    [InlineData("Backup the database")]
+    public void Process_Worthy_Actions_Are_Classified_As_Workflow(string prompt)
     {
         var result = _classifier.Classify(prompt);
 
-        result.IsWorkflow.Should().BeFalse(
-            because: $"'{prompt}' is a single action, not a multi-step workflow (confidence: {result.Confidence:F3})");
+        result.IsWorkflow.Should().BeTrue(
+            because: $"'{prompt}' implies a repeatable process that should be a defined workflow (confidence: {result.Confidence:F3})");
+        result.SignalWords.Should().NotBeEmpty();
     }
 
     [Fact]

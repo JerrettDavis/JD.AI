@@ -4,7 +4,10 @@ namespace JD.AI.Workflows;
 
 /// <summary>
 /// TF-IDF-inspired intent classifier that determines whether a prompt describes
-/// a multi-step workflow or a simple conversation/question.
+/// an actionable process that should be routed through the workflow pipeline.
+/// Any imperative action that implies a repeatable, definable process is a workflow —
+/// even single verbs like "deploy" or "review". The downstream pipeline handles
+/// catalog lookup and planning mode if no workflow is defined yet.
 /// Zero external dependencies, thread-safe, sub-millisecond classification.
 /// </summary>
 public sealed partial class TfIdfIntentClassifier : IPromptIntentClassifier
@@ -17,8 +20,15 @@ public sealed partial class TfIdfIntentClassifier : IPromptIntentClassifier
     private const double AntiSignalPenalty = -1.0;
 
     // ── Thresholds ──────────────────────────────────────────────────────
-    private const double WorkflowThreshold = 0.65;
+    // Aggressive: any action implying a repeatable process should route
+    // through the workflow pipeline. The pipeline handles catalog lookup
+    // and planning mode if no workflow exists yet.
+    private const double WorkflowThreshold = 0.40;
 
+    // ── Single imperative verb base score ───────────────────────────────
+    // A single orchestration verb ("deploy", "review", "test") implies a
+    // repeatable process that benefits from a defined workflow.
+    private const double SingleImperativeBase = 0.5;
 
     // ── Multi-verb chain bonus ──────────────────────────────────────────
     private const double MultiVerbBonus = 0.25;
@@ -33,6 +43,8 @@ public sealed partial class TfIdfIntentClassifier : IPromptIntentClassifier
         "migrate", "provision", "seed", "verify", "check", "apply", "start",
         "stop", "restart", "initialize", "scaffold", "generate", "compile",
         "publish", "release", "monitor", "connect", "send", "notify",
+        "review", "audit", "validate", "approve", "merge", "rollback",
+        "backup", "restore", "onboard", "setup", "teardown", "clean",
     };
 
     private static readonly string[] MultiWordSignals =
@@ -104,7 +116,8 @@ public sealed partial class TfIdfIntentClassifier : IPromptIntentClassifier
             }
         }
 
-        // ── 3. Multi-verb chain detection ───────────────────────────────
+        // ── 3. Imperative verb detection ────────────────────────────────
+        // Any imperative verb implies an actionable process — even one.
         int verbCount = 0;
         foreach (var token in tokens)
         {
@@ -112,11 +125,12 @@ public sealed partial class TfIdfIntentClassifier : IPromptIntentClassifier
                 verbCount++;
         }
 
-        if (verbCount >= 2)
+        if (verbCount >= 1)
         {
-            score += MultiVerbBonus * (verbCount - 1);
+            // Single imperative verb = base score (process-worthy)
+            // Multiple verbs = stronger signal (multi-step)
+            score += SingleImperativeBase + MultiVerbBonus * Math.Max(0, verbCount - 1);
             signalCount++;
-            // Add detected imperative verbs as signal words
             foreach (var token in tokens)
             {
                 if (ImperativeVerbs.Contains(token) && !signalWords.Contains(token, StringComparer.OrdinalIgnoreCase))
@@ -140,13 +154,7 @@ public sealed partial class TfIdfIntentClassifier : IPromptIntentClassifier
             signalCount++;
         }
 
-        // ── 6. Short prompt penalty (single action likely) ──────────────
-        if (tokens.Length <= 5)
-        {
-            score -= 0.3;
-        }
-
-        // ── 7. Normalize to 0.0–1.0 ────────────────────────────────────
+        // ── 6. Normalize to 0.0–1.0 ────────────────────────────────────
         // Use sigmoid-like normalization: confidence = score / (score + k) for positive,
         // and clamp negatives to 0.
         double confidence;
@@ -157,7 +165,7 @@ public sealed partial class TfIdfIntentClassifier : IPromptIntentClassifier
         else
         {
             // k controls the steepness — lower k means signals translate to higher confidence
-            const double k = 0.85;
+            const double k = 0.65;
             confidence = score / (score + k);
         }
 
