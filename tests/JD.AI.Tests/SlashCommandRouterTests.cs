@@ -262,6 +262,46 @@ public sealed class SlashCommandRouterTests
         Assert.Contains("Current session model", result);
     }
 
+    [Theory]
+    [InlineData("/model current")]
+    [InlineData("/model CURRENT")]
+    [InlineData("/model list")]
+    [InlineData("/model LIST")]
+    public async Task Model_Subcommands_AreCaseInsensitive(string command)
+    {
+        _registry.GetModelsAsync(Arg.Any<CancellationToken>())
+            .Returns([new ProviderModelInfo("test-model", "Test Model", "TestProvider")]);
+
+        var result = await _router.ExecuteAsync(command);
+
+        Assert.NotNull(result);
+        if (command.Contains("current", StringComparison.OrdinalIgnoreCase))
+            Assert.Contains("Current session model", result, StringComparison.OrdinalIgnoreCase);
+        else
+            Assert.Contains("test-model", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Model_Set_MissingArgument_FallsBackToCurrentModel()
+    {
+        var result = await _router.ExecuteAsync("/model set   ");
+
+        Assert.NotNull(result);
+        Assert.Contains("Current session model", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Model_UnsupportedSubcommand_ReturnsNotFound()
+    {
+        _registry.GetModelsAsync(Arg.Any<CancellationToken>())
+            .Returns([new ProviderModelInfo("test-model", "Test Model", "TestProvider")]);
+
+        var result = await _router.ExecuteAsync("/model wobble");
+
+        Assert.NotNull(result);
+        Assert.Contains("not found", result, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public async Task Clear_ClearsHistory()
     {

@@ -1578,11 +1578,40 @@ public sealed class OpenClawRoutingServiceModelFastPathTests
     [InlineData("!help")]
     [InlineData("/status")]
     [InlineData("!model set")]
+    [InlineData("!model set   ")]
+    [InlineData("/model set   ")]
+    [InlineData("!model foo")]
+    [InlineData("<@abc123> !model list")]
+    [InlineData("prefix !model list")]
     public void TryMapDiscordModelCommand_NonCommandMessagesReturnFalse(string message)
     {
         var mapped = Map(message);
 
         mapped.Ok.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("!MoDeL LiSt", "models")]
+    [InlineData("/MoDeL CuRrEnT", "status")]
+    public void TryMapDiscordModelCommand_IsCaseInsensitive(string message, string expected)
+    {
+        var mapped = Map(message);
+
+        mapped.Ok.Should().BeTrue();
+        mapped.Command.Should().Be(expected);
+        mapped.Args.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("<@123>    !model   list", "models")]
+    [InlineData("<@!123>\t/model\tcurrent", "status")]
+    [InlineData("@Jarvis    !model set    gpt-4o", "switch")]
+    public void TryMapDiscordModelCommand_SupportsMentionAndSpacingVariants(string message, string expected)
+    {
+        var mapped = Map(message);
+
+        mapped.Ok.Should().BeTrue();
+        mapped.Command.Should().Be(expected);
     }
 }
 
