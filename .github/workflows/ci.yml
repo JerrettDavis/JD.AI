@@ -80,7 +80,7 @@ jobs:
           path: coverage-report
 
       - name: Upload to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           files: coverage-report/Cobertura.xml
           fail_ci_if_error: false
@@ -155,7 +155,7 @@ jobs:
             -filefilters:"-**/*.Tests/*;-**/*Tests*/**"
 
       - name: Upload to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           files: coverage-report/Cobertura.xml
           token: ${{ secrets.CODECOV_TOKEN }}
