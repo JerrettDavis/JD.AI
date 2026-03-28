@@ -251,6 +251,20 @@ See [Skills and Plugins](../developer-guide/plugins.md) for lifecycle, precedenc
 
 Note: `output_style=json` is session-only and will not persist as startup default.
 
+### Update workflow settings (`tui-settings.json`)
+
+The `/update` workflow reads these settings from `updates`:
+- `updates.enabled` (bool)
+- `updates.allowPromptTrigger` (bool)
+- `updates.requireApproval` (bool)
+- `updates.components.daemon` (bool)
+- `updates.components.gateway` (bool)
+- `updates.components.tui` (bool)
+- `updates.drainTimeout` (timespan)
+- `updates.reconnectTimeout` (timespan)
+
+These settings control whether update orchestration is enabled, whether prompt-triggered flows are allowed, whether apply needs approval, which components participate, and drain/reconnect timing windows.
+
 ### Prompt caching defaults
 
 - `prompt_cache=on`

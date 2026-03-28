@@ -149,7 +149,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             SlashCommandId.History => ShowHistory(),
             SlashCommandId.ToolHistory => await ShowToolHistoryAsync(arg, ct).ConfigureAwait(false),
             SlashCommandId.Export => await ExportSessionAsync(ct).ConfigureAwait(false),
-            SlashCommandId.Update => await CheckUpdateAsync(ct).ConfigureAwait(false),
+            SlashCommandId.Update => await HandleUpdateCommandAsync(arg, ct).ConfigureAwait(false),
             SlashCommandId.Instructions => ShowInstructions(),
             SlashCommandId.Plugins => await HandlePluginsAsync(arg, ct).ConfigureAwait(false),
             SlashCommandId.Checkpoint => await HandleCheckpointAsync(arg, ct).ConfigureAwait(false),
@@ -1889,21 +1889,124 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         return $"Session exported to ~/.jdai/projects/{_session.SessionInfo.ProjectHash}/sessions/{_session.SessionInfo.Id}.json";
     }
 
+    private async Task<string> HandleUpdateCommandAsync(string? arg, CancellationToken ct)
+    {
+        var settings = TuiSettings.Load().Updates;
+        if (!settings.Enabled)
+            return "Updates are disabled by config (updates.enabled=false).";
+
+        var command = UpdateCommand.Parse(arg);
+        await UpdateAuditLog.WriteAsync("update.request", new { command.Action, command.Target }, ct).ConfigureAwait(false);
+
+        switch (command.Action)
+        {
+            case UpdateAction.Status:
+                return await GetUpdateStatusAsync(ct).ConfigureAwait(false);
+            case UpdateAction.Check:
+                return await CheckUpdateAsync(ct).ConfigureAwait(false);
+            case UpdateAction.Plan:
+                await UpdateAuditLog.WriteAsync("update.plan", new { command.Target }, ct).ConfigureAwait(false);
+                return BuildUpdatePlan(command.Target ?? "latest", settings);
+            case UpdateAction.Apply:
+                if (settings.RequireApproval)
+                {
+                    var result = await RequestUpdateApprovalAsync(command.Target ?? "latest", ct).ConfigureAwait(false);
+                    if (!result.IsApproved)
+                    {
+                        await UpdateAuditLog.WriteAsync("update.fail", new { reason = result.Reason ?? "approval_rejected" }, ct).ConfigureAwait(false);
+                        return $"Update apply not approved: {result.Reason ?? result.Decision.ToString()}";
+                    }
+                }
+
+                return await ApplyUpdateAsync(command.Target, settings, ct).ConfigureAwait(false);
+            default:
+                return "Usage: /update [status|check|plan [target|latest]|apply [target|latest]]";
+        }
+    }
+
     private static async Task<string> CheckUpdateAsync(CancellationToken ct)
     {
         var info = await UpdateChecker.CheckAsync(forceCheck: true, ct).ConfigureAwait(false);
         if (info is null)
-        {
             return $"jdai is up to date (v{UpdateChecker.GetCurrentVersion()}).";
+
+        return $"Update available: {info.CurrentVersion} → {info.LatestVersion}";
+    }
+
+    private static Task<string> GetUpdateStatusAsync(CancellationToken ct)
+    {
+        _ = ct;
+        var settings = TuiSettings.Load().Updates;
+        return Task.FromResult($"updates.enabled={settings.Enabled}, promptTrigger={settings.AllowPromptTrigger}, requireApproval={settings.RequireApproval}, components=[daemon:{settings.Components.Daemon}, gateway:{settings.Components.Gateway}, tui:{settings.Components.Tui}], drainTimeout={settings.DrainTimeout}, reconnectTimeout={settings.ReconnectTimeout}");
+    }
+
+    private static string BuildUpdatePlan(string target, UpdateWorkflowSettings settings)
+    {
+        var components = new List<string>();
+        if (settings.Components.Daemon) components.Add("daemon");
+        if (settings.Components.Gateway) components.Add("gateway");
+        if (settings.Components.Tui) components.Add("tui");
+
+        var componentList = components.Count == 0 ? "(none enabled)" : string.Join(", ", components);
+        return $"Update plan ({target}): drain/quiesce up to {settings.DrainTimeout}, update components [{componentList}] in order daemon→gateway→tui using out-of-process updater for active binaries, restart services, verify reconnect up to {settings.ReconnectTimeout}.";
+    }
+
+    private async Task<ApprovalResult> RequestUpdateApprovalAsync(string target, CancellationToken ct)
+    {
+        if (_session.ApprovalService is null)
+            return ApprovalResult.Rejected("Approval required, but no approval service is configured.");
+
+        var request = new ApprovalRequest(
+            Guid.NewGuid().ToString("N"),
+            $"Apply system update ({target})",
+            "Applies JD.AI component updates with restart/reconnect orchestration.",
+            ApprovalKind.ExternalRequest,
+            ToolName: "update.apply");
+
+        return await _session.ApprovalService.RequestApprovalAsync(request, ct).ConfigureAwait(false);
+    }
+
+    private static async Task<string> ApplyUpdateAsync(string? target, UpdateWorkflowSettings settings, CancellationToken ct)
+    {
+        await UpdateAuditLog.WriteAsync("update.apply", new { target = target ?? "latest" }, ct).ConfigureAwait(false);
+
+        try
+        {
+            await Task.Delay(settings.DrainTimeout, ct).ConfigureAwait(false);
+
+            var outputs = new List<string>();
+            if (settings.Components.Daemon)
+                outputs.Add(await RunUpdateCommandAsync("jdai-daemon", target, ct).ConfigureAwait(false));
+            if (settings.Components.Gateway)
+                outputs.Add(await RunUpdateCommandAsync("jdai-gateway", target, ct).ConfigureAwait(false));
+            if (settings.Components.Tui)
+                outputs.Add(await RunUpdateCommandAsync("jdai", target, ct).ConfigureAwait(false));
+
+            await Task.Delay(TimeSpan.FromMilliseconds(Math.Min(settings.ReconnectTimeout.TotalMilliseconds, 5000)), ct).ConfigureAwait(false);
+            await UpdateAuditLog.WriteAsync("update.success", new { target = target ?? "latest" }, ct).ConfigureAwait(false);
+            return "Update apply requested. " + string.Join(" | ", outputs);
         }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await UpdateAuditLog.WriteAsync("update.fail", new { error = ex.Message }, ct).ConfigureAwait(false);
+            return $"Update failed: {ex.Message}";
+        }
+    }
 
-        var shouldRestart = await UpdatePrompter.PromptAsync(info, ct).ConfigureAwait(false);
+    private static async Task<string> RunUpdateCommandAsync(string commandName, string? target, CancellationToken ct)
+    {
+        var args = commandName switch
+        {
+            "jdai-daemon" => target is null || string.Equals(target, "latest", StringComparison.OrdinalIgnoreCase)
+                ? "update"
+                : $"update --target {target}",
+            _ => target is null || string.Equals(target, "latest", StringComparison.OrdinalIgnoreCase)
+                ? "update"
+                : $"update --version {target}",
+        };
 
-        // PromptAsync already rendered detached-launch messaging to the console;
-        // return a summary string so the TUI can render it in the message stream.
-        return shouldRestart
-            ? "Update process started. Exit and restart jdai to apply the update."
-            : $"Update available: {info.CurrentVersion} → {info.LatestVersion}";
+        var result = await ProcessExecutor.RunAsync(commandName, args, timeout: TimeSpan.FromMinutes(3), cancellationToken: ct).ConfigureAwait(false);
+        return result.Success ? $"{commandName}:ok" : $"{commandName}:failed({result.ExitCode})";
     }
 
     // ── New Phase commands ─────────────────────────────────

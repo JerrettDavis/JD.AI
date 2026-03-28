@@ -69,7 +69,18 @@ public static class SlashCommandCatalog
             "/tool-history [current|all]",
             "Browse tool-use audit history and apply allow/deny decisions"),
         new(SlashCommandId.Export, "/export", "/export", "Export current session to JSON"),
-        new(SlashCommandId.Update, "/update", "/update", "Check for and apply updates"),
+        new(
+            SlashCommandId.Update,
+            "/update",
+            "/update [status|check|plan [target|latest]|apply [target|latest]]",
+            "Plan and apply out-of-process updates",
+            AdditionalCompletions:
+            [
+                new SlashCommandDescriptor("/update status", "Show updater status and config"),
+                new SlashCommandDescriptor("/update check", "Check if updates are available"),
+                new SlashCommandDescriptor("/update plan", "Plan update orchestration"),
+                new SlashCommandDescriptor("/update apply", "Apply updates with approval/policy gates")
+            ]),
         new(
             SlashCommandId.Instructions,
             "/instructions",
