@@ -30,16 +30,21 @@ Shows all available commands and short descriptions.
 
 ### `/models`
 
-Opens model browsing and interactive selection.
+Lists available models and marks the active session model.
 
-### `/model [id]`
+### `/model [current|list|set <id>]`
 
-Switches model by partial or full ID. Without an argument, opens the model picker.
+Session-scoped model management:
+
+- `/model` or `/model current` shows the active model for the current session.
+- `/model list` lists available models.
+- `/model set <id-or-alias>` switches only the current session model (does **not** persist defaults).
 
 ```text
-/model
-/model claude-sonnet
-/model gpt-4o
+/model current
+/model list
+/model set claude-sonnet
+/model set openai/gpt-4o
 ```
 
 ### `/model search <query>`
