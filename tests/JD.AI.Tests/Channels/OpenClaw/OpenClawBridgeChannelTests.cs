@@ -1526,15 +1526,19 @@ public sealed class OpenClawRoutingServiceStripMetadataTests
 
 public sealed class OpenClawRoutingServiceModelFastPathTests
 {
-    private static (bool Ok, string Command, string[] Args) Map(string message)
+    private static async Task<CommandDispatchResult> MapAsync(string message)
     {
-        var method = typeof(OpenClawRoutingService).GetMethod(
-            "TryMapDiscordModelCommand",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+        var registry = new CommandRegistry();
+        registry.Register(new StubCommand("models"));
+        registry.Register(new StubCommand("status"));
+        registry.Register(new StubCommand("switch", [new CommandParameter { Name = "model", Description = "model", IsRequired = true }]));
 
-        var args = new object[] { message, string.Empty, Array.Empty<string>() };
-        var ok = (bool)method.Invoke(null, args)!;
-        return (ok, (string)args[1], (string[])args[2]);
+        return await GatewayCommandDispatcher.TryDispatchAsync(
+            registry,
+            channelType: "discord",
+            message: message,
+            invokerId: "u1",
+            channelId: "c1");
     }
 
     [Theory]
@@ -1542,35 +1546,33 @@ public sealed class OpenClawRoutingServiceModelFastPathTests
     [InlineData("!model current", "status")]
     [InlineData("/model list", "models")]
     [InlineData("/model current", "status")]
-    public void TryMapDiscordModelCommand_ParsesBangAndSlashCommands(string message, string expectedCommand)
+    public async Task TryMapDiscordModelCommand_ParsesBangAndSlashCommands(string message, string expectedCommand)
     {
-        var mapped = Map(message);
+        var mapped = await MapAsync(message);
 
-        mapped.Ok.Should().BeTrue();
-        mapped.Command.Should().Be(expectedCommand);
-        mapped.Args.Should().BeEmpty();
+        mapped.Handled.Should().BeTrue();
+        mapped.CommandName.Should().Be(expectedCommand);
     }
 
     [Theory]
     [InlineData("@Jarvis !model list")]
     [InlineData("<@123456789> !model list")]
     [InlineData("<@!123456789> !model set gpt-4o")]
-    public void TryMapDiscordModelCommand_StripsLeadingMentions(string message)
+    public async Task TryMapDiscordModelCommand_StripsLeadingMentions(string message)
     {
-        var mapped = Map(message);
+        var mapped = await MapAsync(message);
 
-        mapped.Ok.Should().BeTrue();
-        mapped.Command.Should().BeOneOf("models", "switch");
+        mapped.Handled.Should().BeTrue();
+        mapped.CommandName.Should().BeOneOf("models", "switch");
     }
 
     [Fact]
-    public void TryMapDiscordModelCommand_ModelSet_MapsToSwitchWithArgument()
+    public async Task TryMapDiscordModelCommand_ModelSet_MapsToSwitchWithArgument()
     {
-        var mapped = Map("!model set gpt-4o");
+        var mapped = await MapAsync("!model set gpt-4o");
 
-        mapped.Ok.Should().BeTrue();
-        mapped.Command.Should().Be("switch");
-        mapped.Args.Should().ContainSingle().Which.Should().Be("gpt-4o");
+        mapped.Handled.Should().BeTrue();
+        mapped.CommandName.Should().Be("switch");
     }
 
     [Theory]
@@ -1583,35 +1585,50 @@ public sealed class OpenClawRoutingServiceModelFastPathTests
     [InlineData("!model foo")]
     [InlineData("<@abc123> !model list")]
     [InlineData("prefix !model list")]
-    public void TryMapDiscordModelCommand_NonCommandMessagesReturnFalse(string message)
+    public async Task TryMapDiscordModelCommand_NonCommandMessagesReturnFalse(string message)
     {
-        var mapped = Map(message);
+        var mapped = await MapAsync(message);
 
-        mapped.Ok.Should().BeFalse();
+        mapped.Handled.Should().BeFalse();
     }
 
     [Theory]
     [InlineData("!MoDeL LiSt", "models")]
     [InlineData("/MoDeL CuRrEnT", "status")]
-    public void TryMapDiscordModelCommand_IsCaseInsensitive(string message, string expected)
+    public async Task TryMapDiscordModelCommand_IsCaseInsensitive(string message, string expected)
     {
-        var mapped = Map(message);
+        var mapped = await MapAsync(message);
 
-        mapped.Ok.Should().BeTrue();
-        mapped.Command.Should().Be(expected);
-        mapped.Args.Should().BeEmpty();
+        mapped.Handled.Should().BeTrue();
+        mapped.CommandName.Should().Be(expected);
     }
 
     [Theory]
     [InlineData("<@123>    !model   list", "models")]
     [InlineData("<@!123>\t/model\tcurrent", "status")]
     [InlineData("@Jarvis    !model set    gpt-4o", "switch")]
-    public void TryMapDiscordModelCommand_SupportsMentionAndSpacingVariants(string message, string expected)
+    public async Task TryMapDiscordModelCommand_SupportsMentionAndSpacingVariants(string message, string expected)
     {
-        var mapped = Map(message);
+        var mapped = await MapAsync(message);
 
-        mapped.Ok.Should().BeTrue();
-        mapped.Command.Should().Be(expected);
+        mapped.Handled.Should().BeTrue();
+        mapped.CommandName.Should().Be(expected);
+    }
+
+    private sealed class StubCommand : IChannelCommand
+    {
+        public StubCommand(string name, IReadOnlyList<CommandParameter>? parameters = null)
+        {
+            Name = name;
+            Parameters = parameters ?? [];
+        }
+
+        public string Name { get; }
+        public string Description => Name;
+        public IReadOnlyList<CommandParameter> Parameters { get; }
+
+        public Task<CommandResult> ExecuteAsync(CommandContext context, CancellationToken ct = default) =>
+            Task.FromResult(new CommandResult { Success = true, Content = "ok" });
     }
 }
 

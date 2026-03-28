@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using JD.AI.Core.Commands;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -40,14 +39,6 @@ public sealed class OpenClawRoutingService : BackgroundService
     /// <summary>Stores recent events for diagnostic inspection.</summary>
     private readonly ConcurrentQueue<(DateTimeOffset Time, string EventName, string Summary)> _recentEvents = new();
 
-    /// <summary>Command prefix for JD.AI commands routed through OpenClaw.</summary>
-    private const string JdaiCommandPrefix = "/jdai-";
-
-    /// <summary>Discord fast-path command prefix that bypasses LLM turn execution.</summary>
-    private const string DiscordBangModelPrefix = "!model";
-
-    private static readonly Regex DiscordLeadingMentionRegex =
-        new(@"^(\s*(?:<@!?\d+>|@\S+)\s*)+", RegexOptions.Compiled);
 
     public OpenClawRoutingService(
         OpenClawBridgeChannel bridge,
@@ -229,12 +220,10 @@ public sealed class OpenClawRoutingService : BackgroundService
         // Determine channel from session key or cache
         var channelName = ResolveChannelName(sessionKey);
 
-        // Fast-path Discord model commands before they reach the mode handler / LLM
-        if (await TryHandleDiscordModelCommandAsync(userMessage, sessionKey, channelName, ct))
-            return;
-
-        // Intercept /jdai- commands before they reach the mode handler
-        if (await TryHandleJdaiCommandAsync(userMessage, sessionKey, ct))
+        // Fast-path gateway commands before they reach the mode handler / LLM.
+        // This includes Discord !model and /model forms (with optional mentions)
+        // plus /jdai-* prefixed commands.
+        if (await TryHandleGatewayCommandAsync(userMessage, sessionKey, channelName, ct))
             return;
 
         // Create a synthetic event with the user message for the mode handlers
@@ -294,11 +283,10 @@ public sealed class OpenClawRoutingService : BackgroundService
     }
 
     /// <summary>
-    /// Intercepts Discord model commands (slash or bang syntax), executes a mapped
-    /// gateway command, and injects the result back into the OpenClaw session.
-    /// Returns true if handled (LLM path bypassed).
+    /// Intercepts gateway fast-path commands (Discord !model / /model and /jdai-*)
+    /// and injects command output back into the OpenClaw session.
     /// </summary>
-    private async Task<bool> TryHandleDiscordModelCommandAsync(
+    private async Task<bool> TryHandleGatewayCommandAsync(
         string message,
         string sessionKey,
         string channelName,
@@ -307,160 +295,39 @@ public sealed class OpenClawRoutingService : BackgroundService
         if (_commandRegistry is null)
             return false;
 
-        if (!string.Equals(channelName, "discord", StringComparison.OrdinalIgnoreCase))
-            return false;
-
-        if (!TryMapDiscordModelCommand(message, out var mappedCommand, out var mappedArgs))
-            return false;
-
-        _logger.LogInformation(
-            "[Command] Fast-path Discord model command '{Command}' for session '{Session}'",
-            mappedCommand,
-            sessionKey);
-
-        await ExecuteCommandAndInjectAsync(
-            commandName: mappedCommand,
-            args: mappedArgs,
-            sessionKey: sessionKey,
-            unknownHelpHint: "Use !model list, !model current, or !model set <model>.",
-            commandLabelForLogs: $"!model -> {mappedCommand}",
+        var dispatch = await GatewayCommandDispatcher.TryDispatchAsync(
+            _commandRegistry,
+            channelType: channelName,
+            message: message,
+            invokerId: sessionKey,
+            channelId: $"openclaw-{sessionKey}",
+            invokerDisplayName: "OpenClaw User",
             ct: ct);
 
-        return true;
-    }
-
-    /// <summary>
-    /// Intercepts /jdai- prefixed commands, aborts OpenClaw's agent, executes the
-    /// gateway command, and injects the result back into the OpenClaw session.
-    /// Returns true if the message was a command and was handled.
-    /// </summary>
-    private async Task<bool> TryHandleJdaiCommandAsync(string message, string sessionKey, CancellationToken ct)
-    {
-        if (_commandRegistry is null)
+        if (!dispatch.Handled)
             return false;
 
-        if (!message.StartsWith(JdaiCommandPrefix, StringComparison.OrdinalIgnoreCase))
-            return false;
+        await AbortAndInjectAsync(sessionKey, null, ct);
 
-        var withoutPrefix = message[JdaiCommandPrefix.Length..];
-        var parts = withoutPrefix.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length == 0)
-            return false;
+        if (!string.IsNullOrWhiteSpace(dispatch.SourceLabel))
+        {
+            _logger.LogInformation(
+                "[Command] Fast-path {Command} for session '{Session}'",
+                dispatch.SourceLabel,
+                sessionKey);
+        }
 
-        var commandName = parts[0];
-        var args = parts.Skip(1).ToArray();
+        await _bridge.InjectMessageAsync(sessionKey, dispatch.Response, ct);
 
-        await ExecuteCommandAndInjectAsync(
-            commandName,
-            args,
-            sessionKey,
-            unknownHelpHint: $"Use /jdai-help to see available commands.",
-            commandLabelForLogs: $"/jdai-{commandName}",
-            ct);
+        if (dispatch.Success)
+        {
+            _logger.LogInformation(
+                "[Command] {Command} completed for session '{Session}'",
+                dispatch.SourceLabel ?? dispatch.CommandName ?? "command",
+                sessionKey);
+        }
 
         return true;
-    }
-
-    private async Task ExecuteCommandAndInjectAsync(
-        string commandName,
-        string[] args,
-        string sessionKey,
-        string unknownHelpHint,
-        string commandLabelForLogs,
-        CancellationToken ct)
-    {
-        if (_commandRegistry is null)
-            return;
-
-        var command = _commandRegistry.GetCommand(commandName);
-        if (command is null)
-        {
-            _logger.LogDebug("[Command] Unknown command: {Name}", commandName);
-            await AbortAndInjectAsync(sessionKey, $"Unknown command: {commandName}. {unknownHelpHint}", ct);
-            return;
-        }
-
-        var mappedArgs = new Dictionary<string, string>();
-        for (var i = 0; i < args.Length && i < command.Parameters.Count; i++)
-        {
-            mappedArgs[command.Parameters[i].Name] = args[i];
-        }
-
-        var context = new CommandContext
-        {
-            CommandName = commandName,
-            InvokerId = sessionKey,
-            InvokerDisplayName = "OpenClaw User",
-            ChannelId = $"openclaw-{sessionKey}",
-            ChannelType = "openclaw",
-            Arguments = mappedArgs,
-        };
-
-        try
-        {
-            await AbortAndInjectAsync(sessionKey, null, ct);
-            var result = await command.ExecuteAsync(context, ct);
-            await _bridge.InjectMessageAsync(sessionKey, result.Content, ct);
-            _logger.LogInformation("[Command] {Command} completed for session '{Session}'", commandLabelForLogs, sessionKey);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "[Command] Error executing {Command}", commandLabelForLogs);
-            await _bridge.InjectMessageAsync(sessionKey, $"Command error: {ex.Message}", ct);
-        }
-    }
-
-    /// <summary>
-    /// Maps Discord /model or !model syntax to gateway commands that can execute without LLM inference.
-    /// Supports leading Discord mentions and plain @name mentions.
-    /// </summary>
-    internal static bool TryMapDiscordModelCommand(
-        string message,
-        out string commandName,
-        out string[] args)
-    {
-        commandName = string.Empty;
-        args = [];
-
-        if (string.IsNullOrWhiteSpace(message))
-            return false;
-
-        var cleaned = DiscordLeadingMentionRegex.Replace(message, "").TrimStart();
-        if (string.IsNullOrWhiteSpace(cleaned))
-            return false;
-
-        var isBang = cleaned.StartsWith(DiscordBangModelPrefix, StringComparison.OrdinalIgnoreCase);
-        var isSlash = cleaned.StartsWith("/model", StringComparison.OrdinalIgnoreCase);
-        if (!isBang && !isSlash)
-            return false;
-
-        var prefixLength = isBang ? DiscordBangModelPrefix.Length : "/model".Length;
-        var tail = cleaned[prefixLength..].Trim();
-
-        if (tail.Length == 0 || tail.Equals("current", StringComparison.OrdinalIgnoreCase))
-        {
-            commandName = "status";
-            return true;
-        }
-
-        if (tail.Equals("list", StringComparison.OrdinalIgnoreCase))
-        {
-            commandName = "models";
-            return true;
-        }
-
-        if (tail.StartsWith("set ", StringComparison.OrdinalIgnoreCase))
-        {
-            var model = tail[4..].Trim();
-            if (model.Length == 0)
-                return false;
-
-            commandName = "switch";
-            args = [model];
-            return true;
-        }
-
-        return false;
     }
 
     /// <summary>Aborts the OpenClaw agent and optionally injects a message.</summary>

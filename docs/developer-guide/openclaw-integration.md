@@ -141,18 +141,11 @@ Inside an OpenClaw conversation, send `/jdai-...` commands. The bridge intercept
 /jdai-status
 ```
 
-For Discord channels, model commands also support a bang fast path:
+Discord model bang commands (`!model ...`, including mention+bang forms) are supported in bridge sessions for compatibility.
 
-```text
-!model list
-!model current
-!model set gpt-4o
-@Jarvis !model list
-<@123456789012345678> !model current
-<@!123456789012345678> !model set llama3.2:latest
-```
+> Primary architecture note: direct Discord gateway integration is the canonical runtime path for this behavior. OpenClaw reuses the same shared gateway command dispatcher so command semantics stay consistent.
 
-These Discord bang/`/model` fast-path commands are handled directly by command routing and **bypass LLM inference** (token-saving path).
+See [Channels](channels.md#direct-discord-command-fast-path-primary) for the primary direct-Discord behavior and wiring.
 
 ### Practical switching behavior
 

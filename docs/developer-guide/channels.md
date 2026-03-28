@@ -62,15 +62,26 @@ public interface ICommandAwareChannel
 
 The gateway automatically registers commands with command-aware channels after connection. Discord and Slack support native slash commands; Signal uses prefix commands (`!jdai-help`).
 
+### Direct Discord command fast path (primary)
+
+In direct Discord integration (`JD.AI.Channels.Discord` routed through `GatewayOrchestrator`), JD.AI executes command fast paths before LLM routing:
+
+- `!model list` → `models`
+- `!model` / `!model current` → `status`
+- `!model set <model>` → `switch <model>`
+- Mention + bang is supported (for example: `<@bot-id> !model list`)
+
+Matched fast-path commands are executed through the shared gateway command dispatcher and **bypass LLM inference**.
+
 ### Native commands vs OpenClaw bridge commands
 
-- Native adapters (Discord/Slack/Signal) register channel commands directly (for example, `/jdai-route` on Discord/Slack or `!jdai-route` on Signal).
-- OpenClaw does not register platform-native JD.AI commands. Instead, the OpenClaw routing service intercepts `/jdai-...` messages inside bridge sessions and executes them via the gateway command registry.
+- Native adapters (Discord/Slack/Signal) are the primary runtime path and share the same gateway command dispatcher.
+- OpenClaw remains an optional compatibility transport. It does not register platform-native JD.AI commands; bridge sessions support `/jdai-...` command messages and reuse the same dispatcher.
 
 Use this model when documenting runtime handoff:
 
 - **Native channels:** JD.AI is the primary command/runtime owner.
-- **OpenClaw bridge:** OpenClaw remains transport; JD.AI command execution is opt-in via `/jdai-*`.
+- **OpenClaw bridge:** compatibility transport with opt-in command execution.
 
 ## ChannelMessage
 
