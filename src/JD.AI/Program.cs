@@ -59,6 +59,8 @@ if (opts.Subcommand != null)
         "onboard" or "wizard" => await OnboardingCliHandler.RunAsync(opts.SubcommandArgs).ConfigureAwait(false),
         "setup" => await SetupCliHandler.RunAsync(opts.SubcommandArgs).ConfigureAwait(false),
         "update" or "install" => await UpdateCliHandler.RunAsync(opts.Subcommand, opts.SubcommandArgs).ConfigureAwait(false),
+        "gateway" => await GatewayCliHandler.RunAsync(opts.SubcommandArgs).ConfigureAwait(false),
+        "dashboard" => await DashboardCliHandler.RunAsync(opts.SubcommandArgs).ConfigureAwait(false),
         _ => 1,
     };
 }
