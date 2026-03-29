@@ -1,0 +1,140 @@
+@page "/plugins"
+@inject GatewayApiClient Api
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Plugins — JD.AI</PageTitle>
+
+<div class="jd-page-header">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h4">Plugins</MudText>
+        <MudStack Row="true" Spacing="2">
+            <MudButton OnClick="OpenInstallDialogAsync" Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add" data-testid="install-plugin-button">
+                Install Plugin
+            </MudButton>
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small"
+                           data-testid="refresh-button" />
+        </MudStack>
+    </MudStack>
+</div>
+
+@if (_loading)
+{
+    <MudPaper Elevation="0">
+        @for (var i = 0; i < 5; i++)
+        {
+            <div class="jd-skeleton-row">
+                <MudSkeleton Width="160px" Height="14px" />
+                <MudSkeleton Width="80px" Height="14px" />
+                <MudSkeleton Width="100px" Height="14px" />
+                <MudSkeleton Width="72px" Height="24px" />
+                <MudSpacer />
+                <MudSkeleton Width="80px" Height="28px" />
+                <MudSkeleton SkeletonType="SkeletonType.Circle" Width="28px" Height="28px" />
+            </div>
+        }
+    </MudPaper>
+}
+else if (_plugins is null || _plugins.Length == 0)
+{
+    <MudPaper Class="pa-6" Elevation="0" data-testid="plugins-empty">
+        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Extension" Size="Size.Large" Color="Color.Default" Style="opacity:0.3" />
+            <MudText Color="Color.Secondary">No plugins installed.</MudText>
+        </MudStack>
+    </MudPaper>
+}
+else
+{
+    <MudPaper Elevation="0">
+        <MudDataGrid Items="@_plugins" Dense="true" Hover="true" data-testid="plugins-grid">
+            <Columns>
+                <PropertyColumn Property="x => x.Name" Title="Name" />
+                <PropertyColumn Property="x => x.Version" Title="Version" />
+                <PropertyColumn Property="x => x.Author" Title="Author" />
+                <TemplateColumn Title="Status">
+                    <CellTemplate>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
+                                 Color="@(context.Item.Enabled ? Color.Success : Color.Default)"
+                                 data-testid="plugin-status">
+                            @(context.Item.Enabled ? "Enabled" : "Disabled")
+                        </MudChip>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="" CellClass="d-flex justify-end">
+                    <CellTemplate>
+                        <MudStack Row="true" Spacing="1">
+                            <MudSwitch T="bool" Value="@context.Item.Enabled"
+                                       ValueChanged="@(v => TogglePluginAsync(context.Item))"
+                                       Color="Color.Success" Size="Size.Small"
+                                       data-testid="plugin-toggle" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                           OnClick="@(() => UninstallPluginAsync(context.Item))"
+                                           data-testid="plugin-uninstall" />
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    </MudPaper>
+}
+
+@code {
+    private PluginInfo[]? _plugins;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try { _plugins = await Api.GetPluginsAsync(); }
+        catch { _plugins = null; Snackbar.Add("Failed to load plugins", Severity.Error); }
+        _loading = false;
+    }
+
+    private async Task TogglePluginAsync(PluginInfo plugin)
+    {
+        try
+        {
+            if (plugin.Enabled)
+                await Api.DisablePluginAsync(plugin.Id);
+            else
+                await Api.EnablePluginAsync(plugin.Id);
+
+            Snackbar.Add($"Plugin {plugin.Name} {(plugin.Enabled ? "disabled" : "enabled")}", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex) { Snackbar.Add($"Failed: {ex.Message}", Severity.Error); }
+    }
+
+    private async Task UninstallPluginAsync(PluginInfo plugin)
+    {
+        try
+        {
+            await Api.UninstallPluginAsync(plugin.Id);
+            Snackbar.Add($"Plugin {plugin.Name} uninstalled", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex) { Snackbar.Add($"Failed: {ex.Message}", Severity.Error); }
+    }
+
+    private async Task OpenInstallDialogAsync()
+    {
+        var parameters = new DialogParameters<InstallPluginDialog>();
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<InstallPluginDialog>("Install Plugin", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is string pluginId && !string.IsNullOrWhiteSpace(pluginId))
+        {
+            try
+            {
+                await Api.InstallPluginAsync(pluginId);
+                Snackbar.Add("Plugin installed", Severity.Success);
+                await LoadAsync();
+            }
+            catch (Exception ex) { Snackbar.Add($"Install failed: {ex.Message}", Severity.Error); }
+        }
+    }
+}
