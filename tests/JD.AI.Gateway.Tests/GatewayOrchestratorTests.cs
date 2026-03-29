@@ -13,6 +13,8 @@ namespace JD.AI.Gateway.Tests;
 
 public sealed class GatewayOrchestratorTests
 {
+    private static readonly string[] ExpectedFastPathResponses = ["models-output", "status-output", "switch-output"];
+
     private readonly GatewayConfig _config = new();
     private readonly ChannelRegistry _channels = new();
     private readonly IEventBus _events = new InProcessEventBus();
@@ -282,7 +284,7 @@ public sealed class GatewayOrchestratorTests
         await discord.EmitMessageAsync(message);
 
         discord.SendCalls.Should().Be(1);
-        new[] { "models-output", "status-output", "switch-output" }
+        ExpectedFastPathResponses
             .Any(expected => string.Equals(expected, discord.LastSentContent, StringComparison.Ordinal))
             .Should().BeTrue();
         _pool.ListAgents().Should().BeEmpty("fast-path command handling should not require LLM agent routing");
