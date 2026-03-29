@@ -29,6 +29,15 @@ internal static class AgentInstrumentation
     internal static readonly Counter<long> ProviderErrors =
         AgentMeter.CreateCounter<long>("jdai.providers.errors", unit: "errors");
 
+    internal static readonly Counter<long> ToolCalls =
+        AgentMeter.CreateCounter<long>("jdai.tool.calls", unit: "calls");
+
+    internal static readonly Counter<long> CircuitBreakerTrips =
+        AgentMeter.CreateCounter<long>("jdai.safety.circuit_breaker_trips", unit: "trips");
+
+    internal static readonly Counter<long> LoopDetections =
+        AgentMeter.CreateCounter<long>("jdai.safety.loop_detections", unit: "detections");
+
     // GenAI semantic convention attribute names (mirrors JD.AI.Telemetry.GenAiAttributes)
     internal const string AttrSystem = "gen_ai.system";
     internal const string AttrRequestModel = "gen_ai.request.model";

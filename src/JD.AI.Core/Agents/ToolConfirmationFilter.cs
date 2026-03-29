@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Collections.Generic;
 using JD.AI.Core.Agents;
 using JD.AI.Core.Governance;
 using JD.AI.Core.Governance.Audit;
@@ -6,10 +7,9 @@ using JD.AI.Core.Infrastructure;
 using JD.AI.Core.Safety;
 using JD.AI.Core.Tools;
 using JD.AI.Core.Tracing;
-using JD.AI.Tools;
 using Microsoft.SemanticKernel;
 
-namespace JD.AI.Agent;
+namespace JD.AI.Core.Agents;
 
 /// <summary>
 /// SK auto-function-invocation filter that enforces safety tiers,
@@ -17,31 +17,38 @@ namespace JD.AI.Agent;
 /// </summary>
 public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
 {
-    private static readonly ActivitySource ToolActivity = new("JD.AI.Tools");
-
     private readonly AgentSession _session;
     private readonly IPolicyEvaluator? _policyEvaluator;
     private readonly AuditService? _auditService;
     private readonly CircuitBreaker? _circuitBreaker;
+    private readonly IAgentOutput? _output;
     private readonly HashSet<string> _confirmedOnce = new(StringComparer.Ordinal);
 
     // Safety tier mappings — built from [ToolSafetyTier] attributes via assembly scanning
     internal static readonly IReadOnlyDictionary<string, SafetyTier> ToolTierMap =
-        ToolAssemblyScanner.BuildSafetyTierMap(typeof(FileTools).Assembly, typeof(SubagentTools).Assembly);
+        ToolAssemblyScanner.BuildSafetyTierMap(typeof(ToolAssemblyScanner).Assembly);
 
     internal static string ResolvePolicyToolName(string functionName) =>
         OpenClawToolAliasResolver.Resolve(functionName);
+
+    /// <summary>
+    /// The active output renderer for the current turn.
+    /// </summary>
+    public IAgentOutput? Output { get; set; }
 
     public ToolConfirmationFilter(
         AgentSession session,
         IPolicyEvaluator? policyEvaluator = null,
         AuditService? auditService = null,
-        CircuitBreaker? circuitBreaker = null)
+        CircuitBreaker? circuitBreaker = null,
+        IAgentOutput? output = null)
     {
         _session = session;
         _policyEvaluator = policyEvaluator;
         _auditService = auditService;
         _circuitBreaker = circuitBreaker;
+        _output = output;
+        Output = output;
     }
 
     public async Task OnAutoFunctionInvocationAsync(
@@ -51,7 +58,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         var functionName = context.Function.Name;
         var canonicalToolName = ResolvePolicyToolName(functionName);
         var tier = ToolTierMap.GetValueOrDefault(canonicalToolName, SafetyTier.AlwaysConfirm);
-        var output = AgentOutput.Current;
+        var output = Output ?? _output ?? AgentOutput.Current;
         var gate = ToolExecutionPermissionEvaluator.Evaluate(
             canonicalToolName,
             _session.PermissionMode,
@@ -59,10 +66,6 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             _session.ToolPermissionProfile);
 
         // ── Workflow enforcement ────────────────────────────
-        // If a workflow is active, tool calls are coordinated — skip the prompt.
-        // If AutoApprove (read-only), let it through freely.
-        // If the user already declined this turn, don't nag again.
-        // Otherwise, prompt the user to start a workflow.
         if (gate.Decision == ToolExecutionGateDecision.RequirePrompt &&
             _session.ActiveWorkflowName is null &&
             !_session.WorkflowDeclinedThisTurn &&
@@ -71,20 +74,16 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         {
             if (output.ConfirmWorkflowPrompt(functionName))
             {
-                // User wants a workflow — start capturing tool calls
                 _session.ActiveWorkflowName = "recording";
                 _session.CapturedWorkflowSteps.Clear();
                 output.RenderInfo("📋 Recording workflow — tool calls will be captured.");
             }
             else
             {
-                // User declined — remember for this turn
                 _session.WorkflowDeclinedThisTurn = true;
             }
         }
 
-        // ── Workflow capture ────────────────────────────
-        // If a workflow is being recorded, capture this tool call.
         if (_session.ActiveWorkflowName is not null)
         {
             var captureArgs = string.Join(", ", (context.Arguments ?? [])
@@ -92,7 +91,6 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             _session.CapturedWorkflowSteps.Add((canonicalToolName, captureArgs));
         }
 
-        // Check if we need confirmation based on permission mode
         bool blocked = false;
         var needsConfirm = false;
         var blockReason = string.Empty;
@@ -120,7 +118,6 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             return;
         }
 
-        // Build argument summary for display
         var args = string.Join(", ", (context.Arguments ?? [])
             .Select(kv =>
             {
@@ -132,7 +129,6 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
                 return $"{kv.Key}={val}";
             }));
 
-        // Enhanced display for file operations — show path + content size
         var displayArgs = args;
         if (canonicalToolName.Contains("write_file", StringComparison.Ordinal) ||
             canonicalToolName.Contains("edit_file", StringComparison.Ordinal))
@@ -149,7 +145,6 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             }
         }
 
-        // ── Policy evaluation ────────────────────────────────
         PolicyEvaluationResult? policyResult = null;
         if (_policyEvaluator is not null)
         {
@@ -169,7 +164,6 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             }
         }
 
-        // ── Circuit breaker / loop detection ────────────────
         if (_circuitBreaker is not null)
         {
             var argsHash = args.GetHashCode(StringComparison.Ordinal).ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -178,12 +172,11 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             if (cbResult.Action == CircuitAction.Block)
             {
                 output.RenderWarning($"  ⚡ Circuit breaker: {cbResult.Message}");
-                output.RenderInfo("  💡 Hint: Try a different approach or use /circuit-reset to manually reset.");
                 var blockedResult = $"Blocked by circuit breaker: {cbResult.Message}";
                 context.Result = new FunctionResult(context.Function, blockedResult);
                 _session.RecordToolCall(canonicalToolName, BuildRedactedArgs(context.Arguments), blockedResult, "denied", 0);
 
-                Telemetry.Meters.CircuitBreakerTrips.Add(1,
+                AgentInstrumentation.CircuitBreakerTrips.Add(1,
                     new KeyValuePair<string, object?>("jdai.tool.name", functionName),
                     new KeyValuePair<string, object?>("jdai.tool.canonical_name", canonicalToolName));
 
@@ -195,15 +188,12 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             if (cbResult.Action == CircuitAction.Warn)
             {
                 output.RenderWarning($"  ⚠ Loop warning: {cbResult.Message}");
-
-                Telemetry.Meters.LoopDetections.Add(1,
+                AgentInstrumentation.LoopDetections.Add(1,
                     new KeyValuePair<string, object?>("jdai.tool.name", functionName),
                     new KeyValuePair<string, object?>("jdai.tool.canonical_name", canonicalToolName),
                     new KeyValuePair<string, object?>("jdai.safety.decision", "warning"));
             }
         }
-
-        // ── Safety tier confirmation (already computed above via PermissionMode) ──
 
         if (needsConfirm)
         {
@@ -227,54 +217,25 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             output.RenderInfo($"  ▸ {functionName}({displayArgs})");
         }
 
-        // ── Tool execution with OTel + timeline tracing ─────────────────
-        using var activity = ToolActivity.StartActivity("jdai.tool.invoke");
-        activity?.SetTag("jdai.tool.name", functionName);
-        activity?.SetTag("jdai.tool.canonical_name", canonicalToolName);
-        activity?.SetTag("jdai.tool.safety_tier", tier.ToString());
-        activity?.SetTag("jdai.tool.permission_mode", _session.PermissionMode.ToString());
-        if (_circuitBreaker is not null)
-        {
-            activity?.SetTag("jdai.safety.circuit_state", _circuitBreaker.State.ToString());
-        }
-
-        var timeline = TraceContext.CurrentContext.Timeline;
-        var timelineEntry = timeline.BeginOperation(
-            $"tool.{functionName}",
-            attributes: new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["safety_tier"] = tier.ToString(),
-            });
-
         var sw = Stopwatch.StartNew();
         await next(context).ConfigureAwait(false);
         sw.Stop();
 
-        timelineEntry.Complete();
-        DebugLogger.Log(DebugCategory.Tools, "{0}: args={1}, duration={2}ms",
-            functionName, args, sw.ElapsedMilliseconds);
-
-        activity?.SetTag("jdai.tool.duration_ms", sw.ElapsedMilliseconds);
-        activity?.SetStatus(ActivityStatusCode.Ok);
-
-        // Record metric
-        JD.AI.Telemetry.Meters.ToolCalls.Add(1,
+        // Record metrics
+        AgentInstrumentation.ToolCalls.Add(1,
             new KeyValuePair<string, object?>("jdai.tool.name", functionName),
             new KeyValuePair<string, object?>("jdai.tool.canonical_name", canonicalToolName));
 
-        // Render tool result
         var redactedArgs = BuildRedactedArgs(context.Arguments);
         _session.TryRegisterToolCallForCurrentTurn(canonicalToolName, redactedArgs);
         var result = context.Result.GetValue<string>() ?? context.Result.ToString() ?? "";
         output.RenderToolCall(functionName, displayArgs, result);
         _session.RecordToolCall(canonicalToolName, redactedArgs, result, "ok", sw.ElapsedMilliseconds);
 
-        // ── Audit ────────────────────────────────────────────
         await EmitAuditEventAsync(functionName, canonicalToolName, context.Arguments, "ok", policyResult)
             .ConfigureAwait(false);
     }
 
-    // Argument keys whose values should not be logged in audit events
     private static readonly HashSet<string> RedactedArgKeys =
         new(StringComparer.OrdinalIgnoreCase) { "content", "code", "input", "body", "password", "secret", "token" };
 
@@ -306,10 +267,6 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         }).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Builds a redacted argument string from structured KernelArguments.
-    /// Redacts at the key/value level to avoid delimiter-based parsing issues.
-    /// </summary>
     internal static string BuildRedactedArgs(KernelArguments? arguments)
     {
         if (arguments is null || arguments.Count == 0)
