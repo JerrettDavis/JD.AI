@@ -169,6 +169,38 @@ bridgeCommand.SetAction(async parseResult =>
 });
 rootCommand.Subcommands.Add(bridgeCommand);
 
+var dashboardCommand = new Command("dashboard", "Open the dashboard in the default browser");
+dashboardCommand.SetAction(async _ =>
+{
+    var baseUrl = $"http://{GatewayRuntimeDefaults.DefaultHost}:{GatewayRuntimeDefaults.DefaultPort}";
+    try
+    {
+        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+        var response = await client.GetAsync(new Uri($"{baseUrl}{GatewayRuntimeDefaults.HealthPath}"));
+        if (!response.IsSuccessStatusCode)
+        {
+            Console.Error.WriteLine($"Daemon not running. Start with: {DaemonServiceIdentity.ToolCommand} run");
+            return 1;
+        }
+    }
+    catch
+    {
+        Console.Error.WriteLine($"Daemon not running. Start with: {DaemonServiceIdentity.ToolCommand} run");
+        return 1;
+    }
+
+    Console.WriteLine($"Opening dashboard at {baseUrl}/ ...");
+    if (OperatingSystem.IsWindows())
+        Process.Start(new ProcessStartInfo("cmd", $"/c start {baseUrl}/") { CreateNoWindow = true });
+    else if (OperatingSystem.IsLinux())
+        Process.Start("xdg-open", $"{baseUrl}/");
+    else if (OperatingSystem.IsMacOS())
+        Process.Start("open", $"{baseUrl}/");
+
+    return 0;
+});
+rootCommand.Subcommands.Add(dashboardCommand);
+
 return rootCommand.Parse(args).Invoke();
 
 // ════════════════════════════════════════════════════════════════════
