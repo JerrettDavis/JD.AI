@@ -1,0 +1,181 @@
+@page "/logs"
+@inject GatewayApiClient Api
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+<PageTitle>Logs — JD.AI</PageTitle>
+
+<div class="jd-page-header">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h4">Logs</MudText>
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            <MudSwitch T="bool" @bind-Value="_autoRefresh" Color="Color.Primary" Label="Auto-refresh"
+                       data-testid="auto-refresh-toggle" />
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small"
+                           data-testid="refresh-button" />
+        </MudStack>
+    </MudStack>
+</div>
+
+<MudPaper Class="pa-4 mb-4" Elevation="0" data-testid="log-filters">
+    <MudGrid>
+        <MudItem xs="12" sm="3">
+            <MudSelect T="string" @bind-Value="_severityFilter" Label="Severity" Variant="Variant.Outlined" Dense="true"
+                       Clearable="true" data-testid="severity-filter">
+                <MudSelectItem Value="@("info")">Info</MudSelectItem>
+                <MudSelectItem Value="@("warn")">Warning</MudSelectItem>
+                <MudSelectItem Value="@("error")">Error</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudTextField T="string" @bind-Value="_agentFilter" Label="Agent" Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Clearable="true" data-testid="agent-filter" />
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudTextField T="string" @bind-Value="_searchText" Label="Search" Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Clearable="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                          data-testid="search-filter" />
+        </MudItem>
+        <MudItem xs="12" sm="3" Class="d-flex align-end">
+            <MudButton OnClick="LoadAsync" Variant="Variant.Outlined" Size="Size.Small"
+                       data-testid="apply-filters">Apply</MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_loading)
+{
+    <MudPaper Elevation="0">
+        @for (var i = 0; i < 5; i++)
+        {
+            <div class="jd-skeleton-row">
+                <MudSkeleton Width="120px" Height="14px" />
+                <MudSkeleton Width="72px" Height="24px" />
+                <MudSkeleton Width="100px" Height="14px" />
+                <MudSkeleton Width="100px" Height="14px" />
+                <MudSkeleton Width="300px" Height="14px" />
+            </div>
+        }
+    </MudPaper>
+}
+else if (_filteredEvents.Length == 0)
+{
+    <MudPaper Class="pa-6" Elevation="0" data-testid="logs-empty">
+        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.EventNote" Size="Size.Large" Color="Color.Default" Style="opacity:0.3" />
+            <MudText Color="Color.Secondary">No log events found.</MudText>
+        </MudStack>
+    </MudPaper>
+}
+else
+{
+    <MudPaper Elevation="0">
+        <MudDataGrid Items="@_filteredEvents" Dense="true" Hover="true" SortMode="SortMode.Multiple"
+                     data-testid="logs-grid">
+            <Columns>
+                <PropertyColumn Property="x => x.Timestamp" Title="Timestamp" Format="g" />
+                <TemplateColumn Title="Level">
+                    <CellTemplate>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
+                                 Color="@GetLevelColor(context.Item.Level)"
+                                 data-testid="log-level">
+                            @context.Item.Level
+                        </MudChip>
+                    </CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.AgentId" Title="Agent" />
+                <PropertyColumn Property="x => x.EventType" Title="Event" />
+                <PropertyColumn Property="x => x.Message" Title="Message" />
+                <TemplateColumn Title="" CellClass="d-flex justify-end">
+                    <CellTemplate>
+                        @if (!string.IsNullOrEmpty(context.Item.Payload))
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
+                                           OnClick="@(() => ToggleDetail(context.Item.Id))"
+                                           data-testid="log-detail-button" />
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    </MudPaper>
+}
+
+@if (_selectedEventId is not null && _allEvents.FirstOrDefault(e => e.Id == _selectedEventId) is { } selected)
+{
+    <MudPaper Class="pa-4 mt-4" Elevation="2" data-testid="log-detail">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+            <MudText Typo="Typo.h6">Event Detail</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="@(() => _selectedEventId = null)" />
+        </MudStack>
+        <MudText Style="white-space: pre-wrap; font-family: monospace; font-size: 0.85rem;">@selected.Payload</MudText>
+    </MudPaper>
+}
+
+@code {
+    private AuditEvent[] _allEvents = [];
+    private AuditEvent[] _filteredEvents = [];
+    private bool _loading = true;
+    private string? _severityFilter;
+    private string? _agentFilter;
+    private string? _searchText;
+    private string? _selectedEventId;
+    private bool _autoRefresh;
+    private Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        _timer = new Timer(async _ =>
+        {
+            if (_autoRefresh)
+            {
+                await InvokeAsync(async () =>
+                {
+                    await LoadAsync();
+                    StateHasChanged();
+                });
+            }
+        }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try { _allEvents = await Api.GetAuditEventsAsync(); }
+        catch { _allEvents = []; Snackbar.Add("Failed to load audit events", Severity.Error); }
+        ApplyFilters();
+        _loading = false;
+    }
+
+    private void ApplyFilters()
+    {
+        var events = _allEvents.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(_severityFilter))
+            events = events.Where(e => string.Equals(e.Level, _severityFilter, StringComparison.OrdinalIgnoreCase));
+
+        if (!string.IsNullOrWhiteSpace(_agentFilter))
+            events = events.Where(e => e.AgentId is not null &&
+                e.AgentId.Contains(_agentFilter, StringComparison.OrdinalIgnoreCase));
+
+        if (!string.IsNullOrWhiteSpace(_searchText))
+            events = events.Where(e => e.Message.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                e.EventType.Contains(_searchText, StringComparison.OrdinalIgnoreCase));
+
+        _filteredEvents = events.ToArray();
+    }
+
+    private void ToggleDetail(string id) =>
+        _selectedEventId = _selectedEventId == id ? null : id;
+
+    private static Color GetLevelColor(string level) => level.ToLowerInvariant() switch
+    {
+        "error" => Color.Error,
+        "warn" or "warning" => Color.Warning,
+        "info" => Color.Info,
+        _ => Color.Default
+    };
+
+    public void Dispose() => _timer?.Dispose();
+}
