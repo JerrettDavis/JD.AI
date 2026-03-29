@@ -1,4 +1,4 @@
-using JD.AI.Agent;
+using JD.AI.Core.Agents;
 using JD.AI.Core.Tools;
 
 namespace JD.AI.Tests.Agent;
