@@ -68,7 +68,18 @@ public sealed class ChannelFactory
             }
         }
 
-        return new DiscordChannel(token, allowBots, allowedBotIds, enableReactions, requireMention);
+        var privilegedUserIds = new List<ulong>();
+        var privilegedIdsStr = ResolveSetting(config, "PrivilegedUserIds");
+        if (!string.IsNullOrWhiteSpace(privilegedIdsStr))
+        {
+            foreach (var id in privilegedIdsStr.Split(',', StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (ulong.TryParse(id.Trim(), out var userId))
+                    privilegedUserIds.Add(userId);
+            }
+        }
+
+        return new DiscordChannel(token, allowBots, allowedBotIds, enableReactions, requireMention, privilegedUserIds: privilegedUserIds);
     }
 
     private SignalChannel CreateSignal(ChannelConfig config)

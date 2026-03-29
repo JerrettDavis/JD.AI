@@ -109,6 +109,10 @@ public sealed class AgentPoolService : IHostedService
 
         var id = Guid.NewGuid().ToString("N")[..12];
 
+        // Create AgentSession and register ToolConfirmationFilter
+        var session = new AgentSession(_providers, kernel, modelInfo);
+        kernel.AutoFunctionInvocationFilters.Add(new ToolConfirmationFilter(session));
+
         // Connect configured MCP servers and register their tools on the kernel
         if (_mcpManager is not null)
         {
@@ -134,7 +138,7 @@ public sealed class AgentPoolService : IHostedService
         coreReg?.SystemInfoTools.SetAgentId(id);
         if (DaemonVersion is not null)
             coreReg?.SystemInfoTools.SetDaemonVersion(DaemonVersion, LatestDaemonVersion);
-        var instance = new AgentInstance(id, provider, model, kernel, history, parameters, fallbackProviders);
+        var instance = new AgentInstance(id, provider, model, kernel, history, session, parameters, fallbackProviders);
         _agents[id] = instance;
 
         await _eventBus.PublishAsync(
@@ -162,6 +166,20 @@ public sealed class AgentPoolService : IHostedService
             reactionTools.ActiveConversationId = sourceMessage.ChannelId;
             reactionTools.ActiveMessageId = sourceMessage.Id;
             reactionTools.ActiveChannelType = channelType;
+        }
+
+        // Wire the IAgentOutput from the channel for the duration of this turn
+        if (_agents.TryGetValue(agentId, out var agent))
+        {
+            var channel = channelType is not null ? _channelRegistry.GetChannel(channelType) : null;
+            if (channel is IAgentOutput output)
+            {
+                var filter = agent.Kernel.AutoFunctionInvocationFilters.OfType<ToolConfirmationFilter>().FirstOrDefault();
+                if (filter is not null)
+                {
+                    filter.Output = output;
+                }
+            }
         }
 
         return SendMessageCoreAsync(agentId, message, attachments, ct);
@@ -639,6 +657,7 @@ public sealed class AgentPoolService : IHostedService
     internal sealed class AgentInstance(
         string id, string provider, string model,
         Kernel kernel, ChatHistory history,
+        AgentSession session,
         ModelParameters? parameters = null,
         IReadOnlyList<string>? fallbackProviders = null)
     {
@@ -647,6 +666,7 @@ public sealed class AgentPoolService : IHostedService
         public string Model => model;
         public Kernel Kernel => kernel;
         public ChatHistory History => history;
+        public AgentSession Session => session;
         public ModelParameters? Parameters => parameters;
         public IReadOnlyList<string> FallbackProviders => fallbackProviders ?? [];
         public int TurnCount { get; set; }
