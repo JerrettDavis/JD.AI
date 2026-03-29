@@ -1,5 +1,6 @@
 using FluentAssertions;
-using JD.AI.Agent;
+using JD.AI.Core.Agents;
+using JD.AI.Core.Safety;
 using JD.AI.Core.Tools;
 using Microsoft.SemanticKernel;
 
