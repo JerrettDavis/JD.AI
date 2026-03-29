@@ -26,7 +26,9 @@ public sealed class GatewayCliTests
     [Fact]
     public void GatewayHealthChecker_DefaultBaseUrl_UsesRuntimeDefaults()
     {
-        var expected = $"http://{GatewayRuntimeDefaults.DefaultHost}:{GatewayRuntimeDefaults.DefaultPort}";
+        // GatewayHealthChecker uses 127.0.0.1 as default host to avoid resolution issues,
+        // while it still uses the default port from runtime defaults.
+        var expected = $"http://127.0.0.1:{GatewayRuntimeDefaults.DefaultPort}";
         Assert.Equal(expected, GatewayHealthChecker.DefaultBaseUrl);
     }
 
