@@ -183,7 +183,20 @@ This always uses the GitHub release strategy regardless of the original installa
 
 ### In-session updates
 
-You can also check for updates during an interactive session using the `/update` slash command. JD.AI checks for updates automatically on startup and displays a notification when a newer version is available.
+You can run update workflow commands in-session:
+- `/update status`
+- `/update check`
+- `/update plan [target|latest]`
+- `/update apply [target|latest]`
+
+JD.AI checks for updates automatically on startup and displays a notification when a newer version is available.
+
+#### Operator safety and rollback notes
+
+- Run `/update plan` before `/update apply` to verify component order and timing windows.
+- Keep `updates.requireApproval=true` in shared/operator environments.
+- Use conservative `updates.drainTimeout` and `updates.reconnectTimeout` values to avoid dropping in-flight work.
+- If an update fails, reinstall a known-good version via `dotnet tool install/update -g <package> --version <known-good>` and restart services.
 
 ## Uninstall
 

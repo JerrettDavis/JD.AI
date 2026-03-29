@@ -106,9 +106,13 @@ Set the per-project default provider for the current repo.
 
 Set the per-project default model for the current repo.
 
-### `/update`
+### `/update [status|check|plan [target|latest]|apply [target|latest]]`
 
-Checks NuGet for a JD.AI update and offers to apply it.
+Update orchestration commands:
+- `status` — show update workflow config and enabled components
+- `check` — check for available updates
+- `plan` — print the ordered drain/update/restart/reconnect plan
+- `apply` — execute the update workflow (subject to approval policy when enabled)
 
 ### `/doctor`
 
