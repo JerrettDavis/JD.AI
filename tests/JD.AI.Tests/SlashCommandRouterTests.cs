@@ -2,6 +2,7 @@ using System.Reflection;
 using JD.AI.Commands;
 using JD.AI.Core.Agents;
 using JD.AI.Core.Config;
+using JD.AI.Core.Governance;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
 using Microsoft.SemanticKernel;
@@ -975,10 +976,161 @@ public sealed class SlashCommandRouterTests
     }
 
     [Fact]
+    public async Task Update_Status_ReturnsWorkflowConfigSummary()
+    {
+        var settings = new TuiSettings
+        {
+            Updates = new UpdateWorkflowSettings
+            {
+                Enabled = true,
+                AllowPromptTrigger = false,
+                RequireApproval = true,
+                Components = new UpdateComponentsSettings { Daemon = true, Gateway = false, Tui = true },
+                DrainTimeout = TimeSpan.FromSeconds(12),
+                ReconnectTimeout = TimeSpan.FromSeconds(34),
+            },
+        };
+        settings.Save();
+
+        var result = await _router.ExecuteAsync("/update status");
+
+        Assert.NotNull(result);
+        Assert.Contains("updates.enabled=True", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("promptTrigger=False", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("requireApproval=True", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Update_Apply_RequiresApproval_WhenConfigured()
+    {
+        var settings = new TuiSettings
+        {
+            Updates = new UpdateWorkflowSettings
+            {
+                Enabled = true,
+                RequireApproval = true,
+                Components = new UpdateComponentsSettings { Daemon = false, Gateway = false, Tui = false },
+            },
+        };
+        settings.Save();
+
+        var approval = Substitute.For<JD.AI.Core.Governance.IApprovalService>();
+        approval.RequestApprovalAsync(Arg.Any<JD.AI.Core.Governance.ApprovalRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new JD.AI.Core.Governance.ApprovalResult(JD.AI.Core.Governance.ApprovalDecision.Rejected, "denied by test"));
+        _session.ApprovalService = approval;
+
+        var result = await _router.ExecuteAsync("/update apply latest");
+
+        Assert.NotNull(result);
+        Assert.Contains("not approved", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void SlashCommandCatalog_ContainsShortcutsEntry()
     {
         Assert.Contains(
             SlashCommandCatalog.CompletionEntries,
             e => string.Equals(e.Command, "/shortcuts", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void FreeformUpdateIntent_RespectsAllowPromptTriggerSetting()
+    {
+        var settings = new TuiSettings
+        {
+            Updates = new UpdateWorkflowSettings
+            {
+                Enabled = true,
+                AllowPromptTrigger = false,
+            },
+        };
+        settings.Save();
+
+        var resolved = _router.TryResolveFreeformUpdateIntent("please update jdai", out _, out var rejection);
+
+        Assert.False(resolved);
+        Assert.Contains("disabled", rejection, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void FreeformUpdateIntent_DeniedByPolicy_IsRejected()
+    {
+        var settings = new TuiSettings
+        {
+            Updates = new UpdateWorkflowSettings
+            {
+                Enabled = true,
+                AllowPromptTrigger = true,
+            },
+        };
+        settings.Save();
+
+        var policy = Substitute.For<IPolicyEvaluator>();
+        policy.EvaluateTool("update.read", Arg.Any<PolicyContext>())
+            .Returns(new PolicyEvaluationResult(PolicyDecision.Deny, "blocked by policy"));
+
+        var router = new SlashCommandRouter(_session, _registry, policyEvaluator: policy);
+        var resolved = router.TryResolveFreeformUpdateIntent("check for update", out _, out var rejection);
+
+        Assert.False(resolved);
+        Assert.Contains("denied by policy", rejection, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task UpdateApply_WhenPolicyDenied_ReturnsDeniedMessage()
+    {
+        var settings = new TuiSettings
+        {
+            Updates = new UpdateWorkflowSettings
+            {
+                Enabled = true,
+                RequireApproval = false,
+                Components = new UpdateComponentsSettings { Daemon = false, Gateway = false, Tui = false },
+            },
+        };
+        settings.Save();
+
+        var policy = Substitute.For<IPolicyEvaluator>();
+        policy.EvaluateTool("update.apply", Arg.Any<PolicyContext>())
+            .Returns(new PolicyEvaluationResult(PolicyDecision.Deny, "maintenance freeze"));
+
+        var router = new SlashCommandRouter(_session, _registry, policyEvaluator: policy);
+        var result = await router.ExecuteAsync("/update apply latest");
+
+        Assert.NotNull(result);
+        Assert.Contains("denied", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task VerifyUpdateHandshakeAsync_WhenNoComponentsEnabled_Succeeds()
+    {
+        var settings = new UpdateWorkflowSettings
+        {
+            Components = new UpdateComponentsSettings { Daemon = false, Gateway = false, Tui = false },
+            ReconnectTimeout = TimeSpan.FromMilliseconds(50),
+        };
+
+        var method = typeof(SlashCommandRouter).GetMethod("VerifyUpdateHandshakeAsync", BindingFlags.NonPublic | BindingFlags.Static)!;
+        var task = (Task<(bool Success, string Detail)>)method.Invoke(null, [settings, CancellationToken.None])!;
+        var result = await task;
+
+        Assert.True(result.Success);
+    }
+
+    [Fact]
+    public async Task VerifyUpdateHandshakeAsync_WhenGatewayRequiredAndUnavailable_FailsAfterRetryWindow()
+    {
+        var settings = new UpdateWorkflowSettings
+        {
+            Components = new UpdateComponentsSettings { Daemon = false, Gateway = true, Tui = false },
+            ReconnectTimeout = TimeSpan.FromMilliseconds(1200),
+        };
+
+        var method = typeof(SlashCommandRouter).GetMethod("VerifyUpdateHandshakeAsync", BindingFlags.NonPublic | BindingFlags.Static)!;
+        var task = (Task<(bool Success, string Detail)>)method.Invoke(null, [settings, CancellationToken.None])!;
+        var result = await task;
+
+        Assert.False(result.Success);
+        Assert.Contains("timeout", result.Detail, StringComparison.OrdinalIgnoreCase);
     }
 }
