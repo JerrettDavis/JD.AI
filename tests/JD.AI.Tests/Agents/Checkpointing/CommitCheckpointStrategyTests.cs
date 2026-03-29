@@ -50,11 +50,27 @@ public sealed class CommitCheckpointStrategyTests : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        if (Directory.Exists(_repoDir))
+        if (string.IsNullOrWhiteSpace(_repoDir) || !Directory.Exists(_repoDir))
+            return;
+
+        // On Windows, .git files are often read-only; normalize before delete.
+        // Also, git processes or indices might still be locking files briefly.
+        for (var i = 0; i < 5; i++)
         {
-            // On Windows, .git files are often read-only; normalise before delete
-            SetAttributesNormal(new DirectoryInfo(_repoDir));
-            await Task.Run(() => Directory.Delete(_repoDir, recursive: true));
+            try
+            {
+                SetAttributesNormal(new DirectoryInfo(_repoDir));
+                Directory.Delete(_repoDir, recursive: true);
+                return;
+            }
+            catch (IOException) when (i < 4)
+            {
+                await Task.Delay(100);
+            }
+            catch (UnauthorizedAccessException) when (i < 4)
+            {
+                await Task.Delay(100);
+            }
         }
     }
 
