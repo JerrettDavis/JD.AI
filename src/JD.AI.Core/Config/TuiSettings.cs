@@ -53,6 +53,9 @@ public sealed record TuiSettings
     /// <summary>Status footer display settings.</summary>
     public FooterSettings Footer { get; init; } = new();
 
+    /// <summary>Update workflow behavior and component orchestration settings.</summary>
+    public UpdateWorkflowSettings Updates { get; init; } = new();
+
     /// <summary>Load settings from the data directory, returning defaults if not found.</summary>
     public static TuiSettings Load()
     {
@@ -98,6 +101,7 @@ public sealed record TuiSettings
                 : settings.OutputStyle,
             Welcome = WelcomePanelSettings.Normalize(settings.Welcome),
             Footer = FooterSettings.Normalize(settings.Footer),
+            Updates = UpdateWorkflowSettings.Normalize(settings.Updates),
         };
     }
 }

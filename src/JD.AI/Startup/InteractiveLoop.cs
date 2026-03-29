@@ -445,6 +445,26 @@ internal sealed class InteractiveLoop
                 continue;
             }
 
+            // Freeform update intent routing (gated by config + policy)
+            if (inputResult.Attachments.Count == 0)
+            {
+                var routed = commandRouter.TryResolveFreeformUpdateIntent(typedText, out var routedUpdateCommand, out var rejectionReason);
+                if (routed)
+                {
+                    ChatRenderer.RenderInfo($"[intent] Routed to {routedUpdateCommand}");
+                    var cmdResult = await commandRouter.ExecuteAsync(routedUpdateCommand, appCts.Token).ConfigureAwait(false);
+                    if (cmdResult is not null)
+                        ChatRenderer.RenderInfo(cmdResult);
+                    continue;
+                }
+
+                if (!string.IsNullOrWhiteSpace(rejectionReason))
+                {
+                    ChatRenderer.RenderWarning(rejectionReason);
+                    continue;
+                }
+            }
+
             // Regular chat message
             ChatRenderer.DimInputLine(input);
             await RunAgentTurnLoopAsync(
