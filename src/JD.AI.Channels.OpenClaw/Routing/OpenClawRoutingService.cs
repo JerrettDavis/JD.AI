@@ -39,8 +39,6 @@ public sealed class OpenClawRoutingService : BackgroundService
     /// <summary>Stores recent events for diagnostic inspection.</summary>
     private readonly ConcurrentQueue<(DateTimeOffset Time, string EventName, string Summary)> _recentEvents = new();
 
-    /// <summary>Command prefix for JD.AI commands routed through OpenClaw.</summary>
-    private const string JdaiCommandPrefix = "/jdai-";
 
     public OpenClawRoutingService(
         OpenClawBridgeChannel bridge,
@@ -219,12 +217,14 @@ public sealed class OpenClawRoutingService : BackgroundService
             userMessage.Length > 80 ? userMessage[..80] + "..." : userMessage,
             sessionKey);
 
-        // Intercept /jdai- commands before they reach the mode handler
-        if (await TryHandleJdaiCommandAsync(userMessage, sessionKey, ct))
-            return;
-
         // Determine channel from session key or cache
         var channelName = ResolveChannelName(sessionKey);
+
+        // Fast-path gateway commands before they reach the mode handler / LLM.
+        // This includes Discord !model and /model forms (with optional mentions)
+        // plus /jdai-* prefixed commands.
+        if (await TryHandleGatewayCommandAsync(userMessage, sessionKey, channelName, ct))
+            return;
 
         // Create a synthetic event with the user message for the mode handlers
         var syntheticPayload = JsonSerializer.SerializeToElement(new
@@ -283,67 +283,48 @@ public sealed class OpenClawRoutingService : BackgroundService
     }
 
     /// <summary>
-    /// Intercepts /jdai- prefixed commands, aborts OpenClaw's agent, executes the
-    /// gateway command, and injects the result back into the OpenClaw session.
-    /// Returns true if the message was a command and was handled.
+    /// Intercepts gateway fast-path commands (Discord !model / /model and /jdai-*)
+    /// and injects command output back into the OpenClaw session.
     /// </summary>
-    private async Task<bool> TryHandleJdaiCommandAsync(string message, string sessionKey, CancellationToken ct)
+    private async Task<bool> TryHandleGatewayCommandAsync(
+        string message,
+        string sessionKey,
+        string channelName,
+        CancellationToken ct)
     {
         if (_commandRegistry is null)
             return false;
 
-        if (!message.StartsWith(JdaiCommandPrefix, StringComparison.OrdinalIgnoreCase))
+        var dispatch = await GatewayCommandDispatcher.TryDispatchAsync(
+            _commandRegistry,
+            channelType: channelName,
+            message: message,
+            invokerId: sessionKey,
+            channelId: $"openclaw-{sessionKey}",
+            invokerDisplayName: "OpenClaw User",
+            ct: ct);
+
+        if (!dispatch.Handled)
             return false;
 
-        // Parse "/jdai-config arg1 arg2" → commandName="config", args=["arg1","arg2"]
-        var withoutPrefix = message[JdaiCommandPrefix.Length..];
-        var parts = withoutPrefix.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length == 0)
-            return false;
+        await AbortAndInjectAsync(sessionKey, null, ct);
 
-        var commandName = parts[0];
-        var command = _commandRegistry.GetCommand(commandName);
-        if (command is null)
+        if (!string.IsNullOrWhiteSpace(dispatch.SourceLabel))
         {
-            _logger.LogDebug("[Command] Unknown jdai command: {Name}", commandName);
-            var errorMsg = $"Unknown jdai command: {commandName}. Use /jdai-help to see available commands.";
-            await AbortAndInjectAsync(sessionKey, errorMsg, ct);
-            return true;
+            _logger.LogInformation(
+                "[Command] Fast-path {Command} for session '{Session}'",
+                dispatch.SourceLabel,
+                sessionKey);
         }
 
-        _logger.LogInformation("[Command] Executing /jdai-{Name} for session '{Session}'", commandName, sessionKey);
+        await _bridge.InjectMessageAsync(sessionKey, dispatch.Response, ct);
 
-        // Map positional arguments
-        var args = new Dictionary<string, string>();
-        for (var i = 1; i < parts.Length && i - 1 < command.Parameters.Count; i++)
+        if (dispatch.Success)
         {
-            args[command.Parameters[i - 1].Name] = parts[i];
-        }
-
-        var context = new CommandContext
-        {
-            CommandName = commandName,
-            InvokerId = sessionKey,
-            InvokerDisplayName = "OpenClaw User",
-            ChannelId = $"openclaw-{sessionKey}",
-            ChannelType = "openclaw",
-            Arguments = args,
-        };
-
-        try
-        {
-            // Abort OpenClaw's own agent so it doesn't also respond
-            await AbortAndInjectAsync(sessionKey, null, ct);
-
-            var result = await command.ExecuteAsync(context, ct);
-            await _bridge.InjectMessageAsync(sessionKey, result.Content, ct);
-
-            _logger.LogInformation("[Command] /jdai-{Name} completed for session '{Session}'", commandName, sessionKey);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "[Command] Error executing /jdai-{Name}", commandName);
-            await _bridge.InjectMessageAsync(sessionKey, $"Command error: {ex.Message}", ct);
+            _logger.LogInformation(
+                "[Command] {Command} completed for session '{Session}'",
+                dispatch.SourceLabel ?? dispatch.CommandName ?? "command",
+                sessionKey);
         }
 
         return true;

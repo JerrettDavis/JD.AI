@@ -209,10 +209,92 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         return await _registry.GetModelsAsync(ct).ConfigureAwait(false);
     }
 
-    private async Task SwitchModelAndPersistAsync(ProviderModelInfo model, CancellationToken ct)
+    private async Task SwitchModelAndPersistAsync(ProviderModelInfo model, CancellationToken ct, bool persistProjectDefaults = false)
     {
-        _session.SwitchModel(model);
-        await PersistProjectDefaultsAsync(model, ct).ConfigureAwait(false);
+        await EmitModelSwitchAuditAsync("model.switch.requested", model, detail: null, ct).ConfigureAwait(false);
+
+        var authorization = await AuthorizeModelSwitchAsync(model, ct).ConfigureAwait(false);
+        if (!authorization.Allowed)
+        {
+            await EmitModelSwitchAuditAsync("model.switch.denied", model, authorization.Reason, ct).ConfigureAwait(false);
+            throw new InvalidOperationException(authorization.Reason ?? "Model switch denied.");
+        }
+
+        try
+        {
+            _session.SwitchModel(model);
+
+            if (persistProjectDefaults)
+                await PersistProjectDefaultsAsync(model, ct).ConfigureAwait(false);
+
+            await EmitModelSwitchAuditAsync("model.switch.applied", model, detail: null, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await EmitModelSwitchAuditAsync("model.switch.failed", model, ex.Message, ct).ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    private async Task<SwitchAuthorizationResult> AuthorizeModelSwitchAsync(ProviderModelInfo model, CancellationToken ct)
+    {
+        var policyContext = new PolicyContext(
+            UserId: Environment.UserName,
+            ProjectPath: _session.SessionInfo?.ProjectPath ?? Directory.GetCurrentDirectory());
+
+        var providerDecision = _policyEvaluator?.EvaluateProvider(model.ProviderName, policyContext)
+            ?? new PolicyEvaluationResult(PolicyDecision.Allow, null, null);
+        if (providerDecision.Decision == PolicyDecision.Deny)
+            return new SwitchAuthorizationResult(false, providerDecision.Reason ?? $"Provider '{model.ProviderName}' is denied by policy.");
+
+        var modelDecision = _policyEvaluator?.EvaluateModel(model.Id, model.ContextWindowTokens, policyContext)
+            ?? new PolicyEvaluationResult(PolicyDecision.Allow, null, null);
+        if (modelDecision.Decision == PolicyDecision.Deny)
+            return new SwitchAuthorizationResult(false, modelDecision.Reason ?? $"Model '{model.Id}' is denied by policy.");
+
+        var requiresApproval = providerDecision.Decision == PolicyDecision.RequireApproval
+            || modelDecision.Decision == PolicyDecision.RequireApproval;
+
+        if (_session.ApprovalService is not null)
+        {
+            var approval = await _session.ApprovalService.RequestApprovalAsync(
+                new ApprovalRequest(
+                    Id: Guid.NewGuid().ToString("N"),
+                    Description: $"Switch model to {model.ProviderName}/{model.Id}",
+                    Details: "Session-scoped model switch requested at runtime.",
+                    Kind: ApprovalKind.ToolCall,
+                    ToolName: "model_set",
+                    UserId: Environment.UserName),
+                ct).ConfigureAwait(false);
+
+            if (!approval.IsApproved)
+                return new SwitchAuthorizationResult(false, approval.Reason ?? "Model switch was not approved.");
+        }
+        else if (requiresApproval)
+        {
+            return new SwitchAuthorizationResult(false,
+                providerDecision.Reason ?? modelDecision.Reason ?? "Model switch requires approval by policy.");
+        }
+
+        return new SwitchAuthorizationResult(true, null);
+    }
+
+    private async Task EmitModelSwitchAuditAsync(string action, ProviderModelInfo model, string? detail, CancellationToken ct)
+    {
+        if (_session.AuditService is null)
+            return;
+
+        await _session.AuditService.EmitAsync(new JD.AI.Core.Governance.Audit.AuditEvent
+        {
+            Action = action,
+            Resource = $"model:{model.ProviderName}/{model.Id}",
+            Detail = detail,
+            SessionId = _session.SessionInfo?.Id,
+            UserId = Environment.UserName,
+            Severity = action.EndsWith("failed", StringComparison.OrdinalIgnoreCase)
+                ? JD.AI.Core.Governance.Audit.AuditSeverity.Error
+                : JD.AI.Core.Governance.Audit.AuditSeverity.Info
+        }, ct).ConfigureAwait(false);
     }
 
     private async Task PersistProjectDefaultsAsync(ProviderModelInfo model, CancellationToken ct)
@@ -236,6 +318,8 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             // Ignore persistence failures during model switches.
         }
     }
+
+    private sealed record SwitchAuthorizationResult(bool Allowed, string? Reason);
 
     private static string GetShortcuts() => """
         Keyboard Shortcuts:
@@ -273,25 +357,26 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
     {
         var models = await GetModelsAsync(forceRefresh: true, ct).ConfigureAwait(false);
         if (models.Count == 0)
-        {
             return "No models available. Check provider authentication.";
-        }
 
-        var selected = ModelPicker.Pick(models, _session.CurrentModel);
-        if (selected != null && !string.Equals(selected.Id, _session.CurrentModel?.Id, StringComparison.Ordinal))
-        {
-            await SwitchModelAndPersistAsync(selected, ct).ConfigureAwait(false);
-            return $"Switched to {selected.DisplayName} ({selected.ProviderName})";
-        }
+        var current = _session.CurrentModel;
+        var lines = models
+            .OrderBy(m => m.ProviderName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .Select(m =>
+            {
+                var active = current is not null
+                    && string.Equals(m.Id, current.Id, StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(m.ProviderName, current.ProviderName, StringComparison.OrdinalIgnoreCase);
+                return $"{(active ? "*" : "-")} {m.ProviderName}/{m.Id} ({m.DisplayName})";
+            });
 
-        return selected != null
-            ? $"Current model: {selected.DisplayName} ({selected.ProviderName})"
-            : "Model selection cancelled.";
+        return string.Join(Environment.NewLine, lines);
     }
 
     private async Task<string> SwitchModelAsync(string? modelId, CancellationToken ct)
     {
-        // Route subcommands: /model search <query>, /model url <url>
+        // Route subcommands: /model search <query>, /model url <url>, /model current|list|set
         if (modelId is not null)
         {
             if (modelId.StartsWith("search ", StringComparison.OrdinalIgnoreCase)
@@ -307,39 +392,65 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                 var url = modelId.Length > 4 ? modelId[4..].Trim() : string.Empty;
                 return await HandleModelUrlAsync(url, ct).ConfigureAwait(false);
             }
+
+            if (string.Equals(modelId, "current", StringComparison.OrdinalIgnoreCase))
+                return FormatCurrentModel();
+
+            if (string.Equals(modelId, "list", StringComparison.OrdinalIgnoreCase))
+                return await ListModelsAsync(ct).ConfigureAwait(false);
+
+            if (modelId.StartsWith("set ", StringComparison.OrdinalIgnoreCase))
+                modelId = modelId[4..].Trim();
         }
 
         var models = await GetModelsAsync(forceRefresh: true, ct).ConfigureAwait(false);
 
-        // No argument: show interactive picker
+        // No argument: show current model (safe default)
         if (string.IsNullOrWhiteSpace(modelId))
-        {
-            if (models.Count == 0)
-            {
-                return "No models available. Check provider authentication.";
-            }
+            return FormatCurrentModel();
 
-            var selected = ModelPicker.Pick(models, _session.CurrentModel);
-            if (selected != null)
-            {
-                await SwitchModelAndPersistAsync(selected, ct).ConfigureAwait(false);
-                return $"Switched to {selected.DisplayName} ({selected.ProviderName})";
-            }
-
-            return "Model selection cancelled.";
-        }
-
-        // With argument: fuzzy match like before
-        var model = models.FirstOrDefault(m =>
-            m.Id.Contains(modelId, StringComparison.OrdinalIgnoreCase));
-
+        var model = ResolveModel(models, modelId);
         if (model is null)
+            return $"Model '{modelId}' not found. Use /model list to inspect available model IDs.";
+
+        if (_session.CurrentModel is not null
+            && string.Equals(_session.CurrentModel.Id, model.Id, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(_session.CurrentModel.ProviderName, model.ProviderName, StringComparison.OrdinalIgnoreCase))
         {
-            return $"Model '{modelId}' not found. Use /models to browse interactively.";
+            return $"Current model is already {model.DisplayName} ({model.ProviderName}).";
         }
 
-        await SwitchModelAndPersistAsync(model, ct).ConfigureAwait(false);
-        return $"Switched to {model.DisplayName} ({model.ProviderName})";
+        try
+        {
+            await SwitchModelAndPersistAsync(model, ct, persistProjectDefaults: false).ConfigureAwait(false);
+            return $"Switched session model to {model.DisplayName} ({model.ProviderName}).";
+        }
+        catch (InvalidOperationException ex)
+        {
+            return $"Model switch denied: {ex.Message}";
+        }
+    }
+
+    private string FormatCurrentModel()
+    {
+        var current = _session.CurrentModel;
+        return current is null
+            ? "No active model in this session."
+            : $"Current session model: {current.ProviderName}/{current.Id} ({current.DisplayName})";
+    }
+
+    private static ProviderModelInfo? ResolveModel(IReadOnlyList<ProviderModelInfo> models, string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+            return null;
+
+        var value = token.Trim();
+
+        return models.FirstOrDefault(m => string.Equals(m.Id, value, StringComparison.OrdinalIgnoreCase))
+            ?? models.FirstOrDefault(m => string.Equals($"{m.ProviderName}/{m.Id}", value, StringComparison.OrdinalIgnoreCase))
+            ?? models.FirstOrDefault(m => string.Equals(m.DisplayName, value, StringComparison.OrdinalIgnoreCase))
+            ?? models.FirstOrDefault(m => m.Id.Contains(value, StringComparison.OrdinalIgnoreCase))
+            ?? models.FirstOrDefault(m => m.DisplayName.Contains(value, StringComparison.OrdinalIgnoreCase));
     }
 
     private async Task<string> HandleModelSearchAsync(string query, CancellationToken ct)

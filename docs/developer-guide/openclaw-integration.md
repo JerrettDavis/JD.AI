@@ -141,6 +141,12 @@ Inside an OpenClaw conversation, send `/jdai-...` commands. The bridge intercept
 /jdai-status
 ```
 
+Discord model bang commands (`!model ...`, including mention+bang forms) are supported in bridge sessions for compatibility.
+
+> Primary architecture note: direct Discord gateway integration is the canonical runtime path for this behavior. OpenClaw reuses the same shared gateway command dispatcher so command semantics stay consistent.
+
+See [Channels](channels.md#direct-discord-command-fast-path-primary) for the primary direct-Discord behavior and wiring.
+
 ### Practical switching behavior
 
 - In **Sidecar** mode, plain messages continue to OpenClaw; `/jdai-...` commands and configured triggers route to JD.AI.

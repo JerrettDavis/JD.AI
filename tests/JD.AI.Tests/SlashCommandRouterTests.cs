@@ -3,6 +3,7 @@ using JD.AI.Commands;
 using JD.AI.Core.Agents;
 using JD.AI.Core.Config;
 using JD.AI.Core.Governance;
+using JD.AI.Core.Governance.Audit;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
 using Microsoft.SemanticKernel;
@@ -88,7 +89,7 @@ public sealed class SlashCommandRouterTests
             .Returns(new List<ProviderModelInfo> { newModel });
         _registry.BuildKernel(newModel).Returns(Kernel.CreateBuilder().Build());
 
-        var result = await _router.ExecuteAsync("/model new-model");
+        var result = await _router.ExecuteAsync("/model set new-model");
 
         Assert.NotNull(result);
         Assert.Contains("Switched", result);
@@ -96,7 +97,7 @@ public sealed class SlashCommandRouterTests
     }
 
     [Fact]
-    public async Task Model_Switch_PersistsProjectDefaults_WhenConfigStoreIsProvided()
+    public async Task Model_Set_DoesNotPersistProjectDefaults_WhenConfigStoreIsProvided()
     {
         var newModel = new ProviderModelInfo("saved-model", "Saved Model", "SavedProvider");
         _registry.GetModelsAsync(Arg.Any<CancellationToken>())
@@ -114,12 +115,10 @@ public sealed class SlashCommandRouterTests
             using var configStore = new AtomicConfigStore(configPath);
             var router = new SlashCommandRouter(_session, _registry, configStore: configStore);
 
-            await router.ExecuteAsync("/model saved-model");
+            await router.ExecuteAsync("/model set saved-model");
             var config = await configStore.ReadAsync();
 
-            Assert.True(config.ProjectDefaults.TryGetValue(tempDirectory, out var defaults));
-            Assert.Equal("SavedProvider", defaults!.Provider);
-            Assert.Equal("saved-model", defaults.Model);
+            Assert.False(config.ProjectDefaults.TryGetValue(tempDirectory, out _));
         }
         finally
         {
@@ -187,22 +186,120 @@ public sealed class SlashCommandRouterTests
         _registry.GetModelsAsync(Arg.Any<CancellationToken>())
             .Returns(new List<ProviderModelInfo>());
 
-        var result = await _router.ExecuteAsync("/model nonexistent");
+        var result = await _router.ExecuteAsync("/model set nonexistent");
 
         Assert.NotNull(result);
         Assert.Contains("not found", result);
     }
 
     [Fact]
-    public async Task Model_NoArgs_NoModels_ReturnsMessage()
+    public async Task Model_Set_DeniedByPolicy_ReturnsDeniedMessage()
     {
+        var blockedModel = new ProviderModelInfo("gpt-4o", "GPT-4o", "OpenAI");
         _registry.GetModelsAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<ProviderModelInfo>());
+            .Returns([blockedModel]);
 
+        var evaluator = new PolicyEvaluator(new PolicySpec
+        {
+            Models = new ModelPolicy { Denied = ["gpt-*"] }
+        });
+
+        var router = new SlashCommandRouter(_session, _registry, policyEvaluator: evaluator);
+        var result = await router.ExecuteAsync("/model set gpt-4o");
+
+        Assert.NotNull(result);
+        Assert.Contains("denied", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("test-model", _session.CurrentModel?.Id);
+    }
+
+    [Fact]
+    public async Task Model_Set_UsesApprovalService_AndRejects_WhenApprovalRejected()
+    {
+        var gatedModel = new ProviderModelInfo("safe-model", "Safe Model", "SafeProvider");
+        _registry.GetModelsAsync(Arg.Any<CancellationToken>())
+            .Returns([gatedModel]);
+
+        var approvalService = Substitute.For<IApprovalService>();
+        approvalService.RequestApprovalAsync(Arg.Any<ApprovalRequest>(), Arg.Any<CancellationToken>())
+            .Returns(ApprovalResult.Rejected("not now"));
+        _session.ApprovalService = approvalService;
+
+        var router = new SlashCommandRouter(_session, _registry);
+        var result = await router.ExecuteAsync("/model set safe-model");
+
+        Assert.NotNull(result);
+        Assert.Contains("denied", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("test-model", _session.CurrentModel?.Id);
+        await approvalService.Received(1).RequestApprovalAsync(Arg.Any<ApprovalRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Model_Set_EmitsAuditRequestedAndApplied()
+    {
+        var newModel = new ProviderModelInfo("approved-model", "Approved", "Provider1");
+        _registry.GetModelsAsync(Arg.Any<CancellationToken>())
+            .Returns([newModel]);
+        _registry.BuildKernel(newModel).Returns(Kernel.CreateBuilder().Build());
+
+        var sink = new InMemoryAuditSink();
+        _session.AuditService = new AuditService([sink]);
+
+        var result = await _router.ExecuteAsync("/model set approved-model");
+
+        Assert.NotNull(result);
+        var events = await sink.QueryAsync(new AuditQuery { Limit = 20 });
+        var actions = events.Events.Select(e => e.Action).ToList();
+        Assert.Contains("model.switch.requested", actions);
+        Assert.Contains("model.switch.applied", actions);
+    }
+
+    [Fact]
+    public async Task Model_NoArgs_ReturnsCurrentSessionModel()
+    {
         var result = await _router.ExecuteAsync("/model");
 
         Assert.NotNull(result);
-        Assert.Contains("No models", result);
+        Assert.Contains("Current session model", result);
+    }
+
+    [Theory]
+    [InlineData("/model current")]
+    [InlineData("/model CURRENT")]
+    [InlineData("/model list")]
+    [InlineData("/model LIST")]
+    public async Task Model_Subcommands_AreCaseInsensitive(string command)
+    {
+        _registry.GetModelsAsync(Arg.Any<CancellationToken>())
+            .Returns([new ProviderModelInfo("test-model", "Test Model", "TestProvider")]);
+
+        var result = await _router.ExecuteAsync(command);
+
+        Assert.NotNull(result);
+        if (command.Contains("current", StringComparison.OrdinalIgnoreCase))
+            Assert.Contains("Current session model", result, StringComparison.OrdinalIgnoreCase);
+        else
+            Assert.Contains("test-model", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Model_Set_MissingArgument_FallsBackToCurrentModel()
+    {
+        var result = await _router.ExecuteAsync("/model set   ");
+
+        Assert.NotNull(result);
+        Assert.Contains("Current session model", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Model_UnsupportedSubcommand_ReturnsNotFound()
+    {
+        _registry.GetModelsAsync(Arg.Any<CancellationToken>())
+            .Returns([new ProviderModelInfo("test-model", "Test Model", "TestProvider")]);
+
+        var result = await _router.ExecuteAsync("/model wobble");
+
+        Assert.NotNull(result);
+        Assert.Contains("not found", result, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

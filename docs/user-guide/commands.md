@@ -42,8 +42,8 @@ Checks:
 
 | Command | Description |
 |---------|-------------|
-| `/models` | List all available models across providers |
-| `/model <id>` | Switch to a different model (fuzzy-matches) |
+| `/models` | List available models and mark the active session model |
+| `/model [current\|list\|set <id>]` | Show/list/set the **session** model (set is runtime-only) |
 | `/model search <query>` | Search models with optional provider/capability/sort filters |
 | `/model url <url>` | Pull a model from a URL |
 | `/reasoning [auto\|none\|low\|medium\|high\|max]` | Show or set session reasoning effort |
@@ -54,7 +54,9 @@ Checks:
 | `/provider test [name]` | Test provider connectivity |
 
 ```text
-/model gpt-4o
+/model current
+/model list
+/model set gpt-4o
 /model search llama 70b
 /model search --provider openrouter --cap reasoning --sort cost llama
 /model search --sort popularity gpt

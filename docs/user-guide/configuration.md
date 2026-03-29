@@ -88,7 +88,7 @@ Per-project defaults are stored in `.jdai/defaults.json` in the project root.
 When determining which provider and model to use:
 
 1. **CLI flags** — `--provider` and `--model` passed at launch
-2. **Session state** — set during the session via `/model` or `/provider`
+2. **Session state** — set during the session via `/model set` or `/provider`
 3. **Per-project defaults** — `.jdai/defaults.json`
 4. **Global defaults** — `~/.jdai/config.json`
 5. **First available** — first provider with a valid connection

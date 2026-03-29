@@ -32,7 +32,7 @@ public sealed class CommandAndConfigDriftGuardTests
                 Select(static e => $"{e.Command}|{e.Description}"));
 
         var actualHash = ComputeSha256(payload);
-        const string ExpectedHash = "12DE7B78B01A0B9B22ABD379BA003B796187BBAF0378820EE9C0F9365F99D0F1";
+        const string ExpectedHash = "8B36D32E6F4C7A445ADB183F2DA6252B1040957C1738F1752555555024C48599";
 
         Assert.True(
             string.Equals(actualHash, ExpectedHash, StringComparison.Ordinal),

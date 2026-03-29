@@ -14,7 +14,7 @@ Settings are resolved in this priority order (highest wins):
 | Priority | Source | Scope | Set via |
 |---|---|---|---|
 | 1 | CLI flags | Process | `--provider`, `--model`, `--system-prompt`, etc. |
-| 2 | Session state | Session | `/model`, `/provider`, `/autorun`, `/permissions` |
+| 2 | Session state | Session | `/model set`, `/provider`, `/autorun`, `/permissions` |
 | 3 | Per-project defaults | Project | `/default project provider`, `/default project model` |
 | 4 | Global defaults | User | `/default provider`, `/default model` |
 | 5 | Environment variables | System | `OPENAI_API_KEY`, `OLLAMA_ENDPOINT`, etc. |
