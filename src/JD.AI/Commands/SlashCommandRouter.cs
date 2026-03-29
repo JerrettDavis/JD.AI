@@ -1896,7 +1896,14 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             return "Updates are disabled by config (updates.enabled=false).";
 
         var command = UpdateCommand.Parse(arg);
-        await UpdateAuditLog.WriteAsync("update.request", new { command.Action, command.Target }, ct).ConfigureAwait(false);
+        await EmitUpdateAuditAsync("update.request", new { command.Action, command.Target }, ct).ConfigureAwait(false);
+
+        var policyResult = EvaluateUpdatePolicy(command.Action);
+        if (policyResult.Decision == PolicyDecision.Deny)
+        {
+            await EmitUpdateAuditAsync("update.fail", new { reason = policyResult.Reason ?? "policy_denied", command.Action }, ct).ConfigureAwait(false);
+            return $"⛔ Update command denied by policy: {policyResult.Reason ?? "policy denied"}";
+        }
 
         switch (command.Action)
         {
@@ -1905,15 +1912,15 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             case UpdateAction.Check:
                 return await CheckUpdateAsync(ct).ConfigureAwait(false);
             case UpdateAction.Plan:
-                await UpdateAuditLog.WriteAsync("update.plan", new { command.Target }, ct).ConfigureAwait(false);
+                await EmitUpdateAuditAsync("update.plan", new { command.Target }, ct).ConfigureAwait(false);
                 return BuildUpdatePlan(command.Target ?? "latest", settings);
             case UpdateAction.Apply:
-                if (settings.RequireApproval)
+                if (settings.RequireApproval || policyResult.Decision == PolicyDecision.RequireApproval)
                 {
                     var result = await RequestUpdateApprovalAsync(command.Target ?? "latest", ct).ConfigureAwait(false);
                     if (!result.IsApproved)
                     {
-                        await UpdateAuditLog.WriteAsync("update.fail", new { reason = result.Reason ?? "approval_rejected" }, ct).ConfigureAwait(false);
+                        await EmitUpdateAuditAsync("update.fail", new { reason = result.Reason ?? "approval_rejected" }, ct).ConfigureAwait(false);
                         return $"Update apply not approved: {result.Reason ?? result.Decision.ToString()}";
                     }
                 }
@@ -1966,9 +1973,9 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         return await _session.ApprovalService.RequestApprovalAsync(request, ct).ConfigureAwait(false);
     }
 
-    private static async Task<string> ApplyUpdateAsync(string? target, UpdateWorkflowSettings settings, CancellationToken ct)
+    private async Task<string> ApplyUpdateAsync(string? target, UpdateWorkflowSettings settings, CancellationToken ct)
     {
-        await UpdateAuditLog.WriteAsync("update.apply", new { target = target ?? "latest" }, ct).ConfigureAwait(false);
+        await EmitUpdateAuditAsync("update.apply", new { target = target ?? "latest" }, ct).ConfigureAwait(false);
 
         try
         {
@@ -1976,30 +1983,119 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
 
             var outputs = new List<string>();
             if (settings.Components.Daemon)
-                outputs.Add(await RunUpdateCommandAsync("jdai-daemon", target, ct).ConfigureAwait(false));
+                outputs.Add(await RunUpdateCommandAsync(DaemonServiceIdentity.ToolCommand, target, ct).ConfigureAwait(false));
             if (settings.Components.Gateway)
                 outputs.Add(await RunUpdateCommandAsync("jdai-gateway", target, ct).ConfigureAwait(false));
             if (settings.Components.Tui)
                 outputs.Add(await RunUpdateCommandAsync("jdai", target, ct).ConfigureAwait(false));
 
-            await Task.Delay(TimeSpan.FromMilliseconds(Math.Min(settings.ReconnectTimeout.TotalMilliseconds, 5000)), ct).ConfigureAwait(false);
-            await UpdateAuditLog.WriteAsync("update.success", new { target = target ?? "latest" }, ct).ConfigureAwait(false);
-            return "Update apply requested. " + string.Join(" | ", outputs);
+            var handshake = await VerifyUpdateHandshakeAsync(settings, ct).ConfigureAwait(false);
+            if (!handshake.Success)
+            {
+                await EmitUpdateAuditAsync("update.fail", new { target = target ?? "latest", reason = "health_handshake_failed", handshake.Detail }, ct).ConfigureAwait(false);
+                return $"Update applied but health handshake failed: {handshake.Detail}";
+            }
+
+            await EmitUpdateAuditAsync("update.success", new { target = target ?? "latest", handshake = handshake.Detail }, ct).ConfigureAwait(false);
+            return "Update apply requested. " + string.Join(" | ", outputs) + $" | handshake:{handshake.Detail}";
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            await UpdateAuditLog.WriteAsync("update.fail", new { error = ex.Message }, ct).ConfigureAwait(false);
+            await EmitUpdateAuditAsync("update.fail", new { error = ex.Message }, ct).ConfigureAwait(false);
             return $"Update failed: {ex.Message}";
         }
+    }
+
+    public bool TryResolveFreeformUpdateIntent(string input, out string slashCommand, out string? rejectionReason)
+    {
+        slashCommand = string.Empty;
+        rejectionReason = null;
+
+        if (!UpdateCommand.TryParsePromptIntent(input, out var command))
+            return false;
+
+        var settings = TuiSettings.Load().Updates;
+        if (!settings.Enabled || !settings.AllowPromptTrigger)
+        {
+            rejectionReason = "Update prompt trigger is disabled by config.";
+            return false;
+        }
+
+        var policyResult = EvaluateUpdatePolicy(command.Action);
+        if (policyResult.Decision == PolicyDecision.Deny)
+        {
+            rejectionReason = $"Update prompt trigger denied by policy: {policyResult.Reason ?? "policy denied"}";
+            return false;
+        }
+
+        var verb = command.Action.ToString().ToLowerInvariant();
+        var targetSuffix = command.Action is UpdateAction.Plan or UpdateAction.Apply
+            ? $" {command.Target ?? "latest"}"
+            : string.Empty;
+
+        slashCommand = $"/update {verb}{targetSuffix}".TrimEnd();
+        return true;
+    }
+
+    private PolicyEvaluationResult EvaluateUpdatePolicy(UpdateAction action)
+    {
+        if (_policyEvaluator is null)
+            return new PolicyEvaluationResult(PolicyDecision.Allow);
+
+        var toolName = action == UpdateAction.Apply ? "update.apply" : "update.read";
+        return _policyEvaluator.EvaluateTool(toolName, new PolicyContext(UserId: Environment.UserName));
+    }
+
+    private async Task EmitUpdateAuditAsync(string action, object detail, CancellationToken ct)
+    {
+        if (_session.AuditService is null)
+            return;
+
+        await _session.AuditService.EmitAsync(new JD.AI.Core.Governance.Audit.AuditEvent
+        {
+            Action = action,
+            UserId = Environment.UserName,
+            SessionId = _session.SessionInfo?.Id,
+            Resource = "update.workflow",
+            Detail = JsonSerializer.Serialize(detail),
+        }, ct).ConfigureAwait(false);
+    }
+
+    private static async Task<(bool Success, string Detail)> VerifyUpdateHandshakeAsync(UpdateWorkflowSettings settings, CancellationToken ct)
+    {
+        var timeout = settings.ReconnectTimeout <= TimeSpan.Zero ? TimeSpan.FromSeconds(45) : settings.ReconnectTimeout;
+        var start = DateTimeOffset.UtcNow;
+        var opts = new Startup.CliOptions();
+        var attempts = 0;
+
+        while (DateTimeOffset.UtcNow - start < timeout)
+        {
+            ct.ThrowIfCancellationRequested();
+            attempts++;
+
+            var indicators = await Startup.WelcomeServiceStatusProbe.ProbeSafeAsync(opts, ct).ConfigureAwait(false);
+            var daemonOk = !settings.Components.Daemon || indicators.Any(i => string.Equals(i.Name, "Daemon", StringComparison.Ordinal) && i.State == IndicatorState.Healthy);
+            var gatewayOk = !settings.Components.Gateway || indicators.Any(i => string.Equals(i.Name, "Gateway", StringComparison.Ordinal) && i.State == IndicatorState.Healthy);
+
+            if (daemonOk && gatewayOk)
+            {
+                return (true, $"ok after {attempts} probe(s)");
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(750), ct).ConfigureAwait(false);
+        }
+
+        return (false, $"timeout after {attempts} probe(s) over {timeout}");
     }
 
     private static async Task<string> RunUpdateCommandAsync(string commandName, string? target, CancellationToken ct)
     {
         var args = commandName switch
         {
-            "jdai-daemon" => target is null || string.Equals(target, "latest", StringComparison.OrdinalIgnoreCase)
-                ? "update"
-                : $"update --target {target}",
+            var daemon when string.Equals(daemon, DaemonServiceIdentity.ToolCommand, StringComparison.Ordinal) =>
+                target is null || string.Equals(target, "latest", StringComparison.OrdinalIgnoreCase)
+                    ? "update"
+                    : $"update --target {target}",
             _ => target is null || string.Equals(target, "latest", StringComparison.OrdinalIgnoreCase)
                 ? "update"
                 : $"update --version {target}",

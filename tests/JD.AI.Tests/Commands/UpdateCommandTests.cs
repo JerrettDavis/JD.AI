@@ -22,4 +22,26 @@ public sealed class UpdateCommandTests
         Assert.Equal(expectedAction, command.Action);
         Assert.Equal(expectedTarget, command.Target);
     }
+
+    [Theory]
+    [InlineData("please check for updates", UpdateAction.Check, null)]
+    [InlineData("show update status", UpdateAction.Status, null)]
+    [InlineData("plan the update to latest", UpdateAction.Plan, "latest")]
+    [InlineData("apply update 2.3.4", UpdateAction.Apply, "2.3.4")]
+    public void TryParsePromptIntent_RecognizesNaturalLanguage(string input, UpdateAction expectedAction, string? expectedTarget)
+    {
+        var parsed = UpdateCommand.TryParsePromptIntent(input, out var command);
+
+        Assert.True(parsed);
+        Assert.Equal(expectedAction, command.Action);
+        Assert.Equal(expectedTarget, command.Target);
+    }
+
+    [Fact]
+    public void TryParsePromptIntent_IgnoresNonUpdatePrompts()
+    {
+        var parsed = UpdateCommand.TryParsePromptIntent("write a poem", out _);
+
+        Assert.False(parsed);
+    }
 }

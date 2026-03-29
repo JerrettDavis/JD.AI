@@ -4,6 +4,7 @@ using JD.AI.Core.Agents;
 using JD.AI.Core.Config;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
+using JD.AI.Core.Governance;
 using Microsoft.SemanticKernel;
 using NSubstitute;
 using Xunit;
@@ -1030,5 +1031,106 @@ public sealed class SlashCommandRouterTests
         Assert.Contains(
             SlashCommandCatalog.CompletionEntries,
             e => string.Equals(e.Command, "/shortcuts", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void FreeformUpdateIntent_RespectsAllowPromptTriggerSetting()
+    {
+        var settings = new TuiSettings
+        {
+            Updates = new UpdateWorkflowSettings
+            {
+                Enabled = true,
+                AllowPromptTrigger = false,
+            },
+        };
+        settings.Save();
+
+        var resolved = _router.TryResolveFreeformUpdateIntent("please update jdai", out _, out var rejection);
+
+        Assert.False(resolved);
+        Assert.Contains("disabled", rejection, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void FreeformUpdateIntent_DeniedByPolicy_IsRejected()
+    {
+        var settings = new TuiSettings
+        {
+            Updates = new UpdateWorkflowSettings
+            {
+                Enabled = true,
+                AllowPromptTrigger = true,
+            },
+        };
+        settings.Save();
+
+        var policy = Substitute.For<IPolicyEvaluator>();
+        policy.EvaluateTool("update.read", Arg.Any<PolicyContext>())
+            .Returns(new PolicyEvaluationResult(PolicyDecision.Deny, "blocked by policy"));
+
+        var router = new SlashCommandRouter(_session, _registry, policyEvaluator: policy);
+        var resolved = router.TryResolveFreeformUpdateIntent("check for update", out _, out var rejection);
+
+        Assert.False(resolved);
+        Assert.Contains("denied by policy", rejection, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task UpdateApply_WhenPolicyDenied_ReturnsDeniedMessage()
+    {
+        var settings = new TuiSettings
+        {
+            Updates = new UpdateWorkflowSettings
+            {
+                Enabled = true,
+                RequireApproval = false,
+                Components = new UpdateComponentsSettings { Daemon = false, Gateway = false, Tui = false },
+            },
+        };
+        settings.Save();
+
+        var policy = Substitute.For<IPolicyEvaluator>();
+        policy.EvaluateTool("update.apply", Arg.Any<PolicyContext>())
+            .Returns(new PolicyEvaluationResult(PolicyDecision.Deny, "maintenance freeze"));
+
+        var router = new SlashCommandRouter(_session, _registry, policyEvaluator: policy);
+        var result = await router.ExecuteAsync("/update apply latest");
+
+        Assert.NotNull(result);
+        Assert.Contains("denied", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task VerifyUpdateHandshakeAsync_WhenNoComponentsEnabled_Succeeds()
+    {
+        var settings = new UpdateWorkflowSettings
+        {
+            Components = new UpdateComponentsSettings { Daemon = false, Gateway = false, Tui = false },
+            ReconnectTimeout = TimeSpan.FromMilliseconds(50),
+        };
+
+        var method = typeof(SlashCommandRouter).GetMethod("VerifyUpdateHandshakeAsync", BindingFlags.NonPublic | BindingFlags.Static)!;
+        var task = (Task<(bool Success, string Detail)>)method.Invoke(null, [settings, CancellationToken.None])!;
+        var result = await task;
+
+        Assert.True(result.Success);
+    }
+
+    [Fact]
+    public async Task VerifyUpdateHandshakeAsync_WhenGatewayRequiredAndUnavailable_FailsAfterRetryWindow()
+    {
+        var settings = new UpdateWorkflowSettings
+        {
+            Components = new UpdateComponentsSettings { Daemon = false, Gateway = true, Tui = false },
+            ReconnectTimeout = TimeSpan.FromMilliseconds(1200),
+        };
+
+        var method = typeof(SlashCommandRouter).GetMethod("VerifyUpdateHandshakeAsync", BindingFlags.NonPublic | BindingFlags.Static)!;
+        var task = (Task<(bool Success, string Detail)>)method.Invoke(null, [settings, CancellationToken.None])!;
+        var result = await task;
+
+        Assert.False(result.Success);
+        Assert.Contains("timeout", result.Detail, StringComparison.OrdinalIgnoreCase);
     }
 }
