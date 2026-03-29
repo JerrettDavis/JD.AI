@@ -13,6 +13,8 @@ namespace JD.AI.Gateway.Tests;
 
 public sealed class GatewayOrchestratorTests
 {
+    private static readonly string[] ExpectedFastPathResponses = ["models-output", "status-output", "switch-output"];
+
     private readonly GatewayConfig _config = new();
     private readonly ChannelRegistry _channels = new();
     private readonly IEventBus _events = new InProcessEventBus();
@@ -255,6 +257,39 @@ public sealed class GatewayOrchestratorTests
         mappings["web:support"].Should().NotBe(mappings["web:sales"]);
     }
 
+    [Theory]
+    [InlineData("!model list")]
+    [InlineData("!model current")]
+    [InlineData("!model set gpt-4o")]
+    [InlineData("<@123456789> !model list")]
+    public async Task DirectDiscord_FastPathModelCommands_AreHandledWithoutAgentRouting(string message)
+    {
+        var discord = new TestChannel("discord");
+        _channels.Register(discord);
+
+        _config.Channels =
+        [
+            new ChannelConfig { Type = "discord", Name = "Discord", Enabled = true, AutoConnect = false }
+        ];
+
+        var commands = new CommandRegistry();
+        commands.Register(new ResponseCommand("models", "models-output"));
+        commands.Register(new ResponseCommand("status", "status-output"));
+        commands.Register(new ResponseCommand("switch", "switch-output",
+            [new CommandParameter { Name = "model", Description = "model", IsRequired = true }]));
+
+        var orchestrator = CreateOrchestrator(commands);
+        await orchestrator.StartAsync(CancellationToken.None);
+
+        await discord.EmitMessageAsync(message);
+
+        discord.SendCalls.Should().Be(1);
+        ExpectedFastPathResponses
+            .Any(expected => string.Equals(expected, discord.LastSentContent, StringComparison.Ordinal))
+            .Should().BeTrue();
+        _pool.ListAgents().Should().BeEmpty("fast-path command handling should not require LLM agent routing");
+    }
+
     private GatewayOrchestrator CreateOrchestrator(ICommandRegistry? commandRegistry = null) => new(
         _config,
         _factory,
@@ -277,6 +312,25 @@ public sealed class GatewayOrchestratorTests
             Task.FromResult(new CommandResult { Success = true, Content = "pong" });
     }
 
+    private sealed class ResponseCommand : IChannelCommand
+    {
+        private readonly string _response;
+
+        public ResponseCommand(string name, string response, IReadOnlyList<CommandParameter>? parameters = null)
+        {
+            Name = name;
+            _response = response;
+            Parameters = parameters ?? [];
+        }
+
+        public string Name { get; }
+        public string Description => Name;
+        public IReadOnlyList<CommandParameter> Parameters { get; }
+
+        public Task<CommandResult> ExecuteAsync(CommandContext context, CancellationToken ct = default) =>
+            Task.FromResult(new CommandResult { Success = true, Content = _response });
+    }
+
     private class TestChannel : IChannel
     {
         public TestChannel(string channelType)
@@ -291,9 +345,8 @@ public sealed class GatewayOrchestratorTests
         public int ConnectCalls { get; private set; }
         public int DisconnectCalls { get; private set; }
         public int SendCalls { get; private set; }
-#pragma warning disable CS0067 // Test double event is intentionally unused.
+        public string? LastSentContent { get; private set; }
         public event Func<ChannelMessage, Task>? MessageReceived;
-#pragma warning restore CS0067
 
         public virtual Task ConnectAsync(CancellationToken ct = default)
         {
@@ -312,7 +365,26 @@ public sealed class GatewayOrchestratorTests
         public virtual Task SendMessageAsync(string conversationId, string content, CancellationToken ct = default)
         {
             SendCalls++;
+            LastSentContent = content;
             return Task.CompletedTask;
+        }
+
+        public async Task EmitMessageAsync(string content)
+        {
+            if (MessageReceived is null)
+                return;
+
+            await MessageReceived.Invoke(new ChannelMessage
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                ChannelId = "test-channel",
+                SenderId = "user-1",
+                SenderDisplayName = "User",
+                Content = content,
+                Timestamp = DateTimeOffset.UtcNow,
+                Metadata = new Dictionary<string, string>(StringComparer.Ordinal),
+                Attachments = []
+            });
         }
 
         public virtual ValueTask DisposeAsync() => ValueTask.CompletedTask;

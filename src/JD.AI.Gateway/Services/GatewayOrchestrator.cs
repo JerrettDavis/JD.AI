@@ -341,6 +341,25 @@ public sealed class GatewayOrchestrator : IHostedService
                     };
                     var msg = originalMessage with { Metadata = metadata };
 
+                    var dispatch = await GatewayCommandDispatcher.TryDispatchAsync(
+                        _commandRegistry,
+                        channel.ChannelType,
+                        msg.Content,
+                        invokerId: msg.SenderId,
+                        channelId: msg.ChannelId,
+                        invokerDisplayName: msg.SenderDisplayName,
+                        ct: CancellationToken.None);
+
+                    if (dispatch.Handled)
+                    {
+                        await channel.SendMessageAsync(msg.ChannelId, dispatch.Response, CancellationToken.None);
+                        _logger.LogInformation(
+                            "Handled fast-path command on {ChannelType}: {Command}",
+                            channel.ChannelType,
+                            dispatch.SourceLabel ?? dispatch.CommandName ?? "command");
+                        return;
+                    }
+
                     _logger.LogDebug("Routing message from {Channel}/{Sender}",
                         msg.ChannelId, msg.SenderDisplayName ?? msg.SenderId);
                     await _router.RouteAsync(msg, channel);

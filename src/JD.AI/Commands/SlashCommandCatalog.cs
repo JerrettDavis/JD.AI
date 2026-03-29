@@ -24,11 +24,14 @@ public static class SlashCommandCatalog
         new(
             SlashCommandId.Model,
             "/model",
-            "/model [id]",
-            "Switch model (interactive picker or by name)",
-            "Switch to a model",
+            "/model [current|list|set <id>]",
+            "Inspect or switch the active session model",
+            "Manage current session model",
             AdditionalCompletions:
             [
+                new SlashCommandDescriptor("/model current", "Show active model for this session"),
+                new SlashCommandDescriptor("/model list", "List available models"),
+                new SlashCommandDescriptor("/model set", "Switch session model by id/alias"),
                 new SlashCommandDescriptor("/model search", "Search for models across all providers"),
                 new SlashCommandDescriptor("/model url", "Pull a model by URL or identifier")
             ]),

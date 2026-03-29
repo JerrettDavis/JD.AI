@@ -1524,6 +1524,114 @@ public sealed class OpenClawRoutingServiceStripMetadataTests
     }
 }
 
+public sealed class OpenClawRoutingServiceModelFastPathTests
+{
+    private static async Task<CommandDispatchResult> MapAsync(string message)
+    {
+        var registry = new CommandRegistry();
+        registry.Register(new StubCommand("models"));
+        registry.Register(new StubCommand("status"));
+        registry.Register(new StubCommand("switch", [new CommandParameter { Name = "model", Description = "model", IsRequired = true }]));
+
+        return await GatewayCommandDispatcher.TryDispatchAsync(
+            registry,
+            channelType: "discord",
+            message: message,
+            invokerId: "u1",
+            channelId: "c1");
+    }
+
+    [Theory]
+    [InlineData("!model list", "models")]
+    [InlineData("!model current", "status")]
+    [InlineData("/model list", "models")]
+    [InlineData("/model current", "status")]
+    public async Task TryMapDiscordModelCommand_ParsesBangAndSlashCommands(string message, string expectedCommand)
+    {
+        var mapped = await MapAsync(message);
+
+        mapped.Handled.Should().BeTrue();
+        mapped.CommandName.Should().Be(expectedCommand);
+    }
+
+    [Theory]
+    [InlineData("@Jarvis !model list")]
+    [InlineData("<@123456789> !model list")]
+    [InlineData("<@!123456789> !model set gpt-4o")]
+    public async Task TryMapDiscordModelCommand_StripsLeadingMentions(string message)
+    {
+        var mapped = await MapAsync(message);
+
+        mapped.Handled.Should().BeTrue();
+        mapped.CommandName.Should().BeOneOf("models", "switch");
+    }
+
+    [Fact]
+    public async Task TryMapDiscordModelCommand_ModelSet_MapsToSwitchWithArgument()
+    {
+        var mapped = await MapAsync("!model set gpt-4o");
+
+        mapped.Handled.Should().BeTrue();
+        mapped.CommandName.Should().Be("switch");
+    }
+
+    [Theory]
+    [InlineData("hello there")]
+    [InlineData("!help")]
+    [InlineData("/status")]
+    [InlineData("!model set")]
+    [InlineData("!model set   ")]
+    [InlineData("/model set   ")]
+    [InlineData("!model foo")]
+    [InlineData("<@abc123> !model list")]
+    [InlineData("prefix !model list")]
+    public async Task TryMapDiscordModelCommand_NonCommandMessagesReturnFalse(string message)
+    {
+        var mapped = await MapAsync(message);
+
+        mapped.Handled.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("!MoDeL LiSt", "models")]
+    [InlineData("/MoDeL CuRrEnT", "status")]
+    public async Task TryMapDiscordModelCommand_IsCaseInsensitive(string message, string expected)
+    {
+        var mapped = await MapAsync(message);
+
+        mapped.Handled.Should().BeTrue();
+        mapped.CommandName.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("<@123>    !model   list", "models")]
+    [InlineData("<@!123>\t/model\tcurrent", "status")]
+    [InlineData("@Jarvis    !model set    gpt-4o", "switch")]
+    public async Task TryMapDiscordModelCommand_SupportsMentionAndSpacingVariants(string message, string expected)
+    {
+        var mapped = await MapAsync(message);
+
+        mapped.Handled.Should().BeTrue();
+        mapped.CommandName.Should().Be(expected);
+    }
+
+    private sealed class StubCommand : IChannelCommand
+    {
+        public StubCommand(string name, IReadOnlyList<CommandParameter>? parameters = null)
+        {
+            Name = name;
+            Parameters = parameters ?? [];
+        }
+
+        public string Name { get; }
+        public string Description => Name;
+        public IReadOnlyList<CommandParameter> Parameters { get; }
+
+        public Task<CommandResult> ExecuteAsync(CommandContext context, CancellationToken ct = default) =>
+            Task.FromResult(new CommandResult { Success = true, Content = "ok" });
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  OpenClawRoutingService — GetRecentEvents test
 // ─────────────────────────────────────────────────────────────────────────────
