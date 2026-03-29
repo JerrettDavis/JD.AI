@@ -33,6 +33,15 @@ public interface IWorkflowMatcher
     Task<WorkflowMatchResult?> MatchAsync(AgentRequest request, CancellationToken ct = default);
 }
 
+/// <summary>Bridges JD.AI workflow definitions to WorkflowFramework execution.</summary>
+public interface IWorkflowBridge
+{
+    Task<WorkflowBridgeResult> ExecuteAsync(
+        AgentWorkflowDefinition definition,
+        Steps.AgentWorkflowData data,
+        CancellationToken ct = default);
+}
+
 /// <summary>Emits workflow definitions in various DSL formats.</summary>
 public interface IWorkflowEmitter
 {
