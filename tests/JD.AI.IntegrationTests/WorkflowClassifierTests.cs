@@ -71,10 +71,10 @@ public class WorkflowClassifierTests
     [Fact]
     public void Multi_Step_Creation_Prompt_Is_Workflow()
     {
-        const string prompt =
+        const string Prompt =
             "Create a user registration form with validation, connect it to the API, add error handling, and write tests";
 
-        var result = _classifier.Classify(prompt);
+        var result = _classifier.Classify(Prompt);
 
         result.IsWorkflow.Should().BeTrue(
             because: $"multi-step creation prompt should be classified as workflow (confidence: {result.Confidence:F3})");
@@ -101,19 +101,19 @@ public class WorkflowClassifierTests
     [Fact]
     public void Classification_Completes_In_Under_One_Millisecond()
     {
-        const string prompt =
+        const string Prompt =
             "Build the Docker image, push to registry, update the k8s manifest, apply, and verify pods";
 
         // Warm up
-        _classifier.Classify(prompt);
+        _classifier.Classify(Prompt);
 
         var sw = Stopwatch.StartNew();
-        const int iterations = 1000;
-        for (int i = 0; i < iterations; i++)
-            _classifier.Classify(prompt);
+        const int Iterations = 1000;
+        for (var i = 0; i < Iterations; i++)
+            _classifier.Classify(Prompt);
         sw.Stop();
 
-        var averageMs = sw.Elapsed.TotalMilliseconds / iterations;
+        var averageMs = sw.Elapsed.TotalMilliseconds / Iterations;
         averageMs.Should().BeLessThan(1.0,
             because: $"average classification should be sub-millisecond (was {averageMs:F4}ms)");
     }
