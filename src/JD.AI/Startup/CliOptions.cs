@@ -86,7 +86,9 @@ internal static class CliArgumentParser
                 string.Equals(candidate, "wizard", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(candidate, "setup", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(candidate, "update", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(candidate, "install", StringComparison.OrdinalIgnoreCase))
+                string.Equals(candidate, "install", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(candidate, "gateway", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(candidate, "dashboard", StringComparison.OrdinalIgnoreCase))
             {
                 subcommand = candidate.ToLowerInvariant();
                 subcommandArgs = args.Skip(firstNonOptionIndex + 1).ToArray();
