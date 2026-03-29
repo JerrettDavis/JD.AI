@@ -172,30 +172,46 @@ rootCommand.Subcommands.Add(bridgeCommand);
 var dashboardCommand = new Command("dashboard", "Open the dashboard in the default browser");
 dashboardCommand.SetAction(async _ =>
 {
-    var baseUrl = $"http://{GatewayRuntimeDefaults.DefaultHost}:{GatewayRuntimeDefaults.DefaultPort}";
-    try
+    var port = GatewayRuntimeDefaults.DefaultPort;
+
+    // Try multiple addresses — some Windows configs resolve 'localhost' to IPv6
+    // which may not be bound when Kestrel listens on 0.0.0.0
+    string[] candidates = [$"http://127.0.0.1:{port}", $"http://localhost:{port}"];
+    string? reachableUrl = null;
+
+    using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
+    foreach (var candidate in candidates)
     {
-        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
-        var response = await client.GetAsync(new Uri($"{baseUrl}{GatewayRuntimeDefaults.HealthPath}"));
-        if (!response.IsSuccessStatusCode)
+        try
         {
-            Console.Error.WriteLine($"Daemon not running. Start with: {DaemonServiceIdentity.ToolCommand} run");
-            return 1;
+            var response = await client.GetAsync(new Uri($"{candidate}{GatewayRuntimeDefaults.HealthPath}"));
+            if (response.IsSuccessStatusCode)
+            {
+                reachableUrl = candidate;
+                break;
+            }
+        }
+        catch
+        {
+            // Try next candidate
         }
     }
-    catch
+
+    if (reachableUrl == null)
     {
-        Console.Error.WriteLine($"Daemon not running. Start with: {DaemonServiceIdentity.ToolCommand} run");
+        Console.Error.WriteLine($"Cannot reach gateway on port {port}.");
+        Console.Error.WriteLine($"Is the daemon running? Check with: {DaemonServiceIdentity.ToolCommand} status");
+        Console.Error.WriteLine($"Start with: {DaemonServiceIdentity.ToolCommand} run");
         return 1;
     }
 
-    Console.WriteLine($"Opening dashboard at {baseUrl}/ ...");
+    Console.WriteLine($"Opening dashboard at {reachableUrl}/ ...");
     if (OperatingSystem.IsWindows())
-        Process.Start(new ProcessStartInfo("cmd", $"/c start {baseUrl}/") { CreateNoWindow = true });
+        Process.Start(new ProcessStartInfo("cmd", $"/c start {reachableUrl}/") { CreateNoWindow = true });
     else if (OperatingSystem.IsLinux())
-        Process.Start("xdg-open", $"{baseUrl}/");
+        Process.Start("xdg-open", $"{reachableUrl}/");
     else if (OperatingSystem.IsMacOS())
-        Process.Start("open", $"{baseUrl}/");
+        Process.Start("open", $"{reachableUrl}/");
 
     return 0;
 });
