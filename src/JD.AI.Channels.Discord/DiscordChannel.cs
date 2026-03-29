@@ -1,5 +1,6 @@
 using Discord;
 using Discord.WebSocket;
+using JD.AI.Core.Agents;
 using JD.AI.Core.Channels;
 using JD.AI.Core.Commands;
 
@@ -10,7 +11,7 @@ namespace JD.AI.Channels.Discord;
 /// Supports DMs, guild channels, thread-based conversations,
 /// and native slash command registration via <see cref="ICommandAwareChannel"/>.
 /// </summary>
-public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChannel
+public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChannel, IAgentOutput
 {
     private readonly string _botToken;
     private readonly bool _allowBots;
@@ -18,8 +19,10 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
     private readonly bool _enableReactions;
     private readonly bool _requireMention;
     private readonly HashSet<ulong> _allowedMentionRoleIds;
+    private readonly HashSet<ulong> _privilegedUserIds;
     private readonly Dictionary<ulong, string> _activeReactionByMessageId = new();
     private readonly Dictionary<string, ulong> _pendingInboundByChannelId = new();
+    private readonly Dictionary<string, TaskCompletionSource<bool>> _pendingConfirmations = new();
     private DiscordSocketClient? _client;
     private TaskCompletionSource? _readyTcs;
     private ICommandRegistry? _commandRegistry;
@@ -33,7 +36,8 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
         IEnumerable<ulong>? allowedBotIds = null,
         bool enableReactions = false,
         bool requireMention = true,
-        IEnumerable<ulong>? allowedMentionRoleIds = null)
+        IEnumerable<ulong>? allowedMentionRoleIds = null,
+        IEnumerable<ulong>? privilegedUserIds = null)
     {
         _botToken = botToken;
         _allowBots = allowBots;
@@ -41,6 +45,7 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
         _enableReactions = enableReactions;
         _requireMention = requireMention;
         _allowedMentionRoleIds = allowedMentionRoleIds != null ? new HashSet<ulong>(allowedMentionRoleIds) : new HashSet<ulong>();
+        _privilegedUserIds = privilegedUserIds != null ? new HashSet<ulong>(privilegedUserIds) : new HashSet<ulong>();
     }
 
     public string ChannelType => "discord";
@@ -64,6 +69,7 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
         _client.Ready += OnReadyAsync;
         _client.MessageReceived += OnMessageReceivedAsync;
         _client.SlashCommandExecuted += OnSlashCommandExecutedAsync;
+        _client.ButtonExecuted += OnButtonExecutedAsync;
 
         await _client.LoginAsync(TokenType.Bot, _botToken);
         await _client.StartAsync();
@@ -90,6 +96,116 @@ public sealed class DiscordChannel : Core.Channels.IChannel, ICommandAwareChanne
         {
             await _client.StopAsync();
             await _client.LogoutAsync();
+        }
+    }
+
+    // --- IAgentOutput implementation ---
+
+    public void RenderInfo(string message) { /* Optional: log to Discord console channel? */ }
+    public void RenderWarning(string message) { }
+    public void RenderError(string message) { }
+    public void BeginThinking() { }
+    public void WriteThinkingChunk(string text) { }
+    public void EndThinking() { }
+    public void BeginStreaming() { }
+    public void WriteStreamingChunk(string text) { }
+    public void EndStreaming() { }
+
+    public void RenderToolCall(string toolName, string? args, string result)
+    {
+        // Tools results are typically sent back to the conversation by AgentRouter,
+        // so we don't need to do anything special here unless we want side-channel logging.
+    }
+
+    public bool ConfirmToolCall(string toolName, string? args)
+    {
+        // This is called synchronously by ToolConfirmationFilter, but we need to do async work.
+        // We use Task.Run().GetAwaiter().GetResult() because the SK filter expects a boolean return.
+        return Task.Run(async () => await ConfirmToolCallAsync(toolName, args)).GetAwaiter().GetResult();
+    }
+
+    private async Task<bool> ConfirmToolCallAsync(string toolName, string? args)
+    {
+        if (_client is null || _privilegedUserIds.Count == 0)
+            return true; // Auto-approve if no privileged users configured
+
+        var requestId = Guid.NewGuid().ToString("N")[..8];
+        var tcs = new TaskCompletionSource<bool>();
+        _pendingConfirmations[requestId] = tcs;
+
+        var embed = new EmbedBuilder()
+            .WithTitle("🛡️ Tool Execution Permission Requested")
+            .WithDescription($"An agent is requesting permission to execute a tool.")
+            .AddField("Tool", $"`{toolName}`", inline: true)
+            .AddField("Arguments", $"```\n{args ?? "(none)"}\n```")
+            .WithColor(Color.Gold)
+            .WithCurrentTimestamp()
+            .Build();
+
+        var components = new ComponentBuilder()
+            .WithButton("Approve", $"approve:{requestId}", ButtonStyle.Success)
+            .WithButton("Deny", $"deny:{requestId}", ButtonStyle.Danger)
+            .Build();
+
+        var sentToAny = false;
+        foreach (var userId in _privilegedUserIds)
+        {
+            try
+            {
+                var user = await _client.GetUserAsync(userId);
+                if (user is not null)
+                {
+                    await user.SendMessageAsync(embed: embed, components: components);
+                    sentToAny = true;
+                }
+            }
+            catch
+            {
+                // Best effort
+            }
+        }
+
+        if (!sentToAny)
+        {
+            _pendingConfirmations.Remove(requestId);
+            return true; // Fallback to allow if we couldn't reach any approvers
+        }
+
+        // Wait for up to 5 minutes for a response
+        var resultTask = tcs.Task;
+        var timeoutTask = Task.Delay(TimeSpan.FromMinutes(5));
+
+        var finishedTask = await Task.WhenAny(resultTask, timeoutTask);
+        _pendingConfirmations.Remove(requestId);
+
+        return finishedTask == resultTask && await resultTask;
+    }
+
+    private async Task OnButtonExecutedAsync(SocketMessageComponent component)
+    {
+        var customId = component.Data.CustomId;
+        if (customId.StartsWith("approve:", StringComparison.Ordinal) || customId.StartsWith("deny:", StringComparison.Ordinal))
+        {
+            var parts = customId.Split(':');
+            var action = parts[0];
+            var requestId = parts[1];
+
+            if (_pendingConfirmations.TryGetValue(requestId, out var tcs))
+            {
+                var approved = string.Equals(action, "approve", StringComparison.Ordinal);
+                tcs.TrySetResult(approved);
+
+                var responseText = approved ? "✅ Approved." : "❌ Denied.";
+                await component.UpdateAsync(msg =>
+                {
+                    msg.Content = responseText;
+                    msg.Components = new ComponentBuilder().Build(); // Remove buttons
+                });
+            }
+            else
+            {
+                await component.RespondAsync("This request has expired or already been processed.", ephemeral: true);
+            }
         }
     }
 
