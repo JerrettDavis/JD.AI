@@ -130,4 +130,33 @@ public sealed class GatewayApiClient(HttpClient http)
 
     public Task SyncOpenClawAsync() =>
         http.PostAsync(new Uri("api/gateway/openclaw/agents/sync", UriKind.Relative), null);
+
+    // Plugins
+    public async Task<PluginInfo[]> GetPluginsAsync()
+        => await http.GetFromJsonAsync<PluginInfo[]>("api/plugins") ?? [];
+
+    public async Task InstallPluginAsync(string pluginId)
+    {
+        var response = await http.PostAsJsonAsync("api/plugins/install", new { pluginId });
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task EnablePluginAsync(string id)
+    {
+        var response = await http.PostAsync(new Uri($"api/plugins/{Uri.EscapeDataString(id)}/enable", UriKind.Relative), null);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task DisablePluginAsync(string id)
+    {
+        var response = await http.PostAsync(new Uri($"api/plugins/{Uri.EscapeDataString(id)}/disable", UriKind.Relative), null);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public Task UninstallPluginAsync(string id) =>
+        http.DeleteAsync(new Uri($"api/plugins/{Uri.EscapeDataString(id)}", UriKind.Relative));
+
+    // Audit / Logs
+    public async Task<AuditEvent[]> GetAuditEventsAsync(int limit = 100)
+        => await http.GetFromJsonAsync<AuditEvent[]>($"api/audit?limit={limit}") ?? [];
 }

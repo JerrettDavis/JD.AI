@@ -1,0 +1,210 @@
+@page "/monitor"
+@inject GatewayApiClient Api
+@inject SignalRService SignalR
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+<PageTitle>Agent Monitor — JD.AI</PageTitle>
+
+<div class="jd-page-header">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h4">Agent Monitor</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small"
+                       data-testid="refresh-button" />
+    </MudStack>
+</div>
+
+@if (_loading)
+{
+    @* Skeleton summary cards *@
+    <MudGrid>
+        @for (var i = 0; i < 4; i++)
+        {
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="skeleton-stat-card">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="40px" Height="40px" />
+                        <MudStack Spacing="1">
+                            <MudSkeleton Width="80px" Height="14px" />
+                            <MudSkeleton Width="48px" Height="28px" />
+                        </MudStack>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+}
+else
+{
+    @* Fleet summary *@
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="stat-card" data-name="total-agents">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudAvatar Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Medium">
+                        <MudIcon Icon="@Icons.Material.Filled.SmartToy" />
+                    </MudAvatar>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Total Agents</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700;" data-testid="stat-value">@_agents.Length</MudText>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="stat-card" data-name="total-turns">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudAvatar Color="Color.Secondary" Variant="Variant.Outlined" Size="Size.Medium">
+                        <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" />
+                    </MudAvatar>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Total Turns</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700;" data-testid="stat-value">@_agents.Sum(a => a.TurnCount)</MudText>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="stat-card" data-name="providers">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudAvatar Color="Color.Tertiary" Variant="Variant.Outlined" Size="Size.Medium">
+                        <MudIcon Icon="@Icons.Material.Filled.Hub" />
+                    </MudAvatar>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Providers</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700;" data-testid="stat-value">@_agents.Select(a => a.Provider).Distinct().Count()</MudText>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="stat-card" data-name="active-sessions">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudAvatar Color="Color.Success" Variant="Variant.Outlined" Size="Size.Medium">
+                        <MudIcon Icon="@Icons.Material.Filled.Forum" />
+                    </MudAvatar>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Active Sessions</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700;" data-testid="stat-value">@_sessions.Count(s => s.IsActive)</MudText>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    @* Agent cards *@
+    @if (_agents.Length == 0)
+    {
+        <MudPaper Class="pa-6 mt-4" Elevation="0" data-testid="monitor-empty">
+            <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.MonitorHeart" Size="Size.Large" Color="Color.Default" Style="opacity:0.3" />
+                <MudText Color="Color.Secondary">No agents to monitor.</MudText>
+            </MudStack>
+        </MudPaper>
+    }
+    else
+    {
+        <MudGrid Class="mt-4">
+            @foreach (var agent in _agents)
+            {
+                var agentSessions = _sessions.Count(s => string.Equals(s.ModelId, agent.Model, StringComparison.OrdinalIgnoreCase));
+                var health = GetHealthColor(agent);
+
+                <MudItem xs="12" sm="6" md="4">
+                    <MudPaper Class="pa-4" Elevation="1" data-testid="agent-card">
+                        <MudStack Spacing="2">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <MudText Typo="Typo.h6" Style="font-weight:600;">@agent.Id</MudText>
+                                <MudChip T="string" Size="Size.Small" Color="@health" data-testid="agent-health">
+                                    @GetHealthLabel(health)
+                                </MudChip>
+                            </MudStack>
+                            <MudDivider />
+                            <MudSimpleTable Dense="true" Hover="false" Elevation="0">
+                                <tbody>
+                                    <tr>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">Provider</MudText></td>
+                                        <td><MudText Typo="Typo.body2">@agent.Provider</MudText></td>
+                                    </tr>
+                                    <tr>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">Model</MudText></td>
+                                        <td><MudText Typo="Typo.body2">@agent.Model</MudText></td>
+                                    </tr>
+                                    <tr>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">Turns</MudText></td>
+                                        <td><MudText Typo="Typo.body2">@agent.TurnCount</MudText></td>
+                                    </tr>
+                                    <tr>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">Sessions</MudText></td>
+                                        <td><MudText Typo="Typo.body2">@agentSessions</MudText></td>
+                                    </tr>
+                                    <tr>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">Created</MudText></td>
+                                        <td><MudText Typo="Typo.body2">@agent.CreatedAt.LocalDateTime.ToString("g")</MudText></td>
+                                    </tr>
+                                </tbody>
+                            </MudSimpleTable>
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+}
+
+@code {
+    private AgentInfo[] _agents = [];
+    private SessionInfo[] _sessions = [];
+    private bool _loading = true;
+    private EventHandler<ActivityEventArgs>? _activityHandler;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _activityHandler = (_, _) => InvokeAsync(async () =>
+        {
+            await LoadAsync();
+            StateHasChanged();
+        });
+        SignalR.OnActivityEvent += _activityHandler;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _agents = await Api.GetAgentsAsync();
+            _sessions = await Api.GetSessionsAsync();
+        }
+        catch
+        {
+            _agents = [];
+            _sessions = [];
+            Snackbar.Add("Failed to load agent data", Severity.Error);
+        }
+        _loading = false;
+    }
+
+    private static Color GetHealthColor(AgentInfo agent)
+    {
+        // Simple heuristic: high turn count with recent creation = healthy
+        // No error rate data available yet, so use turn activity as proxy
+        if (agent.TurnCount == 0) return Color.Warning;
+        return Color.Success;
+    }
+
+    private static string GetHealthLabel(Color color) => color switch
+    {
+        Color.Success => "Healthy",
+        Color.Warning => "Idle",
+        Color.Error => "Error",
+        _ => "Unknown"
+    };
+
+    public void Dispose()
+    {
+        if (_activityHandler is not null)
+            SignalR.OnActivityEvent -= _activityHandler;
+    }
+}
