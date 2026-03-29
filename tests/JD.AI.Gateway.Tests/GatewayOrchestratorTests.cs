@@ -282,7 +282,9 @@ public sealed class GatewayOrchestratorTests
         await discord.EmitMessageAsync(message);
 
         discord.SendCalls.Should().Be(1);
-        discord.LastSentContent.Should().BeOneOf("models-output", "status-output", "switch-output");
+        new[] { "models-output", "status-output", "switch-output" }
+            .Any(expected => string.Equals(expected, discord.LastSentContent, StringComparison.Ordinal))
+            .Should().BeTrue();
         _pool.ListAgents().Should().BeEmpty("fast-path command handling should not require LLM agent routing");
     }
 
@@ -378,7 +380,7 @@ public sealed class GatewayOrchestratorTests
                 SenderDisplayName = "User",
                 Content = content,
                 Timestamp = DateTimeOffset.UtcNow,
-                Metadata = new Dictionary<string, string>(),
+                Metadata = new Dictionary<string, string>(StringComparer.Ordinal),
                 Attachments = []
             });
         }
