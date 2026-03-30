@@ -1,7 +1,6 @@
 using JD.AI;
 using JD.AI.Agent;
 using JD.AI.Commands;
-using JD.AI.Utilities;
 using JD.AI.Core.Agents;
 using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Agents.Orchestration;
@@ -22,6 +21,7 @@ using JD.AI.Core.Usage;
 using JD.AI.Rendering;
 using JD.AI.Startup;
 using JD.AI.Tools;
+using JD.AI.Utilities;
 using JD.AI.Workflows;
 using JD.AI.Workflows.Store;
 using JD.SemanticKernel.Extensions.Compaction;
