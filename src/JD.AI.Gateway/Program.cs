@@ -8,7 +8,6 @@ using JD.AI.Core.Governance.Audit;
 using JD.AI.Core.Infrastructure;
 using JD.AI.Core.LocalModels;
 using JD.AI.Core.Memory;
-using Microsoft.Extensions.Logging;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Security;
@@ -23,6 +22,7 @@ using JD.AI.Telemetry;
 using JD.AI.Telemetry.Extensions;
 using JD.AI.Workflows;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
