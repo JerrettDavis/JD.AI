@@ -11,6 +11,7 @@ using JD.AI.Core.Providers.ModelSearch;
 using JD.AI.Core.Skills;
 using JD.AI.Core.Usage;
 using JD.AI.Rendering;
+using JD.AI.Services;
 using JD.AI.Workflows;
 using JD.AI.Workflows.Store;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -45,6 +46,13 @@ internal sealed class InteractiveLoop
 
     private FooterBar? _footerBar;
     private FooterStateProvider? _footerStateProvider;
+    private readonly GatewayConnectionService? _gateway;
+
+    /// <summary>
+    /// True when a gateway connection is active and messages should route through it
+    /// instead of the in-process <see cref="AgentLoop"/>.
+    /// </summary>
+    public bool UseGateway => _gateway is { IsConnected: true };
 
     public InteractiveLoop(
         AgentSession session,
@@ -62,7 +70,8 @@ internal sealed class InteractiveLoop
         string systemPrompt,
         PluginLoader pluginLoader,
         IPluginLifecycleManager? pluginManager,
-        ICostEstimator? costEstimator = null)
+        ICostEstimator? costEstimator = null,
+        GatewayConnectionService? gateway = null)
     {
         _session = session;
         _opts = opts;
@@ -79,6 +88,7 @@ internal sealed class InteractiveLoop
         _systemPrompt = systemPrompt;
         _pluginLoader = pluginLoader;
         _pluginManager = pluginManager;
+        _gateway = gateway;
         _turnOrchestrator = new SessionTurnOrchestrator(
             _session,
             _governance,
@@ -465,15 +475,23 @@ internal sealed class InteractiveLoop
                 }
             }
 
-            // Regular chat message
+            // Regular chat message — route through gateway when connected,
+            // otherwise fall back to in-process agent loop.
             ChatRenderer.DimInputLine(input);
-            await RunAgentTurnLoopAsync(
-                    agentLoop,
-                    input,
-                    appCts,
-                    spectreOutput,
-                    monitorBox).
-                ConfigureAwait(false);
+            if (UseGateway)
+            {
+                await RunGatewayTurnAsync(input, appCts.Token).ConfigureAwait(false);
+            }
+            else
+            {
+                await RunAgentTurnLoopAsync(
+                        agentLoop,
+                        input,
+                        appCts,
+                        spectreOutput,
+                        monitorBox).
+                    ConfigureAwait(false);
+            }
         }
 
         appCts.Dispose();
@@ -525,6 +543,33 @@ internal sealed class InteractiveLoop
         // Keep model metadata fresh for subsequent footer renders.
         spectreOutput.ModelName = _session.CurrentModel?.Id;
         RenderFooter();
+    }
+
+    /// <summary>
+    /// Routes a single user message through the gateway (SignalR streaming).
+    /// Falls back to a warning if the gateway becomes unreachable mid-turn.
+    /// </summary>
+    private async Task RunGatewayTurnAsync(string input, CancellationToken ct)
+    {
+        try
+        {
+            ChatRenderer.BeginStreaming();
+
+            await foreach (var chunk in _gateway!.SendMessageStreamingAsync(input, ct).ConfigureAwait(false))
+            {
+                ChatRenderer.WriteStreamingChunk(chunk);
+            }
+
+            ChatRenderer.EndStreaming();
+        }
+#pragma warning disable CA1031
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            ChatRenderer.EndStreaming();
+            ChatRenderer.RenderWarning(
+                $"Gateway streaming failed: {ex.Message}. Subsequent messages will use in-process execution.");
+        }
+#pragma warning restore CA1031
     }
 }
 
