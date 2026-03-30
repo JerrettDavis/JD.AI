@@ -71,7 +71,7 @@ public sealed class UpdateChecker
 
         var entries = plan.Tools.Select(tool =>
         {
-            var update = plan.Updates.FirstOrDefault(u => u.Tool.PackageId == tool.PackageId);
+            var update = plan.Updates.FirstOrDefault(u => string.Equals(u.Tool.PackageId, tool.PackageId, StringComparison.Ordinal));
             return new AllToolsUpdateEntry(
                 tool.PackageId,
                 tool.ToolName,
