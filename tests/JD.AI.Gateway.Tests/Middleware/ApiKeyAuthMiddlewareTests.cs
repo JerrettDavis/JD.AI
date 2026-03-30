@@ -25,7 +25,8 @@ public sealed class ApiKeyAuthMiddlewareUnitTests
     {
         var provider = authProvider ?? new ApiKeyAuthProvider();
         provider.RegisterKey(ValidKey, "Test User", GatewayRole.Admin);
-        return new ApiKeyAuthMiddleware(next, provider);
+        var keyRotation = new ApiKeyRotation();
+        return new ApiKeyAuthMiddleware(next, provider, keyRotation);
     }
 
     [Fact]
