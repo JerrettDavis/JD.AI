@@ -110,7 +110,8 @@ public sealed class IntentClassifierFileWatcher : IHostedService, IDisposable
     private readonly IIntentClassifierManager _manager;
     private readonly string _modelPath;
     private readonly ILogger<IntentClassifierFileWatcher> _log;
-    private readonly System.Threading.Lock _lock = new();
+    private readonly System.Threading.Lock _reloadLock = new();
+    private volatile bool _isReloading;
     private FileSystemWatcher? _watcher;
 
     public IntentClassifierFileWatcher(
@@ -151,6 +152,12 @@ public sealed class IntentClassifierFileWatcher : IHostedService, IDisposable
 
     private void OnChanged(object sender, FileSystemEventArgs e)
     {
+        lock (_reloadLock)
+        {
+            if (_isReloading) return;
+            _isReloading = true;
+        }
+
         _log.LogInformation(
             "[IntentClassifierFileWatcher] Model file changed ({ChangeType}) — reloading",
             e.ChangeType);
@@ -165,6 +172,10 @@ public sealed class IntentClassifierFileWatcher : IHostedService, IDisposable
         catch (Exception ex)
         {
             _log.LogError(ex, "[IntentClassifierFileWatcher] Failed to reload model");
+        }
+        finally
+        {
+            _isReloading = false;
         }
     }
 
