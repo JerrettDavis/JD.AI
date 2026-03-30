@@ -1,5 +1,8 @@
 @page "/providers"
 @inject GatewayApiClient Api
+@inject SignalRService SignalR
+@inject ISnackbar Snackbar
+@implements IDisposable
 
 <PageTitle>Providers — JD.AI</PageTitle>
 
@@ -104,8 +107,26 @@ else
 @code {
     private ProviderInfo[]? _providers;
     private bool _loading = true;
+    private EventHandler<ActivityEventArgs>? _activityHandler;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _activityHandler = (_, e) =>
+        {
+            var type = e.Activity.EventType;
+            if (type.Contains("provider", StringComparison.OrdinalIgnoreCase))
+            {
+                InvokeAsync(async () =>
+                {
+                    Snackbar.Add($"Provider update: {e.Activity.Message}", Severity.Info);
+                    await LoadAsync();
+                    StateHasChanged();
+                });
+            }
+        };
+        SignalR.OnActivityEvent += _activityHandler;
+        await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {
@@ -113,5 +134,11 @@ else
         try { _providers = await Api.GetProvidersAsync(); }
         catch { _providers = null; }
         _loading = false;
+    }
+
+    public void Dispose()
+    {
+        if (_activityHandler is not null)
+            SignalR.OnActivityEvent -= _activityHandler;
     }
 }
