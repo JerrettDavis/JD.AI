@@ -68,6 +68,33 @@ public static class TrainingDataGenerator
         "Set up monitoring, configure alerts, set up dashboards, and add runbooks",
     ];
 
+    // ── Real examples from JD's Discord sessions ──────────────────────
+    // Manually labeled from OpenClaw session transcripts (0c4ef8fc)
+    // Labeling: multi-step / coding task = workflow; question / chat = conversation
+
+    private static readonly string[] RealWorkflowSeeds =
+    [
+        "pull gh issue #423 from jd.ai. We have the repo is c:\\git\\jd.ai. We need to make sure to use our own worktree before merging back to main",
+        "Fix the PR validation errors: https://github.com/JerrettDavis/JD.AI/actions/runs/...",
+        "remove the tmp-* files from the repo root and commit to main in jd.ai. Get it pushed",
+        "validate that https://github.com/JerrettDavis/JD.AI/issues/399 has not already been implemented. If it has, validate it's feature complete and close the PR. If it's not yet complete, review the PR, review the codebase, create a plan to implement the feature, create structured todos, and knock it out in a dedicated worktree",
+        "Let's start work on #405. We can review, plan and see what we can accomplish in our worktree. We want to open a PR with our work",
+        "start work on issue #404. We want to develop the ML pathway and the training tooling to make it work properly",
+        "review, plan, and start on issue #404. You can come back and ask questions if guidance is needed",
+        "close the associated issue if we're complete",
+        "build a new feature that does X, add tests, and get it ready for review",
+        "create a dedicated worktree off of the latest remote main for this feature work",
+        "Ensure all tests, linters, and analyzers pass. Get a PR open and all workflows green",
+    ];
+
+    private static readonly string[] RealConversationSeeds =
+    [
+        "introduce yourself",
+        "what do you think about microservices vs monolith?",
+        "thanks for the explanation",
+        "can you help me with something?",
+    ];
+
     private static readonly string[] ConversationSeeds =
     [
         // Questions
@@ -206,10 +233,22 @@ public static class TrainingDataGenerator
             prompts.AddRange(AugmentWorkflow(seed, augmentPerSeed));
         }
 
+        foreach (var seed in RealWorkflowSeeds)
+        {
+            prompts.Add(new LabeledPrompt(seed, IsWorkflow: true));
+            prompts.AddRange(AugmentWorkflow(seed, augmentPerSeed / 2));
+        }
+
         foreach (var seed in ConversationSeeds)
         {
             prompts.Add(new LabeledPrompt(seed, IsWorkflow: false));
             prompts.AddRange(AugmentConversation(seed, Math.Max(3, augmentPerSeed / 3)));
+        }
+
+        foreach (var seed in RealConversationSeeds)
+        {
+            prompts.Add(new LabeledPrompt(seed, IsWorkflow: false));
+            prompts.AddRange(AugmentConversation(seed, Math.Max(2, augmentPerSeed / 4)));
         }
 
         return prompts;
