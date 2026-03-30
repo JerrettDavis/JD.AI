@@ -120,18 +120,24 @@ rootCommand.Subcommands.Add(statusCommand);
 // ── update ─────────────────────────────────────────────────────────
 var updateCommand = new Command("update", "Check for and apply updates from NuGet");
 var checkOnlyOption = new Option<bool>("--check-only") { Description = "Only check — don't apply the update" };
+var allToolsOption = new Option<bool>("--all") { Description = "Update all installed JD.AI tools (default)" };
+var daemonOnlyOption = new Option<bool>("--daemon-only") { Description = "Update only the daemon tool" };
 var elevatedOption = new Option<bool>("--elevated")
 {
     Description = "Internal flag used after UAC/sudo relaunch.",
     Hidden = true,
 };
 updateCommand.Options.Add(checkOnlyOption);
+updateCommand.Options.Add(allToolsOption);
+updateCommand.Options.Add(daemonOnlyOption);
 updateCommand.Options.Add(elevatedOption);
 updateCommand.SetAction(async parseResult =>
 {
     var checkOnly = parseResult.GetValue(checkOnlyOption);
+    var allTools = parseResult.GetValue(allToolsOption);
+    var daemonOnly = parseResult.GetValue(daemonOnlyOption);
     var elevated = parseResult.GetValue(elevatedOption);
-    return await RunUpdateCommandAsync(checkOnly, elevated);
+    return await RunUpdateCommandAsync(checkOnly, allTools, daemonOnly, elevated);
 });
 rootCommand.Subcommands.Add(updateCommand);
 
@@ -537,7 +543,102 @@ static void RunDaemon(string[] args)
     app.Run();
 }
 
-static async Task<int> RunUpdateCommandAsync(bool checkOnly, bool elevatedAttempt)
+static async Task<int> RunMultiToolUpdateAsync(
+    bool checkOnly,
+    bool shouldReconcileService,
+    bool serviceWasRunning,
+    IServiceManager? serviceManager)
+{
+    using var host = Host.CreateApplicationBuilder([]).Build();
+    var checker = host.Services.GetRequiredService<UpdateChecker>();
+
+    Console.WriteLine("Detecting installed JD.AI tools...");
+    var plan = await checker.CheckAllToolsAsync().ConfigureAwait(false);
+
+    Console.WriteLine($"Found {plan.Entries.Count} JD.AI tool(s):");
+    foreach (var entry in plan.Entries)
+    {
+        Console.WriteLine($"  {entry.PackageId} ({entry.ToolName}) — v{entry.CurrentVersion}");
+    }
+
+    if (!plan.HasUpdates)
+    {
+        Console.WriteLine("✓ All tools are up to date.");
+        return 0;
+    }
+
+    Console.WriteLine();
+    Console.WriteLine($"Updates available:");
+    foreach (var entry in plan.Entries.Where(e => e.HasUpdate))
+    {
+        Console.WriteLine($"  {entry.PackageId}: {entry.CurrentVersion} → {entry.LatestVersion}");
+    }
+    Console.WriteLine();
+
+    if (checkOnly)
+    {
+        Console.WriteLine($"Run '{DaemonServiceIdentity.ToolCommand} update' (without --check-only) to apply.");
+        return 0;
+    }
+
+    // Stop service if needed
+    if (serviceWasRunning && serviceManager is not null)
+    {
+        Console.WriteLine("Stopping daemon service to release locked files...");
+        var stopResult = await serviceManager.StopAsync().ConfigureAwait(false);
+        if (!stopResult.Success)
+        {
+            Console.WriteLine($"✗ Failed to stop service: {stopResult.Message}");
+            return 1;
+        }
+    }
+
+    Console.WriteLine("Applying all tool updates...");
+
+    var tools = await JDAIToolkit.GetInstalledToolsAsync().ConfigureAwait(false);
+    var updatePlan = await JDAIToolkit.CheckAllAsync(tools).ConfigureAwait(false);
+    var allSuccess = true;
+
+    await JDAIToolkit.ApplyAllAsync(
+        updatePlan,
+        continueOnError: true,
+        onToolUpdated: (tool, result) =>
+        {
+            if (result.Success)
+                Console.WriteLine($"  ✓ {tool.PackageId} updated");
+            else
+            {
+                Console.WriteLine($"  ✗ {tool.PackageId} failed: {result.Output}");
+                allSuccess = false;
+            }
+        }).ConfigureAwait(false);
+
+    if (!allSuccess)
+    {
+        Console.WriteLine("✗ One or more tools failed to update. See above for details.");
+        if (serviceWasRunning && serviceManager is not null)
+        {
+            Console.WriteLine("Restarting daemon service...");
+            await serviceManager.StartAsync().ConfigureAwait(false);
+        }
+        return 1;
+    }
+
+    Console.WriteLine("All tools updated successfully.");
+
+    // Restart daemon if it was running
+    if (serviceWasRunning && serviceManager is not null)
+    {
+        Console.WriteLine("Restarting daemon service...");
+        var startResult = await serviceManager.StartAsync().ConfigureAwait(false);
+        if (!startResult.Success)
+            Console.WriteLine($"Warning: failed to restart service: {startResult.Message}");
+    }
+
+    return 0;
+}
+
+static async Task<int> RunUpdateCommandAsync(bool checkOnly, bool allTools, bool daemonOnly, bool elevatedAttempt)
 {
     IServiceManager? serviceManager = null;
     var shouldReconcileService = false;
@@ -586,6 +687,13 @@ static async Task<int> RunUpdateCommandAsync(bool checkOnly, bool elevatedAttemp
     using var host = builder.Build();
     var checker = host.Services.GetRequiredService<UpdateChecker>();
 
+    // ── Multi-tool update path (default) ─────────────────────────
+    if (!daemonOnly)
+    {
+        return await RunMultiToolUpdateAsync(checkOnly, shouldReconcileService, serviceWasRunning, serviceManager).ConfigureAwait(false);
+    }
+
+    // ── Single-tool daemon-only path ─────────────────────────────
     Console.WriteLine($"Current version: {checker.CurrentVersion}");
     Console.WriteLine("Checking NuGet for updates...");
 

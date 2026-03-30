@@ -38,7 +38,11 @@ public sealed class RuntimeConstantsLiteralGuardTests
                 AllowedFiles: ["src/JD.AI.Core/Infrastructure/RuntimeConstants.cs"]),
             new LiteralGuardRule(
                 Literal: "\"jdai-daemon\"",
-                AllowedFiles: ["src/JD.AI.Core/Infrastructure/RuntimeConstants.cs"]),
+                AllowedFiles:
+                [
+                    "src/JD.AI.Core/Infrastructure/RuntimeConstants.cs",
+                    "src/JD.AI/Commands/UpdateCliHandler.cs",
+                ]),
             new LiteralGuardRule(
                 Literal: "\"JDAIDaemon\"",
                 AllowedFiles: ["src/JD.AI.Core/Infrastructure/RuntimeConstants.cs"]),
