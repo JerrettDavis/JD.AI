@@ -19,6 +19,18 @@ internal static class UpdateCliHandler
     internal static Func<InstallationInfo, IInstallStrategy> InstallStrategyFactory { get; set; } =
         static info => new GitHubReleaseStrategy(info.RuntimeId, info.ExecutablePath);
 
+    /// <summary>Factory for JDAIToolkit operations. Override in tests to inject mock behavior.</summary>
+    internal static Func<CancellationToken, Task<IReadOnlyList<InstalledTool>>> GetInstalledToolsAsync { get; set; } =
+        JDAIToolkit.GetInstalledToolsAsync;
+
+    /// <summary>Factory for JDAIToolkit.CheckAllAsync. Override in tests.</summary>
+    internal static Func<IReadOnlyList<InstalledTool>?, CancellationToken, Task<UpdatePlan>> CheckAllAsync { get; set; } =
+        JDAIToolkit.CheckAllAsync;
+
+    /// <summary>Factory for JDAIToolkit.GetLatestVersionAsync. Override in tests.</summary>
+    internal static Func<string, CancellationToken, Task<string?>> GetLatestVersionAsync { get; set; } =
+        JDAIToolkit.GetLatestVersionAsync;
+
     public static async Task<int> RunAsync(string subcommand, string[] args)
     {
         using var cts = new CancellationTokenSource();
@@ -66,6 +78,14 @@ internal static class UpdateCliHandler
             return await RunSelfUpdateAsync(checkOnly, force, ct).ConfigureAwait(false);
         }
 
+        var tools = await GetInstalledToolsAsync(ct).ConfigureAwait(false);
+
+        // Fall back to single-tool mode if no other JD.AI tools are detected
+        if (tools.Count == 0)
+        {
+            return await RunSelfUpdateAsync(checkOnly, force, ct).ConfigureAwait(false);
+        }
+
         return await RunMultiToolUpdateAsync(checkOnly: false, allTools: true, namedTool: null, force, ct)
             .ConfigureAwait(false);
     }
@@ -97,7 +117,7 @@ internal static class UpdateCliHandler
         if (tools.Count == 0)
         {
             AnsiConsole.MarkupLine("[yellow]No JD.AI tools found installed.[/]");
-            return 0;
+            return 1;
         }
 
         AnsiConsole.MarkupLine($"[dim]Found [bold]{tools.Count}[/] JD.AI tool(s):[/]");
@@ -215,7 +235,7 @@ internal static class UpdateCliHandler
             .Spinner(Spinner.Known.Dots)
             .SpinnerStyle(Style.Parse("yellow"))
             .StartAsync("Fetching latest version...", async _ =>
-                await JDAIToolkit.GetLatestVersionAsync(packageId, ct).ConfigureAwait(false))
+                await GetLatestVersionAsync(packageId, ct).ConfigureAwait(false))
             .ConfigureAwait(false);
 
         if (latest is null)
