@@ -21,8 +21,10 @@ public static class Program
     private sealed class PromptPrediction
     {
         [ColumnName("PredictedLabel")]
-        public bool PredictedLabel;
-        public float Probability;
+        public bool PredictedLabel { get; set; }
+
+        [ColumnName("Probability")]
+        public float Probability { get; set; }
     }
 
     public static async Task<int> Main(string[] args)
