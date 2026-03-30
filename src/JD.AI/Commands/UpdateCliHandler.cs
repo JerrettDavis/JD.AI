@@ -450,10 +450,8 @@ internal static class UpdateCliHandler
             return "JD.AI.Gateway";
         if (name.Equals("jdai-tui", StringComparison.OrdinalIgnoreCase))
             return "JD.AI.TUI";
-        if (name.StartsWith("JD.AI", StringComparison.OrdinalIgnoreCase))
-            return name;
 
-        // Assume it's already a package ID
+        // Not a known short name — treat as a package ID directly
         return name;
     }
 
