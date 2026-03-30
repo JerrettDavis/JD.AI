@@ -19,6 +19,7 @@
     <Project Path="src/JD.AI.Channels.OpenClaw/JD.AI.Channels.OpenClaw.csproj" />
     <Project Path="src/JD.AI.Workflows.Distributed/JD.AI.Workflows.Distributed.csproj" />
     <Project Path="src/JD.AI.Workflows/JD.AI.Workflows.csproj" />
+    <Project Path="src/JD.AI.Sandbox/JD.AI.Sandbox.csproj" />
     <Project Path="src/JD.AI.SpecSite/JD.AI.SpecSite.csproj" />
     <Project Path="src/JD.AI/JD.AI.csproj" />
   </Folder>
@@ -28,6 +29,7 @@
     <Project Path="tests/JD.AI.Daemon.Tests/JD.AI.Daemon.Tests.csproj" />
     <Project Path="tests/JD.AI.Gateway.Tests/JD.AI.Gateway.Tests.csproj" />
     <Project Path="tests/JD.AI.Specs/JD.AI.Specs.csproj" />
+    <Project Path="tests/JD.AI.Sandbox.Tests/JD.AI.Sandbox.Tests.csproj" />
     <Project Path="tests/JD.AI.Specs.UI/JD.AI.Specs.UI.csproj" />
   </Folder>
 </Solution>
