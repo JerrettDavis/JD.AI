@@ -11,8 +11,8 @@ namespace JD.AI.Workflows.Training;
 public static class SessionExtractor
 {
     // Events in a transcript line
-    private interface TranscriptEvent { string? ParentId { get; } }
-    private sealed record TranscriptToolResult(string Id, string? ParentId, string Tool, string Content) : TranscriptEvent;
+    private interface ITranscriptEvent { string? ParentId { get; } }
+    private sealed record TranscriptToolResult(string Id, string? ParentId, string Tool, string Content) : ITranscriptEvent;
 
     // Tool names that indicate workflow intent
     private static readonly HashSet<string> WorkflowTools =
@@ -31,7 +31,7 @@ public static class SessionExtractor
         string transcriptPath,
         int minAssistantMessages = 1)
     {
-        var events = new Dictionary<string, TranscriptEvent>();
+        var events = new Dictionary<string, ITranscriptEvent>();
         var prompts = new List<TrainingDataGenerator.LabeledPrompt>();
 
         foreach (var line in File.ReadAllLines(transcriptPath))
@@ -118,7 +118,7 @@ public static class SessionExtractor
     /// Determines if a user prompt was a workflow by checking if the assistant's
     /// response involved tool calls.
     /// </summary>
-    private static bool IsWorkflowFromHistory(Dictionary<string, TranscriptEvent> events, string userMsgId, int minToolCalls)
+    private static bool IsWorkflowFromHistory(Dictionary<string, ITranscriptEvent> events, string userMsgId, int minToolCalls)
     {
         var toolCallCount = 0;
         var visited = new HashSet<string>();
