@@ -20,6 +20,7 @@ using JD.AI.Gateway.Middleware;
 using JD.AI.Gateway.Services;
 using JD.AI.Telemetry;
 using JD.AI.Telemetry.Extensions;
+using JD.AI.Workflows;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -37,6 +38,18 @@ foreach (var entry in gatewayConfig.Auth.ApiKeys)
 }
 
 builder.Services.AddSingleton<IAuthProvider>(authProvider);
+
+// API key lifecycle management (create, revoke, rotate, usage tracking)
+var apiKeyRotation = new ApiKeyRotation();
+foreach (var entry in gatewayConfig.Auth.ApiKeys)
+{
+    if (Enum.TryParse<GatewayRole>(entry.Role, ignoreCase: true, out var role))
+    {
+        apiKeyRotation.GenerateKey(entry.Name, role);
+    }
+}
+builder.Services.AddSingleton(apiKeyRotation);
+
 if (string.Equals(gatewayConfig.RateLimit.Provider, "Redis", StringComparison.OrdinalIgnoreCase)
     && !string.IsNullOrWhiteSpace(gatewayConfig.RateLimit.RedisConnectionString))
 {
@@ -139,6 +152,12 @@ builder.Services.AddSingleton(sp => new AuditService(sp.GetServices<IAuditSink>(
 
 builder.Services.AddSingleton<IVectorStore>(_ =>
     new SqliteVectorStore(DataDirectories.VectorsDb));
+
+// --- Workflow services ---
+builder.Services.AddSingleton<IWorkflowCatalog>(_ =>
+    new FileWorkflowCatalog(Path.Combine(DataDirectories.Root, "workflows")));
+builder.Services.AddSingleton<IWorkflowBridge, WorkflowBridge>();
+builder.Services.AddSingleton<IPromptIntentClassifier, TfIdfIntentClassifier>();
 
 // --- Channel factory & orchestrator ---
 builder.Services.AddSingleton<ChannelFactory>();
@@ -302,7 +321,9 @@ app.MapPluginEndpoints();
 app.MapMemoryEndpoints();
 app.MapRoutingEndpoints();
 app.MapGatewayConfigEndpoints();
+app.MapApiKeyEndpoints();
 app.MapAuditEndpoints();
+app.MapWorkflowEndpoints();
 
 // --- SignalR hubs ---
 app.MapHub<AgentHub>("/hubs/agent");
