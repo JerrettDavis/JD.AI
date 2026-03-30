@@ -127,7 +127,7 @@ else
     {
         var parameters = new DialogParameters<CreateApiKeyDialog> { { d => d.OnCreated, EventCallback.Factory.Create<CreateApiKeyResponse>(this, OnKeyCreated) } };
         var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
-        Dialog.Show<CreateApiKeyDialog>("Create API Key", parameters, options);
+        await Dialog.ShowAsync<CreateApiKeyDialog>("Create API Key", parameters, options);
     }
 
     private async Task ShowRotateDialog(ApiKeyDisplayModel key)
@@ -138,7 +138,7 @@ else
             { d => d.OnRotated, EventCallback.Factory.Create<RotateApiKeyResponse>(this, OnKeyRotated) }
         };
         var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
-        Dialog.Show<RotateApiKeyDialog>("Rotate API Key", parameters, options);
+        await Dialog.ShowAsync<RotateApiKeyDialog>("Rotate API Key", parameters, options);
     }
 
     private async Task ShowRevokeDialog(ApiKeyDisplayModel key)
@@ -149,7 +149,7 @@ else
             { d => d.OnRevoked, EventCallback.Factory.Create<string>(this, OnKeyRevoked) }
         };
         var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
-        Dialog.Show<RevokeApiKeyDialog>("Revoke API Key", parameters, options);
+        await Dialog.ShowAsync<RevokeApiKeyDialog>("Revoke API Key", parameters, options);
     }
 
     private async Task OnKeyCreated(CreateApiKeyResponse response)
