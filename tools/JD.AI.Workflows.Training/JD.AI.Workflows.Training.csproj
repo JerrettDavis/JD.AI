@@ -18,6 +18,7 @@
       CA1859;  <!-- concrete return types — fine for tools -->
       CA1849;  <!-- sync file IO in one-shot tool — fine -->
       MA0002;  <!-- IComparer for controlled seed inputs -->
+      MA0006;  <!-- string != vs string.Equals — fine in tools -->
       MA0009;  <!-- Regex ReDoS on controlled seed strings -->
       MA0011;  <!-- culture-aware case ops on English data -->
       MA0016;  <!-- concrete collections fine in tools -->
