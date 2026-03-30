@@ -7,12 +7,30 @@
 <PageTitle>Chat — JD.AI</PageTitle>
 
 <div class="jd-chat-container">
-    @* ── Top bar: agent selector ── *@
+    @* ── Top bar: agent selector + session controls ── *@
     <MudPaper data-testid="chat-header" Class="jd-chat-header" Elevation="0">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
             <MudIcon Icon="@Icons.Material.Filled.Chat" Size="Size.Small" Color="Color.Primary" />
             <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Web Chat</MudText>
             <MudSpacer />
+
+            @* Session selector *@
+            @if (_sessions.Length > 0)
+            {
+                <MudSelect data-testid="session-selector" @bind-Value="_activeSessionId" Label="Session" Variant="Variant.Outlined"
+                           Margin="Margin.Dense" Style="max-width:260px;"
+                           Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.History"
+                           TextChanged="@OnSessionSelected">
+                    @foreach (var s in _sessions)
+                    {
+                        <MudSelectItem T="string" Value="@s.Id">
+                            @GetSessionLabel(s)
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            }
+
+            @* Agent selector *@
             @if (_agents.Length > 0)
             {
                 <MudSelect data-testid="agent-selector" @bind-Value="_selectedAgentId" Label="Agent" Variant="Variant.Outlined"
@@ -33,8 +51,19 @@
                     No agents running
                 </MudChip>
             }
-            <MudIconButton data-testid="clear-chat-button" Icon="@Icons.Material.Filled.DeleteSweep" Color="Color.Error" Size="Size.Small"
-                           OnClick="ClearChat" Disabled="@(_messages.Count == 0)" />
+
+            <MudTooltip Text="New conversation">
+                <MudIconButton data-testid="new-chat-button" Icon="@Icons.Material.Filled.AddComment" Color="Color.Primary" Size="Size.Small"
+                               OnClick="NewConversation" />
+            </MudTooltip>
+            <MudTooltip Text="Export conversation">
+                <MudIconButton data-testid="export-chat-button" Icon="@Icons.Material.Filled.Download" Color="Color.Default" Size="Size.Small"
+                               OnClick="ExportConversation" Disabled="@(string.IsNullOrEmpty(_activeSessionId))" />
+            </MudTooltip>
+            <MudTooltip Text="Clear chat">
+                <MudIconButton data-testid="clear-chat-button" Icon="@Icons.Material.Filled.DeleteSweep" Color="Color.Error" Size="Size.Small"
+                               OnClick="ClearChat" Disabled="@(_messages.Count == 0)" />
+            </MudTooltip>
         </MudStack>
     </MudPaper>
 
@@ -68,6 +97,25 @@
                     </MudText>
                 </div>
                 <MudText Typo="Typo.body2" Class="jd-chat-text" Style="white-space:pre-wrap;">@msg.Content</MudText>
+                @if (msg.TokensIn > 0 || msg.TokensOut > 0)
+                {
+                    <div class="jd-chat-tokens">
+                        @if (msg.TokensIn > 0)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Info"
+                                     Style="font-size:0.65rem;height:18px;">
+                                @msg.TokensIn.ToString("N0") in
+                            </MudChip>
+                        }
+                        @if (msg.TokensOut > 0)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Success"
+                                     Style="font-size:0.65rem;height:18px;">
+                                @msg.TokensOut.ToString("N0") out
+                            </MudChip>
+                        }
+                    </div>
+                }
             </div>
         }
 
@@ -82,6 +130,17 @@
             </div>
         }
     </div>
+
+    @* ── Token counter bar ── *@
+    @if (_totalTokensIn > 0 || _totalTokensOut > 0)
+    {
+        <div class="jd-chat-token-bar">
+            <MudIcon Icon="@Icons.Material.Filled.Token" Size="Size.Small" Style="opacity:0.5;" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Tokens: <strong>@_totalTokensIn.ToString("N0")</strong> in / <strong>@_totalTokensOut.ToString("N0")</strong> out
+            </MudText>
+        </div>
+    }
 
     @* ── Input bar ── *@
     <MudPaper Class="jd-chat-input" Elevation="0">
@@ -168,6 +227,23 @@
         word-break: break-word;
     }
 
+    .jd-chat-tokens {
+        display: flex;
+        gap: 4px;
+        margin-top: 4px;
+        justify-content: flex-end;
+    }
+
+    .jd-chat-token-bar {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 20px;
+        border-top: 1px solid rgba(136,146,168,0.08);
+        background: rgba(20,20,36,0.3);
+        flex-shrink: 0;
+    }
+
     .jd-chat-input {
         padding: 12px 20px;
         border-top: 1px solid rgba(136,146,168,0.12);
@@ -192,12 +268,18 @@
 </style>
 
 @code {
+    private const string LocalStorageKey = "jdai_active_session";
+
     private AgentInfo[] _agents = [];
+    private SessionInfo[] _sessions = [];
     private string _selectedAgentId = "";
+    private string _activeSessionId = "";
     private string _userInput = "";
     private bool _loading = true;
     private bool _streaming;
     private string _streamBuffer = "";
+    private int _totalTokensIn;
+    private int _totalTokensOut;
     private ElementReference _messagesContainer;
     private readonly List<ChatMessage> _messages = [];
     private CancellationTokenSource? _streamCts;
@@ -205,6 +287,8 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadAgents();
+        await LoadSessions();
+        await RestoreActiveSession();
         _loading = false;
     }
 
@@ -219,6 +303,100 @@
         catch { /* Gateway may be down */ }
     }
 
+    private async Task LoadSessions()
+    {
+        try
+        {
+            _sessions = await Api.GetSessionsAsync(20);
+        }
+        catch { /* Gateway may be down */ }
+    }
+
+    private async Task RestoreActiveSession()
+    {
+        try
+        {
+            var savedId = await JS.InvokeAsync<string>("localStorage.getItem", LocalStorageKey);
+            if (!string.IsNullOrEmpty(savedId))
+            {
+                await LoadSession(savedId);
+            }
+        }
+        catch { /* localStorage may not be available during prerender */ }
+    }
+
+    private async Task LoadSession(string sessionId)
+    {
+        try
+        {
+            var session = await Api.GetSessionAsync(sessionId);
+            if (session is null) return;
+
+            _activeSessionId = session.Id;
+            _messages.Clear();
+            _totalTokensIn = 0;
+            _totalTokensOut = 0;
+
+            foreach (var turn in session.Turns.OrderBy(t => t.TurnIndex))
+            {
+                var isUser = string.Equals(turn.Role, "user", StringComparison.OrdinalIgnoreCase);
+                _messages.Add(new ChatMessage(
+                    isUser,
+                    isUser ? (_selectedAgentId ?? "agent") : (turn.ModelId ?? session.ModelId ?? "agent"),
+                    turn.Content,
+                    turn.CreatedAt.LocalDateTime,
+                    turn.TokensIn,
+                    turn.TokensOut));
+                _totalTokensIn += turn.TokensIn;
+                _totalTokensOut += turn.TokensOut;
+            }
+
+            await SaveActiveSessionId(sessionId);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load session: {ex.Message}", Severity.Warning);
+        }
+    }
+
+    private async Task OnSessionSelected(string _)
+    {
+        if (!string.IsNullOrEmpty(_activeSessionId))
+        {
+            await LoadSession(_activeSessionId);
+            StateHasChanged();
+            await ScrollToBottom();
+        }
+    }
+
+    private async Task NewConversation()
+    {
+        _messages.Clear();
+        _activeSessionId = "";
+        _totalTokensIn = 0;
+        _totalTokensOut = 0;
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.removeItem", LocalStorageKey);
+        }
+        catch { /* ignore */ }
+        StateHasChanged();
+    }
+
+    private async Task ExportConversation()
+    {
+        if (string.IsNullOrEmpty(_activeSessionId)) return;
+        try
+        {
+            await Api.ExportSessionAsync(_activeSessionId);
+            Snackbar.Add("Session exported", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Export failed: {ex.Message}", Severity.Error);
+        }
+    }
+
     private async Task OnKeyDown(KeyboardEventArgs e)
     {
         if (string.Equals(e.Key, "Enter", StringComparison.Ordinal) && !e.ShiftKey)
@@ -231,7 +409,7 @@
         if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(_selectedAgentId) || _streaming)
             return;
 
-        _messages.Add(new ChatMessage(true, _selectedAgentId, text, DateTime.Now));
+        _messages.Add(new ChatMessage(true, _selectedAgentId, text, DateTime.Now, 0, 0));
         _userInput = "";
         StateHasChanged();
         await ScrollToBottom();
@@ -261,7 +439,10 @@
             }
 
             if (hasContent)
-                _messages.Add(new ChatMessage(false, _selectedAgentId, _streamBuffer, DateTime.Now));
+                _messages.Add(new ChatMessage(false, _selectedAgentId, _streamBuffer, DateTime.Now, 0, 0));
+
+            // After a message exchange, refresh sessions to pick up the new/updated session
+            await RefreshSessionsAfterMessage();
         }
         catch (OperationCanceledException) { /* user cancelled */ }
         catch (Exception ex)
@@ -278,9 +459,74 @@
         }
     }
 
+    private async Task RefreshSessionsAfterMessage()
+    {
+        try
+        {
+            var oldCount = _sessions.Length;
+            _sessions = await Api.GetSessionsAsync(20);
+
+            // If a new session appeared and we don't have an active one, track it
+            if (string.IsNullOrEmpty(_activeSessionId) && _sessions.Length > 0)
+            {
+                var newest = _sessions.OrderByDescending(s => s.UpdatedAt).FirstOrDefault();
+                if (newest is not null)
+                {
+                    _activeSessionId = newest.Id;
+                    await SaveActiveSessionId(newest.Id);
+
+                    // Update token counts from the session data
+                    UpdateTokenCountsFromSession(newest);
+                }
+            }
+            else if (!string.IsNullOrEmpty(_activeSessionId))
+            {
+                // Refresh token counts for current session
+                var current = _sessions.FirstOrDefault(s => s.Id == _activeSessionId);
+                if (current is not null)
+                    UpdateTokenCountsFromSession(current);
+            }
+        }
+        catch { /* non-critical */ }
+    }
+
+    private void UpdateTokenCountsFromSession(SessionInfo session)
+    {
+        _totalTokensIn = 0;
+        _totalTokensOut = 0;
+        foreach (var turn in session.Turns)
+        {
+            _totalTokensIn += turn.TokensIn;
+            _totalTokensOut += turn.TokensOut;
+        }
+
+        // Update per-message token counts from turns
+        var turnsByIndex = session.Turns.OrderBy(t => t.TurnIndex).ToList();
+        for (var i = 0; i < Math.Min(_messages.Count, turnsByIndex.Count); i++)
+        {
+            var msg = _messages[i];
+            var turn = turnsByIndex[i];
+            if (msg.TokensIn == 0 && msg.TokensOut == 0 && (turn.TokensIn > 0 || turn.TokensOut > 0))
+            {
+                _messages[i] = msg with { TokensIn = turn.TokensIn, TokensOut = turn.TokensOut };
+            }
+        }
+    }
+
+    private async Task SaveActiveSessionId(string sessionId)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", LocalStorageKey, sessionId);
+        }
+        catch { /* ignore */ }
+    }
+
     private void ClearChat()
     {
         _messages.Clear();
+        _totalTokensIn = 0;
+        _totalTokensOut = 0;
         StateHasChanged();
     }
 
@@ -294,5 +540,25 @@
         catch { /* ignore during prerender */ }
     }
 
-    private record ChatMessage(bool IsUser, string AgentId, string Content, DateTime Timestamp);
+    private static string GetSessionLabel(SessionInfo session)
+    {
+        var label = session.Name;
+        if (string.IsNullOrEmpty(label))
+        {
+            // Use first turn content as preview
+            var firstTurn = session.Turns.OrderBy(t => t.TurnIndex).FirstOrDefault();
+            label = firstTurn?.Content;
+        }
+        if (string.IsNullOrEmpty(label))
+            label = session.Id;
+
+        // Truncate for dropdown display
+        if (label.Length > 40)
+            label = string.Concat(label.AsSpan(0, 37), "...");
+
+        var date = session.UpdatedAt.LocalDateTime.ToString("MM/dd HH:mm");
+        return $"{label} ({date})";
+    }
+
+    private record ChatMessage(bool IsUser, string AgentId, string Content, DateTime Timestamp, int TokensIn, int TokensOut);
 }
