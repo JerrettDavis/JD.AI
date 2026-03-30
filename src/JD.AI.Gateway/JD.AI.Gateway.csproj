@@ -27,6 +27,7 @@
     <ProjectReference Include="..\JD.AI.Channels.Telegram\JD.AI.Channels.Telegram.csproj" />
     <ProjectReference Include="..\JD.AI.Channels.Web\JD.AI.Channels.Web.csproj" />
     <ProjectReference Include="..\JD.AI.Channels.OpenClaw\JD.AI.Channels.OpenClaw.csproj" />
+    <ProjectReference Include="..\JD.AI.Workflows\JD.AI.Workflows.csproj" />
   </ItemGroup>
 
   <ItemGroup>

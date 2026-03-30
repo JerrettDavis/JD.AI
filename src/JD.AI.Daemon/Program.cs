@@ -23,6 +23,7 @@ using JD.AI.Gateway.Endpoints;
 using JD.AI.Gateway.Hubs;
 using JD.AI.Gateway.Middleware;
 using JD.AI.Gateway.Services;
+using JD.AI.Workflows;
 
 var rootCommand = new RootCommand("JD.AI Gateway Daemon — run as a system service with auto-updates");
 var serviceElevatedOption = new Option<bool>("--elevated")
@@ -368,6 +369,12 @@ static void RunDaemon(string[] args)
     builder.Services.AddSingleton<IVectorStore>(_ =>
         new SqliteVectorStore(DataDirectories.VectorsDb));
 
+    // --- Workflow services ---
+    builder.Services.AddSingleton<IWorkflowCatalog>(_ =>
+        new FileWorkflowCatalog(Path.Combine(DataDirectories.Root, "workflows")));
+    builder.Services.AddSingleton<IWorkflowBridge, WorkflowBridge>();
+    builder.Services.AddSingleton<IPromptIntentClassifier, TfIdfIntentClassifier>();
+
     // --- Channel factory & orchestrator ---
     builder.Services.AddSingleton<ChannelFactory>();
     builder.Services.AddHostedService<GatewayOrchestrator>();
@@ -516,6 +523,7 @@ static void RunDaemon(string[] args)
     app.MapMemoryEndpoints();
     app.MapRoutingEndpoints();
     app.MapGatewayConfigEndpoints();
+    app.MapWorkflowEndpoints();
 
     // --- SignalR hubs ---
     app.MapHub<AgentHub>("/hubs/agent");
