@@ -1,0 +1,80 @@
+@inject GatewayApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_valid">
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_name" Label="Name" Required="true"
+                              Placeholder="e.g., Production API Key"
+                              data-testid="create-key-name" />
+                <MudSelect @bind-Value="_role" Label="Role" data-testid="create-key-role">
+                    <MudSelectItem Value="@("User")">User</MudSelectItem>
+                    <MudSelectItem Value="@("Operator")">Operator</MudSelectItem>
+                    <MudSelectItem Value="@("Admin")">Admin</MudSelectItem>
+                </MudSelect>
+                <MudNumericField @bind-Value="_expiryDays" Label="Expiry (days)"
+                                 Placeholder="Leave empty for no expiry"
+                                 Min="1" Max="3650"
+                                 data-testid="create-key-expiry" />
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+                    The full API key will be shown once after creation. Copy it immediately — it cannot be retrieved later.
+                </MudAlert>
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" data-testid="create-key-cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Submit"
+                   Disabled="@(!_valid || _submitting)" data-testid="create-key-submit">
+            @if (_submitting)
+            {
+                <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+            }
+            Create
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public EventCallback<CreateApiKeyResponse> OnCreated { get; set; }
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private MudForm _form = null!;
+    private bool _valid;
+    private bool _submitting;
+
+    private string _name = "";
+    private string _role = "User";
+    private int? _expiryDays;
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+        if (!_valid) return;
+
+        _submitting = true;
+        try
+        {
+            var request = new CreateApiKeyRequest
+            {
+                Name = _name,
+                Role = _role,
+                ExpiryDays = _expiryDays,
+            };
+            var response = await Api.CreateApiKeyAsync(request);
+            await OnCreated.InvokeAsync(response);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to create key: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

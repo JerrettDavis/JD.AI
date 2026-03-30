@@ -1,0 +1,67 @@
+@inject GatewayApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_valid">
+            <MudStack Spacing="3">
+                <MudText>
+                    Rotate API key <strong>@Key.Name</strong>?
+                </MudText>
+                <MudText Color="Color.Warning" Typo="Typo.body2">
+                    The old key will be immediately revoked. Make sure to update any systems using it.
+                </MudText>
+                <MudNumericField @bind-Value="_expiryDays" Label="New expiry (days)"
+                                 Placeholder="Keep existing expiry"
+                                 Min="1" Max="3650"
+                                 data-testid="rotate-key-expiry" />
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
+                    The new key will be shown once. Copy it immediately — it cannot be retrieved later.
+                </MudAlert>
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" data-testid="rotate-key-cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Warning" OnClick="Submit"
+                   Disabled="@_submitting" data-testid="rotate-key-submit">
+            @if (_submitting)
+            {
+                <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+            }
+            Rotate
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public ApiKeyDisplayModel Key { get; set; } = null!;
+    [Parameter] public EventCallback<RotateApiKeyResponse> OnRotated { get; set; }
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private MudForm _form = null!;
+    private bool _valid = true;
+    private bool _submitting;
+    private int? _expiryDays;
+
+    private async Task Submit()
+    {
+        _submitting = true;
+        try
+        {
+            var response = await Api.RotateApiKeyAsync(Key.Key, _expiryDays);
+            await OnRotated.InvokeAsync(response);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to rotate key: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

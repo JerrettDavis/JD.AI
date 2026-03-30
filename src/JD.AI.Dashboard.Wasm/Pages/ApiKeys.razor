@@ -1,0 +1,172 @@
+@page "/apikeys"
+@inject GatewayApiClient Api
+@inject IDialogService Dialog
+@inject ISnackbar Snackbar
+
+<PageTitle>API Keys — JD.AI</PageTitle>
+
+<div class="jd-page-header">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h4">API Keys</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="ShowCreateDialog" data-testid="create-key-button">
+            Create Key
+        </MudButton>
+    </MudStack>
+</div>
+
+@if (_loading)
+{
+    <MudPaper Elevation="0" Class="pa-4">
+        <MudSkeleton Width="100%" Height="400px" />
+    </MudPaper>
+}
+else if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" data-testid="api-keys-error">
+        @_error
+    </MudAlert>
+}
+else
+{
+    <MudDataGrid T="ApiKeyDisplayModel" Items="_keys" Hover="true" Dense="true"
+                 RowClass="cursor-pointer" data-testid="api-keys-grid">
+        <Columns>
+            <PropertyColumn Property="x => x.Name" Title="Name" />
+            <PropertyColumn Property="x => x.Key" Title="Key" />
+            <PropertyColumn Property="x => x.Role" Title="Role" />
+            <PropertyColumn Property="x => x.CreatedAt" Title="Created" Format="yyyy-MM-dd HH:mm" />
+            <PropertyColumn Property="x => x.ExpiresAt" Title="Expires" Format="yyyy-MM-dd HH:mm">
+                <CellTemplate>
+                    @if (context.Item.ExpiresAt is not null)
+                    {
+                        <MudText>@context.Item.ExpiresAt?.ToString("yyyy-MM-dd HH:mm")</MudText>
+                    }
+                    else
+                    {
+                        <MudText Color="Color.Default">Never</MudText>
+                    }
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.LastUsedAt" Title="Last Used" Format="yyyy-MM-dd HH:mm">
+                <CellTemplate>
+                    @if (context.Item.LastUsedAt is not null)
+                    {
+                        <MudText>@context.Item.LastUsedAt?.ToString("yyyy-MM-dd HH:mm")</MudText>
+                    }
+                    else
+                    {
+                        <MudText Color="Color.Default">Never</MudText>
+                    }
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.UsageCount" Title="Usage" />
+            <TemplateColumn Title="Status">
+                <CellTemplate>
+                    @if (context.Item.IsRevoked)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Outlined">Revoked</MudChip>
+                    }
+                    else if (context.Item.ExpiresAt.HasValue && context.Item.ExpiresAt < DateTimeOffset.UtcNow)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">Expired</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">Active</MudChip>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Actions" Sortable="false">
+                <CellTemplate>
+                    <MudStack Row="true" Spacing="1">
+                        @if (!context.Item.IsRevoked)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                           Size="Size.Small"
+                                           OnClick="() => ShowRotateDialog(context.Item)"
+                                           aria-label="Rotate key"
+                                           data-testid="rotate-key-button" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Size="Size.Small"
+                                           Color="Color.Error"
+                                           OnClick="() => ShowRevokeDialog(context.Item)"
+                                           aria-label="Revoke key"
+                                           data-testid="revoke-key-button" />
+                        }
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+}
+
+@code {
+    private IReadOnlyList<ApiKeyDisplayModel> _keys = [];
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            _keys = await Api.GetApiKeysAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Unable to load API keys: {ex.Message}";
+        }
+        _loading = false;
+    }
+
+    private async Task ShowCreateDialog()
+    {
+        var parameters = new DialogParameters<CreateApiKeyDialog> { { d => d.OnCreated, EventCallback.Factory.Create<CreateApiKeyResponse>(this, OnKeyCreated) } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        Dialog.Show<CreateApiKeyDialog>("Create API Key", parameters, options);
+    }
+
+    private async Task ShowRotateDialog(ApiKeyDisplayModel key)
+    {
+        var parameters = new DialogParameters<RotateApiKeyDialog>
+        {
+            { d => d.Key, key },
+            { d => d.OnRotated, EventCallback.Factory.Create<RotateApiKeyResponse>(this, OnKeyRotated) }
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        Dialog.Show<RotateApiKeyDialog>("Rotate API Key", parameters, options);
+    }
+
+    private async Task ShowRevokeDialog(ApiKeyDisplayModel key)
+    {
+        var parameters = new DialogParameters<RevokeApiKeyDialog>
+        {
+            { d => d.Key, key },
+            { d => d.OnRevoked, EventCallback.Factory.Create<string>(this, OnKeyRevoked) }
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        Dialog.Show<RevokeApiKeyDialog>("Revoke API Key", parameters, options);
+    }
+
+    private async Task OnKeyCreated(CreateApiKeyResponse response)
+    {
+        Snackbar.Add($"API key '{response.Name}' created. Copy it now — it won't be shown again!", Severity.Success);
+        await LoadAsync();
+    }
+
+    private async Task OnKeyRotated(RotateApiKeyResponse response)
+    {
+        Snackbar.Add($"Key rotated. New key: {response.NewKey}", Severity.Success);
+        await LoadAsync();
+    }
+
+    private async Task OnKeyRevoked(string keyName)
+    {
+        Snackbar.Add($"API key '{keyName}' revoked.", Severity.Info);
+        await LoadAsync();
+    }
+}
