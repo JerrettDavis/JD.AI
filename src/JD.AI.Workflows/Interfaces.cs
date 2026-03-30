@@ -47,3 +47,13 @@ public interface IWorkflowEmitter
 {
     WorkflowArtifact Emit(AgentWorkflowDefinition definition, WorkflowExportFormat format = WorkflowExportFormat.Json);
 }
+
+/// <summary>
+/// Orchestrates the full workflow pipeline: classify → match → execute.
+/// Single entry point for the detect-match-execute workflow pipeline.
+/// </summary>
+public interface IWorkflowOrchestrator
+{
+    Task<WorkflowOrchestratorResult> ProcessAsync(
+        string prompt, Steps.AgentWorkflowData? data = null, CancellationToken ct = default);
+}
