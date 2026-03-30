@@ -109,6 +109,20 @@ public sealed class ApiKeyRotation
         }
     }
 
+    /// <summary>Records a usage touch on the specified key.</summary>
+    public bool TouchKey(string key)
+    {
+        lock (_lock)
+        {
+            if (!_keys.TryGetValue(key, out var record))
+                return false;
+
+            record.LastUsedAt = DateTimeOffset.UtcNow;
+            record.UsageCount++;
+            return true;
+        }
+    }
+
     /// <summary>Gets all key records (for admin/audit purposes).</summary>
     public IReadOnlyList<ApiKeyRecord> GetAllKeys()
     {
@@ -138,6 +152,8 @@ public sealed class ApiKeyRecord
     public bool IsRevoked { get; set; }
     public DateTimeOffset? RevokedAt { get; set; }
     public string? PreviousKey { get; init; }
+    public DateTimeOffset? LastUsedAt { get; set; }
+    public long UsageCount { get; set; }
 
     /// <summary>Whether this key has passed its expiry date.</summary>
     public bool IsExpired => ExpiresAt.HasValue && DateTimeOffset.UtcNow > ExpiresAt.Value;

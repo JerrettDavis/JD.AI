@@ -80,5 +80,13 @@ public static class WorkflowEndpoints
         })
         .WithName("ClassifyPrompt")
         .WithDescription("Classify a prompt as workflow or conversation using TF-IDF intent classification.");
+
+        group.MapPost("/process", async (WorkflowProcessRequest request, IWorkflowOrchestrator orchestrator, CancellationToken ct) =>
+        {
+            var result = await orchestrator.ProcessAsync(request.Prompt, ct: ct);
+            return Results.Ok(result);
+        })
+        .WithName("ProcessWorkflow")
+        .WithDescription("End-to-end workflow pipeline: classify prompt, match against catalog, and execute if found.");
     }
 }
