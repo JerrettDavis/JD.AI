@@ -1,0 +1,219 @@
+@page "/analytics"
+@inject GatewayApiClient Api
+@inject ISnackbar Snackbar
+
+<PageTitle>Analytics — JD.AI</PageTitle>
+
+<div class="jd-page-header">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h4">Analytics</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small"
+                       data-testid="refresh-button" />
+    </MudStack>
+</div>
+
+@if (_loading)
+{
+    <MudGrid>
+        @for (var i = 0; i < 4; i++)
+        {
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="skeleton-stat-card">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="40px" Height="40px" />
+                        <MudStack Spacing="1">
+                            <MudSkeleton Width="80px" Height="14px" />
+                            <MudSkeleton Width="48px" Height="28px" />
+                        </MudStack>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+}
+else if (_sessions is null || _sessions.Length == 0)
+{
+    <MudPaper Class="pa-6" Elevation="0" data-testid="analytics-empty">
+        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.BarChart" Size="Size.Large" Color="Color.Default" Style="opacity:0.3" />
+            <MudText Color="Color.Secondary">No session data available for analytics.</MudText>
+        </MudStack>
+    </MudPaper>
+}
+else
+{
+    @* Summary cards *@
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="stat-card" data-name="total-sessions">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudAvatar Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Medium">
+                        <MudIcon Icon="@Icons.Material.Filled.Forum" />
+                    </MudAvatar>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Total Sessions</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700;" data-testid="stat-value">@_sessions.Length</MudText>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="stat-card" data-name="total-tokens-in">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudAvatar Color="Color.Secondary" Variant="Variant.Outlined" Size="Size.Medium">
+                        <MudIcon Icon="@Icons.Material.Filled.CallReceived" />
+                    </MudAvatar>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Tokens In</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700;" data-testid="stat-value">@TotalTokensIn.ToString("N0")</MudText>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="stat-card" data-name="total-tokens-out">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudAvatar Color="Color.Tertiary" Variant="Variant.Outlined" Size="Size.Medium">
+                        <MudIcon Icon="@Icons.Material.Filled.CallMade" />
+                    </MudAvatar>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Tokens Out</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700;" data-testid="stat-value">@TotalTokensOut.ToString("N0")</MudText>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="stat-card" data-name="active-agents">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudAvatar Color="Color.Success" Variant="Variant.Outlined" Size="Size.Medium">
+                        <MudIcon Icon="@Icons.Material.Filled.SmartToy" />
+                    </MudAvatar>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Active Agents</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700;" data-testid="stat-value">@_agents.Length</MudText>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    @* Top agents by turn count *@
+    <MudText Typo="Typo.h6" Class="mt-6 mb-2">Top Agents by Turn Count</MudText>
+    @if (_topAgents.Length == 0)
+    {
+        <MudText Color="Color.Secondary" Class="mb-4">No agent data.</MudText>
+    }
+    else
+    {
+        <MudPaper Elevation="0" Class="mb-4">
+            <MudSimpleTable Dense="true" Hover="true" data-testid="top-agents-table">
+                <thead>
+                    <tr>
+                        <th>Agent</th>
+                        <th>Provider</th>
+                        <th>Model</th>
+                        <th style="text-align:right">Turns</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var agent in _topAgents)
+                    {
+                        <tr>
+                            <td>@agent.Id</td>
+                            <td>@agent.Provider</td>
+                            <td>@agent.Model</td>
+                            <td style="text-align:right">@agent.TurnCount</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+    }
+
+    @* Top models by usage *@
+    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Top Models by Usage</MudText>
+    @if (_topModels.Length == 0)
+    {
+        <MudText Color="Color.Secondary">No model data.</MudText>
+    }
+    else
+    {
+        <MudPaper Elevation="0">
+            <MudSimpleTable Dense="true" Hover="true" data-testid="top-models-table">
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th style="text-align:right">Sessions</th>
+                        <th style="text-align:right">Total Tokens</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var model in _topModels)
+                    {
+                        <tr>
+                            <td>@model.Model</td>
+                            <td style="text-align:right">@model.SessionCount</td>
+                            <td style="text-align:right">@model.TotalTokens.ToString("N0")</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+    }
+}
+
+@code {
+    private SessionInfo[]? _sessions;
+    private AgentInfo[] _agents = [];
+    private bool _loading = true;
+
+    private AgentInfo[] _topAgents = [];
+    private ModelUsage[] _topModels = [];
+
+    private int TotalTokensIn => _sessions?.SelectMany(s => s.Turns).Sum(t => t.TokensIn) ?? 0;
+    private int TotalTokensOut => _sessions?.SelectMany(s => s.Turns).Sum(t => t.TokensOut) ?? 0;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _sessions = await Api.GetSessionsAsync();
+            _agents = await Api.GetAgentsAsync();
+
+            _topAgents = _agents
+                .OrderByDescending(a => a.TurnCount)
+                .Take(10)
+                .ToArray();
+
+            _topModels = (_sessions ?? [])
+                .Where(s => !string.IsNullOrEmpty(s.ModelId))
+                .GroupBy(s => s.ModelId!)
+                .Select(g => new ModelUsage
+                {
+                    Model = g.Key,
+                    SessionCount = g.Count(),
+                    TotalTokens = g.Sum(s => s.TotalTokens)
+                })
+                .OrderByDescending(m => m.SessionCount)
+                .Take(10)
+                .ToArray();
+        }
+        catch
+        {
+            Snackbar.Add("Failed to load analytics data", Severity.Error);
+        }
+
+        _loading = false;
+    }
+
+    private sealed record ModelUsage
+    {
+        public string Model { get; init; } = "";
+        public int SessionCount { get; init; }
+        public int TotalTokens { get; init; }
+    }
+}
