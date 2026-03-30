@@ -109,46 +109,12 @@ public sealed class ApiKeyRotation
         }
     }
 
-    /// <summary>Records a usage touch on the specified key.</summary>
-    public bool TouchKey(string key)
-    {
-        lock (_lock)
-        {
-            if (!_keys.TryGetValue(key, out var record))
-                return false;
-
-            record.LastUsedAt = DateTimeOffset.UtcNow;
-            record.UsageCount++;
-            return true;
-        }
-    }
-
     /// <summary>Gets all key records (for admin/audit purposes).</summary>
     public IReadOnlyList<ApiKeyRecord> GetAllKeys()
     {
         lock (_lock)
         {
             return _keys.Values.ToList().AsReadOnly();
-        }
-    }
-
-    /// <summary>
-    /// Records usage of a key (last used timestamp and increment counter).
-    /// Returns true if the key was found and updated, false otherwise.
-    /// </summary>
-    public bool TouchKey(string key)
-    {
-        lock (_lock)
-        {
-            if (!_keys.TryGetValue(key, out var record))
-                return false;
-
-            if (record.IsRevoked || record.IsExpired)
-                return false;
-
-            record.LastUsedAt = DateTimeOffset.UtcNow;
-            record.UsageCount++;
-            return true;
         }
     }
 
@@ -192,9 +158,6 @@ public sealed class ApiKeyRecord
     public bool IsRevoked { get; set; }
     public DateTimeOffset? RevokedAt { get; set; }
     public string? PreviousKey { get; init; }
-    public DateTimeOffset? LastUsedAt { get; set; }
-    public long UsageCount { get; set; }
-
     /// <summary>When the key was last used for authentication.</summary>
     public DateTimeOffset? LastUsedAt { get; set; }
 
@@ -203,10 +166,4 @@ public sealed class ApiKeyRecord
 
     /// <summary>Whether this key has passed its expiry date.</summary>
     public bool IsExpired => ExpiresAt.HasValue && DateTimeOffset.UtcNow > ExpiresAt.Value;
-
-    /// <summary>When the key was last used for authentication.</summary>
-    public DateTimeOffset? LastUsedAt { get; set; }
-
-    /// <summary>Number of times this key has been used for authentication.</summary>
-    public long UsageCount { get; set; }
 }
