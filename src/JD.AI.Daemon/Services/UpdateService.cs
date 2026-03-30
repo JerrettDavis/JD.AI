@@ -42,6 +42,12 @@ public sealed class UpdateService : BackgroundService
     /// <summary>Whether the service is currently draining for an update.</summary>
     public bool IsDraining { get; private set; }
 
+    /// <summary>
+    /// Checks all installed JD.AI tools for updates and returns a structured plan.
+    /// </summary>
+    public async Task<AllToolsUpdatePlan> CheckAllToolsAsync(CancellationToken ct = default)
+        => await _checker.CheckAllToolsAsync(ct).ConfigureAwait(false);
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("Update service started (check interval: {Interval})", _config.CheckInterval);
@@ -155,6 +161,95 @@ public sealed class UpdateService : BackgroundService
         {
             _logger.LogError(ex, "Update application failed");
             IsDraining = false;
+        }
+    }
+
+    /// <summary>
+    /// Applies updates to all installed JD.AI tools: drains agents,
+    /// updates each tool, then restarts the daemon.
+    /// Can be called manually via the CLI update command.
+    /// </summary>
+    public async Task UpdateAllToolsAsync(CancellationToken ct = default)
+    {
+        _logger.LogInformation("Checking all JD.AI tools for updates...");
+        var plan = await CheckAllToolsAsync(ct).ConfigureAwait(false);
+
+        if (!plan.HasUpdates)
+        {
+            _logger.LogInformation("All JD.AI tools are up-to-date.");
+            return;
+        }
+
+        _logger.LogInformation(
+            "{Count} tool(s) have updates available: {Tools}",
+            plan.Entries.Count(e => e.HasUpdate),
+            string.Join(", ", plan.Entries.Where(e => e.HasUpdate).Select(e => $"{e.PackageId} ({e.CurrentVersion} → {e.LatestVersion})")));
+
+        _logger.LogInformation("Applying updates to all tools...");
+        IsDraining = true;
+
+        try
+        {
+            await _events.PublishAsync(
+                new GatewayEvent("gateway.update.draining", "update-service", DateTimeOffset.UtcNow,
+                    new { DrainTimeout = _config.DrainTimeout, ToolCount = plan.Entries.Count(e => e.HasUpdate) }),
+                ct);
+
+            _logger.LogInformation("Draining for {Timeout}...", _config.DrainTimeout);
+            await Task.Delay(_config.DrainTimeout, ct);
+
+            var success = await RunAllToolsUpdateAsync(ct).ConfigureAwait(false);
+            if (!success)
+            {
+                _logger.LogError("One or more tool updates failed — see above for details.");
+                IsDraining = false;
+                return;
+            }
+
+            _logger.LogInformation("All tools updated. Restarting daemon...");
+            await _events.PublishAsync(
+                new GatewayEvent("gateway.update.restarting", "update-service", DateTimeOffset.UtcNow,
+                    new { ToolsUpdated = plan.Entries.Count(e => e.HasUpdate) }),
+                ct);
+
+            _lifetime.StopApplication();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Multi-tool update application failed");
+            IsDraining = false;
+        }
+    }
+
+    private async Task<bool> RunAllToolsUpdateAsync(CancellationToken ct)
+    {
+        try
+        {
+            var tools = await JDAIToolkit.GetInstalledToolsAsync(ct).ConfigureAwait(false);
+            var plan = await JDAIToolkit.CheckAllAsync(tools, ct).ConfigureAwait(false);
+
+            var allSuccess = true;
+            await JDAIToolkit.ApplyAllAsync(
+                plan,
+                continueOnError: true,
+                onToolUpdated: (tool, result) =>
+                {
+                    if (result.Success)
+                        _logger.LogInformation("  ✓ {PackageId} updated", tool.PackageId);
+                    else
+                    {
+                        _logger.LogError("  ✗ {PackageId} failed: {Output}", tool.PackageId, result.Output);
+                        allSuccess = false;
+                    }
+                },
+                ct).ConfigureAwait(false);
+
+            return allSuccess;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to run multi-tool update");
+            return false;
         }
     }
 
