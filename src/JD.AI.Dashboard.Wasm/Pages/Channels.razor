@@ -1,7 +1,9 @@
 @page "/channels"
 @inject GatewayApiClient Api
+@inject SignalRService SignalR
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@implements IDisposable
 
 <PageTitle>Channels — JD.AI</PageTitle>
 
@@ -109,8 +111,23 @@ else
 @code {
     private ChannelInfo[]? _channels;
     private bool _loading = true;
+    private EventHandler<ChannelStatusEventArgs>? _channelHandler;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _channelHandler = (_, e) =>
+        {
+            InvokeAsync(async () =>
+            {
+                Snackbar.Add($"{e.Channel} {(e.Connected ? "connected" : "disconnected")}",
+                    e.Connected ? Severity.Success : Severity.Warning);
+                await LoadAsync();
+                StateHasChanged();
+            });
+        };
+        SignalR.OnChannelStatusChanged += _channelHandler;
+        await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {
@@ -176,4 +193,10 @@ else
         "web" => Icons.Material.Filled.Language,
         _ => Icons.Material.Filled.Cable
     };
+
+    public void Dispose()
+    {
+        if (_channelHandler is not null)
+            SignalR.OnChannelStatusChanged -= _channelHandler;
+    }
 }
