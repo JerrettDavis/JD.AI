@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>JD.AI.Workflows.Training</RootNamespace>
+    <Description>Training pipeline for the ML.NET intent classifier — generates training data, trains a model, and benchmarks it against the TF-IDF baseline.</Description>
+    <IsShipping>false</IsShipping>
+    <!-- Exclude from NuGet packaging -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML" />
+    <PackageReference Include="Spectre.Console" />
+  </ItemGroup>
+
+  <!-- Reference the Workflows project to reuse ML input/output schemas -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\JD.AI.Workflows\JD.AI.Workflows.csproj" />
+  </ItemGroup>
+
+</Project>
