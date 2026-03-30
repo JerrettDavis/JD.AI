@@ -123,7 +123,7 @@ internal static class UpdateCliHandler
 
         foreach (var tool in plan.Tools)
         {
-            var update = plan.Updates.FirstOrDefault(u => u.Tool.PackageId == tool.PackageId);
+            var update = plan.Updates.FirstOrDefault(u => string.Equals(u.Tool.PackageId, tool.PackageId, StringComparison.Ordinal));
             var status = update is { IsNewer: true }
                 ? $"[yellow]Update available[/]"
                 : "[green]Up to date[/]";
@@ -452,7 +452,9 @@ internal static class UpdateCliHandler
             return "JD.AI.TUI";
         if (name.StartsWith("JD.AI", StringComparison.OrdinalIgnoreCase))
             return name;
-        return name; // Assume it's already a package ID
+
+        // Assume it's already a package ID
+        return name;
     }
 
     private static string? ParseVersionFromOutput(string output)
