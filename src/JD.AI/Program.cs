@@ -340,16 +340,17 @@ if (!opts.GatewayMode)
     }
 }
 
-// 12b. Connect to gateway if available
+// 12b. Connect to gateway if available (with timeout to prevent startup hangs)
 GatewayConnectionService? gatewayClient = null;
 if (await GatewayHealthChecker.IsRunningAsync().ConfigureAwait(false))
 {
+    using var gatewayCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
     try
     {
         gatewayClient = new GatewayConnectionService(GatewayHealthChecker.DefaultBaseUrl);
-        if (await gatewayClient.ConnectAsync().ConfigureAwait(false))
+        if (await gatewayClient.ConnectAsync(gatewayCts.Token).ConfigureAwait(false))
         {
-            await gatewayClient.EnsureAgentAsync(ct: CancellationToken.None).ConfigureAwait(false);
+            await gatewayClient.EnsureAgentAsync(ct: gatewayCts.Token).ConfigureAwait(false);
             AnsiConsole.MarkupLine("[dim]Connected to gateway — agent messaging delegated[/]");
         }
         else
@@ -371,7 +372,8 @@ var loop = new InteractiveLoop(
     session, opts, selectedModel, allModels, kernel, registry,
     providerConfig, configStore, metadataProvider, governance,
     skillLifecycleManager, RefreshSkills, systemPrompt,
-    pluginLoader, pluginManager);
+    pluginLoader, pluginManager,
+    gateway: gatewayClient);
 var exitCode = await loop.RunAsync().ConfigureAwait(false);
 
 // Cleanup
