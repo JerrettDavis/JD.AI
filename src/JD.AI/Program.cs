@@ -19,6 +19,7 @@ using JD.AI.Core.Skills;
 using JD.AI.Core.Tools;
 using JD.AI.Core.Usage;
 using JD.AI.Rendering;
+using JD.AI.Services;
 using JD.AI.Startup;
 using JD.AI.Tools;
 using JD.AI.Utilities;
@@ -339,6 +340,32 @@ if (!opts.GatewayMode)
     }
 }
 
+// 12b. Connect to gateway if available
+GatewayConnectionService? gatewayClient = null;
+if (await GatewayHealthChecker.IsRunningAsync().ConfigureAwait(false))
+{
+    try
+    {
+        gatewayClient = new GatewayConnectionService(GatewayHealthChecker.DefaultBaseUrl);
+        if (await gatewayClient.ConnectAsync().ConfigureAwait(false))
+        {
+            await gatewayClient.EnsureAgentAsync(ct: CancellationToken.None).ConfigureAwait(false);
+            AnsiConsole.MarkupLine("[dim]Connected to gateway — agent messaging delegated[/]");
+        }
+        else
+        {
+            await gatewayClient.DisposeAsync().ConfigureAwait(false);
+            gatewayClient = null;
+        }
+    }
+    catch
+    {
+        if (gatewayClient is not null)
+            await gatewayClient.DisposeAsync().ConfigureAwait(false);
+        gatewayClient = null;
+    }
+}
+
 // 13. Interactive TUI loop
 var loop = new InteractiveLoop(
     session, opts, selectedModel, allModels, kernel, registry,
@@ -359,6 +386,9 @@ if (gatewayHost is not null)
     await gatewayHost.StopAsync().ConfigureAwait(false);
     (gatewayHost as IDisposable)?.Dispose();
 }
+
+if (gatewayClient is not null)
+    await gatewayClient.DisposeAsync().ConfigureAwait(false);
 
 GatewayAutoStart.StopBackground();
 
