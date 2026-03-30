@@ -1,7 +1,9 @@
 @page "/plugins"
 @inject GatewayApiClient Api
+@inject SignalRService SignalR
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@implements IDisposable
 
 <PageTitle>Plugins — JD.AI</PageTitle>
 
@@ -83,8 +85,25 @@ else
 @code {
     private PluginInfo[]? _plugins;
     private bool _loading = true;
+    private EventHandler<ActivityEventArgs>? _activityHandler;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _activityHandler = (_, e) =>
+        {
+            var type = e.Activity.EventType;
+            if (type.Contains("plugin", StringComparison.OrdinalIgnoreCase))
+            {
+                InvokeAsync(async () =>
+                {
+                    await LoadAsync();
+                    StateHasChanged();
+                });
+            }
+        };
+        SignalR.OnActivityEvent += _activityHandler;
+        await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {
@@ -136,5 +155,11 @@ else
             }
             catch (Exception ex) { Snackbar.Add($"Install failed: {ex.Message}", Severity.Error); }
         }
+    }
+
+    public void Dispose()
+    {
+        if (_activityHandler is not null)
+            SignalR.OnActivityEvent -= _activityHandler;
     }
 }

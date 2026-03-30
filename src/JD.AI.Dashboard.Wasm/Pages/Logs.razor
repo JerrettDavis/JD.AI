@@ -1,5 +1,6 @@
 @page "/logs"
 @inject GatewayApiClient Api
+@inject SignalRService SignalR
 @inject ISnackbar Snackbar
 @implements IDisposable
 
@@ -122,9 +123,20 @@ else
     private string? _selectedEventId;
     private bool _autoRefresh;
     private Timer? _timer;
+    private EventHandler<ActivityEventArgs>? _activityHandler;
 
     protected override async Task OnInitializedAsync()
     {
+        _activityHandler = (_, _) =>
+        {
+            InvokeAsync(async () =>
+            {
+                await LoadAsync();
+                StateHasChanged();
+            });
+        };
+        SignalR.OnActivityEvent += _activityHandler;
+
         await LoadAsync();
         _timer = new Timer(async _ =>
         {
@@ -177,5 +189,10 @@ else
         _ => Color.Default
     };
 
-    public void Dispose() => _timer?.Dispose();
+    public void Dispose()
+    {
+        _timer?.Dispose();
+        if (_activityHandler is not null)
+            SignalR.OnActivityEvent -= _activityHandler;
+    }
 }
