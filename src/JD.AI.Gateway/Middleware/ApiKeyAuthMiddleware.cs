@@ -6,7 +6,7 @@ namespace JD.AI.Gateway.Middleware;
 /// <summary>
 /// Authenticates requests via X-API-Key header or api_key query parameter (for SignalR).
 /// </summary>
-public sealed class ApiKeyAuthMiddleware(RequestDelegate next, IAuthProvider authProvider)
+public sealed class ApiKeyAuthMiddleware(RequestDelegate next, IAuthProvider authProvider, ApiKeyRotation keyRotation)
 {
     private static readonly string[] SkipPrefixes =
     [
@@ -34,6 +34,8 @@ public sealed class ApiKeyAuthMiddleware(RequestDelegate next, IAuthProvider aut
             var identity = await authProvider.AuthenticateAsync(apiKey, context.RequestAborted);
             if (identity is not null)
             {
+                // Record usage for tracking
+                keyRotation.TouchKey(apiKey);
                 context.Items["Identity"] = identity;
                 await next(context);
                 return;

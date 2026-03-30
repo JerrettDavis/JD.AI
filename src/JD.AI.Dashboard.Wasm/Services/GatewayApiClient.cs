@@ -159,4 +159,28 @@ public sealed class GatewayApiClient(HttpClient http)
     // Audit / Logs
     public async Task<AuditEvent[]> GetAuditEventsAsync(int limit = 100)
         => await http.GetFromJsonAsync<AuditEvent[]>($"api/audit?limit={limit}") ?? [];
+
+    // API Keys
+    public async Task<ApiKeyDisplayModel[]> GetApiKeysAsync()
+        => await http.GetFromJsonAsync<ApiKeyDisplayModel[]>($"api/v1/gateway/apikeys") ?? [];
+
+    public async Task<CreateApiKeyResponse> CreateApiKeyAsync(CreateApiKeyRequest request)
+    {
+        var response = await http.PostAsJsonAsync("api/v1/gateway/apikeys", request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<CreateApiKeyResponse>()
+            ?? throw new InvalidOperationException("Failed to deserialize response");
+    }
+
+    public Task RevokeApiKeyAsync(string maskedKey)
+        => http.DeleteAsync(new Uri($"api/v1/gateway/apikeys/{Uri.EscapeDataString(maskedKey)}", UriKind.Relative));
+
+    public async Task<RotateApiKeyResponse> RotateApiKeyAsync(string maskedKey, int? expiryDays = null)
+    {
+        var request = new { ExpiryDays = expiryDays };
+        var response = await http.PostAsJsonAsync($"api/v1/gateway/apikeys/{Uri.EscapeDataString(maskedKey)}/rotate", request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<RotateApiKeyResponse>()
+            ?? throw new InvalidOperationException("Failed to deserialize response");
+    }
 }
