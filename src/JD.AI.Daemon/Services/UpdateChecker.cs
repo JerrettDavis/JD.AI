@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Reflection;
+using JD.AI.Core.Installation;
 using JD.AI.Daemon.Config;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -59,6 +60,29 @@ public sealed class UpdateChecker
         }
     }
 
+    /// <summary>
+    /// Checks all installed JD.AI tools for updates using JDAIToolkit
+    /// and returns a structured plan.
+    /// </summary>
+    public async Task<AllToolsUpdatePlan> CheckAllToolsAsync(CancellationToken ct = default)
+    {
+        var tools = await JDAIToolkit.GetInstalledToolsAsync(ct).ConfigureAwait(false);
+        var plan = await JDAIToolkit.CheckAllAsync(tools, ct).ConfigureAwait(false);
+
+        var entries = plan.Tools.Select(tool =>
+        {
+            var update = plan.Updates.FirstOrDefault(u => u.Tool.PackageId == tool.PackageId);
+            return new AllToolsUpdateEntry(
+                tool.PackageId,
+                tool.ToolName,
+                tool.CurrentVersion,
+                update?.LatestVersion,
+                update?.IsNewer ?? false);
+        }).ToList().AsReadOnly();
+
+        return new AllToolsUpdatePlan(entries, plan.HasUpdates, DateTimeOffset.UtcNow);
+    }
+
     private async Task<Version?> GetLatestVersionAsync(CancellationToken ct)
     {
         var client = _httpFactory.CreateClient("NuGet");
@@ -91,6 +115,27 @@ public sealed class UpdateChecker
 
     // Minimal model for NuGet v3 flatcontainer index.json
     private sealed record NuGetVersionIndex(IList<string> Versions);
+}
+
+/// <summary>
+/// Result of checking all JD.AI tools for updates.
+/// </summary>
+public sealed record AllToolsUpdatePlan(
+    IReadOnlyList<AllToolsUpdateEntry> Entries,
+    bool HasUpdates,
+    DateTimeOffset CheckedAt);
+
+/// <summary>
+/// Individual tool entry in an all-tools update plan.
+/// </summary>
+public sealed record AllToolsUpdateEntry(
+    string PackageId,
+    string ToolName,
+    string CurrentVersion,
+    string? LatestVersion,
+    bool HasUpdate)
+{
+    public string Status => HasUpdate ? $"Update available ({LatestVersion})" : "Up to date";
 }
 
 /// <summary>Information about an available update.</summary>
