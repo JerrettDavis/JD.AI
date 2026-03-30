@@ -1,6 +1,7 @@
 using JD.AI;
 using JD.AI.Agent;
 using JD.AI.Commands;
+using JD.AI.Utilities;
 using JD.AI.Core.Agents;
 using JD.AI.Core.Agents.Checkpointing;
 using JD.AI.Core.Agents.Orchestration;
@@ -317,7 +318,28 @@ if (pendingUpdate is not null)
     AnsiConsole.WriteLine();
 }
 
-// 12. Interactive TUI loop
+// 12. Auto-start gateway if not already running (TUI interactive mode only)
+if (!opts.GatewayMode)
+{
+    if (!await GatewayHealthChecker.IsRunningAsync().ConfigureAwait(false))
+    {
+        var daemonProcess = GatewayAutoStart.StartBackground();
+        if (daemonProcess != null)
+        {
+            var healthy = await GatewayHealthChecker.WaitForHealthyAsync(maxWaitMs: 10000).ConfigureAwait(false);
+            if (healthy)
+                AnsiConsole.MarkupLine("[dim]Gateway started automatically[/]");
+            else
+                AnsiConsole.MarkupLine("[yellow]Warning: Gateway did not start in time[/]");
+        }
+    }
+    else
+    {
+        AnsiConsole.MarkupLine("[dim]Gateway already running[/]");
+    }
+}
+
+// 13. Interactive TUI loop
 var loop = new InteractiveLoop(
     session, opts, selectedModel, allModels, kernel, registry,
     providerConfig, configStore, metadataProvider, governance,
@@ -337,5 +359,7 @@ if (gatewayHost is not null)
     await gatewayHost.StopAsync().ConfigureAwait(false);
     (gatewayHost as IDisposable)?.Dispose();
 }
+
+GatewayAutoStart.StopBackground();
 
 return exitCode;
