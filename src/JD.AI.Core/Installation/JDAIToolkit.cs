@@ -206,7 +206,8 @@ public static class JDAIToolkit
     {
         var latestVer = TryParseVersion(latest);
         var currentVer = TryParseVersion(current);
-        if (latestVer is null || currentVer is null) return 0;
+        if (latestVer is null) return -1;
+        if (currentVer is null) return 1;
         return latestVer.CompareTo(currentVer);
     }
 

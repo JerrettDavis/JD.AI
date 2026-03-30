@@ -56,12 +56,13 @@ internal static class UpdateCliHandler
 
         if (args.Contains("--help") || args.Contains("-h"))
         {
-            AnsiConsole.MarkupLine("[bold]Usage:[/] jdai update [[--self] | [--check] | [--all]] [[tool]] [[--force]]");
+            AnsiConsole.MarkupLine("[bold]Usage:[/] jdai update [[--self]] [[--check]] [[--all]] [[--force]]");
             AnsiConsole.MarkupLine("  [dim]--self[/]    Update only the jdai tool (default: all tools)");
             AnsiConsole.MarkupLine("  [dim]--check[/]   Show update plan without applying");
             AnsiConsole.MarkupLine("  [dim]--all[/]     Check and update all installed JD.AI tools");
-            AnsiConsole.MarkupLine("  [dim]tool[/]      Update a named tool (e.g. jdai-daemon)");
             AnsiConsole.MarkupLine("  [dim]--force[/]   Apply even if already on latest");
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("  Update a named tool: jdai update [dim]<tool-name>[/]");
             return 0;
         }
 
@@ -111,7 +112,7 @@ internal static class UpdateCliHandler
             .Spinner(Spinner.Known.Dots)
             .SpinnerStyle(Style.Parse("blue"))
             .StartAsync("Detecting installed JD.AI tools...", async _ =>
-                await JDAIToolkit.GetInstalledToolsAsync(ct).ConfigureAwait(false))
+                await GetInstalledToolsAsync(ct).ConfigureAwait(false))
             .ConfigureAwait(false);
 
         if (tools.Count == 0)
@@ -130,7 +131,7 @@ internal static class UpdateCliHandler
             .Spinner(Spinner.Known.Dots)
             .SpinnerStyle(Style.Parse("yellow"))
             .StartAsync("Checking for updates...", async _ =>
-                await JDAIToolkit.CheckAllAsync(tools, ct).ConfigureAwait(false))
+                await CheckAllAsync(tools, ct).ConfigureAwait(false))
             .ConfigureAwait(false);
 
         // Print the update table
