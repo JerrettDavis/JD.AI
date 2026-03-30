@@ -98,6 +98,21 @@ public sealed class GatewayConnectionService : IAsyncDisposable
     }
 
     /// <summary>
+    /// Create a new session on the gateway and return its ID.
+    /// Currently reuses the most recent session or implicitly creates one via agent spawn.
+    /// </summary>
+    public async Task<string?> CreateSessionAsync(CancellationToken ct = default)
+    {
+        var sessions = await _http.GetSessionsAsync(1, ct).ConfigureAwait(false);
+        if (sessions.Length > 0)
+            return sessions[0].Id;
+
+        // No explicit create endpoint — spawning an agent implicitly creates a session
+        var agentId = await EnsureAgentAsync(ct: ct).ConfigureAwait(false);
+        return agentId;
+    }
+
+    /// <summary>
     /// Get Gateway status summary.
     /// </summary>
     public async Task<GatewayModels.GatewayStatus?> GetStatusAsync(CancellationToken ct = default)
