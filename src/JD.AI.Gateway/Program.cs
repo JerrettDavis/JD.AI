@@ -155,7 +155,16 @@ builder.Services.AddSingleton<IVectorStore>(_ =>
 
 // --- Workflow services ---
 builder.Services.AddSingleton<IWorkflowCatalog>(_ =>
-    new FileWorkflowCatalog(Path.Combine(DataDirectories.Root, "workflows")));
+{
+    try
+    {
+        return new FileWorkflowCatalog(Path.Combine(DataDirectories.Root, "workflows"));
+    }
+    catch
+    {
+        return new InMemoryWorkflowCatalog();
+    }
+});
 builder.Services.AddSingleton<IWorkflowBridge, WorkflowBridge>();
 builder.Services.AddSingleton<IPromptIntentClassifier, TfIdfIntentClassifier>();
 builder.Services.AddSingleton<IWorkflowMatcher, WorkflowMatcher>();
