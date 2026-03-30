@@ -34,6 +34,9 @@ public static class Program
         var benchmark = args.Contains("--benchmark") || args.Contains("-b");
         var generateOnly = args.Contains("--generate") || args.Contains("-g");
         var evaluateOnly = args.Contains("--evaluate") || args.Contains("-e");
+        var sessionArgIdx = Array.IndexOf(args, "--session");
+        var sessionPath = sessionArgIdx >= 0 && sessionArgIdx + 1 < args.Length
+            ? args[sessionArgIdx + 1] : null;
         var dataArgIdx = Array.IndexOf(args, "--data");
         var dataPath = dataArgIdx >= 0 && dataArgIdx + 1 < args.Length ? args[dataArgIdx + 1] : null;
         var outputArgIdx = Array.IndexOf(args, "--output");
@@ -55,12 +58,40 @@ public static class Program
             return 0;
         }
 
+        // Extract prompts from an OpenClaw session transcript
+        if (sessionPath is not null)
+        {
+            if (!File.Exists(sessionPath))
+            {
+                AnsiConsole.MarkupLine($"[red]Transcript not found: {sessionPath}[/]");
+                return 1;
+            }
+
+            var sessionPrompts = AnsiConsole.Status().Spinner(Spinner.Known.Dots)
+                .SpinnerStyle(Style.Parse("green"))
+                .Start("[dim]Extracting prompts from session transcript...[/]",
+                    _ => SessionExtractor.ExtractFromTranscript(sessionPath));
+
+            dataPath ??= Path.Combine(Path.GetTempPath(), "session_training_data.jsonl");
+            TrainingDataGenerator.WriteCsv(sessionPrompts, dataPath);
+            AnsiConsole.MarkupLine($"[green]Extracted {sessionPrompts.Count} labeled prompts from session[/]");
+            AnsiConsole.MarkupLine($"  Workflow: {sessionPrompts.Count(p => p.IsWorkflow)}");
+            AnsiConsole.MarkupLine($"  Conversation: {sessionPrompts.Count(p => !p.IsWorkflow)}");
+            AnsiConsole.MarkupLine($"  [dim]Saved → {dataPath}[/]");
+
+            if (!args.Contains("--data"))
+            {
+                AnsiConsole.MarkupLine("[dim]Run again with --data to train on this data[/]");
+                return 0;
+            }
+        }
+
         if (dataPath is null)
         {
             dataPath = Path.Combine(Path.GetTempPath(), "intent_training_data.csv");
             await AnsiConsole.Status().Spinner(Spinner.Known.Dots).StartAsync(
                 "Generating training data...", _ => { GenerateData(dataPath, 15); return Task.CompletedTask; });
-            AnsiConsole.MarkupLine($"[dim]Generated {File.ReadAllLines(dataPath).Length - 1} prompts[/]");
+            AnsiConsole.MarkupLine($"[dim]Generated {File.ReadAllLines(dataPath).Length} prompts[/]");
         }
 
         if (evaluateOnly)
