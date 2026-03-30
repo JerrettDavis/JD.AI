@@ -1,63 +1,43 @@
-@inject GatewayApiClient Api
-@inject ISnackbar Snackbar
+namespace JD.AI.Dashboard.Wasm.Models;
 
-<MudDialog>
-    <DialogContent>
-        <MudStack Spacing="3">
-            <MudText>
-                Revoke API key <strong>@Key.Name</strong>?
-            </MudText>
-            <MudText Color="Color.Error" Typo="Typo.body2">
-                This action cannot be undone. Any systems using this key will immediately lose access.
-            </MudText>
-            <MudTextField @bind-Value="_confirmName" Label="Type key name to confirm"
-                         Placeholder="@Key.Name"
-                         data-testid="revoke-key-confirm" />
-        </MudStack>
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="Cancel" data-testid="revoke-key-cancel">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="Submit"
-                   Disabled="@(!IsConfirmed || _submitting)" data-testid="revoke-key-submit">
-            @if (_submitting)
-            {
-                <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
-            }
-            Revoke
-        </MudButton>
-    </DialogActions>
-</MudDialog>
+/// <summary>Represents an API key for display in the dashboard (values are masked).</summary>
+public sealed class ApiKeyDisplayModel
+{
+    public required string Key { get; init; }
+    public required string Name { get; init; }
+    public required string Role { get; init; }
+    public required DateTimeOffset CreatedAt { get; init; }
+    public DateTimeOffset? ExpiresAt { get; init; }
+    public required bool IsRevoked { get; init; }
+    public DateTimeOffset? RevokedAt { get; init; }
+    public DateTimeOffset? LastUsedAt { get; init; }
+    public long UsageCount { get; init; }
+    public string? PreviousKey { get; init; }
+}
 
-@code {
-    [Parameter] public ApiKeyDisplayModel Key { get; set; } = null!;
-    [Parameter] public EventCallback<string> OnRevoked { get; set; }
-    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+/// <summary>Request to create a new API key.</summary>
+public sealed class CreateApiKeyRequest
+{
+    public required string Name { get; init; }
+    public string? Description { get; init; }
+    public string Role { get; init; } = "User";
+    public int? ExpiryDays { get; init; }
+}
 
-    private string _confirmName = "";
-    private bool _submitting;
+/// <summary>Response after creating an API key (contains the full key).</summary>
+public sealed class CreateApiKeyResponse
+{
+    public required string Key { get; init; }
+    public required string Name { get; init; }
+    public required string Role { get; init; }
+    public required DateTimeOffset CreatedAt { get; init; }
+    public DateTimeOffset? ExpiresAt { get; init; }
+}
 
-    private bool IsConfirmed => _confirmName == Key.Name;
-
-    private async Task Submit()
-    {
-        if (!IsConfirmed) return;
-
-        _submitting = true;
-        try
-        {
-            await Api.RevokeApiKeyAsync(Key.Key);
-            await OnRevoked.InvokeAsync(Key.Name);
-            MudDialog.Close(DialogResult.Ok(true));
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Failed to revoke key: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            _submitting = false;
-        }
-    }
-
-    private void Cancel() => MudDialog.Cancel();
+/// <summary>Response after rotating an API key.</summary>
+public sealed class RotateApiKeyResponse
+{
+    public required string NewKey { get; init; }
+    public required string OldKey { get; init; }
+    public required DateTimeOffset RotatedAt { get; init; }
 }

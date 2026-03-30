@@ -152,6 +152,26 @@ public sealed class ApiKeyRotation
         }
     }
 
+    /// <summary>
+    /// Records usage of a key (last used timestamp and increment counter).
+    /// Returns true if the key was found and updated, false otherwise.
+    /// </summary>
+    public bool TouchKey(string key)
+    {
+        lock (_lock)
+        {
+            if (!_keys.TryGetValue(key, out var record))
+                return false;
+
+            if (record.IsRevoked || record.IsExpired)
+                return false;
+
+            record.LastUsedAt = DateTimeOffset.UtcNow;
+            record.UsageCount++;
+            return true;
+        }
+    }
+
     private static string GenerateSecureKey()
     {
         var bytes = RandomNumberGenerator.GetBytes(32);
@@ -183,4 +203,10 @@ public sealed class ApiKeyRecord
 
     /// <summary>Whether this key has passed its expiry date.</summary>
     public bool IsExpired => ExpiresAt.HasValue && DateTimeOffset.UtcNow > ExpiresAt.Value;
+
+    /// <summary>When the key was last used for authentication.</summary>
+    public DateTimeOffset? LastUsedAt { get; set; }
+
+    /// <summary>Number of times this key has been used for authentication.</summary>
+    public long UsageCount { get; set; }
 }
