@@ -374,6 +374,8 @@ static void RunDaemon(string[] args)
         new FileWorkflowCatalog(Path.Combine(DataDirectories.Root, "workflows")));
     builder.Services.AddSingleton<IWorkflowBridge, WorkflowBridge>();
     builder.Services.AddSingleton<IPromptIntentClassifier, TfIdfIntentClassifier>();
+    builder.Services.AddSingleton<IWorkflowMatcher, WorkflowMatcher>();
+    builder.Services.AddSingleton<IWorkflowOrchestrator, WorkflowOrchestrator>();
 
     // --- Channel factory & orchestrator ---
     builder.Services.AddSingleton<ChannelFactory>();
