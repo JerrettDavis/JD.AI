@@ -183,4 +183,23 @@ public sealed class GatewayApiClient(HttpClient http)
         return await response.Content.ReadFromJsonAsync<RotateApiKeyResponse>()
             ?? throw new InvalidOperationException("Failed to deserialize response");
     }
+
+    // Memory / Knowledge
+    public async Task<MemorySearchResult[]> SearchMemoryAsync(MemorySearchRequest request)
+    {
+        var response = await http.PostAsJsonAsync("api/v1/memory/search", request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<MemorySearchResult[]>() ?? [];
+    }
+
+    public async Task<MemoryIndexResponse> IndexMemoryAsync(MemoryIndexRequest request)
+    {
+        var response = await http.PostAsJsonAsync("api/v1/memory/index", request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<MemoryIndexResponse>()
+            ?? new MemoryIndexResponse();
+    }
+
+    public async Task<MemoryStats> GetMemoryStatsAsync()
+        => await http.GetFromJsonAsync<MemoryStats>("api/v1/memory/stats") ?? new MemoryStats();
 }

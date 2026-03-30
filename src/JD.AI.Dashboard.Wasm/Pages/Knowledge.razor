@@ -1,0 +1,158 @@
+@page "/knowledge"
+@inject GatewayApiClient Api
+@inject ISnackbar Snackbar
+
+<PageTitle>Knowledge — JD.AI</PageTitle>
+
+<div class="jd-page-header">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h4">Knowledge</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadStatsAsync" Size="Size.Small"
+                       data-testid="refresh-button" />
+    </MudStack>
+</div>
+
+@* Stats cards *@
+<MudGrid Class="mb-4">
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="stat-card" data-name="doc-count">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <MudAvatar Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Medium">
+                    <MudIcon Icon="@Icons.Material.Filled.Description" />
+                </MudAvatar>
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Documents</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:700;" data-testid="stat-value">@_stats.DocumentCount</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@* Search section *@
+<MudText Typo="Typo.h6" Class="mb-2">Semantic Search</MudText>
+<MudPaper Class="pa-4 mb-4" Elevation="0">
+    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+        <MudTextField @bind-Value="_searchQuery" Label="Search query" Variant="Variant.Outlined"
+                      Immediate="true" OnKeyUp="OnSearchKeyUp" data-testid="search-input"
+                      Style="flex:1" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SearchAsync"
+                   Disabled="@(string.IsNullOrWhiteSpace(_searchQuery) || _searching)"
+                   data-testid="search-button">
+            @if (_searching)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Search
+        </MudButton>
+    </MudStack>
+</MudPaper>
+
+@if (_searchResults is not null)
+{
+    @if (_searchResults.Length == 0)
+    {
+        <MudPaper Class="pa-6 mb-4" Elevation="0" data-testid="search-empty">
+            <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Default" Style="opacity:0.3" />
+                <MudText Color="Color.Secondary">No results found.</MudText>
+            </MudStack>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Elevation="0" Class="mb-4">
+            <MudDataGrid Items="@_searchResults" Dense="true" Hover="true" data-testid="search-results-grid">
+                <Columns>
+                    <PropertyColumn Property="x => x.Content" Title="Content" />
+                    <PropertyColumn Property="x => x.Score" Title="Score" Format="F3" />
+                    <PropertyColumn Property="x => x.CreatedAt" Title="Date" Format="g" />
+                </Columns>
+            </MudDataGrid>
+        </MudPaper>
+    }
+}
+
+@* Index section *@
+<MudText Typo="Typo.h6" Class="mt-6 mb-2">Index Document</MudText>
+<MudPaper Class="pa-4" Elevation="0">
+    <MudTextField @bind-Value="_indexContent" Label="Document content" Variant="Variant.Outlined"
+                  Lines="5" data-testid="index-input" />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="IndexAsync"
+               Disabled="@(string.IsNullOrWhiteSpace(_indexContent) || _indexing)"
+               data-testid="index-button">
+        @if (_indexing)
+        {
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+        }
+        Index Document
+    </MudButton>
+</MudPaper>
+
+@code {
+    private string _searchQuery = "";
+    private string _indexContent = "";
+    private bool _searching;
+    private bool _indexing;
+    private MemorySearchResult[]? _searchResults;
+    private MemoryStats _stats = new();
+
+    protected override async Task OnInitializedAsync() => await LoadStatsAsync();
+
+    private async Task LoadStatsAsync()
+    {
+        try { _stats = await Api.GetMemoryStatsAsync(); }
+        catch { _stats = new MemoryStats(); }
+    }
+
+    private async Task SearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_searchQuery)) return;
+
+        _searching = true;
+        try
+        {
+            _searchResults = await Api.SearchMemoryAsync(new MemorySearchRequest { Query = _searchQuery });
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Search failed: {ex.Message}", Severity.Error);
+            _searchResults = [];
+        }
+
+        _searching = false;
+    }
+
+    private async Task OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (string.Equals(e.Key, "Enter", StringComparison.Ordinal))
+            await SearchAsync();
+    }
+
+    private async Task IndexAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_indexContent)) return;
+
+        _indexing = true;
+        try
+        {
+            var response = await Api.IndexMemoryAsync(new MemoryIndexRequest { Content = _indexContent });
+            if (response.Success)
+            {
+                Snackbar.Add("Document indexed successfully", Severity.Success);
+                _indexContent = "";
+                await LoadStatsAsync();
+            }
+            else
+            {
+                Snackbar.Add("Indexing failed", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Indexing failed: {ex.Message}", Severity.Error);
+        }
+
+        _indexing = false;
+    }
+}
