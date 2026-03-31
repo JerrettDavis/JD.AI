@@ -5561,8 +5561,9 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
                     if (!trackedPaths.Contains(f))
                     {
                         var fi = new FileInfo(f);
-                        if (fi.LastWriteTimeUtc < cutoff)
-                            yield return (f, DateTimeOffset.UtcNow - fi.LastWriteTimeUtc, agentName);
+                        var fiTime = new DateTimeOffset(fi.LastWriteTimeUtc);
+                        if (fiTime < cutoff)
+                            yield return (f, DateTimeOffset.UtcNow - fiTime, agentName);
                     }
                 }
             }
