@@ -144,6 +144,7 @@ public sealed class ProviderFeatureIntegrationTests
     }
 
     [SkippableFact]
+    [Trait("Category", "MlModel")]
     public async Task Ollama_WhenAvailable_BuildsKernel_AndCompletesToolTurn()
     {
         await IntegrationTestGuard.EnsureOllamaAsync();

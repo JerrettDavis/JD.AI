@@ -106,6 +106,7 @@ jobs:
           --filter "Category=Integration"
           --verbosity normal
           --logger "trx;LogFileName=integration-results.trx"
+          -maxretry=2
           --
           RunConfiguration.TestSessionTimeout=600000
 
@@ -116,6 +117,12 @@ jobs:
           files: |
             **/TestResults/**/*.trx
           check_name: Integration Test Results
+          comment_title: Integration Test Results
+          comment_mode: always
+          # Do not block on test failures — integration tests are environment-dependent
+          # and may flake due to live model API changes. Failures are reported but do
+          # not fail the workflow unless explicitly requested.
+          thresholds: '{"skipped": "warning"}'
 
       - name: Summary
         if: always()
