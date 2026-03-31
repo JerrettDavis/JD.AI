@@ -17,7 +17,7 @@ public sealed class DurableQueueChannelDecorator
     : IChannel, ICommandAwareChannel, IHostedService
 {
     private readonly IChannel _inner;
-    private readonly DurableMessageQueue _queue;
+    private readonly DiscordMessageBuffer _queue;
     private readonly ILogger _log;
     private Func<ChannelMessage, Task>? _messageReceived;
     private bool _innerHandlerRegistered;
@@ -25,7 +25,7 @@ public sealed class DurableQueueChannelDecorator
 
     public DurableQueueChannelDecorator(
         IChannel inner,
-        DurableMessageQueue queue,
+        DiscordMessageBuffer queue,
         ILogger logger)
     {
         _inner = inner;

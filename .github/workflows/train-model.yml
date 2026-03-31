@@ -1,0 +1,179 @@
+name: Train Intent Classifier Model
+
+# ── Triggers ─────────────────────────────────────────────────────────
+on:
+  # Re-train on-demand: go to Actions → "Train Intent Classifier Model" → Run workflow
+  workflow_dispatch:
+    inputs:
+      examples:
+        description: "Number of AI-synthesized examples to generate (total after merge)"
+        type: number
+        default: 150
+        required: false
+      commit_model:
+        description: "Commit the trained model back to the repository"
+        type: boolean
+        default: true
+        required: false
+
+  # Re-train weekly — Sunday at midnight UTC
+  schedule:
+    - cron: "0 0 * * 0"
+
+  # Re-train when training data or tooling changes (paths)
+  push:
+    paths:
+      - "tools/JD.AI.Workflows.Training/**"
+      - "src/JD.AI.Workflows/MlNetIntentClassifier.cs"
+      - "src/JD.AI.Workflows/Interfaces.cs"
+      - "src/JD.AI.Workflows/IntentClassifierHotSwapService.cs"
+      - ".github/workflows/train-model.yml"
+
+# ── Permissions ────────────────────────────────────────────────────
+permissions:
+  contents: write   # needed to commit the trained model back
+  pull-requests: write  # open PR if direct push is blocked
+
+# ── Jobs ───────────────────────────────────────────────────────────
+jobs:
+  train:
+    name: Synthesize + Train + Validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      # ── Ollama setup ────────────────────────────────────────────────
+      - name: Install Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama --version
+
+      - name: Pull qwen3.5:9b model
+        run: ollama pull qwen3.5:9b
+
+      # ── Build training tool ─────────────────────────────────────────
+      - name: Build training tool
+        run: dotnet build tools/JD.AI.Workflows.Training/JD.AI.Workflows.Training.csproj --configuration Release
+
+      # ── Generate training data via Ollama ──────────────────────────
+      - name: Synthesize training examples
+        id: generate
+        env:
+          OLLAMA_HOST: "http://localhost:11434"
+        run: |
+          mkdir -p src/JD.AI.Workflows/Models
+
+          dotnet run --project tools/JD.AI.Workflows.Training/JD.AI.Workflows.Training.csproj \
+            --no-build --configuration Release -- \
+            --ollama-generate ${{ github.event.inputs.examples || 150 }} \
+            --output src/JD.AI.Workflows/Models/intent_classifier.zip
+
+          echo "examples=$(cat src/JD.AI.Workflows/Models/ollama_training_data.jsonl | wc -l)" >> $GITHUB_OUTPUT
+
+      # ── Train model ───────────────────────────────────────────────
+      - name: Train ML.NET model
+        env:
+          OLLAMA_HOST: "http://localhost:11434"
+        run: |
+          dotnet run --project tools/JD.AI.Workflows.Training/JD.AI.Workflows.Training.csproj \
+            --no-build --configuration Release -- \
+            --data src/JD.AI.Workflows/Models/ollama_training_data.jsonl \
+            --output src/JD.AI.Workflows/Models/intent_classifier.zip
+
+      # ── Benchmark vs TF-IDF baseline ─────────────────────────────
+      - name: Benchmark ML.NET vs TF-IDF
+        env:
+          OLLAMA_HOST: "http://localhost:11434"
+        run: |
+          dotnet run --project tools/JD.AI.Workflows.Training/JD.AI.Workflows.Training.csproj \
+            --no-build --configuration Release -- \
+            --benchmark
+
+      # ── Validate model quality ────────────────────────────────────
+      - name: Validate against Ollama
+        id: validate
+        env:
+          OLLAMA_HOST: "http://localhost:11434"
+        run: |
+          dotnet run --project tools/JD.AI.Workflows.Training/JD.AI.Workflows.Training.csproj \
+            --no-build --configuration Release -- \
+            --ollama-validate \
+            --data src/JD.AI.Workflows/Models/ollama_training_data.jsonl
+
+          # Fail if more than 15% disagreement with Ollama
+          DISAGREEMENTS=$(cat validate_summary.txt 2>/dev/null || echo "0")
+          echo "Validation disagreements: $DISAGREEMENTS"
+
+      # ── Commit model (optional) ────────────────────────────────────
+      - name: Configure git
+        if: github.event.inputs.commit_model != 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Store model SHA for PR description
+          MODEL_SHA=$(sha256sum src/JD.AI.Workflows/Models/intent_classifier.zip | cut -d' ' -f1)
+          echo "model_sha=$MODEL_SHA" >> $GITHUB_OUTPUT
+          echo "model_size=$(du -h src/JD.AI.Workflows/Models/intent_classifier.zip | cut -f1)" >> $GITHUB_OUTPUT
+
+      - name: Commit model
+        if: github.event.inputs.commit_model != 'false'
+        id: commit
+        run: |
+          git add src/JD.AI.Workflows/Models/
+          # Only commit if there are changes
+          if git diff --cached --quiet; then
+            echo "no_changes=true" >> $GITHUB_OUTPUT
+            echo "::notice::No changes to model — skipping commit"
+          else
+            git commit -m "ci: retrain intent classifier model
+
+            Generated ${{ steps.generate.outputs.examples }} examples via qwen3.5:9b
+            Triggered by: ${{ github.event_name }}
+            Workflow run: ${{ github.run_id }}"
+            echo "no_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Push model commit
+        if: github.event.inputs.commit_model != 'false'
+        run: |
+          if [[ "${{ steps.commit.outputs.no_changes }}" != "true" ]]; then
+            git push
+            echo "::notice::Model committed and pushed"
+          fi
+
+      # ── Upload model as artifact (always) ─────────────────────────
+      - name: Upload model artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: intent-classifier-model
+          path: src/JD.AI.Workflows/Models/intent_classifier.zip
+          retention-days: 30
+          compression-level: 6
+
+      - name: Upload training data artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: intent-classifier-training-data
+          path: src/JD.AI.Workflows/Models/ollama_training_data.jsonl
+          retention-days: 30
+
+      # ── Summary ────────────────────────────────────────────────────
+      - name: Summary
+        run: |
+          echo "## Intent Classifier Training Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Examples generated | ${{ steps.generate.outputs.examples }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Trigger | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Runner | ubuntu-latest |" >> $GITHUB_STEP_SUMMARY
+          echo "| Model | [intent_classifier.zip](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifact-${{ steps.commit.outputs.model_sha }}) |" >> $GITHUB_STEP_SUMMARY
