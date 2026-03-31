@@ -47,6 +47,15 @@ else
                      data-testid="sessions-grid">
             <Columns>
                 <PropertyColumn Property="x => x.Id" Title="Session ID" />
+                <TemplateColumn Title="Channel">
+                    <CellTemplate>
+                        <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@GetChannelIcon(context.Item.ChannelType)" Size="Size.Small"
+                                     Color="@GetChannelColor(context.Item.ChannelType)" />
+                            <MudText Typo="Typo.body2">@context.Item.ChannelDisplay</MudText>
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
                 <PropertyColumn Property="x => x.ModelId" Title="Model" />
                 <PropertyColumn Property="x => x.ProviderName" Title="Provider" />
                 <PropertyColumn Property="x => x.MessageCount" Title="Messages" />
@@ -180,6 +189,28 @@ else
 
     private static string GetTurnBorderStyle(string role) =>
         $"border-left: 3px solid {(string.Equals(role, "user", StringComparison.Ordinal) ? "var(--mud-palette-primary)" : "var(--mud-palette-secondary)")}";
+
+    private static string GetChannelIcon(string? channelType) => channelType switch
+    {
+        "discord"  => Icons.Material.Filled.Forum,
+        "signal"   => Icons.Material.Filled.Notifications,
+        "telegram" => Icons.Material.Filled.Send,
+        "slack"    => Icons.Material.Filled.Chat,
+        "web"      => Icons.Material.Filled.Language,
+        "openclaw" => Icons.Material.Filled.Pets,
+        _          => Icons.Material.Filled.QuestionMark
+    };
+
+    private static Color GetChannelColor(string? channelType) => channelType switch
+    {
+        "discord"  => Color.Primary,
+        "signal"   => Color.Info,
+        "telegram" => Color.Info,
+        "slack"    => Color.Warning,
+        "web"      => Color.Success,
+        "openclaw" => Color.Secondary,
+        _          => Color.Default
+    };
 
     public void Dispose()
     {
