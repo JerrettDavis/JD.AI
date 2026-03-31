@@ -2,6 +2,8 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using JD.AI.Core.Events;
+using JD.AI.Core.Memory;
 using JD.AI.Core.PromptCaching;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Tools;
@@ -103,9 +105,15 @@ public sealed class AgentLoop
             var tokenEstimate = JD.SemanticKernel.Extensions.Compaction.TokenEstimator
                 .EstimateTokens(response);
 
+            // Capture turn index before it is incremented by RecordAssistantTurnAsync
+            var turnIdxForLog = _session.TurnIndex;
+
             await _session.RecordAssistantTurnAsync(
                 response, durationMs: sw.ElapsedMilliseconds,
                 tokensOut: tokenEstimate).ConfigureAwait(false);
+
+            // Fire-and-forget daily memory log entry (non-blocking)
+            AppendTurnToMemoryLog(turnIdxForLog, userMessage, ct);
 
             turnEntry.Attributes["tokens_out"] = tokenEstimate.ToString(System.Globalization.CultureInfo.InvariantCulture);
             turnEntry.Complete();
@@ -412,10 +420,16 @@ public sealed class AgentLoop
 
             output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, tokenEstimate, totalBytes));
 
+            // Capture turn index before it is incremented by RecordAssistantTurnAsync
+            var turnIdxForLog = _session.TurnIndex;
+
             await _session.RecordAssistantTurnAsync(
                 response, thinkingText,
                 durationMs: sw.ElapsedMilliseconds,
                 tokensOut: tokenEstimate).ConfigureAwait(false);
+
+            // Fire-and-forget daily memory log entry (non-blocking)
+            AppendTurnToMemoryLog(turnIdxForLog, userMessage, ct);
 
             turnEntry.Attributes["tokens_out"] = tokenEstimate.ToString(System.Globalization.CultureInfo.InvariantCulture);
             turnEntry.Complete();
@@ -1633,7 +1647,8 @@ public sealed class AgentLoop
         return EvaluateTextToolCallSafety(
             canonicalName, argsSummary,
             _session.PermissionMode, _session.SkipPermissions, _session.AutoRunEnabled,
-            _session.ToolSafetyTiers, _session.ToolPermissionProfile, _textToolConfirmedOnce, AgentOutput.Current);
+            _session.ToolSafetyTiers, _session.ToolPermissionProfile, _textToolConfirmedOnce, AgentOutput.Current,
+            _session.EventBus, _session.SessionInfo?.Id);
     }
 
     /// <summary>
@@ -1645,7 +1660,9 @@ public sealed class AgentLoop
         PermissionMode permissionMode, bool skipPermissions, bool autoRunEnabled,
         IReadOnlyDictionary<string, Tools.SafetyTier>? tierMap,
         ToolPermissionProfile? permissionProfile,
-        HashSet<string> confirmedOnce, IAgentOutput output)
+        HashSet<string> confirmedOnce, IAgentOutput output,
+        IEventBus? eventBus = null,
+        string? sessionId = null)
     {
         var tier = tierMap?.GetValueOrDefault(canonicalName, Tools.SafetyTier.AlwaysConfirm)
                    ?? Tools.SafetyTier.AlwaysConfirm;
@@ -1653,7 +1670,9 @@ public sealed class AgentLoop
             canonicalName,
             permissionMode,
             tier,
-            permissionProfile);
+            permissionProfile,
+            eventBus,
+            sessionId);
 
         if (gate.Decision == ToolExecutionGateDecision.Blocked)
         {
@@ -1672,5 +1691,19 @@ public sealed class AgentLoop
         _ = confirmedOnce;
         _ = tier;
         return output.ConfirmToolCall(canonicalName, argsSummary);
+    }
+
+    /// <summary>
+    /// Fire-and-forget append of a turn summary to the daily memory log.
+    /// </summary>
+    private void AppendTurnToMemoryLog(int turnIndex, string userMessage, CancellationToken ct)
+    {
+        var sessionId = _session.SessionInfo?.Id ?? "default";
+        var msgPreview = userMessage.Length > 50
+            ? userMessage[..50] + "…"
+            : userMessage;
+        var summary = $"Turn {turnIndex}: {msgPreview}";
+
+        _ = _session.MemoryService?.AppendToDailyLogAsync(sessionId, summary, ct);
     }
 }
