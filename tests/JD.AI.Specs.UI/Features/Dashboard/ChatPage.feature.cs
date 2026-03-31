@@ -175,7 +175,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         await testRunner.ThenAsync("I should see the chat header", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 14
-        await testRunner.AndAsync("the header should display \"Web Chat\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+        await testRunner.AndAsync("the header should display \"Chat\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 15
         await testRunner.AndAsync("the header should have a chat icon", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");

@@ -63,8 +63,9 @@ public sealed class ChatPageSteps
     [Then(@"I should see the agent selector or no-agents warning")]
     public async Task ThenIShouldSeeTheAgentSelectorOrNoAgentsWarning()
     {
-        // Either the MudSelect agent selector or the "No agents running" warning chip
-        var selector = _page.Locator(".jd-chat-header .mud-select");
+        // Use the data-testid on the agent-selector MudSelect, or fall back
+        // to the "No agents running" warning chip.
+        var selector = _page.Locator("[data-testid=agent-selector]");
         var warning = _page.Locator(".jd-chat-header >> text=No agents running");
 
         var selectorVisible = await selector.IsVisibleAsync();
