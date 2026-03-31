@@ -243,7 +243,8 @@ public sealed class DebugLoggerTests
     public void DebugCategory_All_CombinesAllFlags()
     {
         var combined = DebugCategory.Tools | DebugCategory.Providers |
-                       DebugCategory.Sessions | DebugCategory.Agents | DebugCategory.Policies;
+                       DebugCategory.Sessions | DebugCategory.Agents | DebugCategory.Policies |
+                       DebugCategory.Memory;
         Assert.Equal(DebugCategory.All, combined);
     }
 }
