@@ -86,7 +86,7 @@ internal sealed class InMemoryEventBus : IEventBus, IDisposable
 
     private void ThrowIfDisposed()
     {
-        if (_disposed) throw new ObjectDisposedException(nameof(InMemoryEventBus));
+        ObjectDisposedException.ThrowIf(_disposed, this);
     }
 
     public void Dispose()
