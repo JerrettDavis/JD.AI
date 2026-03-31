@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>JD.AI.Workflows.Training</RootNamespace>
+    <Description>Training pipeline for the ML.NET intent classifier — generates training data, trains a model, and benchmarks it against the TF-IDF baseline.</Description>
+    <IsShipping>false</IsShipping>
+    <!-- Suppress rules that don't apply to one-off training utility tools -->
+    <NoWarn>
+      $(NoWarn);
+      CA5394;  <!-- insecure RNG — acceptable in training data generation -->
+      CA1304;  <!-- culture-specific char transforms — training data is English only -->
+      CA1308;  <!-- ToLowerInvariant vs ToUpperInvariant — both fine -->
+      CA1515;  <!-- public types in non-library — fine for tools -->
+      CA1034;  <!-- nested types — convenient in tools -->
+      CA1002;  <!-- List vs ReadOnlyCollection — fine for tools -->
+      CA1859;  <!-- concrete return types — fine for tools -->
+      CA1849;  <!-- sync file IO in one-shot tool — fine -->
+      MA0002;  <!-- IComparer for controlled seed inputs -->
+      MA0006;  <!-- string != vs string.Equals — fine in tools -->
+      MA0009;  <!-- Regex ReDoS on controlled seed strings -->
+      MA0011;  <!-- culture-aware case ops on English data -->
+      MA0016;  <!-- concrete collections fine in tools -->
+    </NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML" />
+    <PackageReference Include="Spectre.Console" />
+  </ItemGroup>
+
+  <!-- Reference the Workflows project to reuse ML input/output schemas -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\JD.AI.Workflows\JD.AI.Workflows.csproj" />
+  </ItemGroup>
+
+</Project>

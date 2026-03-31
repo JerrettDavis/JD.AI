@@ -19,6 +19,18 @@ internal static class UpdateCliHandler
     internal static Func<InstallationInfo, IInstallStrategy> InstallStrategyFactory { get; set; } =
         static info => new GitHubReleaseStrategy(info.RuntimeId, info.ExecutablePath);
 
+    /// <summary>Factory for JDAIToolkit operations. Override in tests to inject mock behavior.</summary>
+    internal static Func<CancellationToken, Task<IReadOnlyList<InstalledTool>>> GetInstalledToolsAsync { get; set; } =
+        JDAIToolkit.GetInstalledToolsAsync;
+
+    /// <summary>Factory for JDAIToolkit.CheckAllAsync. Override in tests.</summary>
+    internal static Func<IReadOnlyList<InstalledTool>?, CancellationToken, Task<UpdatePlan>> CheckAllAsync { get; set; } =
+        JDAIToolkit.CheckAllAsync;
+
+    /// <summary>Factory for JDAIToolkit.GetLatestVersionAsync. Override in tests.</summary>
+    internal static Func<string, CancellationToken, Task<string?>> GetLatestVersionAsync { get; set; } =
+        JDAIToolkit.GetLatestVersionAsync;
+
     public static async Task<int> RunAsync(string subcommand, string[] args)
     {
         using var cts = new CancellationTokenSource();
@@ -32,22 +44,248 @@ internal static class UpdateCliHandler
         };
     }
 
-    // ── jdai update [--check] [--force] ─────────────────────────
+    // ── jdai update [--self] [--check] [--all] [tool] ──────────
 
     private static async Task<int> RunUpdateAsync(string[] args, CancellationToken ct)
     {
         var checkOnly = args.Contains("--check");
+        var selfOnly = args.Contains("--self");
+        var allTools = args.Contains("--all");
+        var namedTool = args.FirstOrDefault(a => !a.StartsWith("--"));
         var force = args.Contains("--force");
 
         if (args.Contains("--help") || args.Contains("-h"))
         {
-            AnsiConsole.MarkupLine("[bold]Usage:[/] jdai update [[--check]] [[--force]]");
-            AnsiConsole.MarkupLine("  [dim]--check[/]   Check for updates without applying");
-            AnsiConsole.MarkupLine("  [dim]--force[/]   Force update even if already on latest");
+            AnsiConsole.MarkupLine("[bold]Usage:[/] jdai update [[--self]] [[--check]] [[--all]] [[--force]]");
+            AnsiConsole.MarkupLine("  [dim]--self[/]    Update only the jdai tool (default: all tools)");
+            AnsiConsole.MarkupLine("  [dim]--check[/]   Show update plan without applying");
+            AnsiConsole.MarkupLine("  [dim]--all[/]     Check and update all installed JD.AI tools");
+            AnsiConsole.MarkupLine("  [dim]--force[/]   Apply even if already on latest");
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("  Update a named tool: jdai update [dim]<tool-name>[/]");
             return 0;
         }
 
-        // 1. Detect installation
+        // Multi-tool mode: --check, --all, or positional tool name
+        if (checkOnly || allTools || namedTool is not null)
+        {
+            return await RunMultiToolUpdateAsync(checkOnly, allTools, namedTool, force, ct)
+                .ConfigureAwait(false);
+        }
+
+        // Default (no flags): multi-tool update all
+        if (selfOnly)
+        {
+            return await RunSelfUpdateAsync(checkOnly, force, ct).ConfigureAwait(false);
+        }
+
+        var tools = await GetInstalledToolsAsync(ct).ConfigureAwait(false);
+
+        // Fall back to single-tool mode if no other JD.AI tools are detected
+        if (tools.Count == 0)
+        {
+            return await RunSelfUpdateAsync(checkOnly, force, ct).ConfigureAwait(false);
+        }
+
+        return await RunMultiToolUpdateAsync(checkOnly: false, allTools: true, namedTool: null, force, ct)
+            .ConfigureAwait(false);
+    }
+
+    // ── Multi-tool update (all JD.AI tools) ──────────────────────
+
+    private static async Task<int> RunMultiToolUpdateAsync(
+        bool checkOnly,
+        bool allTools,
+        string? namedTool,
+        bool force,
+        CancellationToken ct)
+    {
+        if (namedTool is not null)
+        {
+            // Update a specific named tool
+            return await UpdateNamedToolAsync(namedTool, checkOnly, force, ct)
+                .ConfigureAwait(false);
+        }
+
+        // Get all installed JD.AI tools
+        var tools = await AnsiConsole.Status()
+            .Spinner(Spinner.Known.Dots)
+            .SpinnerStyle(Style.Parse("blue"))
+            .StartAsync("Detecting installed JD.AI tools...", async _ =>
+                await GetInstalledToolsAsync(ct).ConfigureAwait(false))
+            .ConfigureAwait(false);
+
+        if (tools.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[yellow]No JD.AI tools found installed.[/]");
+            return 1;
+        }
+
+        AnsiConsole.MarkupLine($"[dim]Found [bold]{tools.Count}[/] JD.AI tool(s):[/]");
+        foreach (var tool in tools)
+        {
+            AnsiConsole.MarkupLine($"  [dim]-[/] [bold]{tool.PackageId}[/] [dim]({tool.ToolName})[/] — v{tool.CurrentVersion}");
+        }
+
+        var plan = await AnsiConsole.Status()
+            .Spinner(Spinner.Known.Dots)
+            .SpinnerStyle(Style.Parse("yellow"))
+            .StartAsync("Checking for updates...", async _ =>
+                await CheckAllAsync(tools, ct).ConfigureAwait(false))
+            .ConfigureAwait(false);
+
+        // Print the update table
+        var table = new Table()
+            .Border(TableBorder.Rounded)
+            .AddColumn("[bold]Tool[/]")
+            .AddColumn("[bold]Current[/]")
+            .AddColumn("[bold]Latest[/]")
+            .AddColumn("[bold]Status[/]");
+
+        foreach (var tool in plan.Tools)
+        {
+            var update = plan.Updates.FirstOrDefault(u => string.Equals(u.Tool.PackageId, tool.PackageId, StringComparison.Ordinal));
+            var status = update is { IsNewer: true }
+                ? $"[yellow]Update available[/]"
+                : "[green]Up to date[/]";
+            table.AddRow(
+                tool.PackageId,
+                tool.CurrentVersion,
+                update?.LatestVersion ?? tool.CurrentVersion,
+                status);
+        }
+
+        AnsiConsole.Write(table);
+
+        if (!plan.HasUpdates && !force)
+        {
+            AnsiConsole.MarkupLine("[green]All tools are up to date.[/]");
+            return 0;
+        }
+
+        if (checkOnly)
+        {
+            if (plan.HasUpdates)
+            {
+                AnsiConsole.MarkupLine($"[yellow]Run [bold]jdai update --all[/] to apply.[/]");
+            }
+            return 0;
+        }
+
+        // Apply all updates
+        AnsiConsole.MarkupLine($"[dim]Applying [bold]{plan.UpdateCount}[/] update(s)...[/]");
+
+        var success = true;
+        await JDAIToolkit.ApplyAllAsync(
+            plan,
+            continueOnError: true,
+            onToolUpdated: (tool, result) =>
+            {
+                if (result.Success)
+                {
+                    AnsiConsole.MarkupLine(
+                        $"  [green]✓[/] [bold]{tool.PackageId}[/] updated.");
+                }
+                else
+                {
+                    AnsiConsole.MarkupLine(
+                        $"  [red]✗[/] [bold]{tool.PackageId}[/] failed: {result.Output}");
+                    success = false;
+                }
+            },
+            ct).ConfigureAwait(false);
+
+        if (success && plan.UpdateCount > 0)
+        {
+            AnsiConsole.MarkupLine("[green]All tools updated successfully.[/]");
+        }
+
+        return success ? 0 : 1;
+    }
+
+    // ── Single-tool update (named) ────────────────────────────────
+
+    private static async Task<int> UpdateNamedToolAsync(
+        string toolName,
+        bool checkOnly,
+        bool force,
+        CancellationToken ct)
+    {
+        // Resolve tool name → package ID
+        var packageId = ResolveToolName(toolName);
+
+        AnsiConsole.MarkupLine($"[dim]Tool:[/] [bold]{packageId}[/]");
+
+        // Get current version via dotnet tool show
+        var showResult = await AnsiConsole.Status()
+            .Spinner(Spinner.Known.Dots)
+            .SpinnerStyle(Style.Parse("blue"))
+            .StartAsync($"Checking {packageId}...", async _ =>
+            {
+                var r = await Core.Infrastructure.ProcessExecutor.RunAsync(
+                    "dotnet", $"tool show -g {packageId}",
+                    timeout: TimeSpan.FromSeconds(5),
+                    cancellationToken: ct).ConfigureAwait(false);
+                return r.Success ? ParseVersionFromOutput(r.StandardOutput) : null;
+            }).ConfigureAwait(false);
+
+        var currentVersion = showResult ?? "unknown";
+        AnsiConsole.MarkupLine($"[dim]Current:[/] [bold]{currentVersion}[/]");
+
+        var latest = await AnsiConsole.Status()
+            .Spinner(Spinner.Known.Dots)
+            .SpinnerStyle(Style.Parse("yellow"))
+            .StartAsync("Fetching latest version...", async _ =>
+                await GetLatestVersionAsync(packageId, ct).ConfigureAwait(false))
+            .ConfigureAwait(false);
+
+        if (latest is null)
+        {
+            AnsiConsole.MarkupLine("[red]Could not determine latest version from NuGet.[/]");
+            return 1;
+        }
+
+        AnsiConsole.MarkupLine($"[dim]Latest:[/]  [bold]{latest}[/]");
+
+        var isNewer = JDAIToolkit.CompareVersions(latest, currentVersion) > 0;
+        if (!isNewer && !force)
+        {
+            AnsiConsole.MarkupLine("[green]Already up to date.[/]");
+            return 0;
+        }
+
+        if (checkOnly)
+        {
+            AnsiConsole.MarkupLine($"[yellow]Update available:[/] {currentVersion} → [bold]{latest}[/]");
+            return 0;
+        }
+
+        var result = await AnsiConsole.Status()
+            .Spinner(Spinner.Known.Dots)
+            .SpinnerStyle(Style.Parse("green"))
+            .StartAsync($"Updating {packageId}...", async _ =>
+                await JDAIToolkit.ApplyAsync(packageId, latest, ct).ConfigureAwait(false))
+            .ConfigureAwait(false);
+
+        if (result.Success)
+        {
+            AnsiConsole.MarkupLine($"[green]✓ {packageId} updated successfully.[/]");
+            if (result.RequiresRestart)
+                AnsiConsole.MarkupLine("[dim]Restart the tool to use the new version.[/]");
+            return 0;
+        }
+        else
+        {
+            AnsiConsole.MarkupLine($"[red]✗ Update failed:[/] {result.Output}");
+            return 1;
+        }
+    }
+
+    // ── jdai update --self (legacy single-tool) ──────────────────
+
+    private static async Task<int> RunSelfUpdateAsync(bool checkOnly, bool force, CancellationToken ct)
+    {
+        // Detect installation
         var info = await AnsiConsole.Status()
             .Spinner(Spinner.Known.Dots)
             .SpinnerStyle(Style.Parse("blue"))
@@ -63,7 +301,6 @@ internal static class UpdateCliHandler
         AnsiConsole.MarkupLine(
             $"[dim]Current version:[/] [bold]{Markup.Escape(info.CurrentVersion)}[/]");
 
-        // 2. Check for updates
         var latest = await AnsiConsole.Status()
             .Spinner(Spinner.Known.Dots)
             .SpinnerStyle(Style.Parse("yellow"))
@@ -78,8 +315,7 @@ internal static class UpdateCliHandler
         }
         else
         {
-            AnsiConsole.MarkupLine(
-                $"[dim]Latest version:[/]  [bold]{Markup.Escape(latest)}[/]");
+            AnsiConsole.MarkupLine($"[dim]Latest version:[/]  [bold]{Markup.Escape(latest)}[/]");
         }
 
         var isNewer = latest is not null && UpdateChecker.IsNewer(latest, info.CurrentVersion);
@@ -96,13 +332,11 @@ internal static class UpdateCliHandler
             {
                 AnsiConsole.MarkupLine(
                     $"[yellow]Update available:[/] {Markup.Escape(info.CurrentVersion)} → [bold]{Markup.Escape(latest!)}[/]");
-                AnsiConsole.MarkupLine($"Run [bold]jdai update[/] to apply.");
+                AnsiConsole.MarkupLine($"Run [bold]jdai update --self[/] to apply.");
             }
-
             return 0;
         }
 
-        // 3. Apply update
         var result = await AnsiConsole.Status()
             .Spinner(Spinner.Known.Dots)
             .SpinnerStyle(Style.Parse("green"))
@@ -112,7 +346,7 @@ internal static class UpdateCliHandler
 
         if (result.LaunchedDetached)
         {
-            AnsiConsole.MarkupLine("[yellow]⬆ Update process launched in a new window.[/]");
+            AnsiConsole.MarkupLine("[yellow]Update process launched in a new window.[/]");
             AnsiConsole.MarkupLine("[dim]The update will run after this process exits.[/]");
             AnsiConsole.MarkupLine("[bold yellow]Restart jdai once the update completes.[/]");
             return 0;
@@ -134,7 +368,7 @@ internal static class UpdateCliHandler
         }
     }
 
-    // ── jdai install [version] [--force] ────────────────────────
+    // ── jdai install [version] [--force] ─────────────────────────
 
     private static async Task<int> RunInstallAsync(string[] args, CancellationToken ct)
     {
@@ -143,9 +377,6 @@ internal static class UpdateCliHandler
             AnsiConsole.MarkupLine("[bold]Usage:[/] jdai install [[version]] [[--force]]");
             AnsiConsole.MarkupLine("  [dim]version[/]   Version to install (default: latest)");
             AnsiConsole.MarkupLine("  [dim]--force[/]   Force reinstall even if same version");
-            AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine("[dim]Installs JD.AI from GitHub releases as a native binary.[/]");
-            AnsiConsole.MarkupLine("[dim]No .NET SDK required.[/]");
             return 0;
         }
 
@@ -154,7 +385,6 @@ internal static class UpdateCliHandler
             .Where(a => !a.StartsWith('-'))
             .FirstOrDefault();
 
-        // Detect current state
         var info = await AnsiConsole.Status()
             .Spinner(Spinner.Known.Dots)
             .SpinnerStyle(Style.Parse("blue"))
@@ -166,7 +396,6 @@ internal static class UpdateCliHandler
             $"[dim]Platform:[/] [bold]{info.RuntimeId}[/]  " +
             $"[dim]Current:[/] [bold]{Markup.Escape(info.CurrentVersion)}[/]");
 
-        // For `install`, always use GitHub releases (that's the whole point — no dotnet required)
         var strategy = InstallStrategyFactory(info);
 
         if (targetVersion is null && !force)
@@ -186,8 +415,7 @@ internal static class UpdateCliHandler
 
             if (!UpdateChecker.IsNewer(latest, info.CurrentVersion))
             {
-                AnsiConsole.MarkupLine(
-                    $"[green]Already on latest version ({Markup.Escape(latest)}).[/]");
+                AnsiConsole.MarkupLine($"[green]Already on latest version ({Markup.Escape(latest)}).[/]");
                 AnsiConsole.MarkupLine("[dim]Use --force to reinstall.[/]");
                 return 0;
             }
@@ -223,10 +451,36 @@ internal static class UpdateCliHandler
 
     private static int PrintHelp()
     {
-        AnsiConsole.MarkupLine("[bold]jdai update[/] — Check for and apply updates");
+        AnsiConsole.MarkupLine("[bold]jdai update[/] — Check for and apply updates (all tools by default)");
         AnsiConsole.MarkupLine("[bold]jdai install[/] — Install from GitHub releases (no .NET required)");
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("Run [bold]jdai update --help[/] or [bold]jdai install --help[/] for details.");
         return 0;
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────
+
+    /// <summary>Resolves a tool name (jdai, jdai-daemon, etc.) to a package ID.</summary>
+    private static string ResolveToolName(string name)
+    {
+        if (name.Equals("jdai", StringComparison.OrdinalIgnoreCase))
+            return "JD.AI";
+        if (name.Equals("jdai-daemon", StringComparison.OrdinalIgnoreCase))
+            return "JD.AI.Daemon";
+        if (name.Equals("jdai-gateway", StringComparison.OrdinalIgnoreCase))
+            return "JD.AI.Gateway";
+        if (name.Equals("jdai-tui", StringComparison.OrdinalIgnoreCase))
+            return "JD.AI.TUI";
+
+        // Not a known short name — treat as a package ID directly
+        return name;
+    }
+
+    private static string? ParseVersionFromOutput(string output)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(
+            output, @"Version:\s*([^\s]+)",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        return match.Success ? match.Groups[1].Value.Trim() : null;
     }
 }
