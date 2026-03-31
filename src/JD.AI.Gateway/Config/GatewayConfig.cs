@@ -10,6 +10,7 @@ public sealed class GatewayConfig
     public ServerConfig Server { get; set; } = new();
     public AuthConfig Auth { get; set; } = new();
     public RateLimitConfig RateLimit { get; set; } = new();
+    public SessionCleanupConfig SessionCleanup { get; set; } = new();
     public IList<ChannelConfig> Channels { get; set; } = [];
     public IList<ProviderConfig> Providers { get; set; } = [];
     public IList<AgentDefinition> Agents { get; set; } = [];
@@ -226,4 +227,27 @@ public sealed class TelemetryGatewayConfig
 
     /// <summary>Exporter endpoint URI (e.g. <c>http://localhost:4317</c> for OTLP).</summary>
     public string? Endpoint { get; set; }
+}
+
+/// <summary>
+/// Automatic stale session cleanup settings, nested under <c>Gateway:SessionCleanup</c>.
+/// </summary>
+public sealed class SessionCleanupConfig
+{
+    /// <summary>Whether to automatically close inactive sessions. Default: <c>true</c>.</summary>
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>
+    /// Sessions with no interaction (UpdatedAt) older than this are closed.
+    /// Supports Go-style duration strings: <c>"24h"</c>, <c>"1d"</c>, <c>"30m"</c>.
+    /// Default: <c>"24h"</c>.
+    /// </summary>
+    public string MaxInactiveAge { get; set; } = "24h";
+
+    /// <summary>
+    /// How often the cleanup scan runs.
+    /// Supports Go-style duration strings: <c>"15m"</c>, <c>"30m"</c>, <c>"1h"</c>.
+    /// Default: <c>"30m"</c>.
+    /// </summary>
+    public string Interval { get; set; } = "30m";
 }
