@@ -544,14 +544,12 @@ static void RunDaemon(string[] args)
 }
 
 static async Task<int> RunMultiToolUpdateAsync(
+    UpdateChecker checker,
     bool checkOnly,
     bool shouldReconcileService,
     bool serviceWasRunning,
     IServiceManager? serviceManager)
 {
-    using var host = Host.CreateApplicationBuilder([]).Build();
-    var checker = host.Services.GetRequiredService<UpdateChecker>();
-
     Console.WriteLine("Detecting installed JD.AI tools...");
     var plan = await checker.CheckAllToolsAsync().ConfigureAwait(false);
 
@@ -690,7 +688,7 @@ static async Task<int> RunUpdateCommandAsync(bool checkOnly, bool allTools, bool
     // ── Multi-tool update path (default) ─────────────────────────
     if (!daemonOnly)
     {
-        return await RunMultiToolUpdateAsync(checkOnly, shouldReconcileService, serviceWasRunning, serviceManager).ConfigureAwait(false);
+        return await RunMultiToolUpdateAsync(checker, checkOnly, shouldReconcileService, serviceWasRunning, serviceManager).ConfigureAwait(false);
     }
 
     // ── Single-tool daemon-only path ─────────────────────────────
