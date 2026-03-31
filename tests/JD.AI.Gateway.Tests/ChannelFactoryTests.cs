@@ -13,6 +13,8 @@ public sealed class ChannelFactoryTests
     public ChannelFactoryTests()
     {
         var sp = Substitute.For<IServiceProvider>();
+        // Simulate GetRequiredService throwing when logger isn't registered — mirrors real DI behavior.
+        sp.GetService(typeof(object)).Returns(null);
         _factory = new ChannelFactory(sp, NullLogger<ChannelFactory>.Instance);
     }
 
@@ -46,7 +48,7 @@ public sealed class ChannelFactoryTests
     }
 
     [Fact]
-    public void Create_Discord_WithToken_ReturnsDiscordChannel()
+    public void Create_Discord_WithToken_ReturnsQueueDecoratedDiscordChannel()
     {
         var config = new ChannelConfig
         {
