@@ -15,6 +15,7 @@ namespace JD.AI.E2E.Tests;
 ///
 /// When the dashboard is unreachable tests are gracefully skipped so that CI runs
 /// are not broken by a missing dev-server process.
+[Trait("Category", "E2E")]
 [Collection("Ollama E2E")]
 public sealed class WebDashboardTests : IAsyncDisposable
 {

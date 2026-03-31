@@ -12,6 +12,7 @@ namespace JD.AI.E2E.Tests;
 /// involved) and are gated by <see cref="OllamaTestHost"/>.
 /// All tests in this class are skipped when Ollama is not reachable.
 [TestCaseOrderer("Xunit.DependencyInjection.TestCaseOrderer", "Microsoft.NET.Test.Sdk")]
+[Trait("Category", "E2E")]
 [Collection("Ollama E2E")]
 public sealed class SessionScenarioTests : IDisposable
 {
