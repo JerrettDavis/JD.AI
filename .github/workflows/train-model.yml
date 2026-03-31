@@ -56,6 +56,15 @@ jobs:
           curl -fsSL https://ollama.com/install.sh | sh
           ollama --version
 
+      - name: Start Ollama server
+        run: |
+          # Start Ollama as a background service (required for pull and training)
+          nohup ollama serve > /tmp/ollama.log 2>&1 &
+          # Give the server a moment to initialize
+          sleep 5
+          # Verify it's running
+          curl -s http://localhost:11434/api/tags && echo "Ollama server is up"
+
       - name: Pull qwen3.5:9b model
         run: ollama pull qwen3.5:9b
 

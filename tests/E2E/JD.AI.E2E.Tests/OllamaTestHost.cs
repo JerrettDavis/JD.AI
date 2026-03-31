@@ -8,7 +8,7 @@ namespace JD.AI.E2E.Tests;
 /// Provides shared integration-host information for the E2E test suite.
 ///
 /// The Gateway (and Ollama) must be running before these tests can execute.
-/// <see cref="EnsureAvailable"/> calls <c>Xunit.Skip.If</c> to gracefully
+/// <see cref="EnsureAvailable"/> calls <c>Skip.If</c> to gracefully
 /// skip tests when the stack is unavailable.
 ///
 /// Usage:
@@ -77,10 +77,14 @@ public sealed class OllamaTestHost : IDisposable
     /// </summary>
     public void EnsureAvailable()
     {
-        Skip.If(!IsAvailable,
-            $"Ollama is not available at {OllamaBaseUrl}. " +
-            $"Start Ollama and ensure the Gateway is running at {GatewayBaseUrl} " +
-            $"before running these tests.");
+        // Do NOT throw from constructor — xUnit handles SkipException differently
+        // depending on where it originates. Instead, throw here in the test method
+        // body so xUnit correctly marks the test as SKIPPED (not FAILED).
+        if (!IsAvailable)
+            throw new SkipException(
+                $"Ollama is not available at {OllamaBaseUrl}. " +
+                $"Start Ollama and ensure the Gateway is running at {GatewayBaseUrl} " +
+                $"before running these tests.");
     }
 
     private bool CheckOllamaAvailable()
