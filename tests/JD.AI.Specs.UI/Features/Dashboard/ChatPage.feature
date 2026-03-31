@@ -11,7 +11,7 @@ Feature: Chat Page
     @smoke
     Scenario: Displays chat header with title
         Then I should see the chat header
-        And the header should display "Web Chat"
+        And the header should display "Chat"
         And the header should have a chat icon
 
     @smoke
