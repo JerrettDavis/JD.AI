@@ -7,7 +7,7 @@ namespace JD.AI.Core.Events;
 /// All events published are retained up to <paramref name="capacity"/> and
 /// can be retrieved via <see cref="GetEvents()"/> for the Dashboard Logs page.
 /// </summary>
-internal sealed class InMemoryEventBus : IEventBus, IDisposable
+public sealed class InMemoryEventBus : IEventBus, IDisposable
 {
     private readonly Channel<GatewayEvent> _channel;
     private readonly List<Subscription> _subscriptions = [];
