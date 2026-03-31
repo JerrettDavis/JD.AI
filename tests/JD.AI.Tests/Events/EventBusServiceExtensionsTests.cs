@@ -129,7 +129,7 @@ public sealed class EventBusServiceExtensionsTests
             new GatewayEvent("x", "s", DateTimeOffset.UtcNow),
             cts.Token);
 
-        await act.Should().NotThrowAsync();
+        await act().WaitAsync(TimeSpan.FromSeconds(2));
     }
 
     [Fact]
