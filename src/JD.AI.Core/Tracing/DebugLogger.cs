@@ -12,7 +12,8 @@ public enum DebugCategory
     Sessions = 1 << 2,
     Agents = 1 << 3,
     Policies = 1 << 4,
-    All = Tools | Providers | Sessions | Agents | Policies,
+    Memory = 1 << 5,
+    All = Tools | Providers | Sessions | Agents | Policies | Memory,
 }
 
 /// <summary>

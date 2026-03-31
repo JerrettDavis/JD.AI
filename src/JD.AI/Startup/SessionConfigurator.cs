@@ -1,4 +1,5 @@
 using JD.AI.Core.Agents;
+using JD.AI.Core.Memory;
 using JD.AI.Core.Providers;
 using JD.AI.Rendering;
 using Microsoft.SemanticKernel;
@@ -22,6 +23,9 @@ internal static class SessionConfigurator
         var allModels = providerSetup.AllModels;
 
         var session = new AgentSession(registry, kernel, selectedModel);
+
+        // Memory service for per-project daily logs and long-term context
+        session.MemoryService = new MemoryService();
 
         // Apply CLI flags
         if (opts.SkipPermissions)

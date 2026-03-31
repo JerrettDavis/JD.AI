@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- Playwright tests require browser binaries; skip during normal dotnet test passes -->
+    <PlaywrightSkipDuringCI>true</PlaywrightSkipDuringCI>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Referenced application projects -->
+    <ProjectReference Include="..\..\src\JD.AI.Gateway\JD.AI.Gateway.csproj" />
+    <ProjectReference Include="..\..\src\JD.AI.Dashboard.Wasm\JD.AI.Dashboard.Wasm.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" PrivateAssets="all" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Microsoft.Playwright" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+    <PackageReference Include="Xunit.SkippableFact" />
+  </ItemGroup>
+
+</Project>
