@@ -1,9 +1,11 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using JD.AI.Core.Agents;
+using JD.AI.Core.Agents.Tasks;
 using JD.AI.Core.Channels;
 using JD.AI.Core.Events;
 using JD.AI.Core.Mcp;
+using JD.AI.Core.Memory;
 using JD.AI.Core.PromptCaching;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Tools;
@@ -29,6 +31,8 @@ public sealed class AgentPoolService : IHostedService
     private readonly ILogger<AgentPoolService> _logger;
     private readonly ConcurrentDictionary<string, AgentInstance> _agents = new();
     private readonly ConcurrentDictionary<string, ChannelReactionTools> _reactionTools = new();
+    private readonly IAgentTaskRegistry? _taskRegistry;
+    private readonly IMemoryService? _memoryService;
 
     /// <summary>Daemon version info — set by Daemon host for agent identity enrichment.</summary>
     public string? DaemonVersion { get; set; }
@@ -45,6 +49,8 @@ public sealed class AgentPoolService : IHostedService
     public AgentPoolService(
         IProviderRegistry providers, IChannelRegistry channelRegistry,
         IEventBus eventBus, ILogger<AgentPoolService> logger,
+        IMemoryService? memoryService = null,
+        IAgentTaskRegistry? taskRegistry = null,
         McpManager? mcpManager = null)
     {
         _providers = providers;
@@ -52,6 +58,8 @@ public sealed class AgentPoolService : IHostedService
         _eventBus = eventBus;
         _logger = logger;
         _mcpManager = mcpManager;
+        _memoryService = memoryService;
+        _taskRegistry = taskRegistry;
     }
 
     public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -111,6 +119,8 @@ public sealed class AgentPoolService : IHostedService
 
         // Create AgentSession and register ToolConfirmationFilter
         var session = new AgentSession(_providers, kernel, modelInfo);
+        session.EventBus = _eventBus;
+        session.MemoryService = _memoryService;
         kernel.AutoFunctionInvocationFilters.Add(new ToolConfirmationFilter(session));
 
         // Connect configured MCP servers and register their tools on the kernel

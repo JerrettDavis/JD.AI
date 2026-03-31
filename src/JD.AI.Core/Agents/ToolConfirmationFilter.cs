@@ -63,7 +63,11 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             canonicalToolName,
             _session.PermissionMode,
             tier,
-            _session.ToolPermissionProfile);
+            _session.ToolPermissionProfile,
+            _session.EventBus,
+            _session.SessionInfo?.Id,
+            durationMs: null,
+            argsSummary: null);
 
         // ── Workflow enforcement ────────────────────────────
         if (gate.Decision == ToolExecutionGateDecision.RequirePrompt &&
