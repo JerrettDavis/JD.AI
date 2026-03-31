@@ -46,7 +46,7 @@ public static class EventBusServiceExtensions
             services.AddSingleton<IEventBus, RedisEventBus>();
         }
         else
-            services.AddSingleton<IEventBus, InProcessEventBus>();
+            services.AddSingleton<IEventBus>(InMemoryEventBus.Create());
 
         return services;
     }
