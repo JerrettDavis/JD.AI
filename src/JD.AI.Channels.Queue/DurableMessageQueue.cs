@@ -121,8 +121,7 @@ public sealed class DiscordMessageBuffer : IAsyncDisposable
                 WHERE status = 0
                    OR (status = 1 AND next_retry_after <= @now)
                 ORDER BY enqueued_at ASC
-                LIMIT 1
-                FOR UPDATE SKIP LOCKED;
+                LIMIT 1;
                 """;
             selectCmd.Parameters.AddWithValue("@now", DateTimeOffset.UtcNow.ToString("O"));
 
