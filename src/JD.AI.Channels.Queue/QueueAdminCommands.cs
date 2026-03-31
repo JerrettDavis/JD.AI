@@ -7,7 +7,7 @@ namespace JD.AI.Channels.Queue;
 /// Admin commands for inspecting and managing the durable queue.
 /// Registered via <c>ICommandRegistry</c> alongside existing channel commands.
 /// </summary>
-public sealed class QueuePeekCommand(DurableMessageQueue queue) : IChannelCommand
+public sealed class QueuePeekCommand(DiscordMessageBuffer queue) : IChannelCommand
 {
     public string Name => "queue-peek";
     public string Description => "Shows pending and failed messages in the durable queue.";
@@ -57,7 +57,7 @@ public sealed class QueuePeekCommand(DurableMessageQueue queue) : IChannelComman
     }
 }
 
-public sealed class QueueRetryCommand(DurableMessageQueue queue) : IChannelCommand
+public sealed class QueueRetryCommand(DiscordMessageBuffer queue) : IChannelCommand
 {
     public string Name => "queue-retry";
     public string Description => "Retries a specific failed or pending message by row ID. Usage: queue-retry <row_id>";
@@ -83,7 +83,7 @@ public sealed class QueueRetryCommand(DurableMessageQueue queue) : IChannelComma
     }
 }
 
-public sealed class QueuePurgeCommand(DurableMessageQueue queue) : IChannelCommand
+public sealed class QueuePurgeCommand(DiscordMessageBuffer queue) : IChannelCommand
 {
     public string Name => "queue-purge";
     public string Description =>
