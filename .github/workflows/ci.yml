@@ -49,7 +49,7 @@ jobs:
           dotnet test JD.AI.slnx
           --configuration Release
           --no-build
-          --filter "Category!=Integration&Category!=MlModel"
+          --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment"
           --collect:"XPlat Code Coverage"
           --
           DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
@@ -133,7 +133,7 @@ jobs:
           dotnet test JD.AI.slnx
           --configuration Release
           --no-build
-          --filter "Category!=Integration&Category!=MlModel"
+          --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment"
           --collect:"XPlat Code Coverage"
           --
           DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura

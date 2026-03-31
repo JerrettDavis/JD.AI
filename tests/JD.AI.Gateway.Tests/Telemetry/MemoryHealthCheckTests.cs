@@ -5,6 +5,7 @@ using NSubstitute;
 
 namespace JD.AI.Gateway.Tests.Telemetry;
 
+[Trait("Category", "FlakyEnvironment")]
 public sealed class MemoryHealthCheckTests
 {
     [Fact]

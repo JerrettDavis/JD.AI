@@ -1,6 +1,8 @@
 using FluentAssertions;
+using JD.AI.Channels.Queue;
 using JD.AI.Gateway.Config;
 using JD.AI.Gateway.Services;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
@@ -13,8 +15,11 @@ public sealed class ChannelFactoryTests
     public ChannelFactoryTests()
     {
         var sp = Substitute.For<IServiceProvider>();
-        // Simulate GetRequiredService throwing when logger isn't registered — mirrors real DI behavior.
-        sp.GetService(typeof(object)).Returns(null);
+        // Provide a NullLogger so the DurableQueueChannelDecorator can be constructed.
+        // NSubstitute mocks return a mock object for unconfigured calls; we explicitly
+        // return NullLogger so GetRequiredService resolves correctly.
+        sp.GetService(Arg.Is<Type>(t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(ILogger<>)))
+            .Returns(NullLogger<DurableQueueChannelDecorator>.Instance);
         _factory = new ChannelFactory(sp, NullLogger<ChannelFactory>.Instance);
     }
 
