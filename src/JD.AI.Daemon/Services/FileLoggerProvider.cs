@@ -32,7 +32,7 @@ public sealed class FileLoggerProvider : ILoggerProvider
         var today = DateTime.Now.ToString("yyyy-MM-dd");
         lock (_lock)
         {
-            if (_currentDate != today || _writer is null)
+            if (!string.Equals(_currentDate, today, StringComparison.Ordinal) || _writer is null)
             {
                 _writer?.Dispose();
                 var dir = Path.GetDirectoryName(_basePath)!;
