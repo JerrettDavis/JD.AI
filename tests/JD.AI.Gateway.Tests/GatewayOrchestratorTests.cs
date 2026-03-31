@@ -5,6 +5,7 @@ using JD.AI.Core.Events;
 using JD.AI.Core.Providers;
 using JD.AI.Gateway.Config;
 using JD.AI.Gateway.Services;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.SemanticKernel;
 using NSubstitute;
@@ -298,6 +299,7 @@ public sealed class GatewayOrchestratorTests
         _router,
         _events,
         NullLogger<GatewayOrchestrator>.Instance,
+        new TestHostLifetime(),
         commandRegistry: commandRegistry);
 
     private static Kernel CreateKernel() => Kernel.CreateBuilder().Build();
@@ -405,5 +407,13 @@ public sealed class GatewayOrchestratorTests
             LastRegistryCommandCount = registry.Commands.Count;
             return Task.CompletedTask;
         }
+    }
+
+    private sealed class TestHostLifetime : IHostApplicationLifetime
+    {
+        public CancellationToken ApplicationStarted => CancellationToken.None;
+        public CancellationToken ApplicationStopping => CancellationToken.None;
+        public CancellationToken ApplicationStopped => CancellationToken.None;
+        public void StopApplication() { }
     }
 }

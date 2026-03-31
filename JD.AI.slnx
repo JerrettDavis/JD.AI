@@ -12,6 +12,7 @@
     <Project Path="src/JD.AI.Daemon/JD.AI.Daemon.csproj" />
     <Project Path="src/JD.AI.Plugins.SDK/JD.AI.Plugins.SDK.csproj" />
     <Project Path="src/JD.AI.Channels.Discord/JD.AI.Channels.Discord.csproj" />
+    <Project Path="src/JD.AI.Channels.Queue/JD.AI.Channels.Queue.csproj" />
     <Project Path="src/JD.AI.Channels.Signal/JD.AI.Channels.Signal.csproj" />
     <Project Path="src/JD.AI.Channels.Slack/JD.AI.Channels.Slack.csproj" />
     <Project Path="src/JD.AI.Channels.Telegram/JD.AI.Channels.Telegram.csproj" />

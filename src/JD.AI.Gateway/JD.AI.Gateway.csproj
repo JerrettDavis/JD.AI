@@ -22,6 +22,7 @@
     <ProjectReference Include="..\JD.AI.Telemetry\JD.AI.Telemetry.csproj" />
     <ProjectReference Include="..\JD.AI.Plugins.SDK\JD.AI.Plugins.SDK.csproj" />
     <ProjectReference Include="..\JD.AI.Channels.Discord\JD.AI.Channels.Discord.csproj" />
+    <ProjectReference Include="..\JD.AI.Channels.Queue\JD.AI.Channels.Queue.csproj" />
     <ProjectReference Include="..\JD.AI.Channels.Signal\JD.AI.Channels.Signal.csproj" />
     <ProjectReference Include="..\JD.AI.Channels.Slack\JD.AI.Channels.Slack.csproj" />
     <ProjectReference Include="..\JD.AI.Channels.Telegram\JD.AI.Channels.Telegram.csproj" />

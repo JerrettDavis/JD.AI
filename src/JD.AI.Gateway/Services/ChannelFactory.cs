@@ -1,5 +1,6 @@
 using JD.AI.Channels.Discord;
 using JD.AI.Channels.OpenClaw;
+using JD.AI.Channels.Queue;
 using JD.AI.Channels.Signal;
 using JD.AI.Channels.Slack;
 using JD.AI.Channels.Telegram;
@@ -48,7 +49,7 @@ public sealed class ChannelFactory
         }
     }
 
-    private DiscordChannel CreateDiscord(ChannelConfig config)
+    private IChannel CreateDiscord(ChannelConfig config)
     {
         var token = ResolveSetting(config, "BotToken")
             ?? throw new InvalidOperationException("Discord channel requires 'BotToken' setting.");
@@ -79,7 +80,14 @@ public sealed class ChannelFactory
             }
         }
 
-        return new DiscordChannel(token, allowBots, allowedBotIds, enableReactions, requireMention, privilegedUserIds: privilegedUserIds);
+        var inner = new DiscordChannel(token, allowBots, allowedBotIds, enableReactions, requireMention,
+            privilegedUserIds: privilegedUserIds);
+
+        // Wrap with durable SQLite-backed queue so messages survive restarts and burst traffic.
+        var queueDir = Path.Combine(Core.Config.DataDirectories.Root, "queues", "discord");
+        var queue = new DurableMessageQueue(queueDir);
+        var decoratorLogger = _sp.GetRequiredService<ILogger<DurableQueueChannelDecorator>>();
+        return new DurableQueueChannelDecorator(inner, queue, decoratorLogger);
     }
 
     private SignalChannel CreateSignal(ChannelConfig config)
