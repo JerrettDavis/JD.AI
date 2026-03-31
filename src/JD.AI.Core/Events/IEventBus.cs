@@ -25,4 +25,11 @@ public interface IEventBus
 
     /// <summary>Returns an async enumerable of events for streaming scenarios.</summary>
     IAsyncEnumerable<GatewayEvent> StreamAsync(string? eventTypeFilter, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns a snapshot of all currently buffered events, oldest first.
+    /// Only implemented by in-process transports; distributed transports throw.
+    /// </summary>
+    Task<GatewayEvent[]> GetEvents(CancellationToken ct = default) =>
+        throw new NotSupportedException("GetEvents is only supported by InMemoryEventBus");
 }

@@ -11,10 +11,8 @@ namespace JD.AI.Gateway.Endpoints;
 [Route("api/audit")]
 public sealed class AuditController : ControllerBase
 {
-    public AuditController([FromServices] IEventBus eventBus)
+    public AuditController(IEventBus eventBus)
     {
-        // IEventBus is registered as InMemoryEventBus in DI.
-        // InMemoryEventBus is internal but we're injecting via the public interface.
         ArgumentNullException.ThrowIfNull(eventBus);
         _eventBus = eventBus;
     }
@@ -26,15 +24,14 @@ public sealed class AuditController : ControllerBase
     /// </summary>
     /// <param name="limit">Maximum number of events to return (default: 500, max: 2000).</param>
     [HttpGet]
-    public IReadOnlyList<AuditEventDto> GetAuditEvents([FromQuery] int limit = 500)
+    public async Task<IReadOnlyList<AuditEventDto>> GetAuditEvents([FromQuery] int limit = 500, CancellationToken ct = default)
     {
         var clampedLimit = Math.Clamp(limit, 1, 2000);
-        // GetEvents() is InMemoryEventBus-specific — cast is safe because
-        // InMemoryEventBus is registered as IEventBus singleton in DI.
-        if (_eventBus is not InMemoryEventBus eb)
-            return [];
+        GatewayEvent[] events;
+        try { events = await _eventBus.GetEvents(ct); }
+        catch (NotSupportedException) { return []; }
 
-        return eb.GetEvents()
+        return events
             .OrderByDescending(e => e.Timestamp)
             .Take(clampedLimit)
             .Select(ToDto)
@@ -43,12 +40,11 @@ public sealed class AuditController : ControllerBase
 
     private static AuditEventDto ToDto(GatewayEvent e) => new()
     {
-        Id = e.Id.ToString(),
+        Id = e.Id,
         Timestamp = e.Timestamp,
-        Level = e.Level.ToString(),
         AgentId = e.SourceId ?? "",
         EventType = e.EventType,
-        Message = e.Message ?? e.EventType,
+        Message = e.EventType,
         Payload = e.Payload
     };
 }
@@ -57,9 +53,8 @@ public sealed class AuditEventDto
 {
     public required string Id { get; init; }
     public DateTimeOffset Timestamp { get; init; }
-    public required string Level { get; init; }
     public required string AgentId { get; init; }
     public required string EventType { get; init; }
     public required string Message { get; init; }
-    public string? Payload { get; init; }
+    public object? Payload { get; init; }
 }

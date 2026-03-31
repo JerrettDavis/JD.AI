@@ -21,7 +21,7 @@
                        Variant="Variant.Outlined"
                        Margin="Margin.Dense"
                        Dense="true"
-                       Style="min-width:110px;flex:0 0 110px;">
+                       Style="min-width:160px;flex:0 0 160px;">
                 <MudSelectItem T="string" Value="@("all")">
                     <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
                         <MudIcon Icon="@Icons.Material.Filled.SelectAll" Size="Size.Small" />
@@ -423,8 +423,20 @@
     {
         await LoadAgents();
         await LoadSessions();
+        // Restore saved session once, after sessions are loaded.
+        // NOT in OnParametersSetAsync — that fires on every re-render and
+        // causes a cascade that reloads the session before SaveActiveSessionId
+        // has written the new ID to localStorage.
         await RestoreActiveSession();
         _loading = false;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Intentionally empty — session restore is only in OnInitializedAsync.
+        // OnSessionSelected (MudSelect TextChanged) handles user-initiated
+        // session changes by directly calling LoadSession.
+        await Task.CompletedTask;
     }
 
     private async Task LoadAgents()
@@ -454,13 +466,15 @@
 
     private async Task LoadSession(string sessionId)
     {
+        // Set _lastLoadedSessionId immediately — even if the API call fails,
+        // we don't want OnSessionSelected to re-fire and reload the same broken session.
+        _lastLoadedSessionId = sessionId;
         try
         {
             var session = await Api.GetSessionAsync(sessionId);
             if (session is null) return;
 
             _activeSessionId = session.Id;
-            _lastLoadedSessionId = session.Id;
             _activeSession = session;
             _messages.Clear();
             _totalTokensIn = 0;
