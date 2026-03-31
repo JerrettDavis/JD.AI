@@ -145,12 +145,37 @@ rootCommand.Subcommands.Add(updateCommand);
 var logsCommand = new Command("logs", "Show recent service logs");
 var linesOption = new Option<int>("--lines", "-n") { Description = "Number of log lines to show", DefaultValueFactory = _ => 50 };
 logsCommand.Options.Add(linesOption);
-logsCommand.SetAction(async parseResult =>
+logsCommand.SetAction(parseResult =>
 {
     var lines = parseResult.GetValue(linesOption);
-    var mgr = CreateServiceManager();
-    var result = await mgr.ShowLogsAsync(lines);
-    Console.WriteLine(result.Message);
+    var logsPath = Path.Combine(DataDirectories.Root, "logs");
+    if (!Directory.Exists(logsPath))
+    {
+        Console.WriteLine($"No logs directory found at {logsPath}");
+        Console.WriteLine("The service may not have written logs yet. Check ~/.jdai/logs/ after restarting.");
+        return;
+    }
+
+    var logFile = Directory.GetFiles(logsPath, "daemon-*.log")
+        .OrderDescending()
+        .FirstOrDefault();
+
+    if (logFile is null)
+    {
+        Console.WriteLine("No log files found. The service may not have started yet.");
+        return;
+    }
+
+    using var stream = new FileStream(logFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+    using var reader = new StreamReader(stream);
+    var allLines = new List<string>();
+    while (reader.ReadLine() is { } line)
+        allLines.Add(line);
+
+    var tail = allLines.Skip(Math.Max(0, allLines.Count - lines));
+    Console.WriteLine($"── {Path.GetFileName(logFile)} (last {lines} lines) ──");
+    foreach (var line in tail)
+        Console.WriteLine(line);
 });
 rootCommand.Subcommands.Add(logsCommand);
 
@@ -269,8 +294,20 @@ static void RunDaemon(string[] args)
     if (!string.IsNullOrWhiteSpace(configuredDataDir))
         DataDirectories.SetRoot(configuredDataDir);
 
+    // --- File logging to ~/.jdai/logs/ ---
+    var logsDir = Path.Combine(DataDirectories.Root, "logs");
+    Directory.CreateDirectory(logsDir);
+    var logFilePath = Path.Combine(logsDir, "daemon.log");
+    builder.Logging.AddSimpleConsole(o =>
+    {
+        o.TimestampFormat = "yyyy-MM-dd HH:mm:ss ";
+        o.SingleLine = true;
+    });
+    builder.Logging.AddProvider(new FileLoggerProvider(logFilePath));
+
     var logger = LoggerFactory.Create(lb => lb.AddConsole()).CreateLogger("Startup");
     logger.LogInformation("Data directory: {DataDir}", DataDirectories.Root);
+    logger.LogInformation("Log file: {LogFile}", logFilePath);
 
     // Update configuration
     builder.Services.Configure<UpdateConfig>(
@@ -544,12 +581,14 @@ static void RunDaemon(string[] args)
 }
 
 static async Task<int> RunMultiToolUpdateAsync(
-    UpdateChecker checker,
     bool checkOnly,
     bool shouldReconcileService,
     bool serviceWasRunning,
     IServiceManager? serviceManager)
 {
+    using var host = Host.CreateApplicationBuilder([]).Build();
+    var checker = host.Services.GetRequiredService<UpdateChecker>();
+
     Console.WriteLine("Detecting installed JD.AI tools...");
     var plan = await checker.CheckAllToolsAsync().ConfigureAwait(false);
 
@@ -688,7 +727,7 @@ static async Task<int> RunUpdateCommandAsync(bool checkOnly, bool allTools, bool
     // ── Multi-tool update path (default) ─────────────────────────
     if (!daemonOnly)
     {
-        return await RunMultiToolUpdateAsync(checker, checkOnly, shouldReconcileService, serviceWasRunning, serviceManager).ConfigureAwait(false);
+        return await RunMultiToolUpdateAsync(checkOnly, shouldReconcileService, serviceWasRunning, serviceManager).ConfigureAwait(false);
     }
 
     // ── Single-tool daemon-only path ─────────────────────────────
