@@ -10,13 +10,13 @@ namespace JD.AI.Channels.Queue;
 /// </summary>
 public sealed class QueueProcessor : BackgroundService
 {
-    private readonly DurableMessageQueue _queue;
+    private readonly DiscordMessageBuffer _queue;
     private readonly Func<ChannelMessage, Task> _dispatcher;
     private readonly ILogger<QueueProcessor> _log;
     private readonly TimeSpan _pollInterval = TimeSpan.FromMilliseconds(500);
 
     public QueueProcessor(
-        DurableMessageQueue queue,
+        DiscordMessageBuffer queue,
         Func<ChannelMessage, Task> dispatcher,
         ILogger<QueueProcessor> log)
     {

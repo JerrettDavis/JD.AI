@@ -49,7 +49,7 @@ public sealed class ChannelFactory
         }
     }
 
-    private IChannel CreateDiscord(ChannelConfig config)
+    private DurableQueueChannelDecorator CreateDiscord(ChannelConfig config)
     {
         var token = ResolveSetting(config, "BotToken")
             ?? throw new InvalidOperationException("Discord channel requires 'BotToken' setting.");
@@ -85,7 +85,7 @@ public sealed class ChannelFactory
 
         // Wrap with durable SQLite-backed queue so messages survive restarts and burst traffic.
         var queueDir = Path.Combine(Core.Config.DataDirectories.Root, "queues", "discord");
-        var queue = new DurableMessageQueue(queueDir);
+        var queue = new DiscordMessageBuffer(queueDir);
         var decoratorLogger = _sp.GetRequiredService<ILogger<DurableQueueChannelDecorator>>();
         return new DurableQueueChannelDecorator(inner, queue, decoratorLogger);
     }

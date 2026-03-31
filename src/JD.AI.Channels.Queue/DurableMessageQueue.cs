@@ -8,13 +8,13 @@ namespace JD.AI.Channels.Queue;
 /// SQLite WAL-backed durable FIFO queue for <see cref="ChannelMessage"/> ingestion.
 /// All writes are transactional; the WAL ensures durability even on crash/power loss.
 /// </summary>
-public sealed class DurableMessageQueue : IAsyncDisposable
+public sealed class DiscordMessageBuffer : IAsyncDisposable
 {
     private readonly string _dbPath;
     private readonly SqliteConnection _conn;
     private bool _initialized;
 
-    public DurableMessageQueue(string dataDirectory)
+    public DiscordMessageBuffer(string dataDirectory)
     {
         Directory.CreateDirectory(dataDirectory);
         _dbPath = Path.Combine(dataDirectory, "channel_queue.db");
