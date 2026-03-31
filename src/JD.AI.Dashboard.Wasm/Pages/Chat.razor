@@ -12,6 +12,7 @@
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.NoWrap">
 
             <MudIcon Icon="@Icons.Material.Filled.Chat" Size="Size.Small" Color="Color.Primary" />
+            <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="jd-chat-header-label">Chat</MudText>
 
             @* Channel filter *@
             <MudSelect data-testid="channel-selector"
@@ -256,6 +257,13 @@
         backdrop-filter: blur(12px);
         flex-shrink: 0;
         gap: 8px;
+    }
+
+    .jd-chat-header-label {
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+        flex-shrink: 0;
     }
 
     .jd-chat-channel-badge {
