@@ -34,8 +34,8 @@ public sealed class AgentTask(
     AgentTaskStatus status,
     string? description,
     DateTimeOffset startTime,
-    CancellationToken ct,
-    Func<CancellationToken, Task<string>> execute) : IAgentTask
+    Func<CancellationToken, Task<string>> execute,
+    CancellationToken ct) : IAgentTask
 {
     public string Id => id;
     public AgentTaskType Type => type;

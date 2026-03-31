@@ -142,13 +142,12 @@ public sealed class SubagentRunner
             AgentTaskStatus.Running,
             description,
             DateTimeOffset.UtcNow,
-            ct,
             async innerCt =>
             {
-                // Delegate to existing RunAsync for the actual execution
                 var result = await RunAsync(type, prompt, innerCt).ConfigureAwait(false);
                 return result;
-            });
+            },
+            ct);
 
         if (_taskRegistry is not null)
         {
