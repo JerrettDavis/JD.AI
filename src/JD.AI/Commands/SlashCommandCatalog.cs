@@ -283,6 +283,17 @@ public static class SlashCommandCatalog
             "/shortcuts",
             "List keyboard shortcuts"),
         new(
+            SlashCommandId.Cleanup,
+            "/cleanup",
+            "/cleanup [list|status|purge [age]]",
+            "Find and purge orphaned session files",
+            "Scans ~/.openclaw/agents/ for orphaned .deleted.* and .reset.* transcript files "
+                + "no longer tracked in sessions.json. "
+                + "Sub-commands: list [age] — show orphaned files older than N days (default: 30d); "
+                + "status — show storage usage per agent; "
+                + "purge [age] — delete orphaned files older than N days (default: 30d). "
+                + "Deleted sessions are hard-deleted immediately when purge runs."),
+        new(
             SlashCommandId.Quit,
             "/quit",
             "/quit",
@@ -460,5 +471,6 @@ public enum SlashCommandId
     ModelInfo,
     Trace,
     Shortcuts,
-    Quit
+    Quit,
+    Cleanup
 }

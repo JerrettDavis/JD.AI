@@ -184,6 +184,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             SlashCommandId.ModelInfo => await HandleModelInfoAsync(arg, ct).ConfigureAwait(false),
             SlashCommandId.Trace => ShowTrace(arg),
             SlashCommandId.Shortcuts => GetShortcuts(),
+            SlashCommandId.Cleanup => await HandleCleanupAsync(arg, ct).ConfigureAwait(false),
             SlashCommandId.Quit => null, // Signal exit
             _ => $"Unknown command: {parts[0]}. Type /help for available commands.",
         };
@@ -5396,5 +5397,219 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
               /default project shell <value>  — Set project default shell
             """;
     }
+
+    // ── Session cleanup ───────────────────────────────────────
+
+    private async Task<string> HandleCleanupAsync(string? arg, CancellationToken ct)
+    {
+        var parts = arg?.Trim().Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var action = parts?.ElementAtOrDefault(0)?.ToLowerInvariant() ?? "list";
+        var param = parts?.ElementAtOrDefault(1);
+
+        return action switch
+        {
+            "status" => await CleanupStatusAsync(ct).ConfigureAwait(false),
+            "list"   => await CleanupListAsync(param, ct).ConfigureAwait(false),
+            "purge"  => await CleanupPurgeAsync(param, ct).ConfigureAwait(false),
+            _        => "Usage: /cleanup [status|list [age]|purge [age]]\n"
+                      + "  status       — show storage usage per agent\n"
+                      + "  list [age]   — list orphaned session files older than N days (default: 30d)\n"
+                      + "  purge [age]  — permanently delete orphaned files older than N days",
+        };
+    }
+
+    private async Task<string> CleanupStatusAsync(CancellationToken ct)
+    {
+        var agentsDir = GetOpenClawAgentsDir();
+        if (!Directory.Exists(agentsDir))
+            return "No OpenClaw agents directory found.";
+
+        var sb = new StringBuilder();
+        sb.AppendLine("**Session Storage by Agent**");
+        sb.AppendLine();
+
+        long totalBytes = 0;
+        foreach (var agentDir in Directory.GetDirectories(agentsDir))
+        {
+            var agentName = Path.GetFileName(agentDir);
+            var sessionsDir = Path.Combine(agentDir, "sessions");
+            if (!Directory.Exists(sessionsDir))
+            {
+                sb.AppendLine($"  `{agentName}`: no sessions directory");
+                continue;
+            }
+
+            var files = Directory.GetFiles(sessionsDir, "*.json")
+                .Concat(Directory.GetFiles(sessionsDir, "*.jsonl"))
+                .ToList();
+
+            var deleted = files.Count(f => f.Contains(".deleted.") || f.Contains(".reset."));
+            var tracked = files.Count(f => !f.Contains(".deleted.") && !f.Contains(".reset.") && !f.EndsWith(".transcript.json"));
+            var transcripts = files.Count(f => f.EndsWith(".transcript.json"));
+
+            var agentBytes = files.Sum(f => new FileInfo(f).Length);
+            totalBytes += agentBytes;
+
+            sb.AppendLine($"  `{agentName}`: {files.Count} files, {deleted} orphaned, {transcripts} transcripts, {tracked} tracked sessions");
+            sb.AppendLine($"    Size: {FormatBytes(agentBytes)}");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine($"**Total:** {FormatBytes(totalBytes)} across {Directory.GetDirectories(agentsDir).Length} agent(s)");
+        return sb.ToString();
+    }
+
+    private async Task<string> CleanupListAsync(string? ageParam, CancellationToken ct)
+    {
+        var (cutoff, _) = ParseAge(ageParam, defaultDays: 30);
+        var agentsDir = GetOpenClawAgentsDir();
+        if (!Directory.Exists(agentsDir))
+            return "No OpenClaw agents directory found.";
+
+        var orphaned = CollectOrphanedFiles(agentsDir, cutoff).ToList();
+        if (orphaned.Count == 0)
+            return $"No orphaned session files older than {FormatDays(cutoff)}.";
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"**Orphaned Session Files** (older than {FormatDays(cutoff)})");
+        sb.AppendLine();
+
+        long totalBytes = 0;
+        foreach (var (file, age, agentName) in orphaned)
+        {
+            var fi = new FileInfo(file);
+            totalBytes += fi.Length;
+            sb.AppendLine($"  `{agentName}`  {FormatBytes(fi.Length),8}  {age.Days}d old  {Path.GetFileName(file)}");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine($"Total: {orphaned.Count} files, {FormatBytes(totalBytes)}");
+        sb.AppendLine();
+        sb.AppendLine("Run `/cleanup purge [age]` to delete these files.");
+        return sb.ToString();
+    }
+
+    private async Task<string> CleanupPurgeAsync(string? ageParam, CancellationToken ct)
+    {
+        var (cutoff, _) = ParseAge(ageParam, defaultDays: 30);
+        var agentsDir = GetOpenClawAgentsDir();
+        if (!Directory.Exists(agentsDir))
+            return "No OpenClaw agents directory found.";
+
+        var orphaned = CollectOrphanedFiles(agentsDir, cutoff).ToList();
+        if (orphaned.Count == 0)
+            return $"No orphaned session files older than {FormatDays(cutoff)}.";
+
+        long totalBytes = 0;
+        foreach (var (file, _, _) in orphaned)
+        {
+            try
+            {
+                var fi = new FileInfo(file);
+                totalBytes += fi.Length;
+                File.Delete(file);
+            }
+            catch
+            {
+                // best-effort deletion
+            }
+        }
+
+        return $"Purged {orphaned.Count} orphaned session files ({FormatBytes(totalBytes)}), "
+             + $"freed {FormatBytes(totalBytes)}.";
+    }
+
+    private IEnumerable<(string File, TimeSpan Age, string AgentName)> CollectOrphanedFiles(
+        string agentsDir, TimeSpan maxAge)
+    {
+        var cutoff = DateTimeOffset.UtcNow - maxAge;
+
+        foreach (var agentDir in Directory.GetDirectories(agentsDir))
+        {
+            var agentName = Path.GetFileName(agentDir);
+            var sessionsDir = Path.Combine(agentDir, "sessions");
+            if (!Directory.Exists(sessionsDir)) continue;
+
+            // Build set of tracked session transcript paths from sessions.json
+            var sessionsJson = Path.Combine(sessionsDir, "sessions.json");
+            var trackedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (File.Exists(sessionsJson))
+            {
+                try
+                {
+                    var entries = JsonSerializer.Deserialize<List<SessionIndexEntry>>(
+                        File.ReadAllText(sessionsJson)) ?? [];
+                    foreach (var entry in entries)
+                        if (!string.IsNullOrEmpty(entry.Path))
+                            trackedPaths.Add(Path.Combine(sessionsDir, entry.Path));
+                }
+                catch { /* corrupt sessions.json — treat as empty set */ }
+            }
+
+            // Also track non-orphaned session .json files by their base name
+            foreach (var f in Directory.GetFiles(sessionsDir, "*.json"))
+            {
+                if (f.Contains(".deleted.") || f.Contains(".reset.")) continue;
+                trackedPaths.Add(f);
+            }
+
+            // Find orphaned files
+            foreach (var pattern in new[] { "*.deleted.*.json", "*.reset.*.json" })
+            {
+                foreach (var f in Directory.GetFiles(sessionsDir, pattern))
+                {
+                    if (!trackedPaths.Contains(f))
+                    {
+                        var fi = new FileInfo(f);
+                        if (fi.LastWriteTimeUtc < cutoff)
+                            yield return (f, DateTimeOffset.UtcNow - fi.LastWriteTimeUtc, agentName);
+                    }
+                }
+            }
+        }
+    }
+
+    private static string GetOpenClawAgentsDir()
+    {
+        var openclawDir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        return Path.Combine(openclawDir, ".openclaw", "agents");
+    }
+
+    private static (TimeSpan Age, string Raw) ParseAge(string? param, int defaultDays)
+    {
+        if (string.IsNullOrWhiteSpace(param))
+            return (TimeSpan.FromDays(defaultDays), param ?? "");
+
+        var lastChar = char.ToLowerInvariant(param[^1]);
+        var numberPart = char.IsDigit(lastChar) ? param : param[..^1];
+        if (!double.TryParse(numberPart, out var value))
+            return (TimeSpan.FromDays(defaultDays), param!);
+
+        var unit = char.IsDigit(lastChar) ? 'd' : lastChar;
+        var span = unit switch
+        {
+            'd' => TimeSpan.FromDays(value),
+            'h' => TimeSpan.FromHours(value),
+            'm' => TimeSpan.FromMinutes(value),
+            _   => TimeSpan.FromDays(value),
+        };
+        return (span, param!);
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] suffixes = ["B", "KB", "MB", "GB"];
+        int i = 0;
+        double d = bytes;
+        while (d >= 1024 && i < suffixes.Length - 1) { d /= 1024; i++; }
+        return $"{d:N1} {suffixes[i]}";
+    }
+
+    private static string FormatDays(TimeSpan ts) =>
+        ts.TotalDays >= 1 ? $"{(int)ts.TotalDays}d" :
+        ts.TotalHours >= 1 ? $"{(int)ts.TotalHours}h" :
+                             $"{(int)ts.TotalMinutes}m";
+
+    private sealed record SessionIndexEntry(string? Path, DateTimeOffset? DeletedAt);
 
 }
