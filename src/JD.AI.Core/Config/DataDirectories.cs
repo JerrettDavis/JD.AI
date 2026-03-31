@@ -60,6 +60,13 @@ public static class DataDirectories
     public static string OpenClawWorkspace(string agentId) =>
         Path.Combine(Root, "openclaw-workspaces", agentId);
 
+    /// <summary>Root memory directory for all projects (<c>~/.jdai/memory/</c>).</summary>
+    public static string MemoryRoot => Path.Combine(Root, "memory");
+
+    /// <summary>Memory directory for a specific project.</summary>
+    public static string MemoryPath(string projectId) =>
+        Path.Combine(MemoryRoot, projectId);
+
     /// <summary>
     /// Path to organization config repository. Set via JDAI_ORG_CONFIG environment variable
     /// or by writing the path to ~/.jdai/org-config-path.

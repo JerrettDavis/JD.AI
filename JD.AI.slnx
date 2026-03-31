@@ -32,6 +32,7 @@
     <Project Path="tests/JD.AI.Specs/JD.AI.Specs.csproj" />
     <Project Path="tests/JD.AI.Sandbox.Tests/JD.AI.Sandbox.Tests.csproj" />
     <Project Path="tests/JD.AI.Specs.UI/JD.AI.Specs.UI.csproj" />
+    <Project Path="tests/E2E/JD.AI.E2E.Tests/JD.AI.E2E.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/JD.AI.Workflows.Training/JD.AI.Workflows.Training.csproj" />
