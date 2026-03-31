@@ -24,6 +24,8 @@ public sealed class GatewayOrchestrator : IHostedService
     private readonly OpenClawBridgeChannel? _openClawBridge;
     private readonly ICommandRegistry? _commandRegistry;
     private readonly List<RegisteredChannel> _registeredChannels = [];
+    private readonly List<IHostedService> _hostedChannels = [];
+    private readonly IHostApplicationLifetime _hostLifetime;
 
     // Track spawned agent IDs from config (definition.Id → pool agentId)
     private readonly Dictionary<string, string> _spawnedAgents = new(StringComparer.OrdinalIgnoreCase);
@@ -36,6 +38,7 @@ public sealed class GatewayOrchestrator : IHostedService
         AgentRouter router,
         IEventBus events,
         ILogger<GatewayOrchestrator> logger,
+        IHostApplicationLifetime hostLifetime,
         OpenClawAgentRegistrar? agentRegistrar = null,
         OpenClawBridgeChannel? openClawBridge = null,
         ICommandRegistry? commandRegistry = null)
@@ -47,6 +50,7 @@ public sealed class GatewayOrchestrator : IHostedService
         _router = router;
         _events = events;
         _logger = logger;
+        _hostLifetime = hostLifetime;
         _agentRegistrar = agentRegistrar;
         _openClawBridge = openClawBridge;
         _commandRegistry = commandRegistry;
@@ -117,6 +121,12 @@ public sealed class GatewayOrchestrator : IHostedService
                 }
             }
 
+            // Stop all channel hosted services (background workers)
+            foreach (var hs in _hostedChannels)
+            {
+                try { await hs.StopAsync(cancellationToken); } catch (Exception ex) { _logger.LogWarning(ex, "Error stopping hosted channel service"); }
+            }
+
             // Disconnect all channels
             foreach (var channel in _channels.Channels)
             {
@@ -163,6 +173,15 @@ public sealed class GatewayOrchestrator : IHostedService
                 if (channel is null) continue;
 
                 _channels.Register(channel);
+
+                // If the channel is also a hosted service (e.g., DurableQueueChannelDecorator),
+                // register it so its background worker starts when the application starts.
+                if (channel is IHostedService hs)
+                {
+                    _hostedChannels.Add(hs);
+                    _hostLifetime.ApplicationStarted.Register(() => _ = hs.StartAsync(default));
+                }
+
                 var routeKey = BuildRouteKey(channel, channelConfig, typeCounts, typeOrdinals);
                 _registeredChannels.Add(new RegisteredChannel(channel, channelConfig, routeKey));
                 _logger.LogInformation("Registered channel '{Type}' ({Name})",
