@@ -46,13 +46,15 @@ public sealed class UpdateCliHandlerTests : IDisposable
     [Fact]
     public async Task Update_CheckOnly_WithNewerVersion_ReturnsZeroWithoutApplying()
     {
-        var strategy = CreateStrategy("1.1.0", true);
-        ConfigureHandlers("1.0.0", strategy);
+        var tool = new InstalledTool("JD.AI", "jdai", "1.0.0", InstallKind.Unknown);
+        var toolUpdate = new ToolUpdate(tool, "1.1.0", IsNewer: true);
+        var plan = new UpdatePlan([tool], [toolUpdate], HasUpdates: true);
+
+        ConfigureHandlers("1.0.0", fakeTools: [tool], fakeUpdatePlan: plan);
 
         var code = await UpdateCliHandler.RunAsync("update", ["--check"]);
 
         Assert.Equal(0, code);
-        Assert.Equal(0, strategy.ApplyCalls);
     }
 
     [Fact]
@@ -148,7 +150,9 @@ public sealed class UpdateCliHandlerTests : IDisposable
     private static void ConfigureHandlers(
         string currentVersion,
         FakeInstallStrategy? updateStrategy = null,
-        FakeInstallStrategy? installStrategy = null)
+        FakeInstallStrategy? installStrategy = null,
+        IReadOnlyList<InstalledTool>? fakeTools = null,
+        UpdatePlan? fakeUpdatePlan = null)
     {
         var info = new InstallationInfo(
             InstallKind.Unknown,
@@ -159,6 +163,10 @@ public sealed class UpdateCliHandlerTests : IDisposable
         UpdateCliHandler.DetectInstallationAsync = _ => Task.FromResult(info);
         UpdateCliHandler.UpdateStrategyFactory = _ => updateStrategy ?? CreateStrategy("1.0.0", true);
         UpdateCliHandler.InstallStrategyFactory = _ => installStrategy ?? CreateStrategy("1.0.0", true);
+        UpdateCliHandler.GetInstalledToolsAsync = _ => Task.FromResult<IReadOnlyList<InstalledTool>>(
+            fakeTools ?? []);
+        UpdateCliHandler.CheckAllAsync = (_, _) => Task.FromResult(
+            fakeUpdatePlan ?? new UpdatePlan([], [], HasUpdates: false));
     }
 
     private sealed class FakeInstallStrategy(

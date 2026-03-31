@@ -22,6 +22,7 @@ using JD.AI.Telemetry;
 using JD.AI.Telemetry.Extensions;
 using JD.AI.Workflows;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -166,7 +167,29 @@ builder.Services.AddSingleton<IWorkflowCatalog>(_ =>
     }
 });
 builder.Services.AddSingleton<IWorkflowBridge, WorkflowBridge>();
-builder.Services.AddSingleton<IPromptIntentClassifier, TfIdfIntentClassifier>();
+
+// --- Intent classifier: ML.NET with hot-swap (file-watcher reload) ---
+// Model path: <DataRoot>/models/intent_classifier.zip
+// To upgrade the model in production: replace the .zip file; Gateway reloads automatically.
+var modelPath = Path.Combine(DataDirectories.Root, "models", "intent_classifier.zip");
+IPromptIntentClassifier initialClassifier = File.Exists(modelPath)
+    ? new MlNetIntentClassifier(modelPath)
+    : new TfIdfIntentClassifier();
+
+var classifierManager = new IntentClassifierManager(initialClassifier);
+builder.Services.AddSingleton<IIntentClassifierManager>(classifierManager);
+builder.Services.AddSingleton<IPromptIntentClassifier>(
+    new HotSwappingIntentClassifier(classifierManager));
+
+if (initialClassifier is MlNetIntentClassifier)
+{
+    builder.Services.AddHostedService(sp =>
+        new IntentClassifierFileWatcher(
+            classifierManager,
+            modelPath,
+            sp.GetService<ILogger<IntentClassifierFileWatcher>>()));
+}
+
 builder.Services.AddSingleton<IWorkflowMatcher, WorkflowMatcher>();
 builder.Services.AddSingleton<IWorkflowOrchestrator, WorkflowOrchestrator>();
 
