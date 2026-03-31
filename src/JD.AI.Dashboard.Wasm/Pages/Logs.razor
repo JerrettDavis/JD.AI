@@ -20,12 +20,21 @@
 
 <MudPaper Class="pa-4 mb-4" Elevation="0" data-testid="log-filters">
     <MudGrid>
-        <MudItem xs="12" sm="3">
+        <MudItem xs="12" sm="2">
             <MudSelect T="string" @bind-Value="_severityFilter" Label="Severity" Variant="Variant.Outlined" Dense="true"
                        Clearable="true" data-testid="severity-filter">
                 <MudSelectItem Value="@("info")">Info</MudSelectItem>
                 <MudSelectItem Value="@("warn")">Warning</MudSelectItem>
                 <MudSelectItem Value="@("error")">Error</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="2">
+            <MudSelect T="string" @bind-Value="_eventTypeFilter" Label="Event Type" Variant="Variant.Outlined" Dense="true"
+                       Clearable="true" data-testid="event-type-filter">
+                <MudSelectItem Value="@("tool.audit")">tool.audit</MudSelectItem>
+                <MudSelectItem Value="@("session.start")">session.start</MudSelectItem>
+                <MudSelectItem Value="@("session.end")">session.end</MudSelectItem>
+                <MudSelectItem Value="@("workflow.recording")">workflow.recording</MudSelectItem>
             </MudSelect>
         </MudItem>
         <MudItem xs="12" sm="3">
@@ -37,7 +46,7 @@
                           Clearable="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
                           data-testid="search-filter" />
         </MudItem>
-        <MudItem xs="12" sm="3" Class="d-flex align-end">
+        <MudItem xs="12" sm="2" Class="d-flex align-end">
             <MudButton OnClick="LoadAsync" Variant="Variant.Outlined" Size="Size.Small"
                        data-testid="apply-filters">Apply</MudButton>
         </MudItem>
@@ -118,6 +127,7 @@ else
     private AuditEvent[] _filteredEvents = [];
     private bool _loading = true;
     private string? _severityFilter;
+    private string? _eventTypeFilter;
     private string? _agentFilter;
     private string? _searchText;
     private string? _selectedEventId;
@@ -166,6 +176,9 @@ else
 
         if (!string.IsNullOrWhiteSpace(_severityFilter))
             events = events.Where(e => string.Equals(e.Level, _severityFilter, StringComparison.OrdinalIgnoreCase));
+
+        if (!string.IsNullOrWhiteSpace(_eventTypeFilter))
+            events = events.Where(e => string.Equals(e.EventType, _eventTypeFilter, StringComparison.OrdinalIgnoreCase));
 
         if (!string.IsNullOrWhiteSpace(_agentFilter))
             events = events.Where(e => e.AgentId is not null &&

@@ -1,5 +1,7 @@
 using System.Diagnostics;
+using JD.AI.Core.Events;
 using JD.AI.Core.Governance.Audit;
+using JD.AI.Core.Memory;
 using JD.AI.Core.PromptCaching;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Sessions;
@@ -42,8 +44,14 @@ public sealed class AgentSession
     /// <summary>Optional audit service for emitting session lifecycle events.</summary>
     public AuditService? AuditService { get; set; }
 
+    /// <summary>Optional event bus for emitting tool audit events.</summary>
+    public IEventBus? EventBus { get; set; }
+
     /// <summary>Optional usage meter for centralized metering.</summary>
     public IUsageMeter? UsageMeter { get; set; }
+
+    /// <summary>Optional memory service for per-project daily logs and long-term memory.</summary>
+    public IMemoryService? MemoryService { get; set; }
 
     // ── System prompt cache ──────────────────────────────────
     private string? _cachedSystemPromptText;

@@ -1,3 +1,4 @@
+using JD.AI.Core.Events;
 using JD.AI.Core.Tools;
 
 namespace JD.AI.Core.Agents;
@@ -41,5 +42,38 @@ public static class ToolExecutionPermissionEvaluator
             return new ToolExecutionGateResult(ToolExecutionGateDecision.AllowWithoutPrompt);
 
         return new ToolExecutionGateResult(ToolExecutionGateDecision.RequirePrompt);
+    }
+
+    /// <summary>
+    /// Overload that emits an audit event via <paramref name="eventBus"/> for every
+    /// tool execution decision. The event is published fire-and-forget so it does not
+    /// block the caller.
+    /// </summary>
+    public static ToolExecutionGateResult Evaluate(
+        string canonicalToolName,
+        PermissionMode permissionMode,
+        SafetyTier tier,
+        ToolPermissionProfile? profile,
+        IEventBus? eventBus = null,
+        string? sessionId = null,
+        long? durationMs = null,
+        string? argsSummary = null)
+    {
+        var result = Evaluate(canonicalToolName, permissionMode, tier, profile);
+
+        // Emit audit event (fire and forget)
+        if (eventBus is not null && sessionId is not null)
+        {
+            var entry = ToolAuditEntry.Create(
+                canonicalToolName,
+                argsSummary,
+                null,
+                result.Decision,
+                durationMs ?? 0,
+                sessionId);
+            _ = eventBus.PublishAsync(entry);
+        }
+
+        return result;
     }
 }
