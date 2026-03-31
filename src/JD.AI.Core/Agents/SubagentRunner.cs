@@ -1,4 +1,5 @@
 using System.Text;
+using JD.AI.Core.Agents.Tasks;
 using JD.AI.Core.PromptCaching;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Tools;
@@ -16,6 +17,7 @@ public sealed class SubagentRunner
 {
     private readonly AgentSession _parentSession;
     private readonly IToolLoadoutRegistry? _loadoutRegistry;
+    private readonly IAgentTaskRegistry? _taskRegistry;
 
     /// <summary>
     /// Initialises a <see cref="SubagentRunner"/> using the parent session's kernel and tools.
@@ -25,10 +27,17 @@ public sealed class SubagentRunner
     /// Optional loadout registry. When provided, subagent tool sets are resolved via the
     /// registry using the loadout mapped to each <see cref="SubagentType"/>.
     /// </param>
-    public SubagentRunner(AgentSession parentSession, IToolLoadoutRegistry? loadoutRegistry = null)
+    /// <param name="taskRegistry">
+    /// Optional task registry for tracking concurrent subagent tasks.
+    /// </param>
+    public SubagentRunner(
+        AgentSession parentSession,
+        IToolLoadoutRegistry? loadoutRegistry = null,
+        IAgentTaskRegistry? taskRegistry = null)
     {
         _parentSession = parentSession;
         _loadoutRegistry = loadoutRegistry;
+        _taskRegistry = taskRegistry;
     }
 
     /// <summary>
@@ -110,6 +119,81 @@ public sealed class SubagentRunner
         var results = await System.Threading.Tasks.Task.WhenAll(work).ConfigureAwait(false);
         return results.ToDictionary(r => r.Label, r => r.Result, StringComparer.Ordinal);
     }
+
+    /// <summary>
+    /// Spawns a subagent as a tracked concurrent task and returns immediately.
+    /// The task executes asynchronously and is registered in the task registry if available.
+    /// </summary>
+    /// <param name="type">The subagent type.</param>
+    /// <param name="prompt">The prompt to send to the subagent.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>An <see cref="IAgentTask"/> representing the spawned subagent task.</returns>
+    public async Task<IAgentTask> SpawnAsync(
+        SubagentType type,
+        string prompt,
+        CancellationToken ct = default)
+    {
+        var taskId = GenerateTaskId();
+        var description = $"Subagent: {type}";
+
+        var task = new AgentTask(
+            taskId,
+            AgentTaskType.LocalAgent,
+            AgentTaskStatus.Running,
+            description,
+            DateTimeOffset.UtcNow,
+            ct,
+            async innerCt =>
+            {
+                // Delegate to existing RunAsync for the actual execution
+                var result = await RunAsync(type, prompt, innerCt).ConfigureAwait(false);
+                return result;
+            });
+
+        if (_taskRegistry is not null)
+        {
+            await _taskRegistry.RegisterAsync(task, ct).ConfigureAwait(false);
+        }
+
+        // Fire and forget - execute asynchronously
+        _ = ExecuteTaskAsync(task, ct);
+
+        return task;
+    }
+
+    private async Task ExecuteTaskAsync(IAgentTask task, CancellationToken ct)
+    {
+        try
+        {
+            if (task is AgentTask at)
+            {
+                at.Status = AgentTaskStatus.Running;
+            }
+
+            await task.ExecuteAsync(ct).ConfigureAwait(false);
+
+            if (task is AgentTask completedTask)
+            {
+                completedTask.Status = AgentTaskStatus.Completed;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            if (task is AgentTask cancelledTask)
+            {
+                cancelledTask.Status = AgentTaskStatus.Cancelled;
+            }
+        }
+        catch
+        {
+            if (task is AgentTask failedTask)
+            {
+                failedTask.Status = AgentTaskStatus.Failed;
+            }
+        }
+    }
+
+    private static string GenerateTaskId() => $"task-{Guid.NewGuid():N}"[..20];
 
     private Kernel BuildScopedKernel(SubagentType type)
     {
