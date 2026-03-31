@@ -384,6 +384,25 @@ public sealed class SessionStore : IDisposable
         await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Closes all active sessions that have been inactive for longer than <paramref name="maxInactiveAge"/>.
+    /// Returns the count of sessions closed.
+    /// </summary>
+    public async Task<int> CloseInactiveSessionsAsync(TimeSpan maxInactiveAge)
+    {
+        var conn = await GetConnectionAsync().ConfigureAwait(false);
+        using var cmd = conn.CreateCommand();
+        var cutoff = DateTime.UtcNow.Subtract(maxInactiveAge).ToString("O");
+        cmd.CommandText = """
+            UPDATE sessions
+            SET is_active = 0, updated_at = $ua
+            WHERE is_active = 1 AND datetime(updated_at) < datetime($cutoff)
+            """;
+        cmd.Parameters.AddWithValue("$cutoff", cutoff);
+        cmd.Parameters.AddWithValue("$ua", DateTime.UtcNow.ToString("O"));
+        return await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+    }
+
     // ── Row readers ─────────────────────────────────────
 
     private static SessionInfo ReadSession(SqliteDataReader r)

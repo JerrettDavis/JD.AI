@@ -98,6 +98,7 @@ builder.Services.AddSingleton<IPluginInstaller>(sp =>
 builder.Services.AddSingleton<IPluginContextFactory, ServiceProviderPluginContextFactory>();
 builder.Services.AddSingleton<IPluginLifecycleManager, PluginLifecycleManager>();
 builder.Services.AddHostedService<PluginLifecycleHostedService>();
+builder.Services.AddHostedService<SessionCleanupService>();
 builder.Services.AddSingleton<AgentRouter>();
 
 // --- Command system ---
