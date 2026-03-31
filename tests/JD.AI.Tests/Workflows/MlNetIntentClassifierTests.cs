@@ -11,6 +11,7 @@ namespace JD.AI.Tests.Workflows;
 /// A compact model is trained in-memory once per test class and used
 /// across all tests to validate classification behaviour.
 /// </summary>
+[Trait("Category", "MlModel")]
 public class MlNetIntentClassifierTests : IDisposable
 {
     // Training data — small but diverse, enough to learn the distinction
