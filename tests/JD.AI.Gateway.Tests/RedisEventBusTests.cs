@@ -91,7 +91,7 @@ public sealed class RedisEventBusTests
     }
 
     [Fact]
-    public void AddEventBus_DefaultUsesInProcess()
+    public void AddEventBus_DefaultUsesInMemory()
     {
         var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
         services.AddEventBus();
@@ -99,7 +99,7 @@ public sealed class RedisEventBusTests
         var provider = services.BuildServiceProvider();
         var bus = provider.GetService<IEventBus>();
 
-        Assert.IsType<InProcessEventBus>(bus);
+        Assert.IsType<InMemoryEventBus>(bus);
     }
 
     [Fact]
