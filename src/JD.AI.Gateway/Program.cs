@@ -8,6 +8,7 @@ using JD.AI.Core.Governance.Audit;
 using JD.AI.Core.Infrastructure;
 using JD.AI.Core.LocalModels;
 using JD.AI.Core.Memory;
+using JD.AI.Core.Agents.Tasks;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Security;
@@ -84,6 +85,8 @@ builder.Services.AddSingleton<IProviderRegistry>(sp =>
     new ProviderRegistry(sp.GetServices<IProviderDetector>()));
 builder.Services.AddSingleton<SessionStore>(_ =>
     new SessionStore(DataDirectories.SessionsDb));
+builder.Services.AddSingleton<IMemoryService, MemoryService>();
+builder.Services.AddSingleton<IAgentTaskRegistry, AgentTaskRegistry>();
 builder.Services.AddSingleton<AgentPoolService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<AgentPoolService>());
 
