@@ -1,13 +1,12 @@
 using FluentAssertions;
 using JD.AI.Core.Config;
 using JD.AI.Core.Memory;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace JD.AI.Tests.Memory;
 
 /// <summary>
-/// Tests for <see cref="MemoryConsolidator"/> background consolidation
-/// logic and scheduling.
+/// Tests for <see cref="MemoryConsolidator"/> and <see cref="MemoryConsolidatorTests"/>
+/// consolidation logic via <c>ConsolidateProjectAsync</c>.
 /// </summary>
 public sealed class MemoryConsolidatorTests : IDisposable
 {
@@ -20,102 +19,101 @@ public sealed class MemoryConsolidatorTests : IDisposable
         _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-consolidation-test-{Guid.NewGuid():N}");
         Directory.CreateDirectory(_tempDir);
 
-        // Override DataDirectories.Root for testing
-        var field = typeof(DataDirectories).GetField("_root",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        var original = field?.GetValue(null);
-        field?.SetValue(null, _tempDir);
-
-        _memoryService = new MemoryService(NullLogger<MemoryService>.Instance);
-        _consolidator = new MemoryConsolidator(_memoryService,
-            consolidateIntervalHours: 1,
-            logger: NullLogger<MemoryConsolidator>.Instance);
-
-        if (original is not null)
-            field?.SetValue(null, original);
+        // Override DataDirectories so MemoryRoot resolves to our temp dir
+        DataDirectories.SetRoot(_tempDir);
+        _memoryService = new MemoryService();
+        _consolidator = new MemoryConsolidator(_memoryService, TimeSpan.FromHours(1));
     }
 
     public void Dispose()
     {
-        try { Directory.Delete(_tempDir, recursive: true); }
-        catch { /* best effort */ }
+        _consolidator.Dispose();
+        try { Directory.Delete(_tempDir, recursive: true); } catch { /* best effort */ }
         GC.SuppressFinalize(this);
     }
 
-    // ── Consolidation creates MEMORY.md from daily logs ───────────────────
+    // ── ConsolidateProjectAsync ────────────────────────────────────────────
 
     [Fact]
-    public async Task ConsolidateAsync_ReadsDailyLogs_AndWritesMemoryMd()
+    public async Task ConsolidateProjectAsync_CreatesMemoryMd_FromDailyLogs()
     {
-        var projectId = "proj-consolidation-1";
-
-        // Write 3 daily log entries
+        var projectId = "proj-1";
         await _memoryService.AppendToDailyLogAsync(projectId, "Turn 1: What is the weather?");
         await _memoryService.AppendToDailyLogAsync(projectId, "Turn 2: Tell me about London");
         await _memoryService.AppendToDailyLogAsync(projectId, "Turn 3: Thanks!");
 
-        // Run consolidation
-        await _consolidator.ConsolidateAsync(new[] { projectId }, CancellationToken.None);
+        await _consolidator.ConsolidateProjectAsync(projectId, CancellationToken.None);
 
-        // MEMORY.md should now exist
         var mem = await _memoryService.GetMemoryContentAsync(projectId);
         mem.Should().NotBeEmpty();
-        // Memory file should reference the project
-        var memPath = Path.Combine(_memoryService.MemoryRoot, projectId, "MEMORY.md");
-        File.Exists(memPath).Should().BeTrue();
+        mem.Should().Contain("Turn 1");
+        mem.Should().Contain("Turn 2");
+        mem.Should().Contain("Turn 3");
     }
 
     [Fact]
-    public async Task ConsolidateAsync_MultipleProjects_ProcessesAll()
+    public async Task ConsolidateProjectAsync_EmptyProject_WritesNoRecentTurns()
+    {
+        var projectId = "proj-empty";
+
+        await _consolidator.ConsolidateProjectAsync(projectId, CancellationToken.None);
+
+        var mem = await _memoryService.GetMemoryContentAsync(projectId);
+        mem.Should().Contain("No turns recorded");
+    }
+
+    [Fact]
+    public async Task ConsolidateProjectAsync_Cancellation_ThrowsOperationCancelled()
+    {
+        var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        var act = () => _consolidator.ConsolidateProjectAsync("proj", cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task ConsolidateProjectAsync_NonExistentProject_DoesNotThrow()
+    {
+        var act = () => _consolidator.ConsolidateProjectAsync(
+            "nonexistent-project", CancellationToken.None);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    // ── ConsolidateAsync (sweep) ───────────────────────────────────────────
+
+    [Fact]
+    public async Task ConsolidateAsync_SweepsAllProjects()
     {
         await _memoryService.AppendToDailyLogAsync("proj-A", "Entry A1");
         await _memoryService.AppendToDailyLogAsync("proj-B", "Entry B1");
 
-        var projects = new[] { "proj-A", "proj-B" };
-        await _consolidator.ConsolidateAsync(projects, CancellationToken.None);
+        await _consolidator.ConsolidateAsync(CancellationToken.None);
 
-        (await _memoryService.GetMemoryContentAsync("proj-A")).Should().NotBeEmpty();
-        (await _memoryService.GetMemoryContentAsync("proj-B")).Should().NotBeEmpty();
-    }
-
-    [Fact]
-    public async Task ConsolidateAsync_EmptyProject_NoMemoryMdCreated()
-    {
-        var projectId = "proj-empty";
-        // No daily logs written
-
-        await _consolidator.ConsolidateAsync(new[] { projectId }, CancellationToken.None);
-
-        var memPath = Path.Combine(_memoryService.MemoryRoot, projectId, "MEMORY.md");
-        File.Exists(memPath).Should().BeFalse();
+        (await _memoryService.GetMemoryContentAsync("proj-A")).Should().Contain("Entry A1");
+        (await _memoryService.GetMemoryContentAsync("proj-B")).Should().Contain("Entry B1");
     }
 
     [Fact]
     public async Task ConsolidateAsync_Cancellation_ThrowsOperationCancelled()
     {
         var cts = new CancellationTokenSource();
-        cts.Cancel();
+        await cts.CancelAsync();
 
-        var act = () => _consolidator.ConsolidateAsync(new[] { "proj" }, cts.Token);
+        var act = () => _consolidator.ConsolidateAsync(cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
-    [Fact]
-    public async Task ConsolidateAsync_MissingProject_DoesNotThrow()
-    {
-        var act = async () => await _consolidator.ConsolidateAsync(
-            new[] { "nonexistent-project" }, CancellationToken.None);
-
-        await act.Should().NotThrowAsync();
-    }
+    // ── Constructor ─────────────────────────────────────────────────────────
 
     [Fact]
-    public void Constructor_WithLogger_DoesNotThrow()
+    public void Constructor_WithTimeSpan_DoesNotThrow()
     {
-        var custom = new MemoryConsolidator(_memoryService,
-            NullLogger<MemoryConsolidator>.Create());
-
+        var custom = new MemoryConsolidator(_memoryService, TimeSpan.FromMinutes(30));
         custom.Should().NotBeNull();
+        custom.Dispose();
     }
 }

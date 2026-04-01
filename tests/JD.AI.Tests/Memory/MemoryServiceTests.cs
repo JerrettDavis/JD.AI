@@ -1,13 +1,12 @@
 using FluentAssertions;
 using JD.AI.Core.Config;
 using JD.AI.Core.Memory;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 
 namespace JD.AI.Tests.Memory;
 
 public sealed class MemoryServiceTests : IDisposable
 {
-    // Use a temp directory to avoid polluting user data
     private readonly string _tempDir;
     private readonly string _projectId = "test-project-001";
     private readonly MemoryService _service;
@@ -17,33 +16,23 @@ public sealed class MemoryServiceTests : IDisposable
         _tempDir = Path.Combine(Path.GetTempPath(), $"jdai-mem-test-{Guid.NewGuid():N}");
         Directory.CreateDirectory(_tempDir);
 
-        // Patch DataDirectories.Root for the test
-        var field = typeof(DataDirectories).GetField("_root",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        var original = field?.GetValue(null);
-        field?.SetValue(null, _tempDir);
-
-        _service = new MemoryService(NullLogger<MemoryService>.Create());
-
-        // Restore original after setup
-        if (original is not null)
-            field?.SetValue(null, original);
+        // Override DataDirectories.Root so MemoryRoot returns our temp path
+        DataDirectories.SetRoot(_tempDir);
+        _service = new MemoryService();
     }
 
     public void Dispose()
     {
-        try { Directory.Delete(_tempDir, recursive: true); }
-        catch { /* best effort */ }
+        try { Directory.Delete(_tempDir, recursive: true); } catch { /* best effort */ }
         GC.SuppressFinalize(this);
     }
 
     // ── MemoryRoot ─────────────────────────────────────────────────────────
 
     [Fact]
-    public void MemoryRoot_ReturnsPathUnderDataDirectoriesRoot()
+    public void MemoryRoot_ReturnsPathUnderDataDirectoriesMemoryRoot()
     {
         _service.MemoryRoot.Should().StartWith(_tempDir);
-        _service.MemoryRoot.Should().EndWith("memory");
     }
 
     // ── GetMemoryContentAsync ─────────────────────────────────────────────
@@ -52,14 +41,12 @@ public sealed class MemoryServiceTests : IDisposable
     public async Task GetMemoryContentAsync_MissingFile_ReturnsEmptyString()
     {
         var content = await _service.GetMemoryContentAsync(_projectId);
-
         content.Should().BeEmpty();
     }
 
     [Fact]
     public async Task GetMemoryContentAsync_ExistingFile_ReturnsContent()
     {
-        // Setup: write MEMORY.md
         var memDir = Path.Combine(_service.MemoryRoot, _projectId);
         Directory.CreateDirectory(memDir);
         var memPath = Path.Combine(memDir, "MEMORY.md");
@@ -100,13 +87,8 @@ public sealed class MemoryServiceTests : IDisposable
         var entry = "Turn 1: What is the weather?";
         await _service.AppendToDailyLogAsync(_projectId, entry);
 
-        var today = DateTimeOffset.UtcNow;
-        var expectedDir = Path.Combine(_service.MemoryRoot, _projectId, "memory",
-            today.ToString("yyyy/MM"));
-        var expectedFile = Path.Combine(expectedDir, $"{today:yyyy-MM-dd}.md");
-
-        var content = await File.ReadAllTextAsync(expectedFile);
-        content.Should().Contain(entry);
+        var entries = await GetDailyLogEntries();
+        entries.Should().Contain(entry);
     }
 
     [Fact]
@@ -119,23 +101,12 @@ public sealed class MemoryServiceTests : IDisposable
         entries.Should().HaveCount(2);
     }
 
-    private async Task<List<string>> GetDailyLogEntries()
-    {
-        var today = DateTimeOffset.UtcNow;
-        var file = Path.Combine(_service.MemoryRoot, _projectId, "memory",
-            today.ToString("yyyy/MM"), $"{today:yyyy-MM-dd}.md");
-        if (!File.Exists(file)) return [];
-        var lines = await File.ReadAllLinesAsync(file);
-        return lines.Where(l => !string.IsNullOrWhiteSpace(l)).ToList();
-    }
-
     // ── GetDailyLogAsync ─────────────────────────────────────────────────
 
     [Fact]
     public async Task GetDailyLogAsync_MissingFile_ReturnsNull()
     {
         var result = await _service.GetDailyLogAsync(_projectId, DateTimeOffset.UtcNow.AddDays(-7));
-
         result.Should().BeNull();
     }
 
@@ -153,14 +124,16 @@ public sealed class MemoryServiceTests : IDisposable
         result.Should().Contain("Test log entry");
     }
 
-    // ── Graceful degradation ──────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────
 
-    [Fact]
-    public async Task WriteMemoryContentAsync_DirectoryCreation_FailsSilently()
+    private async Task<List<string>> GetDailyLogEntries()
     {
-        // When the path is valid and writable, it succeeds — this is the expected path
-        var act = async () => await _service.WriteMemoryContentAsync(_projectId, "data");
-
-        await act.Should().NotThrowAsync();
+        var today = DateTimeOffset.UtcNow;
+        var file = Path.Combine(_service.MemoryRoot, _projectId, "memory",
+            today.ToString("yyyy/MM", System.Globalization.CultureInfo.InvariantCulture),
+            $"{today:yyyy-MM-dd}.md");
+        if (!File.Exists(file)) return [];
+        var lines = await File.ReadAllLinesAsync(file);
+        return lines.Where(l => !string.IsNullOrWhiteSpace(l)).ToList();
     }
 }

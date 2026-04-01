@@ -94,7 +94,7 @@ public sealed class EventBusServiceExtensionsTests
     }
 
     [Fact]
-    public void AddEventBus_CanPublishAndSubscribe()
+    public async Task AddEventBus_CanPublishAndSubscribe()
     {
         var services = new ServiceCollection();
         services.AddEventBus();
@@ -108,8 +108,7 @@ public sealed class EventBusServiceExtensionsTests
             return Task.CompletedTask;
         });
 
-        bus.PublishAsync(new GatewayEvent("test.event", "test-source", DateTimeOffset.UtcNow, "payload"))
-            .GetAwaiter().GetResult();
+        await bus.PublishAsync(new GatewayEvent("test.event", "test-source", DateTimeOffset.UtcNow, "payload"));
 
         received.Should().HaveCount(1);
         received[0].SourceId.Should().Be("test-source");
@@ -124,7 +123,7 @@ public sealed class EventBusServiceExtensionsTests
         var bus = provider.GetRequiredService<IEventBus>();
 
         var cts = new CancellationTokenSource();
-        cts.Cancel();
+        await cts.CancelAsync();
         var act = async () => await bus.PublishAsync(
             new GatewayEvent("x", "s", DateTimeOffset.UtcNow),
             cts.Token);

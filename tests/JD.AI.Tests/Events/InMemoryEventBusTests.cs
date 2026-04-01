@@ -62,7 +62,7 @@ public sealed class InMemoryEventBusTests
     {
         var bus = InMemoryEventBus.Create();
         var cts = new CancellationTokenSource();
-        cts.Cancel();
+        await cts.CancelAsync();
 
         var act = async () => await bus.GetEvents(cts.Token);
 
@@ -90,7 +90,7 @@ public sealed class InMemoryEventBusTests
         await Task.Delay(50); // allow async dispatch
 
         received.Should().HaveCount(2);
-        received.All(e => e.EventType == "matched.event").Should().BeTrue();
+        received.All(e => string.Equals(e.EventType, "matched.event", StringComparison.Ordinal)).Should().BeTrue();
     }
 
     [Fact]
@@ -158,7 +158,7 @@ public sealed class InMemoryEventBusTests
         }
 
         received.Should().HaveCount(2);
-        received.All(e => e.EventType.StartsWith("stream.event")).Should().BeTrue();
+        received.All(e => e.EventType.StartsWith("stream.event", StringComparison.Ordinal)).Should().BeTrue();
     }
 
     [Fact]

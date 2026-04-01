@@ -84,7 +84,7 @@ public sealed class AgentTaskTests
             async ct => { await Task.Delay(Timeout.Infinite, ct); return "never"; },
             cts.Token);
 
-        cts.Cancel();
+        await cts.CancelAsync();
         var act = async () => await ((IAgentTask)task).ExecuteAsync(CancellationToken.None);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
@@ -136,7 +136,7 @@ public sealed class AgentTaskTests
 
         await registry.CancelAsync("task-cancel-1");
 
-        registry.ActiveTasks.Single(t => t.Id == "task-cancel-1")
+        registry.ActiveTasks.Single(t => string.Equals(t.Id, "task-cancel-1", StringComparison.Ordinal))
             .Status.Should().Be(AgentTaskStatus.Cancelled);
     }
 
