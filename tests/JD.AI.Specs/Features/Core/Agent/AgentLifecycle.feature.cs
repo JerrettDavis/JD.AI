@@ -28,8 +28,8 @@ namespace JD.AI.Specs.Features.Core.Agent
                 "core",
                 "agent"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Agent", "Agent Lifecycle", "    As a user of the AI agent\r\n    I want to create sessions, send messages, and " +
-                "receive responses\r\n    So that I can interact with AI models reliably", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Agent", "Agent Lifecycle", "    As a user of the AI agent\n    I want to create sessions, send messages, and r" +
+                "eceive responses\n    So that I can interact with AI models reliably", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

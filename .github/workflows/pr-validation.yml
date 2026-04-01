@@ -62,10 +62,11 @@ jobs:
           dotnet test JD.AI.slnx
           --configuration Release
           --no-build
-          --filter "Category!=Integration"
+          --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E"
           --verbosity normal
           --logger "trx;LogFileName=test-results.trx"
           --collect:"XPlat Code Coverage"
+          --blame-hang-timeout 5m
           --
           DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
           DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI]*"

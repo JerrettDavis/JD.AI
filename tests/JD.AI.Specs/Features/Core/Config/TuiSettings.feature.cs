@@ -30,8 +30,8 @@ namespace JD.AI.Specs.Features.Core.Config
                 "config",
                 "tui"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Config", "TUI Settings", "    As a user of the AI agent\r\n    I want to configure the terminal UI display se" +
-                "ttings\r\n    So that I can personalize my experience", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Config", "TUI Settings", "    As a user of the AI agent\n    I want to configure the terminal UI display set" +
+                "tings\n    So that I can personalize my experience", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
