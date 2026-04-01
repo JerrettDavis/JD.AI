@@ -26,9 +26,9 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         private static string[] featureTags = new string[] {
                 "ui"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Settings Page", "    As a gateway operator\r\n    I want to configure the gateway through a settings" +
-                " interface\r\n    So that I can manage server, provider, agent, channel, routing, " +
-                "and OpenClaw settings", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Settings Page", "    As a gateway operator\n    I want to configure the gateway through a settings " +
+                "interface\n    So that I can manage server, provider, agent, channel, routing, an" +
+                "d OpenClaw settings", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

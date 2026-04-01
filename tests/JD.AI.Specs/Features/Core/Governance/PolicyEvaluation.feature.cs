@@ -26,8 +26,8 @@ namespace JD.AI.Specs.Features.Core.Governance
         private static string[] featureTags = new string[] {
                 "governance"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Governance", "Policy Evaluation", "  As a governance system\r\n  I need to evaluate requests against policies\r\n  So th" +
-                "at I can enforce tool, provider, and model restrictions", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Governance", "Policy Evaluation", "  As a governance system\n  I need to evaluate requests against policies\n  So that" +
+                " I can enforce tool, provider, and model restrictions", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

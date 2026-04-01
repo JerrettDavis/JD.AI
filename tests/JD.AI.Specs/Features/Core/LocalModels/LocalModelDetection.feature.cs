@@ -26,8 +26,8 @@ namespace JD.AI.Specs.Features.Core.LocalModels
         private static string[] featureTags = new string[] {
                 "localmodels"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/LocalModels", "Local Model Detection", "  As a platform\r\n  I need to detect locally available models\r\n  So that users can" +
-                " use local inference without cloud providers", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/LocalModels", "Local Model Detection", "  As a platform\n  I need to detect locally available models\n  So that users can u" +
+                "se local inference without cloud providers", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

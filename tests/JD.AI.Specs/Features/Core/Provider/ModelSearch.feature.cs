@@ -30,8 +30,8 @@ namespace JD.AI.Specs.Features.Core.Provider
                 "provider",
                 "model-search"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Provider", "Model Search", "    As a user of the AI agent\r\n    I want to search for models across all provide" +
-                "rs\r\n    So that I can find the right model for my task", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Provider", "Model Search", "    As a user of the AI agent\n    I want to search for models across all provider" +
+                "s\n    So that I can find the right model for my task", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

@@ -26,8 +26,8 @@ namespace JD.AI.Specs.Features.Core.Security
         private static string[] featureTags = new string[] {
                 "security"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Security", "API Key Authentication", "  As a gateway security system\r\n  I need API key authentication\r\n  So that only a" +
-                "uthorized users can access the system", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Security", "API Key Authentication", "  As a gateway security system\n  I need API key authentication\n  So that only aut" +
+                "horized users can access the system", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
