@@ -111,11 +111,10 @@ public sealed class MemoryConsolidatorTests : IDisposable
     }
 
     [Fact]
-    public void IntervalIsConfigurable()
+    public void Constructor_WithLogger_DoesNotThrow()
     {
         var custom = new MemoryConsolidator(_memoryService,
-            consolidateIntervalHours: 4,
-            logger: NullLogger<MemoryConsolidator>.Instance);
+            NullLogger<MemoryConsolidator>.Create());
 
         custom.Should().NotBeNull();
     }

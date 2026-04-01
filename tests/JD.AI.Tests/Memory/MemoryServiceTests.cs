@@ -23,7 +23,7 @@ public sealed class MemoryServiceTests : IDisposable
         var original = field?.GetValue(null);
         field?.SetValue(null, _tempDir);
 
-        _service = new MemoryService(NullLogger<MemoryService>.Instance);
+        _service = new MemoryService(NullLogger<MemoryService>.Create());
 
         // Restore original after setup
         if (original is not null)
