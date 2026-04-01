@@ -89,7 +89,7 @@ public sealed class SessionCleanupService : BackgroundService
             'm' => TimeSpan.FromMinutes(n),
             'h' => TimeSpan.FromHours(n),
             'd' => TimeSpan.FromDays(n),
-            _   => TimeSpan.FromHours(n),
+            _ => TimeSpan.FromHours(n),
         };
     }
 }

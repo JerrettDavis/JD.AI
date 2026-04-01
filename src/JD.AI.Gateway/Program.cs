@@ -1,5 +1,6 @@
 using JD.AI.Channels.OpenClaw;
 using JD.AI.Channels.OpenClaw.Routing;
+using JD.AI.Core.Agents.Tasks;
 using JD.AI.Core.Channels;
 using JD.AI.Core.Commands;
 using JD.AI.Core.Config;
@@ -8,7 +9,6 @@ using JD.AI.Core.Governance.Audit;
 using JD.AI.Core.Infrastructure;
 using JD.AI.Core.LocalModels;
 using JD.AI.Core.Memory;
-using JD.AI.Core.Agents.Tasks;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
 using JD.AI.Core.Security;

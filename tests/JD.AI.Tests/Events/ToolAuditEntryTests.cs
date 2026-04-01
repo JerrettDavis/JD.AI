@@ -1,6 +1,6 @@
 using FluentAssertions;
-using JD.AI.Core.Events;
 using JD.AI.Core.Agents;
+using JD.AI.Core.Events;
 
 namespace JD.AI.Tests.Events;
 

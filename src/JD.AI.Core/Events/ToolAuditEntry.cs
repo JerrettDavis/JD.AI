@@ -31,7 +31,8 @@ public sealed record ToolAuditEntry(
             toolName,
             arguments,
             result,
-            decision switch {
+            decision switch
+            {
                 ToolExecutionGateDecision.Blocked => "Denied",
                 ToolExecutionGateDecision.AllowWithoutPrompt => "Allowed",
                 _ => "Prompted"

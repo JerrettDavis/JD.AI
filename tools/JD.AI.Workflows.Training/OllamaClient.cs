@@ -83,12 +83,12 @@ public sealed class OllamaClient : IDisposable
         [JsonPropertyName("content")] public string Content { get; init; } = "";
     }
 
-    #pragma warning disable CA1812 // Instantiated via System.Text.Json deserialization in ChatAsync
+#pragma warning disable CA1812 // Instantiated via System.Text.Json deserialization in ChatAsync
     private sealed record OllamaChatResponse
     {
         [JsonPropertyName("message")] public OllamaMessage? Message { get; init; }
     }
-    #pragma warning restore CA1812
+#pragma warning restore CA1812
 
     private sealed record OllamaOptions
     {
