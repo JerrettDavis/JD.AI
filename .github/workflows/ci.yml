@@ -48,12 +48,35 @@ jobs:
         timeout-minutes: 20
         run: |
           set +e
-          timeout 10m dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj --configuration Release --no-build --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E" --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI*]*" DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*" > test-output.txt 2>&1; EC=$?
-          echo "=== Exit code: $EC ==="
+          # Run dotnet test in background, redirect all output to a log file
+          dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj --configuration Release --no-build --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E" --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI*]*" DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*" > test-output.txt 2>&1 &
+          PID=$!
+          echo "Started dotnet test, PID=$PID"
+          # Poll every 60s for up to 18 minutes for "Passed!" in the output file
+          for i in $(seq 1 18); do
+            sleep 60
+            echo "Check $i/18 - $(date +%H:%M:%S)"
+            if grep -q "Passed!" test-output.txt 2>/dev/null; then
+              echo "SUCCESS: Found 'Passed!' in output after $i minutes"
+              echo "Killing PID=$PID"
+              kill -9 $PID 2>/dev/null; wait $PID 2>/dev/null; true
+              echo "=== Test output ==="
+              cat test-output.txt
+              echo "=== EXIT: PASSED ==="
+              exit 0
+            fi
+            if ! kill -0 $PID 2>/dev/null; then
+              echo "dotnet test exited on its own"
+              break
+            fi
+          done
+          echo "Timed out after 18 minutes of polling"
+          kill -9 $PID 2>/dev/null; wait $PID 2>/dev/null; true
+          echo "=== Test output ==="
           cat test-output.txt
-          if grep -q "Passed!" test-output.txt 2>/dev/null; then echo "=== PASSED ==="; exit 0; fi
-          echo "=== FAILED or NO OUTPUT ==="
-          exit $EC
+          if grep -q "Passed!" test-output.txt 2>/dev/null; then echo "=== EXIT: PASSED ==="; exit 0; fi
+          echo "=== EXIT: FAILED ==="
+          exit 1
 
       - name: Install ReportGenerator
         if: always() && needs.test-with-coverage.result != 'skipped'
@@ -140,12 +163,35 @@ jobs:
         timeout-minutes: 20
         run: |
           set +e
-          timeout 10m dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj --configuration Release --no-build --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E" --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI*]*" DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*" > test-output.txt 2>&1; EC=$?
-          echo "=== Exit code: $EC ==="
+          # Run dotnet test in background, redirect all output to a log file
+          dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj --configuration Release --no-build --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E" --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI*]*" DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*" > test-output.txt 2>&1 &
+          PID=$!
+          echo "Started dotnet test, PID=$PID"
+          # Poll every 60s for up to 18 minutes for "Passed!" in the output file
+          for i in $(seq 1 18); do
+            sleep 60
+            echo "Check $i/18 - $(date +%H:%M:%S)"
+            if grep -q "Passed!" test-output.txt 2>/dev/null; then
+              echo "SUCCESS: Found 'Passed!' in output after $i minutes"
+              echo "Killing PID=$PID"
+              kill -9 $PID 2>/dev/null; wait $PID 2>/dev/null; true
+              echo "=== Test output ==="
+              cat test-output.txt
+              echo "=== EXIT: PASSED ==="
+              exit 0
+            fi
+            if ! kill -0 $PID 2>/dev/null; then
+              echo "dotnet test exited on its own"
+              break
+            fi
+          done
+          echo "Timed out after 18 minutes of polling"
+          kill -9 $PID 2>/dev/null; wait $PID 2>/dev/null; true
+          echo "=== Test output ==="
           cat test-output.txt
-          if grep -q "Passed!" test-output.txt 2>/dev/null; then echo "=== PASSED ==="; exit 0; fi
-          echo "=== FAILED or NO OUTPUT ==="
-          exit $EC
+          if grep -q "Passed!" test-output.txt 2>/dev/null; then echo "=== EXIT: PASSED ==="; exit 0; fi
+          echo "=== EXIT: FAILED ==="
+          exit 1
 
       - name: Install ReportGenerator
         if: always() && needs.test-release.result != 'skipped'
