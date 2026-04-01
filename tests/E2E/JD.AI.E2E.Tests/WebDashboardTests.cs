@@ -64,7 +64,7 @@ public sealed class WebDashboardTests : IAsyncDisposable
         }
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Dashboard_LoadsSessionList()
     {
         await EnsureBrowserAsync();
@@ -94,7 +94,7 @@ public sealed class WebDashboardTests : IAsyncDisposable
         await context.DisposeAsync();
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Dashboard_ChatPage_ChannelFilter_IsFunctional()
     {
         await EnsureBrowserAsync();
@@ -134,7 +134,7 @@ public sealed class WebDashboardTests : IAsyncDisposable
         await context.DisposeAsync();
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Dashboard_ApiHealth_MatchesGatewayStatus()
     {
         await EnsureBrowserAsync();

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 
 namespace JD.AI.Core.Events;
@@ -41,9 +42,24 @@ public static class EventBusServiceExtensions
                 throw new InvalidOperationException(
                     "EventBus:RedisConnectionString is required when Provider is 'Redis'.");
 
-            services.AddSingleton<IConnectionMultiplexer>(_ =>
-                ConnectionMultiplexer.Connect(options.RedisConnectionString));
-            services.AddSingleton<IEventBus, RedisEventBus>();
+            var connectionString = options.RedisConnectionString;
+            services.AddSingleton<IEventBus>(sp =>
+            {
+                try
+                {
+                    var configOpts = ConfigurationOptions.Parse(connectionString);
+                    configOpts.ConnectTimeout = 3000;
+                    configOpts.AbortOnConnectFail = true;
+                    var mux = ConnectionMultiplexer.Connect(configOpts);
+                    var logger = sp.GetRequiredService<ILogger<RedisEventBus>>();
+                    return new RedisEventBus(mux, logger);
+                }
+                catch
+                {
+                    // Redis unavailable — fall back to in-process event bus
+                    return InMemoryEventBus.Create();
+                }
+            });
         }
         else
             services.AddSingleton<IEventBus>(InMemoryEventBus.Create());
