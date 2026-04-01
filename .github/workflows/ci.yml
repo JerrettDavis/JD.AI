@@ -48,12 +48,12 @@ jobs:
         timeout-minutes: 15
         shell: bash
         run: |
-          # dotnet test's VSTest platform hangs after tests complete on this runner.
-          # The test host never exits cleanly but tests DO pass.
-          # We capture the output and look for the test pass signal, then force-kill.
-          set -o pipefail
+          # dotnet test's VSTest platform hangs after all tests pass.
+          # Run it under `timeout` (sends SIGKILL after 12 min) and capture output.
+          # If tests passed (seen in output), exit 0 regardless of timeout exit code.
           OUTPUT=$PWD/test-output.log
-          dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj --configuration Release --no-build \
+          touch $OUTPUT
+          timeout 12m dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj --configuration Release --no-build \
             --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E" \
             --blame-hang-timeout 10m \
             --results-directory ./test-results \
@@ -61,26 +61,27 @@ jobs:
             DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura \
             DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI*]*" \
             DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*" \
-            2>&1 | tee $OUTPUT &
-          DOTNET_PID=$!
+            > $OUTPUT 2>&1; EC=$?
 
-          # Poll for test completion signal; the host hangs but output is streamed
-          PASSED=false
-          for i in $(seq 1 60); do
-            sleep 10
-            # VSTest prints "Passed!" (or "Total tests" summary) when all tests complete
-            if grep -E "Passed!|Total tests.*Passed" $OUTPUT 2>/dev/null; then
-              echo "All tests passed — forcing exit (test host hangs after completion)"
-              kill -KILL $DOTNET_PID 2>/dev/null; wait $DOTNET_PID 2>/dev/null; exit 0
-            fi
-            if ! kill -0 $DOTNET_PID 2>/dev/null; then
-              echo "dotnet test exited"
-              if grep -E "Passed!|Total tests.*Passed" $OUTPUT 2>/dev/null; then exit 0; fi
-              exit 1
-            fi
-          done
-          echo "Timeout reached"
-          kill -KILL $DOTNET_PID 2>/dev/null; exit 1
+          # If timeout killed the process (EC=124), check if tests passed before timeout
+          if [ $EC -eq 124 ]; then
+            echo "dotnet test timed out — checking if tests passed..."
+          fi
+
+          # Check for test pass indicators in output
+          if grep -E "Passed!|Total tests:.*Passed" $OUTPUT 2>/dev/null; then
+            echo "All tests passed — treating as success."
+            exit 0
+          fi
+
+          # dotnet test exited on its own — check exit code and output
+          if [ $EC -eq 0 ]; then
+            echo "dotnet test exited 0."
+            exit 0
+          fi
+          echo "Tests failed or did not complete. Exit code: $EC"
+          cat $OUTPUT
+          exit $EC
 
       - name: Install ReportGenerator
         if: always() && needs.test-with-coverage.result != 'skipped'
@@ -167,34 +168,36 @@ jobs:
         timeout-minutes: 15
         shell: bash
         run: |
-          # dotnet test's VSTest platform hangs after tests complete on this runner.
-          # The test host never exits cleanly but tests DO pass.
-          # We capture the output and look for the test pass signal, then force-kill.
-          set -o pipefail
+          # dotnet test's VSTest platform hangs after all tests pass.
+          # Run it under `timeout` (sends SIGKILL after 12 min) and capture output.
+          # If tests passed (seen in output), exit 0 regardless of timeout exit code.
           OUTPUT=$PWD/test-output.log
-          dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj --configuration Release --no-build \
+          touch $OUTPUT
+          timeout 12m dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj --configuration Release --no-build \
             --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E" \
             --blame-hang-timeout 10m \
             --results-directory ./test-results \
-            2>&1 | tee $OUTPUT &
-          DOTNET_PID=$!
+            > $OUTPUT 2>&1; EC=$?
 
-          # Poll for test completion signal; the host hangs but output is streamed
-          for i in $(seq 1 60); do
-            sleep 10
-            # VSTest prints "Passed!" (or "Total tests" summary) when all tests complete
-            if grep -E "Passed!|Total tests.*Passed" $OUTPUT 2>/dev/null; then
-              echo "All tests passed — forcing exit (test host hangs after completion)"
-              kill -KILL $DOTNET_PID 2>/dev/null; wait $DOTNET_PID 2>/dev/null; exit 0
-            fi
-            if ! kill -0 $DOTNET_PID 2>/dev/null; then
-              echo "dotnet test exited"
-              if grep -E "Passed!|Total tests.*Passed" $OUTPUT 2>/dev/null; then exit 0; fi
-              exit 1
-            fi
-          done
-          echo "Timeout reached"
-          kill -KILL $DOTNET_PID 2>/dev/null; exit 1
+          # If timeout killed the process (EC=124), check if tests passed before timeout
+          if [ $EC -eq 124 ]; then
+            echo "dotnet test timed out — checking if tests passed..."
+          fi
+
+          # Check for test pass indicators in output
+          if grep -E "Passed!|Total tests:.*Passed" $OUTPUT 2>/dev/null; then
+            echo "All tests passed — treating as success."
+            exit 0
+          fi
+
+          # dotnet test exited on its own — check exit code and output
+          if [ $EC -eq 0 ]; then
+            echo "dotnet test exited 0."
+            exit 0
+          fi
+          echo "Tests failed or did not complete. Exit code: $EC"
+          cat $OUTPUT
+          exit $EC
 
       - name: Install ReportGenerator
         if: always() && needs.test-release.result != 'skipped'
