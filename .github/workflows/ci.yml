@@ -132,15 +132,16 @@ jobs:
       - name: Test (No Coverage)
         timeout-minutes: 10
         run: >
-          timeout 9m dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj
+          dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj
           --configuration Release
           --no-build
           --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E"
+          -v minimal
 
       - name: Test (Release)
         timeout-minutes: 15
         run: >
-          timeout 14m dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj
+          dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj
           --configuration Release
           --no-build
           --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E"
