@@ -58,9 +58,11 @@ jobs:
           DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*"
 
       - name: Install ReportGenerator
+        if: always() && needs.test-with-coverage.result != 'skipped'
         run: dotnet tool update -g dotnet-reportgenerator-globaltool
 
       - name: Combine coverage reports
+        if: always() && needs.test-with-coverage.result != 'skipped'
         shell: bash
         run: |
           REPORTS=$(find . -type f -path "*/TestResults/*/coverage.cobertura.xml" | tr '\n' ';')
@@ -75,18 +77,21 @@ jobs:
           echo "EOF" >> $GITHUB_ENV
 
       - name: Upload coverage report
+        if: always() && needs.test-with-coverage.result != 'skipped'
         uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: coverage-report
 
       - name: Upload to Codecov
+        if: always() && needs.test-with-coverage.result != 'skipped'
         uses: codecov/codecov-action@v6
         with:
           files: coverage-report/Cobertura.xml
           fail_ci_if_error: false
 
       - name: Add coverage summary to PR
+        if: always() && needs.test-with-coverage.result != 'skipped'
         uses: marocchino/sticky-pull-request-comment@v3
         with:
           recreate: true
@@ -147,9 +152,11 @@ jobs:
           --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E"
 
       - name: Install ReportGenerator
+        if: always() && needs.test-no-coverage.result != 'skipped'
         run: dotnet tool update -g dotnet-reportgenerator-globaltool
 
       - name: Combine coverage reports
+        if: always() && needs.test-no-coverage.result != 'skipped'
         shell: bash
         run: |
           REPORTS=$(find . -type f -path "*/TestResults/*/coverage.cobertura.xml" | tr '\n' ';')
@@ -161,6 +168,7 @@ jobs:
             -filefilters:"-**/*.Tests/*;-**/*Tests*/**"
 
       - name: Upload to Codecov
+        if: always() && needs.test-no-coverage.result != 'skipped'
         uses: codecov/codecov-action@v6
         with:
           files: coverage-report/Cobertura.xml
