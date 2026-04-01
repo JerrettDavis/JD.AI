@@ -47,10 +47,11 @@ jobs:
       - name: Test with coverage
         timeout-minutes: 15
         run: >
-          timeout 10m dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj
+          dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj
           --configuration Release
           --no-build
           --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E"
+          --blame-hang 5m
           --collect:"XPlat Code Coverage"
           --
           DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
