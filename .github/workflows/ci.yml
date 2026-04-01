@@ -129,6 +129,14 @@ jobs:
           --no-restore
           /p:ContinuousIntegrationBuild=true
 
+      - name: Test (No Coverage)
+        timeout-minutes: 10
+        run: >
+          dotnet test JD.AI.slnx
+          --configuration Release
+          --no-build
+          --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E"
+
       - name: Test (Release)
         timeout-minutes: 15
         run: >
