@@ -10,8 +10,8 @@
 
   <ItemGroup>
     <!-- Referenced application projects -->
-    <ProjectReference Include="..\..\src\JD.AI.Gateway\JD.AI.Gateway.csproj" />
-    <ProjectReference Include="..\..\src\JD.AI.Dashboard.Wasm\JD.AI.Dashboard.Wasm.csproj" />
+    <ProjectReference Include="..\..\..\src\JD.AI.Gateway\JD.AI.Gateway.csproj" />
+    <ProjectReference Include="..\..\..\src\JD.AI.Dashboard.Wasm\JD.AI.Dashboard.Wasm.csproj" />
   </ItemGroup>
 
   <ItemGroup>

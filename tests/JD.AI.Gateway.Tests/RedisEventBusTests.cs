@@ -126,6 +126,7 @@ public sealed class RedisEventBusTests
 
         var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IEventBus));
         Assert.NotNull(descriptor);
-        Assert.Equal(typeof(RedisEventBus), descriptor!.ImplementationType);
+        // Factory-based registration (for Redis fallback); verify factory is set
+        Assert.NotNull(descriptor!.ImplementationFactory);
     }
 }

@@ -24,7 +24,7 @@ public sealed class SessionScenarioTests : IDisposable
         _host.EnsureAvailable();
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task ListSessions_ReturnsOk()
     {
         var response = await _host.GatewayClient.GetAsync("/api/sessions");
@@ -34,7 +34,7 @@ public sealed class SessionScenarioTests : IDisposable
         sessions.ValueKind.Should().Be(JsonValueKind.Array);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task ListSessions_WithLimit_ReturnsOk()
     {
         var response = await _host.GatewayClient.GetAsync("/api/sessions?limit=5");
@@ -44,14 +44,14 @@ public sealed class SessionScenarioTests : IDisposable
         sessions.ValueKind.Should().Be(JsonValueKind.Array);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task GetSession_NotFound_Returns404()
     {
         var response = await _host.GatewayClient.GetAsync("/api/sessions/nonexistent-session-id-12345");
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task GetAuditEvents_ReturnsOk()
     {
         var response = await _host.GatewayClient.GetAsync("/api/audit/events");
@@ -63,7 +63,7 @@ public sealed class SessionScenarioTests : IDisposable
         json.TryGetProperty("events", out _).Should().BeTrue();
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task GetAuditEvents_WithFilters_ReturnsOk()
     {
         var response = await _host.GatewayClient.GetAsync(
@@ -71,7 +71,7 @@ public sealed class SessionScenarioTests : IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task GetGatewayStatus_ReturnsOk()
     {
         var response = await _host.GatewayClient.GetAsync("/api/gateway/status");
@@ -81,7 +81,7 @@ public sealed class SessionScenarioTests : IDisposable
         json.TryGetProperty("status", out _).Should().BeTrue();
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task GetAgents_ReturnsOk()
     {
         var response = await _host.GatewayClient.GetAsync("/api/agents");
@@ -91,7 +91,7 @@ public sealed class SessionScenarioTests : IDisposable
         agents.ValueKind.Should().Be(JsonValueKind.Array);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task GetProviders_ReturnsOk()
     {
         var response = await _host.GatewayClient.GetAsync("/api/providers");
@@ -101,7 +101,7 @@ public sealed class SessionScenarioTests : IDisposable
         providers.ValueKind.Should().Be(JsonValueKind.Array);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task GetChannels_ReturnsOk()
     {
         var response = await _host.GatewayClient.GetAsync("/api/channels");

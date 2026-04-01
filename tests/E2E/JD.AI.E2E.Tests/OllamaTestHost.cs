@@ -50,6 +50,11 @@ public sealed class OllamaTestHost : IDisposable
     public bool IsAvailable { get; }
 
     /// <summary>
+    /// Returns <c>true</c> when the Gateway is reachable.
+    /// </summary>
+    public bool IsGatewayAvailable { get; }
+
+    /// <summary>
     /// Pre-configured <see cref="HttpClient"/> scoped to the Gateway base URL.
     /// </summary>
     public HttpClient GatewayClient => _gatewayClient;
@@ -68,6 +73,7 @@ public sealed class OllamaTestHost : IDisposable
         };
 
         IsAvailable = CheckOllamaAvailable();
+        IsGatewayAvailable = CheckGatewayAvailable();
     }
 
     /// <summary>
@@ -77,14 +83,13 @@ public sealed class OllamaTestHost : IDisposable
     /// </summary>
     public void EnsureAvailable()
     {
-        // Do NOT throw from constructor — xUnit handles SkipException differently
-        // depending on where it originates. Instead, throw here in the test method
-        // body so xUnit correctly marks the test as SKIPPED (not FAILED).
-        if (!IsAvailable)
-            throw new SkipException(
-                $"Ollama is not available at {OllamaBaseUrl}. " +
-                $"Start Ollama and ensure the Gateway is running at {GatewayBaseUrl} " +
-                $"before running these tests.");
+        Skip.If(!IsAvailable,
+            $"Ollama is not available at {OllamaBaseUrl}. " +
+            $"Start Ollama before running these tests.");
+
+        Skip.If(!IsGatewayAvailable,
+            $"Gateway is not available at {GatewayBaseUrl}. " +
+            $"Start the Gateway before running these tests.");
     }
 
     private bool CheckOllamaAvailable()
@@ -93,6 +98,20 @@ public sealed class OllamaTestHost : IDisposable
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             var response = _ollamaClient.GetAsync("/api/tags", cts.Token).GetAwaiter().GetResult();
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private bool CheckGatewayAvailable()
+    {
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var response = _gatewayClient.GetAsync("/api/gateway/status", cts.Token).GetAwaiter().GetResult();
             return response.IsSuccessStatusCode;
         }
         catch
