@@ -138,27 +138,20 @@ jobs:
           --no-restore
           /p:ContinuousIntegrationBuild=true
 
-      - name: Test (No Coverage)
-        timeout-minutes: 10
-        run: >
-          dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj
-          --configuration Release
-          --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E"
-          -v minimal
-
       - name: Test (Release)
         timeout-minutes: 15
         run: >
-          dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj
+          timeout 10m dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj
           --configuration Release
+          --no-build
           --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E"
 
       - name: Install ReportGenerator
-        if: always() && needs.test-no-coverage.result != 'skipped'
+        if: always() && needs.test-release.result != 'skipped'
         run: dotnet tool update -g dotnet-reportgenerator-globaltool
 
       - name: Combine coverage reports
-        if: always() && needs.test-no-coverage.result != 'skipped'
+        if: always() && needs.test-release.result != 'skipped'
         shell: bash
         run: |
           REPORTS=$(find . -type f -path "*/TestResults/*/coverage.cobertura.xml" 2>/dev/null | tr '\n' ';')
@@ -174,7 +167,7 @@ jobs:
             -filefilters:"-**/*.Tests/*;-**/*Tests*/**"
 
       - name: Upload to Codecov
-        if: always() && needs.test-no-coverage.result != 'skipped'
+        if: always() && needs.test-release.result != 'skipped'
         uses: codecov/codecov-action@v6
         with:
           files: coverage-report/Cobertura.xml
