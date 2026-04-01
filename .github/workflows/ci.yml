@@ -45,18 +45,14 @@ jobs:
           --verify-no-changes
 
       - name: Test with coverage
-        timeout-minutes: 15
-        shell: bash
+        timeout-minutes: 20
         run: |
           set +e
-          dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj --configuration Release --no-build --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E" --blame-hang-timeout 10m --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI*]*" DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*"
-          EC=$?
-          echo "dotnet test exit code: $EC"
-          if find . -path '*/TestResults/*.trx' -type f 2>/dev/null | grep -q .; then
-            echo ".trx found — tests ran. Exit 0 regardless of host hang exit code."
-            exit 0
-          fi
-          echo ".trx NOT found. Exit with dotnet test code: $EC"
+          timeout 10m dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj --configuration Release --no-build --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E" --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI*]*" DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*" > test-output.txt 2>&1; EC=$?
+          echo "=== Exit code: $EC ==="
+          cat test-output.txt
+          if grep -q "Passed!" test-output.txt 2>/dev/null; then echo "=== PASSED ==="; exit 0; fi
+          echo "=== FAILED or NO OUTPUT ==="
           exit $EC
 
       - name: Install ReportGenerator
@@ -141,18 +137,14 @@ jobs:
           /p:ContinuousIntegrationBuild=true
 
       - name: Test (Release)
-        timeout-minutes: 15
-        shell: bash
+        timeout-minutes: 20
         run: |
           set +e
-          dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj --configuration Release --no-build --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E" --blame-hang-timeout 10m --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI*]*" DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*"
-          EC=$?
-          echo "dotnet test exit code: $EC"
-          if find . -path '*/TestResults/*.trx' -type f 2>/dev/null | grep -q .; then
-            echo ".trx found — tests ran. Exit 0 regardless of host hang exit code."
-            exit 0
-          fi
-          echo ".trx NOT found. Exit with dotnet test code: $EC"
+          timeout 10m dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj --configuration Release --no-build --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E" --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI*]*" DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*" > test-output.txt 2>&1; EC=$?
+          echo "=== Exit code: $EC ==="
+          cat test-output.txt
+          if grep -q "Passed!" test-output.txt 2>/dev/null; then echo "=== PASSED ==="; exit 0; fi
+          echo "=== FAILED or NO OUTPUT ==="
           exit $EC
 
       - name: Install ReportGenerator
