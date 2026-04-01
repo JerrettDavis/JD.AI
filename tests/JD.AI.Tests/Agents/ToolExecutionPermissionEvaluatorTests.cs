@@ -81,7 +81,7 @@ public sealed class ToolExecutionPermissionEvaluatorTests
             argsSummary: "path=README.md");
 
         result.Decision.Should().Be(ToolExecutionGateDecision.AllowWithoutPrompt);
-        mockBus.Received(1).PublishAsync(
+        _ = mockBus.Received(1).PublishAsync(
             Arg.Is<GatewayEvent>(e =>
                 e.EventType == "tool.audit" &&
                 e.SourceId == "sess-123"),
@@ -114,23 +114,23 @@ public sealed class ToolExecutionPermissionEvaluatorTests
             argsSummary: null);
 
         result.Decision.Should().Be(ToolExecutionGateDecision.AllowWithoutPrompt);
-        mockBus.Received(0).PublishAsync(
+        _ = mockBus.Received(0).PublishAsync(
             Arg.Any<GatewayEvent>(),
             Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public void Evaluate_8arg_MapsBlockedDecision_ToDenied()
+    public async Task Evaluate_8arg_MapsBlockedDecision_ToDenied()
     {
         var mockBus = Substitute.For<IEventBus>();
         var profile = new ToolPermissionProfile();
         profile.AddDenied("git_push", projectScope: false);
 
-        ToolExecutionPermissionEvaluator.Evaluate(
+        var result2 = ToolExecutionPermissionEvaluator.Evaluate(
             "git_push", PermissionMode.Normal, SafetyTier.AutoApprove, profile,
             mockBus, "sess-456", 10, "force=true");
 
-        mockBus.Received(1).PublishAsync(
+        await mockBus.Received(1).PublishAsync(
             Arg.Is<GatewayEvent>(e =>
                 e.EventType == "tool.audit" &&
                 e.SourceId == "sess-456"),
@@ -138,15 +138,15 @@ public sealed class ToolExecutionPermissionEvaluatorTests
     }
 
     [Fact]
-    public void Evaluate_8arg_MapsRequirePromptDecision_ToPrompted()
+    public async Task Evaluate_8arg_MapsRequirePromptDecision_ToPrompted()
     {
         var mockBus = Substitute.For<IEventBus>();
 
-        ToolExecutionPermissionEvaluator.Evaluate(
+        var result3 = ToolExecutionPermissionEvaluator.Evaluate(
             "some_tool", PermissionMode.Normal, SafetyTier.ConfirmOnce, null,
             mockBus, "sess-789", 5, null);
 
-        mockBus.Received(1).PublishAsync(
+        await mockBus.Received(1).PublishAsync(
             Arg.Any<GatewayEvent>(),
             Arg.Any<CancellationToken>());
     }
