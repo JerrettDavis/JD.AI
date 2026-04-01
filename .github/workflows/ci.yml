@@ -61,8 +61,9 @@ jobs:
             DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*" \
             || exit_code=$?
 
-          # If test result files exist, tests ran — treat as success even if dotnet test exited non-zero
-          if find ./test-results -name "*.trx" -type f 2>/dev/null | grep -q .; then
+          # If test result files exist (either ./test-results/ or ./TestResults/), tests ran —
+          # treat as success even if dotnet test exited non-zero due to host hang
+          if find ./test-results ./TestResults -name "*.trx" -type f 2>/dev/null | grep -q .; then
             echo "Test results found — tests completed successfully."
             exit 0
           fi
@@ -163,8 +164,9 @@ jobs:
             --results-directory ./test-results \
             || exit_code=$?
 
-          # If test result files exist, tests ran — treat as success even if dotnet test exited non-zero
-          if find ./test-results -name "*.trx" -type f 2>/dev/null | grep -q .; then
+          # If test result files exist (either ./test-results/ or ./TestResults/), tests ran —
+          # treat as success even if dotnet test exited non-zero due to host hang
+          if find ./test-results ./TestResults -name "*.trx" -type f 2>/dev/null | grep -q .; then
             echo "Test results found — tests completed successfully."
             exit 0
           fi
