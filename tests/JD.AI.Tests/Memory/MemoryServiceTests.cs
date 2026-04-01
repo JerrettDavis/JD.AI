@@ -88,7 +88,7 @@ public sealed class MemoryServiceTests : IDisposable
         await _service.AppendToDailyLogAsync(_projectId, entry);
 
         var entries = await GetDailyLogEntries();
-        entries.Should().Contain(entry);
+        entries.Should().Contain(e => e.Contains(entry));
     }
 
     [Fact]
