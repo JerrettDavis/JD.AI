@@ -48,12 +48,11 @@ jobs:
         timeout-minutes: 15
         shell: bash
         run: |
-          # dotnet test produces output then the test host hangs (never exits cleanly).
-          # Strategy: redirect output to a file, poll for "Passed!" message, then kill
-          # the hung host and exit 0 if all tests passed.
-          OUTPUT_FILE=$PWD/test-output.log
-          EXIT_CODE=0
-
+          # dotnet test's VSTest platform hangs after tests complete on this runner.
+          # The test host never exits cleanly but tests DO pass.
+          # We capture the output and look for the test pass signal, then force-kill.
+          set -o pipefail
+          OUTPUT=$PWD/test-output.log
           dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj --configuration Release --no-build \
             --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E" \
             --blame-hang-timeout 10m \
@@ -62,32 +61,26 @@ jobs:
             DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura \
             DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI*]*" \
             DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*" \
-            > $OUTPUT_FILE 2>&1 &
+            2>&1 | tee $OUTPUT &
           DOTNET_PID=$!
 
-          # Wait up to 12 minutes for "Passed!" to appear in output (tests + host hang)
-          for i in $(seq 1 72); do
+          # Poll for test completion signal; the host hangs but output is streamed
+          PASSED=false
+          for i in $(seq 1 60); do
             sleep 10
-            if grep -q "Passed!" $OUTPUT_FILE 2>/dev/null; then
-              echo "Tests passed — killing hung test host (pid=$DOTNET_PID)"
-              kill -KILL $DOTNET_PID 2>/dev/null || true
-              # Check for test result files now that host was killed
-              if find ./test-results ./TestResults -name "*.trx" -type f 2>/dev/null | grep -q .; then
-                echo "Test results written successfully."
-                exit 0
-              fi
-              echo "Tests passed but no .trx files produced — check logs."
-              exit 0
+            # VSTest prints "Passed!" (or "Total tests" summary) when all tests complete
+            if grep -E "Passed!|Total tests.*Passed" $OUTPUT 2>/dev/null; then
+              echo "All tests passed — forcing exit (test host hangs after completion)"
+              kill -KILL $DOTNET_PID 2>/dev/null; wait $DOTNET_PID 2>/dev/null; exit 0
             fi
             if ! kill -0 $DOTNET_PID 2>/dev/null; then
-              echo "dotnet test exited on its own"
-              break
+              echo "dotnet test exited"
+              if grep -E "Passed!|Total tests.*Passed" $OUTPUT 2>/dev/null; then exit 0; fi
+              exit 1
             fi
           done
-
-          echo "Timed out waiting for test results"
-          kill -KILL $DOTNET_PID 2>/dev/null || true
-          exit $EXIT_CODE
+          echo "Timeout reached"
+          kill -KILL $DOTNET_PID 2>/dev/null; exit 1
 
       - name: Install ReportGenerator
         if: always() && needs.test-with-coverage.result != 'skipped'
@@ -174,41 +167,34 @@ jobs:
         timeout-minutes: 15
         shell: bash
         run: |
-          # dotnet test produces output then the test host hangs (never exits cleanly).
-          # Strategy: redirect output to a file, poll for "Passed!" message, then kill
-          # the hung host and exit 0 if all tests passed.
-          OUTPUT_FILE=$PWD/test-output.log
-
+          # dotnet test's VSTest platform hangs after tests complete on this runner.
+          # The test host never exits cleanly but tests DO pass.
+          # We capture the output and look for the test pass signal, then force-kill.
+          set -o pipefail
+          OUTPUT=$PWD/test-output.log
           dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj --configuration Release --no-build \
             --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E" \
             --blame-hang-timeout 10m \
             --results-directory ./test-results \
-            > $OUTPUT_FILE 2>&1 &
+            2>&1 | tee $OUTPUT &
           DOTNET_PID=$!
 
-          # Wait up to 12 minutes for "Passed!" to appear in output (tests + host hang)
-          for i in $(seq 1 72); do
+          # Poll for test completion signal; the host hangs but output is streamed
+          for i in $(seq 1 60); do
             sleep 10
-            if grep -q "Passed!" $OUTPUT_FILE 2>/dev/null; then
-              echo "Tests passed — killing hung test host (pid=$DOTNET_PID)"
-              kill -KILL $DOTNET_PID 2>/dev/null || true
-              # Check for test result files now that host was killed
-              if find ./test-results ./TestResults -name "*.trx" -type f 2>/dev/null | grep -q .; then
-                echo "Test results written successfully."
-                exit 0
-              fi
-              echo "Tests passed but no .trx files produced — check logs."
-              exit 0
+            # VSTest prints "Passed!" (or "Total tests" summary) when all tests complete
+            if grep -E "Passed!|Total tests.*Passed" $OUTPUT 2>/dev/null; then
+              echo "All tests passed — forcing exit (test host hangs after completion)"
+              kill -KILL $DOTNET_PID 2>/dev/null; wait $DOTNET_PID 2>/dev/null; exit 0
             fi
             if ! kill -0 $DOTNET_PID 2>/dev/null; then
-              echo "dotnet test exited on its own"
-              break
+              echo "dotnet test exited"
+              if grep -E "Passed!|Total tests.*Passed" $OUTPUT 2>/dev/null; then exit 0; fi
+              exit 1
             fi
           done
-
-          echo "Timed out waiting for test results"
-          kill -KILL $DOTNET_PID 2>/dev/null || true
-          exit 1
+          echo "Timeout reached"
+          kill -KILL $DOTNET_PID 2>/dev/null; exit 1
 
       - name: Install ReportGenerator
         if: always() && needs.test-release.result != 'skipped'
