@@ -33,7 +33,12 @@ public static class ToolExecutionPermissionEvaluator
                 ToolExecutionGateDecision.Blocked,
                 "blocked by explicit deny rule");
 
-        if (permissionMode == PermissionMode.Plan && tier != SafetyTier.AutoApprove)
+        // AutoApprove-tier tools bypass prompts regardless of permission mode.
+        // The Plan-mode block below only applies to AlwaysConfirm/ConfirmOnce tools.
+        if (tier == SafetyTier.AutoApprove)
+            return new ToolExecutionGateResult(ToolExecutionGateDecision.AllowWithoutPrompt);
+
+        if (permissionMode == PermissionMode.Plan)
             return new ToolExecutionGateResult(
                 ToolExecutionGateDecision.Blocked,
                 "plan mode — read-only");

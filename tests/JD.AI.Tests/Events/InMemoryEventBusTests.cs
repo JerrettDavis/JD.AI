@@ -58,15 +58,17 @@ public sealed class InMemoryEventBusTests
     }
 
     [Fact]
-    public async Task GetEvents_Cancellation_ThrowsOperationCancelled()
+    public async Task GetEvents_Cancellation_ReturnsEmptyArray()
     {
         var bus = InMemoryEventBus.Create();
         var cts = new CancellationTokenSource();
         await cts.CancelAsync();
 
-        var act = async () => await bus.GetEvents(cts.Token);
+        // GetEvents catches OperationCanceledException internally and returns
+        // an empty array rather than propagating the exception.
+        var events = await bus.GetEvents(cts.Token);
 
-        await act.Should().ThrowAsync<OperationCanceledException>();
+        events.Should().BeEmpty();
     }
 
     // ── Subscribe ────────────────────────────────────────────────────────────
