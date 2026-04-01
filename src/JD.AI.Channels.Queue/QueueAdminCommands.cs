@@ -35,10 +35,10 @@ public sealed class QueuePeekCommand(DiscordMessageBuffer queue) : IChannelComma
             {
                 var status = m.Status switch
                 {
-                    QueueStatus.Pending    => "⏳ pending",
+                    QueueStatus.Pending => "⏳ pending",
                     QueueStatus.Processing => "🔄 processing",
-                    QueueStatus.Failed     => $"❌ failed ({m.AttemptCount} attempts)",
-                    _                      => $"#{m.Status}"
+                    QueueStatus.Failed => $"❌ failed ({m.AttemptCount} attempts)",
+                    _ => $"#{m.Status}"
                 };
                 var preview = m.Content.Length > 60 ? m.Content[..60] + "…" : m.Content;
                 var retryInfo = m.NextRetryAfter != default

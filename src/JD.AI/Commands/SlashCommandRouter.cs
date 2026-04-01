@@ -5409,9 +5409,9 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
         return action switch
         {
             "status" => await CleanupStatusAsync(ct).ConfigureAwait(false),
-            "list"   => await CleanupListAsync(param, ct).ConfigureAwait(false),
-            "purge"  => await CleanupPurgeAsync(param, ct).ConfigureAwait(false),
-            _        => "Usage: /cleanup [status|list [age]|purge [age]]\n"
+            "list" => await CleanupListAsync(param, ct).ConfigureAwait(false),
+            "purge" => await CleanupPurgeAsync(param, ct).ConfigureAwait(false),
+            _ => "Usage: /cleanup [status|list [age]|purge [age]]\n"
                       + "  status       — show storage usage per agent\n"
                       + "  list [age]   — list orphaned session files older than N days (default: 30d)\n"
                       + "  purge [age]  — permanently delete orphaned files older than N days",
@@ -5592,7 +5592,7 @@ public sealed class SlashCommandRouter : ISlashCommandRouter
             'd' => TimeSpan.FromDays(value),
             'h' => TimeSpan.FromHours(value),
             'm' => TimeSpan.FromMinutes(value),
-            _   => TimeSpan.FromDays(value),
+            _ => TimeSpan.FromDays(value),
         };
         return (span, param!);
     }

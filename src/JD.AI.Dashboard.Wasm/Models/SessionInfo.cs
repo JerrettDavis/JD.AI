@@ -17,11 +17,11 @@ public record SessionInfo
     /// <summary>Returns a display-friendly channel label with icon.</summary>
     public string ChannelDisplay => ChannelType switch
     {
-        "discord"  => "Discord",
-        "signal"   => "Signal",
+        "discord" => "Discord",
+        "signal" => "Signal",
         "telegram" => "Telegram",
-        "slack"    => "Slack",
-        "web"      => "Web",
+        "slack" => "Slack",
+        "web" => "Web",
         "openclaw" => "OpenClaw",
         _ when !string.IsNullOrEmpty(ChannelType) => ChannelType,
         _ => "Unknown"

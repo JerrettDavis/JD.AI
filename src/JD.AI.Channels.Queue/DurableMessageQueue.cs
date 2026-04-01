@@ -1,6 +1,6 @@
 using System.Text.Json;
-using Microsoft.Data.Sqlite;
 using JD.AI.Core.Channels;
+using Microsoft.Data.Sqlite;
 
 namespace JD.AI.Channels.Queue;
 
@@ -250,10 +250,10 @@ public sealed class DiscordMessageBuffer : IAsyncDisposable
             var count = reader.GetInt32(1);
             switch (status)
             {
-                case QueueStatus.Pending:    stats.Pending = count; break;
+                case QueueStatus.Pending: stats.Pending = count; break;
                 case QueueStatus.Processing: stats.Processing = count; break;
-                case QueueStatus.Completed:  stats.Completed = count; break;
-                case QueueStatus.Failed:     stats.Failed = count; break;
+                case QueueStatus.Completed: stats.Completed = count; break;
+                case QueueStatus.Failed: stats.Failed = count; break;
             }
         }
         return stats;
