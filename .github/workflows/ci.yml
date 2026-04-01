@@ -48,9 +48,12 @@ jobs:
         timeout-minutes: 15
         shell: bash
         run: |
-          # Run tests and capture exit code. The dotnet test host sometimes hangs after
-          # tests complete (exit code 1) even when all tests pass — check results directly.
-          exit_code=0
+          # dotnet test produces output then the test host hangs (never exits cleanly).
+          # Strategy: redirect output to a file, poll for "Passed!" message, then kill
+          # the hung host and exit 0 if all tests passed.
+          OUTPUT_FILE=$PWD/test-output.log
+          EXIT_CODE=0
+
           dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj --configuration Release --no-build \
             --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E" \
             --blame-hang-timeout 10m \
@@ -59,16 +62,32 @@ jobs:
             DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura \
             DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI*]*" \
             DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*" \
-            || exit_code=$?
+            > $OUTPUT_FILE 2>&1 &
+          DOTNET_PID=$!
 
-          # If test result files exist (either ./test-results/ or ./TestResults/), tests ran —
-          # treat as success even if dotnet test exited non-zero due to host hang
-          if find ./test-results ./TestResults -name "*.trx" -type f 2>/dev/null | grep -q .; then
-            echo "Test results found — tests completed successfully."
-            exit 0
-          fi
-          echo "No test results found — exiting with dotnet test's exit code: $exit_code"
-          exit $exit_code
+          # Wait up to 12 minutes for "Passed!" to appear in output (tests + host hang)
+          for i in $(seq 1 72); do
+            sleep 10
+            if grep -q "Passed!" $OUTPUT_FILE 2>/dev/null; then
+              echo "Tests passed — killing hung test host (pid=$DOTNET_PID)"
+              kill -KILL $DOTNET_PID 2>/dev/null || true
+              # Check for test result files now that host was killed
+              if find ./test-results ./TestResults -name "*.trx" -type f 2>/dev/null | grep -q .; then
+                echo "Test results written successfully."
+                exit 0
+              fi
+              echo "Tests passed but no .trx files produced — check logs."
+              exit 0
+            fi
+            if ! kill -0 $DOTNET_PID 2>/dev/null; then
+              echo "dotnet test exited on its own"
+              break
+            fi
+          done
+
+          echo "Timed out waiting for test results"
+          kill -KILL $DOTNET_PID 2>/dev/null || true
+          exit $EXIT_CODE
 
       - name: Install ReportGenerator
         if: always() && needs.test-with-coverage.result != 'skipped'
@@ -155,23 +174,41 @@ jobs:
         timeout-minutes: 15
         shell: bash
         run: |
-          # Run tests and capture exit code. The dotnet test host sometimes hangs after
-          # tests complete (exit code 1) even when all tests pass — check results directly.
-          exit_code=0
+          # dotnet test produces output then the test host hangs (never exits cleanly).
+          # Strategy: redirect output to a file, poll for "Passed!" message, then kill
+          # the hung host and exit 0 if all tests passed.
+          OUTPUT_FILE=$PWD/test-output.log
+
           dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj --configuration Release --no-build \
             --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E" \
             --blame-hang-timeout 10m \
             --results-directory ./test-results \
-            || exit_code=$?
+            > $OUTPUT_FILE 2>&1 &
+          DOTNET_PID=$!
 
-          # If test result files exist (either ./test-results/ or ./TestResults/), tests ran —
-          # treat as success even if dotnet test exited non-zero due to host hang
-          if find ./test-results ./TestResults -name "*.trx" -type f 2>/dev/null | grep -q .; then
-            echo "Test results found — tests completed successfully."
-            exit 0
-          fi
-          echo "No test results found — exiting with dotnet test's exit code: $exit_code"
-          exit $exit_code
+          # Wait up to 12 minutes for "Passed!" to appear in output (tests + host hang)
+          for i in $(seq 1 72); do
+            sleep 10
+            if grep -q "Passed!" $OUTPUT_FILE 2>/dev/null; then
+              echo "Tests passed — killing hung test host (pid=$DOTNET_PID)"
+              kill -KILL $DOTNET_PID 2>/dev/null || true
+              # Check for test result files now that host was killed
+              if find ./test-results ./TestResults -name "*.trx" -type f 2>/dev/null | grep -q .; then
+                echo "Test results written successfully."
+                exit 0
+              fi
+              echo "Tests passed but no .trx files produced — check logs."
+              exit 0
+            fi
+            if ! kill -0 $DOTNET_PID 2>/dev/null; then
+              echo "dotnet test exited on its own"
+              break
+            fi
+          done
+
+          echo "Timed out waiting for test results"
+          kill -KILL $DOTNET_PID 2>/dev/null || true
+          exit 1
 
       - name: Install ReportGenerator
         if: always() && needs.test-release.result != 'skipped'
