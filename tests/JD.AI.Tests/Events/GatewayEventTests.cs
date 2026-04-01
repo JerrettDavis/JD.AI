@@ -45,7 +45,9 @@ public sealed class GatewayEventTests
         var evt1 = new GatewayEvent("type", "src", ts, "x");
         var evt2 = new GatewayEvent("type", "src", ts, "x");
 
-        evt1.Should().Be(evt2);
+        // Id is auto-generated on construction, so use BeEquivalentTo to compare
+        // all fields except the auto-generated Id.
+        evt1.Should().BeEquivalentTo(evt2, opts => opts.Excluding(e => e.Id));
     }
 
     [Fact]

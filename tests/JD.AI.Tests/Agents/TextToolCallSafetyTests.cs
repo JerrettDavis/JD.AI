@@ -63,8 +63,8 @@ public sealed class TextToolCallSafetyTests
         var output = new SpyAgentOutput { ConfirmResult = true };
 
         var result = AgentLoop.EvaluateTextToolCallSafety(
-            "read_file",
-            "path=README.md",
+            "run_command",
+            "command=ls",
             PermissionMode.Normal,
             skipPermissions: false,
             autoRunEnabled: false,

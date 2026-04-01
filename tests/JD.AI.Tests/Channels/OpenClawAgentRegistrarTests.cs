@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text.Json.Nodes;
 using JD.AI.Channels.OpenClaw;
+using JD.AI.Core.Config;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace JD.AI.Tests.Channels;
@@ -12,6 +13,11 @@ public sealed class OpenClawAgentRegistrarTests : IDisposable
 
     public OpenClawAgentRegistrarTests()
     {
+        // Reset DataDirectories cache in case a prior test (e.g. DataDirectoriesTests)
+        // set it to a temp path. OpenClawAgentRegistrar.ConfigBackupDirectory depends
+        // on DataDirectories.Root being the real user directory.
+        DataDirectories.Reset();
+
         // Real RPC client, unconnected — IsConnected = false
         _rpc = new OpenClawRpcClient(new OpenClawConfig(), NullLogger<OpenClawRpcClient>.Instance);
         _registrar = new OpenClawAgentRegistrar(_rpc, NullLogger<OpenClawAgentRegistrar>.Instance);
