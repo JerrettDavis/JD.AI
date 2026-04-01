@@ -17,6 +17,13 @@ public sealed class ProcessSessionManager
 
     private readonly ConcurrentDictionary<string, ScopeState> _scopes =
         new(StringComparer.Ordinal);
+
+    // Tracks every ExitMonitor task ever started so WaitForIdleAsync can
+    // await them even after the corresponding session has been removed via Clear().
+    // The queue is drained on each WaitForIdleAsync call so completed Task
+    // objects are not retained indefinitely.
+    private readonly ConcurrentQueue<Task> _allExitMonitors = new();
+
     private readonly string _metadataRoot;
     private readonly TimeSpan _completedRetention;
     private readonly int _maxLogCharsPerStream;
@@ -65,6 +72,7 @@ public sealed class ProcessSessionManager
             record.StdoutPump = PumpOutputAsync(record, process.StandardOutput, isError: false);
             record.StderrPump = PumpOutputAsync(record, process.StandardError, isError: true);
             record.ExitMonitor = MonitorExitAsync(record);
+            _allExitMonitors.Enqueue(record.ExitMonitor);
 
             if (request.TimeoutMs > 0)
             {
@@ -243,6 +251,41 @@ public sealed class ProcessSessionManager
         }
 
         return removed;
+    }
+
+    /// <summary>
+    /// Waits for all background session tasks (stdout/stderr pumps and exit
+    /// monitors) to complete.  Call this after <see cref="Clear"/> to ensure
+    /// no orphaned I/O threads remain before the caller exits — for example,
+    /// at the end of a test fixture tear-down so that CLR profilers (e.g.
+    /// coverage collectors) can finalize cleanly.
+    /// </summary>
+    public async Task WaitForIdleAsync(CancellationToken ct = default)
+    {
+        // Drain the queue, collecting only tasks that haven't completed yet.
+        // Draining keeps the queue small: completed Task objects are released
+        // and become eligible for GC.
+        var pending = new List<Task>();
+        while (_allExitMonitors.TryDequeue(out var t))
+        {
+            if (!t.IsCompleted)
+                pending.Add(t);
+        }
+
+        if (pending.Count == 0)
+            return;
+
+        try
+        {
+            await Task.WhenAll(pending).WaitAsync(ct).ConfigureAwait(false);
+        }
+#pragma warning disable CA1031
+        catch
+        {
+            // Background tasks may fault or be cancelled — that is fine;
+            // we only need them to reach a terminal state.
+        }
+#pragma warning restore CA1031
     }
 
     public bool TryRemove(

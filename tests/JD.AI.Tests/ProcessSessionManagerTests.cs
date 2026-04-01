@@ -5,7 +5,7 @@ using JD.AI.Core.Tools;
 
 namespace JD.AI.Tests;
 
-public sealed class ProcessSessionManagerTests : IDisposable
+public sealed class ProcessSessionManagerTests : IAsyncLifetime
 {
     private readonly string _tempDir;
     private readonly ProcessSessionManager _manager;
@@ -18,6 +18,8 @@ public sealed class ProcessSessionManagerTests : IDisposable
             metadataRoot: _tempDir,
             completedRetention: TimeSpan.FromMinutes(30));
     }
+
+    public Task InitializeAsync() => Task.CompletedTask;
 
     [Fact]
     public async Task ExecAsync_BackgroundThenPoll_CompletesWithOutput()
@@ -475,7 +477,7 @@ public sealed class ProcessSessionManagerTests : IDisposable
         Assert.Throws<ArgumentOutOfRangeException>(() => _manager.GetLogs("x", "y", maxChars: 0));
     }
 
-    public void Dispose()
+    public async Task DisposeAsync()
     {
         _manager.Clear("session-a::agent-a", includeRunning: true);
         _manager.Clear("session-b::agent-b", includeRunning: true);
@@ -499,6 +501,13 @@ public sealed class ProcessSessionManagerTests : IDisposable
         _manager.Clear("session-s::agent-delete", includeRunning: true);
         _manager.Clear("session-t::agent-validate", includeRunning: true);
         _manager.Clear("session-u::agent-timeout", includeRunning: true);
+
+        // After killing processes, wait for background I/O tasks (stdout/stderr
+        // pumps and exit monitors) to drain.  This prevents dangling threads
+        // from blocking coverage-data finalisation when the CLR profiler
+        // (e.g. coverlet) tries to write coverage output after the test session.
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        await _manager.WaitForIdleAsync(cts.Token);
 
         try
         {
