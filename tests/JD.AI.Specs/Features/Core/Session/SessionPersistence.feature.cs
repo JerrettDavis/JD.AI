@@ -28,8 +28,8 @@ namespace JD.AI.Specs.Features.Core.Session
                 "core",
                 "session"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Session", "Session Persistence", "    As a user of the AI agent\r\n    I want sessions to be saved and loaded from st" +
-                "orage\r\n    So that I can resume conversations across restarts", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Session", "Session Persistence", "    As a user of the AI agent\n    I want sessions to be saved and loaded from sto" +
+                "rage\n    So that I can resume conversations across restarts", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

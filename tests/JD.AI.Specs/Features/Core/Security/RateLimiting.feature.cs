@@ -26,8 +26,8 @@ namespace JD.AI.Specs.Features.Core.Security
         private static string[] featureTags = new string[] {
                 "security"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Security", "Rate Limiting", "  As a gateway security system\r\n  I need rate limiting\r\n  So that no single clien" +
-                "t can overwhelm the system", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Security", "Rate Limiting", "  As a gateway security system\n  I need rate limiting\n  So that no single client " +
+                "can overwhelm the system", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

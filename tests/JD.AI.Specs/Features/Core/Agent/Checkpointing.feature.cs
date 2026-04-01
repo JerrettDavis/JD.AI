@@ -30,8 +30,8 @@ namespace JD.AI.Specs.Features.Core.Agent
                 "agent",
                 "checkpointing"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Agent", "Agent Checkpointing", "    As a user of the AI agent\r\n    I want to create and restore checkpoints of pr" +
-                "oject state\r\n    So that I can recover from unwanted changes", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Agent", "Agent Checkpointing", "    As a user of the AI agent\n    I want to create and restore checkpoints of pro" +
+                "ject state\n    So that I can recover from unwanted changes", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

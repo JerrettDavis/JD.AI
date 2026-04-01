@@ -26,8 +26,8 @@ namespace JD.AI.Specs.Features.Core.Governance
         private static string[] featureTags = new string[] {
                 "governance"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Governance", "Budget Tracking", "  As a governance system\r\n  I need to track spending against budget limits\r\n  So " +
-                "that costs remain within configured thresholds", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Governance", "Budget Tracking", "  As a governance system\n  I need to track spending against budget limits\n  So th" +
+                "at costs remain within configured thresholds", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

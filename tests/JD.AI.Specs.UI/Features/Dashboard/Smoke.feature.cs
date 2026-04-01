@@ -28,8 +28,8 @@ namespace JD.AI.Specs.UI.Features.Dashboard
                 "ui",
                 "smoke"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Dashboard Smoke", "    As an operator\r\n    I want core dashboard pages to render in a clean environm" +
-                "ent\r\n    So that CI verifies the baseline UX without subscription dependencies", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Dashboard Smoke", "    As an operator\n    I want core dashboard pages to render in a clean environme" +
+                "nt\n    So that CI verifies the baseline UX without subscription dependencies", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

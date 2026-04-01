@@ -45,5 +45,12 @@ public sealed class AgentTask(
     public CancellationToken Ct => ct;
     public Func<CancellationToken, Task<string>> Execute => execute;
 
-    public async Task<string> ExecuteAsync(CancellationToken ct) => await Execute(ct);
+    public async Task<string> ExecuteAsync(CancellationToken ct)
+    {
+        // Link the caller-supplied CT with the task's own CT so that cancellation from
+        // either source (e.g. the task registry cancelling the task, or the caller aborting
+        // the request) is respected.
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, Ct);
+        return await execute(linked.Token);
+    }
 }

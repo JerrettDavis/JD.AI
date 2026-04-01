@@ -30,8 +30,8 @@ namespace JD.AI.Specs.Features.Gateway
                 "api",
                 "providers"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Gateway", "Provider Endpoints", "    As a gateway consumer\r\n    I want to detect and list AI providers via the RES" +
-                "T API\r\n    So that I can discover available models", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Gateway", "Provider Endpoints", "    As a gateway consumer\n    I want to detect and list AI providers via the REST" +
+                " API\n    So that I can discover available models", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

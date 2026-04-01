@@ -45,7 +45,6 @@ jobs:
           --verify-no-changes
 
       - name: Test with coverage
-        id: test-with-coverage
         timeout-minutes: 15
         run: >
           dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj
@@ -53,8 +52,8 @@ jobs:
           --no-build
           --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E"
           --collect:"XPlat Code Coverage"
-          --
-          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
+          --blame-hang-timeout 5m
+          -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
           DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI*]*"
           DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*"
 
@@ -87,7 +86,6 @@ jobs:
         with:
           name: coverage-report
           path: coverage-report
-          if-no-files-found: warn
 
       - name: Upload to Codecov
         if: always()
@@ -95,10 +93,9 @@ jobs:
         with:
           files: coverage-report/Cobertura.xml
           fail_ci_if_error: false
-          handle_no_reports_found: true
 
       - name: Add coverage summary to PR
-        if: always() && github.event_name == 'pull_request'
+        if: always()
         uses: marocchino/sticky-pull-request-comment@v3
         with:
           recreate: true
@@ -149,8 +146,8 @@ jobs:
           --no-build
           --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E"
           --collect:"XPlat Code Coverage"
-          --
-          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
+          --blame-hang-timeout 5m
+          -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
           DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI*]*"
           DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*"
 
@@ -181,7 +178,6 @@ jobs:
           files: coverage-report/Cobertura.xml
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
-          handle_no_reports_found: true
 
       - name: Pack
         run: >

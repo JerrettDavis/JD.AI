@@ -26,8 +26,8 @@ namespace JD.AI.Specs.Features.Core.Tool
         private static string[] featureTags = new string[] {
                 "tools"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Tool", "File Tools", "  As an AI agent\r\n  I need file system operations\r\n  So that I can read, write, e" +
-                "dit, and list files", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Tool", "File Tools", "  As an AI agent\n  I need file system operations\n  So that I can read, write, edi" +
+                "t, and list files", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
@@ -207,7 +207,7 @@ namespace JD.AI.Specs.Features.Core.Tool
   await this.FeatureBackgroundAsync();
 #line hidden
 #line 16
-    await testRunner.GivenAsync("a file \"lines.txt\" with content:", "Line 1\r\nLine 2\r\nLine 3\r\nLine 4\r\nLine 5", ((global::Reqnroll.Table)(null)), "Given ");
+    await testRunner.GivenAsync("a file \"lines.txt\" with content:", "Line 1\nLine 2\nLine 3\nLine 4\nLine 5", ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 24
     await testRunner.WhenAsync("I read file \"lines.txt\" from line 2 to line 4", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
