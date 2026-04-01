@@ -45,45 +45,25 @@ jobs:
           --verify-no-changes
 
       - name: Test with coverage
-        timeout-minutes: 20
-        run: |
-          set +e
-          # Run dotnet test in background, redirect all output to a log file
-          dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj --configuration Release --no-build --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E" --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI*]*" DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*" > test-output.txt 2>&1 &
-          PID=$!
-          echo "Started dotnet test, PID=$PID"
-          # Poll every 60s for up to 18 minutes for "Passed!" in the output file
-          for i in $(seq 1 18); do
-            sleep 60
-            echo "Check $i/18 - $(date +%H:%M:%S)"
-            if grep -q "Passed!" test-output.txt 2>/dev/null; then
-              echo "SUCCESS: Found 'Passed!' in output after $i minutes"
-              echo "Killing PID=$PID"
-              kill -9 $PID 2>/dev/null; wait $PID 2>/dev/null; true
-              echo "=== Test output ==="
-              cat test-output.txt
-              echo "=== EXIT: PASSED ==="
-              exit 0
-            fi
-            if ! kill -0 $PID 2>/dev/null; then
-              echo "dotnet test exited on its own"
-              break
-            fi
-          done
-          echo "Timed out after 18 minutes of polling"
-          kill -9 $PID 2>/dev/null; wait $PID 2>/dev/null; true
-          echo "=== Test output ==="
-          cat test-output.txt
-          if grep -q "Passed!" test-output.txt 2>/dev/null; then echo "=== EXIT: PASSED ==="; exit 0; fi
-          echo "=== EXIT: FAILED ==="
-          exit 1
+        id: test-with-coverage
+        timeout-minutes: 15
+        run: >
+          dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj
+          --configuration Release
+          --no-build
+          --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E"
+          --collect:"XPlat Code Coverage"
+          --
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI*]*"
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*"
 
       - name: Install ReportGenerator
-        if: always() && needs.test-with-coverage.result != 'skipped'
+        if: always()
         run: dotnet tool update -g dotnet-reportgenerator-globaltool
 
       - name: Combine coverage reports
-        if: always() && needs.test-with-coverage.result != 'skipped'
+        if: always()
         shell: bash
         run: |
           REPORTS=$(find . -type f -path "*/TestResults/*/coverage.cobertura.xml" 2>/dev/null | tr '\n' ';')
@@ -102,21 +82,23 @@ jobs:
           echo "EOF" >> $GITHUB_ENV
 
       - name: Upload coverage report
-        if: always() && needs.test-with-coverage.result != 'skipped'
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: coverage-report
+          if-no-files-found: warn
 
       - name: Upload to Codecov
-        if: always() && needs.test-with-coverage.result != 'skipped'
+        if: always()
         uses: codecov/codecov-action@v6
         with:
           files: coverage-report/Cobertura.xml
           fail_ci_if_error: false
+          handle_no_reports_found: true
 
       - name: Add coverage summary to PR
-        if: always() && needs.test-with-coverage.result != 'skipped'
+        if: always() && github.event_name == 'pull_request'
         uses: marocchino/sticky-pull-request-comment@v3
         with:
           recreate: true
@@ -160,45 +142,24 @@ jobs:
           /p:ContinuousIntegrationBuild=true
 
       - name: Test (Release)
-        timeout-minutes: 20
-        run: |
-          set +e
-          # Run dotnet test in background, redirect all output to a log file
-          dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj --configuration Release --no-build --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E" --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI*]*" DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*" > test-output.txt 2>&1 &
-          PID=$!
-          echo "Started dotnet test, PID=$PID"
-          # Poll every 60s for up to 18 minutes for "Passed!" in the output file
-          for i in $(seq 1 18); do
-            sleep 60
-            echo "Check $i/18 - $(date +%H:%M:%S)"
-            if grep -q "Passed!" test-output.txt 2>/dev/null; then
-              echo "SUCCESS: Found 'Passed!' in output after $i minutes"
-              echo "Killing PID=$PID"
-              kill -9 $PID 2>/dev/null; wait $PID 2>/dev/null; true
-              echo "=== Test output ==="
-              cat test-output.txt
-              echo "=== EXIT: PASSED ==="
-              exit 0
-            fi
-            if ! kill -0 $PID 2>/dev/null; then
-              echo "dotnet test exited on its own"
-              break
-            fi
-          done
-          echo "Timed out after 18 minutes of polling"
-          kill -9 $PID 2>/dev/null; wait $PID 2>/dev/null; true
-          echo "=== Test output ==="
-          cat test-output.txt
-          if grep -q "Passed!" test-output.txt 2>/dev/null; then echo "=== EXIT: PASSED ==="; exit 0; fi
-          echo "=== EXIT: FAILED ==="
-          exit 1
+        timeout-minutes: 15
+        run: >
+          dotnet test tests/JD.AI.Tests/JD.AI.Tests.csproj
+          --configuration Release
+          --no-build
+          --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E"
+          --collect:"XPlat Code Coverage"
+          --
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI*]*"
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*"
 
       - name: Install ReportGenerator
-        if: always() && needs.test-release.result != 'skipped'
+        if: always()
         run: dotnet tool update -g dotnet-reportgenerator-globaltool
 
       - name: Combine coverage reports
-        if: always() && needs.test-release.result != 'skipped'
+        if: always()
         shell: bash
         run: |
           REPORTS=$(find . -type f -path "*/TestResults/*/coverage.cobertura.xml" 2>/dev/null | tr '\n' ';')
@@ -214,12 +175,13 @@ jobs:
             -filefilters:"-**/*.Tests/*;-**/*Tests*/**"
 
       - name: Upload to Codecov
-        if: always() && needs.test-release.result != 'skipped'
+        if: always()
         uses: codecov/codecov-action@v6
         with:
           files: coverage-report/Cobertura.xml
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
+          handle_no_reports_found: true
 
       - name: Pack
         run: >
