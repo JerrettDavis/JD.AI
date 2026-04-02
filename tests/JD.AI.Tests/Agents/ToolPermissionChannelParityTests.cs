@@ -26,7 +26,7 @@ public sealed class ToolPermissionChannelParityTests
             SafetyTier.AlwaysConfirm,
             profile);
 
-        var textAllowed = AgentLoop.EvaluateTextToolCallSafety(
+        var textSafety = AgentLoop.EvaluateTextToolCallSafety(
             "run_command",
             "command=ls",
             PermissionMode.Normal,
@@ -38,7 +38,7 @@ public sealed class ToolPermissionChannelParityTests
             output);
 
         structuredGate.Decision.Should().Be(ToolExecutionGateDecision.Blocked);
-        textAllowed.Should().BeFalse();
+        textSafety.Allowed.Should().BeFalse();
     }
 
     [Fact]
@@ -54,7 +54,7 @@ public sealed class ToolPermissionChannelParityTests
             SafetyTier.AlwaysConfirm,
             profile);
 
-        var textAllowed = AgentLoop.EvaluateTextToolCallSafety(
+        var textSafety = AgentLoop.EvaluateTextToolCallSafety(
             "run_command",
             "command=ls",
             PermissionMode.Normal,
@@ -66,7 +66,7 @@ public sealed class ToolPermissionChannelParityTests
             output);
 
         structuredGate.Decision.Should().Be(ToolExecutionGateDecision.AllowWithoutPrompt);
-        textAllowed.Should().BeTrue();
+        textSafety.Allowed.Should().BeTrue();
         output.ConfirmCalled.Should().BeFalse();
     }
 
@@ -82,7 +82,7 @@ public sealed class ToolPermissionChannelParityTests
             SafetyTier.AlwaysConfirm,
             profile);
 
-        var textAllowed = AgentLoop.EvaluateTextToolCallSafety(
+        var textSafety = AgentLoop.EvaluateTextToolCallSafety(
             "run_command",
             "command=ls",
             PermissionMode.Normal,
@@ -94,7 +94,7 @@ public sealed class ToolPermissionChannelParityTests
             output);
 
         structuredGate.Decision.Should().Be(ToolExecutionGateDecision.RequirePrompt);
-        textAllowed.Should().BeTrue();
+        textSafety.Allowed.Should().BeTrue();
         output.ConfirmCalled.Should().BeTrue();
     }
 

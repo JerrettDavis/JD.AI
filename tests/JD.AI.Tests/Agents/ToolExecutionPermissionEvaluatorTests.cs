@@ -42,6 +42,33 @@ public sealed class ToolExecutionPermissionEvaluatorTests
     }
 
     [Fact]
+    public void Evaluate_4arg_BypassAll_AllowsWithoutPrompt()
+    {
+        var result = ToolExecutionPermissionEvaluator.Evaluate(
+            "run_command", PermissionMode.BypassAll, SafetyTier.AlwaysConfirm, null);
+
+        result.Decision.Should().Be(ToolExecutionGateDecision.AllowWithoutPrompt);
+    }
+
+    [Fact]
+    public void Evaluate_4arg_AcceptEdits_ConfirmOnce_AllowsWithoutPrompt()
+    {
+        var result = ToolExecutionPermissionEvaluator.Evaluate(
+            "write_file", PermissionMode.AcceptEdits, SafetyTier.ConfirmOnce, null);
+
+        result.Decision.Should().Be(ToolExecutionGateDecision.AllowWithoutPrompt);
+    }
+
+    [Fact]
+    public void Evaluate_4arg_AcceptEdits_NonEditConfirmOnce_StillRequiresPrompt()
+    {
+        var result = ToolExecutionPermissionEvaluator.Evaluate(
+            "list_directory", PermissionMode.AcceptEdits, SafetyTier.ConfirmOnce, null);
+
+        result.Decision.Should().Be(ToolExecutionGateDecision.RequirePrompt);
+    }
+
+    [Fact]
     public void Evaluate_4arg_ExplicitAllow_AllowsWithoutPrompt()
     {
         var profile = new ToolPermissionProfile();

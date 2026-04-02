@@ -10,6 +10,8 @@ public sealed class TextToolCallSafetyTests
         new Dictionary<string, SafetyTier>(StringComparer.OrdinalIgnoreCase)
         {
             ["read_file"] = SafetyTier.AutoApprove,
+            ["write_file"] = SafetyTier.ConfirmOnce,
+            ["list_directory"] = SafetyTier.ConfirmOnce,
             ["run_command"] = SafetyTier.AlwaysConfirm,
         };
 
@@ -31,7 +33,8 @@ public sealed class TextToolCallSafetyTests
             new HashSet<string>(StringComparer.Ordinal),
             output);
 
-        result.Should().BeFalse();
+        result.Allowed.Should().BeFalse();
+        result.Message.Should().Be("Tool blocked: blocked by explicit deny rule.");
         output.ConfirmCalled.Should().BeFalse();
     }
 
@@ -53,7 +56,28 @@ public sealed class TextToolCallSafetyTests
             new HashSet<string>(StringComparer.Ordinal),
             output);
 
-        result.Should().BeTrue();
+        result.Allowed.Should().BeTrue();
+        output.ConfirmCalled.Should().BeFalse();
+    }
+
+    [Fact]
+    public void SkipPermissions_BypassesPromptEvenWhenPermissionModeIsNormal()
+    {
+        var output = new SpyAgentOutput();
+
+        var result = AgentLoop.EvaluateTextToolCallSafety(
+            "run_command",
+            "command=ls",
+            PermissionMode.Normal,
+            skipPermissions: true,
+            autoRunEnabled: false,
+            TierMap,
+            permissionProfile: null,
+            new HashSet<string>(StringComparer.Ordinal),
+            output);
+
+        result.Allowed.Should().BeTrue();
+        result.Message.Should().Be("Allowed without prompt.");
         output.ConfirmCalled.Should().BeFalse();
     }
 
@@ -73,7 +97,7 @@ public sealed class TextToolCallSafetyTests
             new HashSet<string>(StringComparer.Ordinal),
             output);
 
-        result.Should().BeTrue();
+        result.Allowed.Should().BeTrue();
         output.ConfirmCalled.Should().BeTrue();
     }
 
@@ -93,7 +117,84 @@ public sealed class TextToolCallSafetyTests
             new HashSet<string>(StringComparer.Ordinal),
             output);
 
-        result.Should().BeFalse();
+        result.Allowed.Should().BeFalse();
+        result.Message.Should().Be("Tool blocked: plan mode — read-only.");
+    }
+
+    [Fact]
+    public void ConfirmOncePrompt_AfterApproval_ReusesCachedDecision()
+    {
+        var output = new SpyAgentOutput { ConfirmResult = true };
+        var confirmedOnce = new HashSet<string>(StringComparer.Ordinal);
+
+        var first = AgentLoop.EvaluateTextToolCallSafety(
+            "write_file",
+            "path=a.txt",
+            PermissionMode.Normal,
+            skipPermissions: false,
+            autoRunEnabled: false,
+            TierMap,
+            new ToolPermissionProfile(),
+            confirmedOnce,
+            output);
+
+        output.ConfirmCalled.Should().BeTrue();
+
+        output.ConfirmCalled = false;
+        var second = AgentLoop.EvaluateTextToolCallSafety(
+            "write_file",
+            "path=b.txt",
+            PermissionMode.Normal,
+            skipPermissions: false,
+            autoRunEnabled: false,
+            TierMap,
+            new ToolPermissionProfile(),
+            confirmedOnce,
+            output);
+
+        first.Allowed.Should().BeTrue();
+        second.Allowed.Should().BeTrue();
+        output.ConfirmCalled.Should().BeFalse();
+    }
+
+    [Fact]
+    public void AcceptEdits_NonEditConfirmOnce_StillPrompts()
+    {
+        var output = new SpyAgentOutput { ConfirmResult = true };
+
+        var result = AgentLoop.EvaluateTextToolCallSafety(
+            "list_directory",
+            "path=.",
+            PermissionMode.AcceptEdits,
+            skipPermissions: false,
+            autoRunEnabled: false,
+            TierMap,
+            new ToolPermissionProfile(),
+            new HashSet<string>(StringComparer.Ordinal),
+            output);
+
+        result.Allowed.Should().BeTrue();
+        output.ConfirmCalled.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UserDeniedPrompt_ReturnsExplicitDenialReason()
+    {
+        var output = new SpyAgentOutput { ConfirmResult = false };
+
+        var result = AgentLoop.EvaluateTextToolCallSafety(
+            "run_command",
+            "command=ls",
+            PermissionMode.Normal,
+            skipPermissions: false,
+            autoRunEnabled: false,
+            TierMap,
+            new ToolPermissionProfile(),
+            new HashSet<string>(StringComparer.Ordinal),
+            output);
+
+        result.Allowed.Should().BeFalse();
+        result.Message.Should().Be("User denied tool execution.");
     }
 
     private sealed class SpyAgentOutput : IAgentOutput

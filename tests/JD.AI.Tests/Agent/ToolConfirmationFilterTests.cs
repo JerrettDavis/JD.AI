@@ -90,6 +90,47 @@ public sealed class ToolConfirmationFilterTests
         Assert.Contains("key=null", result);
     }
 
+    [Fact]
+    public void BuildRedactedArgs_EditFile_RedactsOldAndNewText()
+    {
+        var args = new KernelArguments
+        {
+            ["path"] = "file.txt",
+            ["oldStr"] = "before",
+            ["newStr"] = "after",
+        };
+
+        var result = ToolConfirmationFilter.BuildRedactedArgs("edit_file", args);
+
+        result.Should().Be("path=file.txt, oldStr=[REDACTED], newStr=[REDACTED]");
+    }
+
+    [Fact]
+    public void BuildRedactedArgs_ApplyPatch_RedactsPatchPayload()
+    {
+        var args = new KernelArguments
+        {
+            ["editsJson"] = """[{"path":"a.txt","oldText":"x","newText":"y"}]"""
+        };
+
+        var result = ToolConfirmationFilter.BuildRedactedArgs("apply_patch", args);
+
+        result.Should().Be("editsJson=[REDACTED]");
+    }
+
+    [Fact]
+    public void BuildRedactedArgs_RunCommand_RedactsCommandValue()
+    {
+        var args = new KernelArguments
+        {
+            ["command"] = "curl https://api.example.com -H \"Authorization: Bearer secret-token\""
+        };
+
+        var result = ToolConfirmationFilter.BuildRedactedArgs("run_command", args);
+
+        result.Should().Be("command=[REDACTED]");
+    }
+
     // ── ResolvePolicyToolName ─────────────────────────────────────────────────
 
     [Fact]
@@ -137,6 +178,67 @@ public sealed class ToolConfirmationFilterTests
         preview.Should().NotBeNull();
         preview!.Length.Should().Be(50);
         preview.Should().EndWith("...");
+    }
+
+    [Fact]
+    public void BuildDisplayArgs_WriteFile_ShowsPathAndSizeWithoutRawContent()
+    {
+        var args = new KernelArguments
+        {
+            ["path"] = @"C:\temp\note.txt",
+            ["content"] = "\n\nfirst line\nsecond line"
+        };
+
+        var display = ToolConfirmationFilter.BuildDisplayArgs("write_file", args);
+
+        display.Should().Contain(@"path=C:\temp\note.txt [24 chars]");
+        display.Should().NotContain("first line");
+        display.Should().NotContain("second line");
+    }
+
+    [Fact]
+    public void BuildDisplayArgs_ApplyPatch_RedactsPatchPayload()
+    {
+        var args = new KernelArguments
+        {
+            ["editsJson"] = """[{"path":"a.txt","oldText":"x","newText":"y"}]"""
+        };
+
+        var display = ToolConfirmationFilter.BuildDisplayArgs("apply_patch", args);
+
+        display.Should().Be("editsJson=[REDACTED]");
+    }
+
+    [Fact]
+    public void BuildPersistedArgs_RunCommand_RedactsCommandValue()
+    {
+        var args = new KernelArguments
+        {
+            ["command"] = "dotnet test"
+        };
+
+        var persisted = ToolConfirmationFilter.BuildPersistedArgs("run_command", args);
+
+        persisted.Should().Be("command=[REDACTED]");
+    }
+
+    [Fact]
+    public void BuildPersistedArgs_GenericSensitiveKeys_RedactsValues()
+    {
+        var args = new KernelArguments
+        {
+            ["token"] = "abc123",
+            ["body"] = "secret",
+            ["path"] = "draft.txt"
+        };
+
+        var persisted = ToolConfirmationFilter.BuildPersistedArgs("missing_tool", args);
+
+        persisted.Should().Contain("token=[REDACTED]");
+        persisted.Should().Contain("body=[REDACTED]");
+        persisted.Should().Contain("path=draft.txt");
+        persisted.Should().NotContain("abc123");
+        persisted.Should().NotContain("secret");
     }
 
     [Fact]

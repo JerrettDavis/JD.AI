@@ -144,6 +144,12 @@ public sealed class AgentSession
     public List<(string ToolName, string? Args)> CapturedWorkflowSteps { get; } = [];
 
     /// <summary>
+    /// Tools the user has already approved once for this session.
+    /// Shared across structured and text-emitted tool call paths.
+    /// </summary>
+    public HashSet<string> ConfirmedOnceTools { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
     /// Callback to save a captured workflow. Set during initialization by the host
     /// (e.g., InteractiveLoop) that has access to the workflow catalog.
     /// Parameters: (workflowName, steps as list of (toolName, args)), returns saved workflow name.

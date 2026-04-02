@@ -20,6 +20,20 @@ public readonly record struct ToolExecutionGateResult(
 /// </summary>
 public static class ToolExecutionPermissionEvaluator
 {
+    private static readonly HashSet<string> AcceptEditsAutoApproveTools =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "write_file",
+            "edit_file",
+            "batch_edit_files",
+            "apply_patch",
+            "git_commit",
+            "git_push",
+            "git_pull",
+            "git_checkout",
+            "git_stash",
+        };
+
     public static ToolExecutionGateResult Evaluate(
         string canonicalToolName,
         PermissionMode permissionMode,
@@ -33,9 +47,16 @@ public static class ToolExecutionPermissionEvaluator
                 ToolExecutionGateDecision.Blocked,
                 "blocked by explicit deny rule");
 
+        if (permissionMode == PermissionMode.BypassAll)
+            return new ToolExecutionGateResult(ToolExecutionGateDecision.AllowWithoutPrompt);
+
         // AutoApprove-tier tools bypass prompts regardless of permission mode.
         // The Plan-mode block below only applies to AlwaysConfirm/ConfirmOnce tools.
         if (tier == SafetyTier.AutoApprove)
+            return new ToolExecutionGateResult(ToolExecutionGateDecision.AllowWithoutPrompt);
+
+        if (permissionMode == PermissionMode.AcceptEdits &&
+            AcceptEditsAutoApproveTools.Contains(canonicalToolName))
             return new ToolExecutionGateResult(ToolExecutionGateDecision.AllowWithoutPrompt);
 
         if (permissionMode == PermissionMode.Plan)
@@ -66,19 +87,29 @@ public static class ToolExecutionPermissionEvaluator
     {
         var result = Evaluate(canonicalToolName, permissionMode, tier, profile);
 
-        // Emit audit event (fire and forget)
-        if (eventBus is not null && sessionId is not null)
-        {
-            var entry = ToolAuditEntry.Create(
-                canonicalToolName,
-                argsSummary,
-                null,
-                result.Decision,
-                durationMs ?? 0,
-                sessionId);
-            _ = eventBus.PublishAsync(entry);
-        }
+        PublishAuditDecision(canonicalToolName, result.Decision, eventBus, sessionId, durationMs, argsSummary);
 
         return result;
+    }
+
+    public static void PublishAuditDecision(
+        string canonicalToolName,
+        ToolExecutionGateDecision decision,
+        IEventBus? eventBus = null,
+        string? sessionId = null,
+        long? durationMs = null,
+        string? argsSummary = null)
+    {
+        if (eventBus is null || sessionId is null)
+            return;
+
+        var entry = ToolAuditEntry.Create(
+            canonicalToolName,
+            argsSummary,
+            null,
+            decision,
+            durationMs ?? 0,
+            sessionId);
+        _ = eventBus.PublishAsync(entry);
     }
 }

@@ -1,5 +1,8 @@
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using JD.AI.Core.Agents;
 using JD.AI.Core.Governance;
 using JD.AI.Core.Governance.Audit;
@@ -22,7 +25,6 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
     private readonly AuditService? _auditService;
     private readonly CircuitBreaker? _circuitBreaker;
     private readonly IAgentOutput? _output;
-    private readonly HashSet<string> _confirmedOnce = new(StringComparer.Ordinal);
 
     // Safety tier mappings — built from [ToolSafetyTier] attributes via assembly scanning
     internal static readonly IReadOnlyDictionary<string, SafetyTier> ToolTierMap =
@@ -59,41 +61,14 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         var canonicalToolName = ResolvePolicyToolName(functionName);
         var tier = ToolTierMap.GetValueOrDefault(canonicalToolName, SafetyTier.AlwaysConfirm);
         var output = Output ?? _output ?? AgentOutput.Current;
+        var effectivePermissionMode = (_session.SkipPermissions || _session.AutoRunEnabled)
+            ? PermissionMode.BypassAll
+            : _session.PermissionMode;
         var gate = ToolExecutionPermissionEvaluator.Evaluate(
             canonicalToolName,
-            _session.PermissionMode,
+            effectivePermissionMode,
             tier,
-            _session.ToolPermissionProfile,
-            _session.EventBus,
-            _session.SessionInfo?.Id,
-            durationMs: null,
-            argsSummary: null);
-
-        // ── Workflow enforcement ────────────────────────────
-        if (gate.Decision == ToolExecutionGateDecision.RequirePrompt &&
-            _session.ActiveWorkflowName is null &&
-            !_session.WorkflowDeclinedThisTurn &&
-            tier != SafetyTier.AutoApprove &&
-            _session.PermissionMode != PermissionMode.BypassAll)
-        {
-            if (output.ConfirmWorkflowPrompt(functionName))
-            {
-                _session.ActiveWorkflowName = "recording";
-                _session.CapturedWorkflowSteps.Clear();
-                output.RenderInfo("📋 Recording workflow — tool calls will be captured.");
-            }
-            else
-            {
-                _session.WorkflowDeclinedThisTurn = true;
-            }
-        }
-
-        if (_session.ActiveWorkflowName is not null)
-        {
-            var captureArgs = string.Join(", ", (context.Arguments ?? [])
-                .Select(kv => $"{kv.Key}={kv.Value?.ToString() ?? "null"}"));
-            _session.CapturedWorkflowSteps.Add((canonicalToolName, captureArgs));
-        }
+            _session.ToolPermissionProfile);
 
         bool blocked = false;
         var needsConfirm = false;
@@ -113,41 +88,55 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
                 break;
         }
 
+        if (needsConfirm &&
+            tier == SafetyTier.ConfirmOnce &&
+            _session.ConfirmedOnceTools.Contains(canonicalToolName))
+        {
+            needsConfirm = false;
+        }
+
+        // ── Workflow enforcement ────────────────────────────
+        if (needsConfirm &&
+            _session.ActiveWorkflowName is null &&
+            !_session.WorkflowDeclinedThisTurn &&
+            tier != SafetyTier.AutoApprove &&
+            effectivePermissionMode != PermissionMode.BypassAll)
+        {
+            if (output.ConfirmWorkflowPrompt(functionName))
+            {
+                _session.ActiveWorkflowName = "recording";
+                _session.CapturedWorkflowSteps.Clear();
+                output.RenderInfo("📋 Recording workflow — tool calls will be captured.");
+            }
+            else
+            {
+                _session.WorkflowDeclinedThisTurn = true;
+            }
+        }
+
+        var gateDecision = blocked
+            ? ToolExecutionGateDecision.Blocked
+            : needsConfirm
+                ? ToolExecutionGateDecision.RequirePrompt
+                : ToolExecutionGateDecision.AllowWithoutPrompt;
+        ToolExecutionPermissionEvaluator.PublishAuditDecision(
+            canonicalToolName,
+            gateDecision,
+            _session.EventBus,
+            _session.SessionInfo?.Id);
+
         if (blocked)
         {
             output.RenderWarning($"  ✗ {functionName} blocked ({blockReason})");
             var blockedResult = $"Tool blocked: {blockReason}.";
             context.Result = new FunctionResult(context.Function, blockedResult);
-            _session.RecordToolCall(canonicalToolName, BuildRedactedArgs(context.Arguments), blockedResult, "denied", 0);
+            _session.RecordToolCall(canonicalToolName, BuildRedactedArgs(canonicalToolName, context.Arguments), blockedResult, "denied", 0);
             return;
         }
 
-        var args = string.Join(", ", (context.Arguments ?? [])
-            .Select(kv =>
-            {
-                var val = kv.Value?.ToString() ?? "null";
-                if (val.Length > 200)
-                {
-                    val = string.Concat(val.AsSpan(0, 197), "...");
-                }
-                return $"{kv.Key}={val}";
-            }));
-
-        var displayArgs = args;
-        if (canonicalToolName.Contains("write_file", StringComparison.Ordinal) ||
-            canonicalToolName.Contains("edit_file", StringComparison.Ordinal))
-        {
-            var path = context.Arguments?["path"]?.ToString() ?? context.Arguments?["filePath"]?.ToString();
-            var content = context.Arguments?["content"]?.ToString();
-            if (path is not null)
-            {
-                var sizeInfo = content is not null ? $" [{content.Length} chars]" : "";
-                var preview = BuildContentPreview(content);
-                displayArgs = preview is null
-                    ? $"path={path}{sizeInfo}"
-                    : $"path={path}{sizeInfo}, preview=\"{preview}\"";
-            }
-        }
+        var displayArgs = BuildDisplayArgs(canonicalToolName, context.Arguments);
+        var persistedArgs = BuildPersistedArgs(canonicalToolName, context.Arguments);
+        var argsFingerprint = BuildArgsFingerprint(canonicalToolName, context.Arguments);
 
         PolicyEvaluationResult? policyResult = null;
         if (_policyEvaluator is not null)
@@ -160,7 +149,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
                 output.RenderWarning($"Policy blocked: {functionName} — {policyResult.Reason}");
                 var deniedResult = $"Blocked by policy: {policyResult.Reason}";
                 context.Result = new FunctionResult(context.Function, deniedResult);
-                _session.RecordToolCall(canonicalToolName, BuildRedactedArgs(context.Arguments), deniedResult, "denied", 0);
+                _session.RecordToolCall(canonicalToolName, BuildRedactedArgs(canonicalToolName, context.Arguments), deniedResult, "denied", 0);
 
                 await EmitAuditEventAsync(functionName, canonicalToolName, context.Arguments, "denied", policyResult)
                     .ConfigureAwait(false);
@@ -170,15 +159,14 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
 
         if (_circuitBreaker is not null)
         {
-            var argsHash = args.GetHashCode(StringComparison.Ordinal).ToString(System.Globalization.CultureInfo.InvariantCulture);
-            var cbResult = _circuitBreaker.Evaluate(canonicalToolName, argsHash, agentId: _session.SessionInfo?.Id);
+            var cbResult = _circuitBreaker.Evaluate(canonicalToolName, argsFingerprint, agentId: _session.SessionInfo?.Id);
 
             if (cbResult.Action == CircuitAction.Block)
             {
                 output.RenderWarning($"  ⚡ Circuit breaker: {cbResult.Message}");
                 var blockedResult = $"Blocked by circuit breaker: {cbResult.Message}";
                 context.Result = new FunctionResult(context.Function, blockedResult);
-                _session.RecordToolCall(canonicalToolName, BuildRedactedArgs(context.Arguments), blockedResult, "denied", 0);
+                _session.RecordToolCall(canonicalToolName, BuildRedactedArgs(canonicalToolName, context.Arguments), blockedResult, "denied", 0);
 
                 AgentInstrumentation.CircuitBreakerTrips.Add(1,
                     new KeyValuePair<string, object?>("jdai.tool.name", functionName),
@@ -205,7 +193,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             {
                 const string deniedResult = "User denied tool execution.";
                 context.Result = new FunctionResult(context.Function, deniedResult);
-                _session.RecordToolCall(canonicalToolName, BuildRedactedArgs(context.Arguments), deniedResult, "denied", 0);
+                _session.RecordToolCall(canonicalToolName, BuildRedactedArgs(canonicalToolName, context.Arguments), deniedResult, "denied", 0);
                 await EmitAuditEventAsync(functionName, canonicalToolName, context.Arguments, "user_denied", policyResult)
                     .ConfigureAwait(false);
                 return;
@@ -213,7 +201,7 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
 
             if (tier == SafetyTier.ConfirmOnce)
             {
-                _confirmedOnce.Add(canonicalToolName);
+                _session.ConfirmedOnceTools.Add(canonicalToolName);
             }
         }
         else
@@ -225,13 +213,18 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
         await next(context).ConfigureAwait(false);
         sw.Stop();
 
+        if (string.Equals(_session.ActiveWorkflowName, "recording", StringComparison.Ordinal))
+        {
+            _session.CapturedWorkflowSteps.Add((canonicalToolName, persistedArgs));
+        }
+
         // Record metrics
         AgentInstrumentation.ToolCalls.Add(1,
             new KeyValuePair<string, object?>("jdai.tool.name", functionName),
             new KeyValuePair<string, object?>("jdai.tool.canonical_name", canonicalToolName));
 
-        var redactedArgs = BuildRedactedArgs(context.Arguments);
-        _session.TryRegisterToolCallForCurrentTurn(canonicalToolName, redactedArgs);
+        var redactedArgs = BuildRedactedArgs(canonicalToolName, context.Arguments);
+        _session.TryRegisterToolCallForCurrentTurn(canonicalToolName, argsFingerprint);
         var result = context.Result.GetValue<string>() ?? context.Result.ToString() ?? "";
         output.RenderToolCall(functionName, displayArgs, result);
         _session.RecordToolCall(canonicalToolName, redactedArgs, result, "ok", sw.ElapsedMilliseconds);
@@ -265,16 +258,37 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
             Resource = canonicalToolName,
             SessionId = _session.SessionInfo?.Id,
             TraceId = Activity.Current?.TraceId.ToString(),
-            Detail = $"status={status}; alias={toolName}; canonical={canonicalToolName}; args={BuildRedactedArgs(arguments)}",
+            Detail = $"status={status}; alias={toolName}; canonical={canonicalToolName}; args={BuildRedactedArgs(canonicalToolName, arguments)}",
             PolicyResult = policyResult?.Decision,
             Severity = severity,
         }).ConfigureAwait(false);
     }
 
     internal static string BuildRedactedArgs(KernelArguments? arguments)
+        => BuildRedactedArgs(null, arguments);
+
+    internal static string BuildRedactedArgs(string? canonicalToolName, KernelArguments? arguments)
     {
         if (arguments is null || arguments.Count == 0)
             return "";
+
+        if (string.Equals(canonicalToolName, "edit_file", StringComparison.OrdinalIgnoreCase))
+        {
+            var path = arguments["path"]?.ToString() ?? "null";
+            return $"path={path}, oldStr=[REDACTED], newStr=[REDACTED]";
+        }
+
+        if (string.Equals(canonicalToolName, "batch_edit_files", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(canonicalToolName, "apply_patch", StringComparison.OrdinalIgnoreCase))
+        {
+            return "editsJson=[REDACTED]";
+        }
+
+        if (string.Equals(canonicalToolName, "run_command", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(canonicalToolName, "bash", StringComparison.OrdinalIgnoreCase))
+        {
+            return "command=[REDACTED]";
+        }
 
         return string.Join(", ", arguments.Select(kv =>
         {
@@ -287,6 +301,83 @@ public sealed class ToolConfirmationFilter : IAutoFunctionInvocationFilter
 
             return $"{kv.Key}={val}";
         }));
+    }
+
+    internal static string BuildDisplayArgs(string canonicalToolName, KernelArguments? arguments)
+    {
+        var args = string.Join(", ", (arguments ?? [])
+            .Select(kv =>
+            {
+                var val = kv.Value?.ToString() ?? "null";
+                if (val.Length > 200)
+                {
+                    val = string.Concat(val.AsSpan(0, 197), "...");
+                }
+
+                return $"{kv.Key}={val}";
+            }));
+
+        if (canonicalToolName.Contains("write_file", StringComparison.Ordinal) ||
+            canonicalToolName.Contains("edit_file", StringComparison.Ordinal))
+        {
+            var path = arguments?["path"]?.ToString() ?? arguments?["filePath"]?.ToString();
+            var content = arguments?["content"]?.ToString();
+            if (path is not null)
+            {
+                var sizeInfo = content is not null ? $" [{content.Length} chars]" : "";
+                return $"path={path}{sizeInfo}";
+            }
+        }
+
+        if (string.Equals(canonicalToolName, "batch_edit_files", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(canonicalToolName, "apply_patch", StringComparison.OrdinalIgnoreCase))
+        {
+            return "editsJson=[REDACTED]";
+        }
+
+        return args;
+    }
+
+    internal static string BuildPersistedArgs(string canonicalToolName, KernelArguments? arguments)
+    {
+        if (arguments is null || arguments.Count == 0)
+            return "";
+
+        if (string.Equals(canonicalToolName, "run_command", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(canonicalToolName, "bash", StringComparison.OrdinalIgnoreCase))
+        {
+            return "command=[REDACTED]";
+        }
+
+        if (canonicalToolName.Contains("write_file", StringComparison.Ordinal) ||
+            canonicalToolName.Contains("edit_file", StringComparison.Ordinal) ||
+            string.Equals(canonicalToolName, "batch_edit_files", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(canonicalToolName, "apply_patch", StringComparison.OrdinalIgnoreCase))
+        {
+            return BuildDisplayArgs(canonicalToolName, arguments);
+        }
+
+        return string.Join(", ", arguments.Select(kv =>
+        {
+            if (RedactedArgKeys.Contains(kv.Key))
+                return $"{kv.Key}=[REDACTED]";
+
+            var val = kv.Value?.ToString() ?? "null";
+            if (val.Length > 80)
+                val = string.Concat(val.AsSpan(0, 77), "...");
+
+            return $"{kv.Key}={val}";
+        }));
+    }
+
+    internal static string BuildArgsFingerprint(string canonicalToolName, KernelArguments? arguments)
+    {
+        var normalized = string.Join("|", (arguments ?? [])
+            .OrderBy(kv => kv.Key, StringComparer.Ordinal)
+            .Select(kv => $"{kv.Key}={kv.Value?.ToString() ?? "null"}"));
+        var payload = $"{canonicalToolName.ToLowerInvariant()}|{normalized}";
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(payload));
+        return Convert.ToHexString(hash).ToLower(CultureInfo.InvariantCulture);
     }
 
     internal static string? BuildContentPreview(string? content, int maxChars = 120)

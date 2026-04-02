@@ -19,7 +19,6 @@ namespace JD.AI.Core.Agents;
 public sealed class AgentLoop
 {
     private readonly AgentSession _session;
-    private readonly HashSet<string> _textToolConfirmedOnce = new(StringComparer.Ordinal);
 
     public AgentLoop(AgentSession session)
     {
@@ -84,23 +83,36 @@ public sealed class AgentLoop
             // Detect and execute text-based tool calls from models that emit JSON
             // instead of using the structured tool calling protocol.
             var toolResult = await TryExecuteTextToolCallAsync(response, ct).ConfigureAwait(false);
+            var responseAlreadyAddedToHistory = false;
             if (toolResult is not null)
             {
-                _session.History.AddAssistantMessage(response);
-                _session.History.AddUserMessage($"[Tool result for {toolResult.Value.FunctionName}]:\n{toolResult.Value.Result}");
+                _session.History.AddAssistantMessage(toolResult.Value.AssistantMessage);
+                responseAlreadyAddedToHistory = !toolResult.Value.RequiresFollowUp;
 
-                turnEntry.Attributes["text_tool_call"] = toolResult.Value.FunctionName;
+                if (toolResult.Value.RequiresFollowUp)
+                {
+                    _session.History.AddUserMessage($"[Tool result for {toolResult.Value.FunctionName}]:\n{toolResult.Value.ToolResult}");
 
-                // Re-invoke the model with the tool result so it can produce a natural response
-                sw.Restart();
-                var followUp = await chat.GetChatMessageContentAsync(
-                    _session.History, settings, _session.Kernel, ct).ConfigureAwait(false);
-                sw.Stop();
+                    turnEntry.Attributes["text_tool_call"] = toolResult.Value.FunctionName;
 
-                response = followUp.Content ?? toolResult.Value.Result;
+                    // Re-invoke the model with the tool result so it can produce a natural response
+                    sw.Restart();
+                    var followUp = await chat.GetChatMessageContentAsync(
+                        _session.History, settings, _session.Kernel, ct).ConfigureAwait(false);
+                    sw.Stop();
+
+                    response = followUp.Content ?? toolResult.Value.ToolResult ?? toolResult.Value.AssistantMessage;
+                }
+                else
+                {
+                    response = toolResult.Value.AssistantMessage;
+                }
             }
 
-            _session.History.AddAssistantMessage(response);
+            if (!responseAlreadyAddedToHistory)
+            {
+                _session.History.AddAssistantMessage(response);
+            }
 
             var tokenEstimate = JD.SemanticKernel.Extensions.Compaction.TokenEstimator
                 .EstimateTokens(response);
@@ -163,7 +175,34 @@ public sealed class AgentLoop
                 sw.Stop();
 
                 var response = result.Content ?? "(no response)";
-                _session.History.AddAssistantMessage(response);
+                var retryToolResult = await TryExecuteTextToolCallAsync(response, ct).ConfigureAwait(false);
+                var responseAlreadyAddedToHistory = false;
+                if (retryToolResult is not null)
+                {
+                    _session.History.AddAssistantMessage(retryToolResult.Value.AssistantMessage);
+                    responseAlreadyAddedToHistory = !retryToolResult.Value.RequiresFollowUp;
+
+                    if (retryToolResult.Value.RequiresFollowUp)
+                    {
+                        _session.History.AddUserMessage(
+                            $"[Tool result for {retryToolResult.Value.FunctionName}]:\n{retryToolResult.Value.ToolResult}");
+
+                        sw.Restart();
+                        var followUp = await chat.GetChatMessageContentAsync(
+                            _session.History, retrySettings, _session.Kernel, ct).ConfigureAwait(false);
+                        sw.Stop();
+                        response = followUp.Content ?? retryToolResult.Value.ToolResult ?? retryToolResult.Value.AssistantMessage;
+                    }
+                    else
+                    {
+                        response = retryToolResult.Value.AssistantMessage;
+                    }
+                }
+
+                if (!responseAlreadyAddedToHistory)
+                {
+                    _session.History.AddAssistantMessage(response);
+                }
 
                 var tokenEstimate = JD.SemanticKernel.Extensions.Compaction.TokenEstimator
                     .EstimateTokens(response);
@@ -171,6 +210,7 @@ public sealed class AgentLoop
                 await _session.RecordAssistantTurnAsync(
                     response, durationMs: sw.ElapsedMilliseconds,
                     tokensOut: tokenEstimate).ConfigureAwait(false);
+                await SaveCapturedWorkflowIfActiveAsync(ct).ConfigureAwait(false);
 
                 turnEntry.Attributes["tool_calling_fallback"] = "true";
                 turnEntry.Complete();
@@ -181,6 +221,10 @@ public sealed class AgentLoop
             catch (Exception retryEx) when (!ct.IsCancellationRequested)
             {
                 sw.Stop();
+                if (_session.CapturedWorkflowSteps.Count == 0)
+                {
+                    AbandonCapturedWorkflowIfActive();
+                }
                 turnEntry.Complete("error", retryEx.Message);
                 _session.LastTimeline = traceCtx.Timeline;
                 var errorMsg = $"Error: {retryEx.Message}";
@@ -192,6 +236,7 @@ public sealed class AgentLoop
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
+            AbandonCapturedWorkflowIfActive();
             // Attempt fallback model if available and error is retriable
             if (IsRetriableError(ex) && _session.FallbackModels.Count > 0)
             {
@@ -270,9 +315,35 @@ public sealed class AgentLoop
         try
         {
             var fullResponse = new StringBuilder();
+            var pendingContent = new StringBuilder();
             var thinkingCapture = new StringBuilder();
             var parser = new StreamingContentParser();
             var thinkingActive = false;
+            var suppressTextToolStreaming = false;
+
+            void AppendContentSegment(string text)
+            {
+                if (thinkingActive)
+                {
+                    output.EndThinking();
+                    thinkingActive = false;
+                }
+
+                fullResponse.Append(text);
+                pendingContent.Append(text);
+
+                if (ShouldSuppressStreamingText(fullResponse.ToString()))
+                {
+                    suppressTextToolStreaming = true;
+                    pendingContent.Clear();
+                    return;
+                }
+
+                if (!suppressTextToolStreaming)
+                {
+                    FlushPendingStreamingContent(output, pendingContent, ref contentStarted, flushAll: false);
+                }
+            }
 
             await foreach (var chunk in chat.GetStreamingChatMessageContentsAsync(
                 _session.History, settings, _session.Kernel, ct).ConfigureAwait(false))
@@ -324,18 +395,7 @@ public sealed class AgentLoop
                             break;
 
                         case StreamSegmentKind.Content:
-                            if (thinkingActive)
-                            {
-                                output.EndThinking();
-                                thinkingActive = false;
-                            }
-                            if (!contentStarted)
-                            {
-                                output.BeginStreaming();
-                                contentStarted = true;
-                            }
-                            fullResponse.Append(seg.Text);
-                            output.WriteStreamingChunk(seg.Text);
+                            AppendContentSegment(seg.Text);
                             break;
                     }
                 }
@@ -351,14 +411,13 @@ public sealed class AgentLoop
                 }
                 else if (seg.Kind == StreamSegmentKind.Content)
                 {
-                    if (!contentStarted)
-                    {
-                        output.BeginStreaming();
-                        contentStarted = true;
-                    }
-                    fullResponse.Append(seg.Text);
-                    output.WriteStreamingChunk(seg.Text);
+                    AppendContentSegment(seg.Text);
                 }
+            }
+
+            if (!suppressTextToolStreaming)
+            {
+                FlushPendingStreamingContent(output, pendingContent, ref contentStarted, flushAll: true);
             }
 
             if (thinkingActive) output.EndThinking();
@@ -370,7 +429,7 @@ public sealed class AgentLoop
             }
 
             // If the LLM produced no visible content, render a fallback
-            if (!contentStarted)
+            if (!contentStarted && fullResponse.Length == 0)
             {
                 output.BeginStreaming();
                 output.WriteStreamingChunk("(no response)");
@@ -388,30 +447,64 @@ public sealed class AgentLoop
             // Detect and execute text-based tool calls from models that emit JSON
             // instead of using the structured tool calling protocol.
             var toolResult = await TryExecuteTextToolCallAsync(response, ct).ConfigureAwait(false);
+            var responseAlreadyAddedToHistory = false;
             if (toolResult is not null)
             {
-                _session.History.AddAssistantMessage(response);
-                _session.History.AddUserMessage($"[Tool result for {toolResult.Value.FunctionName}]:\n{toolResult.Value.Result}");
+                _session.History.AddAssistantMessage(toolResult.Value.AssistantMessage);
+                responseAlreadyAddedToHistory = !toolResult.Value.RequiresFollowUp;
 
-                DebugLogger.Log(DebugCategory.Agents,
-                    "Text-based tool call detected: {0}, re-invoking model with result",
-                    toolResult.Value.FunctionName);
+                if (toolResult.Value.RequiresFollowUp)
+                {
+                    _session.History.AddUserMessage($"[Tool result for {toolResult.Value.FunctionName}]:\n{toolResult.Value.ToolResult}");
 
-                // Re-invoke non-streaming so the model can produce a natural response
-                sw.Restart();
-                var followUp = await chat.GetChatMessageContentAsync(
-                    _session.History, settings, _session.Kernel, ct).ConfigureAwait(false);
-                sw.Stop();
+                    DebugLogger.Log(DebugCategory.Agents,
+                        "Text-based tool call detected: {0}, re-invoking model with result",
+                        toolResult.Value.FunctionName);
 
-                response = followUp.Content ?? toolResult.Value.Result;
+                    // Re-invoke non-streaming so the model can produce a natural response
+                    sw.Restart();
+                    var followUp = await chat.GetChatMessageContentAsync(
+                        _session.History, settings, _session.Kernel, ct).ConfigureAwait(false);
+                    sw.Stop();
 
-                // Render the actual response
+                    response = followUp.Content ?? toolResult.Value.ToolResult ?? toolResult.Value.AssistantMessage;
+
+                    // Render the actual response
+                    output.BeginStreaming();
+                    output.WriteStreamingChunk(response);
+                    output.EndStreaming();
+                }
+                else
+                {
+                    response = toolResult.Value.AssistantMessage;
+                    if (suppressTextToolStreaming)
+                    {
+                        output.BeginStreaming();
+                        output.WriteStreamingChunk(response);
+                        output.EndStreaming();
+                        contentStarted = true;
+                    }
+                }
+            }
+            else if (suppressTextToolStreaming)
+            {
+                if (ContainsTaggedToolPayload(response) ||
+                    IsStandalonePotentialFencedJsonWrapper(response) ||
+                    IsStandaloneFencedShellCommandPayload(response))
+                {
+                    response = "[Text tool call]: Unrecognized or malformed tool payload.";
+                }
+
                 output.BeginStreaming();
                 output.WriteStreamingChunk(response);
                 output.EndStreaming();
+                contentStarted = true;
             }
 
-            _session.History.AddAssistantMessage(response);
+            if (!responseAlreadyAddedToHistory)
+            {
+                _session.History.AddAssistantMessage(response);
+            }
 
             var tokenEstimate = JD.SemanticKernel.Extensions.Compaction.TokenEstimator
                 .EstimateTokens(response);
@@ -479,20 +572,33 @@ public sealed class AgentLoop
 
                 // Check for text-based tool calls before rendering or committing to history
                 var fallbackToolResult = await TryExecuteTextToolCallAsync(response, ct).ConfigureAwait(false);
+                var responseAlreadyAddedToHistory = false;
                 if (fallbackToolResult is not null)
                 {
-                    _session.History.AddAssistantMessage(response);
-                    _session.History.AddUserMessage(
-                        $"[Tool result for {fallbackToolResult.Value.FunctionName}]:\n{fallbackToolResult.Value.Result}");
+                    _session.History.AddAssistantMessage(fallbackToolResult.Value.AssistantMessage);
+                    responseAlreadyAddedToHistory = !fallbackToolResult.Value.RequiresFollowUp;
 
-                    sw.Restart();
-                    var followUp = await chat.GetChatMessageContentAsync(
-                        _session.History, settings, _session.Kernel, ct).ConfigureAwait(false);
-                    sw.Stop();
-                    response = followUp.Content ?? fallbackToolResult.Value.Result;
+                    if (fallbackToolResult.Value.RequiresFollowUp)
+                    {
+                        _session.History.AddUserMessage(
+                            $"[Tool result for {fallbackToolResult.Value.FunctionName}]:\n{fallbackToolResult.Value.ToolResult}");
+
+                        sw.Restart();
+                        var followUp = await chat.GetChatMessageContentAsync(
+                            _session.History, settings, _session.Kernel, ct).ConfigureAwait(false);
+                        sw.Stop();
+                        response = followUp.Content ?? fallbackToolResult.Value.ToolResult ?? fallbackToolResult.Value.AssistantMessage;
+                    }
+                    else
+                    {
+                        response = fallbackToolResult.Value.AssistantMessage;
+                    }
                 }
 
-                _session.History.AddAssistantMessage(response);
+                if (!responseAlreadyAddedToHistory)
+                {
+                    _session.History.AddAssistantMessage(response);
+                }
 
                 var tokenEstimate = JD.SemanticKernel.Extensions.Compaction.TokenEstimator
                     .EstimateTokens(response);
@@ -505,6 +611,7 @@ public sealed class AgentLoop
                 await _session.RecordAssistantTurnAsync(
                     response, durationMs: sw.ElapsedMilliseconds,
                     tokensOut: tokenEstimate).ConfigureAwait(false);
+                await SaveCapturedWorkflowIfActiveAsync(ct).ConfigureAwait(false);
 
                 turnEntry.Attributes["streaming_fallback"] = "true";
                 turnEntry.Complete();
@@ -515,6 +622,7 @@ public sealed class AgentLoop
             catch (Exception fallbackEx) when (!ct.IsCancellationRequested)
             {
                 sw.Stop();
+                AbandonCapturedWorkflowIfActive();
                 turnEntry.Complete("error", fallbackEx.Message);
                 _session.LastTimeline = traceCtx.Timeline;
                 output.EndTurn(new TurnMetrics(sw.ElapsedMilliseconds, 0, totalBytes));
@@ -561,20 +669,33 @@ public sealed class AgentLoop
 
                 // Even without structured tool calling, the model may emit JSON tool calls as text
                 var retryToolResult = await TryExecuteTextToolCallAsync(response, ct).ConfigureAwait(false);
+                var responseAlreadyAddedToHistory = false;
                 if (retryToolResult is not null)
                 {
-                    _session.History.AddAssistantMessage(response);
-                    _session.History.AddUserMessage(
-                        $"[Tool result for {retryToolResult.Value.FunctionName}]:\n{retryToolResult.Value.Result}");
+                    _session.History.AddAssistantMessage(retryToolResult.Value.AssistantMessage);
+                    responseAlreadyAddedToHistory = !retryToolResult.Value.RequiresFollowUp;
 
-                    sw.Restart();
-                    var followUp = await chat.GetChatMessageContentAsync(
-                        _session.History, retrySettings, _session.Kernel, ct).ConfigureAwait(false);
-                    sw.Stop();
-                    response = followUp.Content ?? retryToolResult.Value.Result;
+                    if (retryToolResult.Value.RequiresFollowUp)
+                    {
+                        _session.History.AddUserMessage(
+                            $"[Tool result for {retryToolResult.Value.FunctionName}]:\n{retryToolResult.Value.ToolResult}");
+
+                        sw.Restart();
+                        var followUp = await chat.GetChatMessageContentAsync(
+                            _session.History, retrySettings, _session.Kernel, ct).ConfigureAwait(false);
+                        sw.Stop();
+                        response = followUp.Content ?? retryToolResult.Value.ToolResult ?? retryToolResult.Value.AssistantMessage;
+                    }
+                    else
+                    {
+                        response = retryToolResult.Value.AssistantMessage;
+                    }
                 }
 
-                _session.History.AddAssistantMessage(response);
+                if (!responseAlreadyAddedToHistory)
+                {
+                    _session.History.AddAssistantMessage(response);
+                }
 
                 var tokenEstimate = JD.SemanticKernel.Extensions.Compaction.TokenEstimator
                     .EstimateTokens(response);
@@ -587,6 +708,7 @@ public sealed class AgentLoop
                 await _session.RecordAssistantTurnAsync(
                     response, durationMs: sw.ElapsedMilliseconds,
                     tokensOut: tokenEstimate).ConfigureAwait(false);
+                await SaveCapturedWorkflowIfActiveAsync(ct).ConfigureAwait(false);
 
                 turnEntry.Attributes["tool_calling_fallback"] = "true";
                 turnEntry.Complete();
@@ -597,6 +719,10 @@ public sealed class AgentLoop
             catch (Exception retryEx) when (!ct.IsCancellationRequested)
             {
                 sw.Stop();
+                if (_session.CapturedWorkflowSteps.Count == 0)
+                {
+                    AbandonCapturedWorkflowIfActive();
+                }
                 turnEntry.Complete("error", retryEx.Message);
                 _session.LastTimeline = traceCtx.Timeline;
                 // totalBytes here is from the failed original stream, not the retry (which was
@@ -613,6 +739,7 @@ public sealed class AgentLoop
         {
             output.EndStreaming();
             sw.Stop();
+            AbandonCapturedWorkflowIfActive();
 
             // Attempt fallback model if available and error is retriable
             if (IsRetriableError(ex) && _session.FallbackModels.Count > 0)
@@ -1061,9 +1188,14 @@ public sealed class AgentLoop
     /// </summary>
     private async Task SaveCapturedWorkflowIfActiveAsync(CancellationToken ct)
     {
-        if (!string.Equals(_session.ActiveWorkflowName, "recording", StringComparison.Ordinal) ||
-            _session.CapturedWorkflowSteps.Count == 0)
+        if (!string.Equals(_session.ActiveWorkflowName, "recording", StringComparison.Ordinal))
             return;
+
+        if (_session.CapturedWorkflowSteps.Count == 0)
+        {
+            _session.ActiveWorkflowName = null;
+            return;
+        }
 
         var workflowName = $"captured-{DateTime.UtcNow:yyyyMMdd-HHmmss}";
 
@@ -1083,8 +1215,18 @@ public sealed class AgentLoop
                 DebugLogger.Log(DebugCategory.Agents,
                     "Failed to save captured workflow: {0}", ex.Message);
                 AgentOutput.Current.RenderWarning($"⚠ Failed to save captured workflow: {ex.Message}");
+                return;
             }
         }
+
+        _session.CapturedWorkflowSteps.Clear();
+        _session.ActiveWorkflowName = null;
+    }
+
+    private void AbandonCapturedWorkflowIfActive()
+    {
+        if (!string.Equals(_session.ActiveWorkflowName, "recording", StringComparison.Ordinal))
+            return;
 
         _session.CapturedWorkflowSteps.Clear();
         _session.ActiveWorkflowName = null;
@@ -1182,7 +1324,16 @@ public sealed class AgentLoop
     /// <summary>
     /// Result of manually executing a tool call that was emitted as plain text JSON.
     /// </summary>
-    private readonly record struct TextToolCallResult(string FunctionName, string Result);
+    private readonly record struct TextToolCallResult(
+        string FunctionName,
+        string AssistantMessage,
+        string? ToolResult,
+        bool RequiresFollowUp);
+
+    internal readonly record struct TextToolSafetyResult(
+        bool Allowed,
+        string Status,
+        string Message);
 
     /// <summary>
     /// Detects when a model emits a tool/function call as plain text JSON instead of
@@ -1205,8 +1356,19 @@ public sealed class AgentLoop
         if (ShouldEnforceStructuredToolChannel() &&
             !IsStandaloneToolCallPayload(response) &&
             !ContainsTaggedToolPayload(response) &&
-            !ContainsFencedShellCommandPayload(response))
+            !ContainsPotentialFencedJsonWrapper(response) &&
+            !IsStandaloneFencedShellCommandPayload(response))
             return null;
+
+        var hasTaggedWrapper = ContainsPotentialTaggedToolPayload(response);
+        var hasFencedJsonWrapper = ContainsPotentialFencedJsonWrapper(response);
+        var hasStandaloneFencedJsonWrapper = IsStandalonePotentialFencedJsonWrapper(response);
+        var hasStandaloneFencedShellWrapper = IsStandaloneFencedShellCommandPayload(response);
+        string? handledToolName = null;
+        string? handledCanonicalName = null;
+        string? handledArgsSummary = null;
+        string? handledRedactedArgsSummary = null;
+        var recognizedPayload = false;
 
         try
         {
@@ -1216,17 +1378,36 @@ public sealed class AgentLoop
             var jsonText = ExtractFirstToolCallJson(response);
             if (jsonText is not null)
             {
+                recognizedPayload = true;
                 using var doc = JsonDocument.Parse(jsonText);
                 if (!TrySelectToolCallElement(doc.RootElement, out var toolCall))
-                    return null;
+                {
+                    return new TextToolCallResult(
+                        "tool",
+                        BuildTextToolAssistantMessage("tool", string.Empty, "Malformed tool payload."),
+                        ToolResult: null,
+                        RequiresFollowUp: false);
+                }
 
                 if (!toolCall.TryGetProperty("name", out var nameEl) ||
                     nameEl.ValueKind != JsonValueKind.String)
-                    return null;
+                {
+                    return new TextToolCallResult(
+                        "tool",
+                        BuildTextToolAssistantMessage("tool", string.Empty, "Malformed tool payload."),
+                        ToolResult: null,
+                        RequiresFollowUp: false);
+                }
 
                 fullName = nameEl.GetString() ?? string.Empty;
                 if (string.IsNullOrEmpty(fullName))
-                    return null;
+                {
+                    return new TextToolCallResult(
+                        "tool",
+                        BuildTextToolAssistantMessage("tool", string.Empty, "Malformed tool payload."),
+                        ToolResult: null,
+                        RequiresFollowUp: false);
+                }
 
                 // Build arguments from the "arguments" property
                 if (TryGetToolCallArguments(toolCall, out var argsEl) &&
@@ -1244,10 +1425,28 @@ public sealed class AgentLoop
             {
                 var command = ExtractFirstFencedShellCommand(response);
                 if (string.IsNullOrWhiteSpace(command))
+                {
+                    if (hasTaggedWrapper || hasStandaloneFencedJsonWrapper || hasStandaloneFencedShellWrapper)
+                    {
+                        return new TextToolCallResult(
+                            hasStandaloneFencedShellWrapper ? "bash" : "tool",
+                            BuildTextToolAssistantMessage(
+                                hasStandaloneFencedShellWrapper ? "bash" : "tool",
+                                string.Empty,
+                                "Malformed tool payload."),
+                            ToolResult: null,
+                            RequiresFollowUp: false);
+                    }
+
+                    return null;
+                }
+
+                if (!hasStandaloneFencedShellWrapper)
                     return null;
 
                 // Claude/Copilot-style fenced shell command fallback:
                 // route through canonical run_command alias + safety checks.
+                recognizedPayload = true;
                 fullName = "bash";
                 args["command"] = command;
             }
@@ -1264,6 +1463,8 @@ public sealed class AgentLoop
                 functionName = normalizedName[(separatorIndex + 1)..];
             }
             functionName = OpenClawToolAliasResolver.Resolve(functionName);
+            handledToolName = fullName;
+            handledCanonicalName = functionName;
 
             // Resolve the kernel function
             KernelFunction? func = null;
@@ -1279,33 +1480,48 @@ public sealed class AgentLoop
                 .SelectMany(p => p)
                 .FirstOrDefault(f => f.Name.Equals(functionName, StringComparison.OrdinalIgnoreCase));
 
-            if (func is null)
-                return null;
-
             DebugLogger.Log(DebugCategory.Agents,
                 "Intercepted text-based tool call: {0} with {1} args", fullName, args.Count);
 
-            var argsSummary = string.Join(", ", args.Select(kv =>
-            {
-                var val = kv.Value?.ToString() ?? "null";
-                if (val.Length > 200)
-                    val = string.Concat(val.AsSpan(0, 197), "...");
-                return $"{kv.Key}={val}";
-            }));
+            var argsSummary = ToolConfirmationFilter.BuildDisplayArgs(functionName, args);
+            var persistedArgsSummary = ToolConfirmationFilter.BuildPersistedArgs(functionName, args);
+            var redactedArgsSummary = ToolConfirmationFilter.BuildRedactedArgs(functionName, args);
+            var argsFingerprint = ToolConfirmationFilter.BuildArgsFingerprint(functionName, args);
+            handledArgsSummary = persistedArgsSummary;
+            handledRedactedArgsSummary = redactedArgsSummary;
 
-            if (!CheckTextToolCallSafety(fullName!, argsSummary))
+            if (func is null)
+            {
+                _session.RecordToolCall(functionName, redactedArgsSummary, "Tool unavailable.", "error", 0);
+                return new TextToolCallResult(
+                    fullName,
+                    BuildTextToolAssistantMessage(fullName, persistedArgsSummary, "Tool unavailable."),
+                    ToolResult: null,
+                    RequiresFollowUp: false);
+            }
+
+            var safety = CheckTextToolCallSafety(functionName, argsSummary);
+            if (!safety.Allowed)
             {
                 DebugLogger.Log(DebugCategory.Agents,
                     "Text-based tool call blocked by safety gate: {0}", fullName);
-                _session.RecordToolCall(functionName, argsSummary, "Tool blocked by explicit permission gate.", "denied", 0);
-                return null;
+                _session.RecordToolCall(functionName, redactedArgsSummary, safety.Message, safety.Status, 0);
+                return new TextToolCallResult(
+                    fullName,
+                    BuildTextToolAssistantMessage(fullName, persistedArgsSummary, safety.Message),
+                    ToolResult: null,
+                    RequiresFollowUp: false);
             }
 
-            if (!_session.TryRegisterToolCallForCurrentTurn(functionName, argsSummary))
+            if (!_session.TryRegisterToolCallForCurrentTurn(functionName, argsFingerprint))
             {
                 DebugLogger.Log(DebugCategory.Agents,
                     "Skipping duplicate text-based tool call in current turn: {0}", fullName);
-                return null;
+                return new TextToolCallResult(
+                    fullName,
+                    BuildTextToolAssistantMessage(fullName, persistedArgsSummary, "Skipped duplicate tool call in current turn."),
+                    ToolResult: null,
+                    RequiresFollowUp: false);
             }
 
             var toolStopwatch = Stopwatch.StartNew();
@@ -1314,24 +1530,93 @@ public sealed class AgentLoop
             var resultStr = result?.ToString() ?? "(no output)";
 
             AgentOutput.Current.RenderToolCall(fullName!, argsSummary, resultStr);
-            _session.RecordToolCall(functionName, argsSummary, resultStr, "ok", toolStopwatch.ElapsedMilliseconds);
+            _session.RecordToolCall(functionName, redactedArgsSummary, resultStr, "ok", toolStopwatch.ElapsedMilliseconds);
+            if (string.Equals(_session.ActiveWorkflowName, "recording", StringComparison.Ordinal))
+            {
+                _session.CapturedWorkflowSteps.Add((functionName, persistedArgsSummary));
+            }
 
-            return new TextToolCallResult(fullName, resultStr);
+            return new TextToolCallResult(
+                fullName,
+                BuildTextToolAssistantMessage(fullName, persistedArgsSummary),
+                resultStr,
+                RequiresFollowUp: true);
         }
         catch (JsonException)
         {
-            return null;
+            if (!recognizedPayload)
+                return null;
+
+            var toolName = handledToolName ?? "tool";
+            var argsSummary = handledArgsSummary ?? string.Empty;
+            return new TextToolCallResult(
+                toolName,
+                BuildTextToolAssistantMessage(toolName, argsSummary, "Malformed tool payload."),
+                ToolResult: null,
+                RequiresFollowUp: false);
         }
         catch (Exception ex)
         {
             DebugLogger.Log(DebugCategory.Agents,
                 "Text-based tool call execution failed: {0}", ex.Message);
-            return null;
+            if (handledCanonicalName is null)
+                return null;
+
+            _session.RecordToolCall(handledCanonicalName, handledRedactedArgsSummary, ex.Message, "error", 0);
+            return new TextToolCallResult(
+                handledToolName ?? handledCanonicalName,
+                BuildTextToolAssistantMessage(
+                    handledToolName ?? handledCanonicalName,
+                    handledArgsSummary ?? string.Empty,
+                    "Tool execution failed."),
+                ToolResult: null,
+                RequiresFollowUp: false);
         }
     }
 
     private bool ShouldEnforceStructuredToolChannel() =>
         _session.CurrentModel?.Capabilities.HasFlag(ModelCapabilities.ToolCalling) ?? false;
+
+    private const int StreamingToolLookbehindChars = 32;
+
+    private static void FlushPendingStreamingContent(
+        IAgentOutput output,
+        StringBuilder pendingContent,
+        ref bool contentStarted,
+        bool flushAll)
+    {
+        var charsToFlush = flushAll
+            ? pendingContent.Length
+            : Math.Max(0, pendingContent.Length - StreamingToolLookbehindChars);
+
+        if (charsToFlush == 0)
+            return;
+
+        if (!contentStarted)
+        {
+            output.BeginStreaming();
+            contentStarted = true;
+        }
+
+        var text = pendingContent.ToString(0, charsToFlush);
+        output.WriteStreamingChunk(text);
+        pendingContent.Remove(0, charsToFlush);
+    }
+
+    private static bool ShouldSuppressStreamingText(string responseSoFar)
+    {
+        if (string.IsNullOrWhiteSpace(responseSoFar))
+            return false;
+
+        if (ContainsPotentialTaggedToolPayload(responseSoFar) ||
+            ContainsPotentialFencedJsonWrapper(responseSoFar) ||
+            ContainsPotentialFencedJsonStreamingPayload(responseSoFar) ||
+            ContainsPotentialFencedShellPayload(responseSoFar))
+            return true;
+
+        var trimmed = responseSoFar.TrimStart();
+        return trimmed.StartsWith('{') || trimmed.StartsWith('[');
+    }
 
     // Compiled regex for fenced JSON blocks (e.g. ```json\n{...}\n```)
     private static readonly Regex FencedJsonRegex = new(
@@ -1359,6 +1644,10 @@ public sealed class AgentLoop
 
     private static readonly Regex EntireFencedJsonRegex = new(
         @"\A```(?:json)?\s*\r?\n(?<json>(?:\{[\s\S]*?\}|\[[\s\S]*?\]))\s*\r?\n```\z",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly Regex EntireFencedShellCommandRegex = new(
+        @"\A```(?:bash|sh|shell|zsh|pwsh|powershell|ps1|cmd|bat)\s*\r?\n(?<command>[\s\S]*?)\r?\n```\z",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private static readonly Regex EntireTaggedToolCallRegex = new(
@@ -1542,6 +1831,35 @@ public sealed class AgentLoop
         return false;
     }
 
+    private static bool IsStandaloneFencedShellCommandPayload(string response)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+            return false;
+
+        var match = EntireFencedShellCommandRegex.Match(response.Trim());
+        if (!match.Success)
+            return false;
+
+        var command = match.Groups["command"].Value.Trim();
+        return !string.IsNullOrWhiteSpace(command) &&
+               !command.Contains("```", StringComparison.Ordinal);
+    }
+
+    private static bool IsStandalonePotentialFencedJsonWrapper(string response)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+            return false;
+
+        var text = response.Trim();
+        if (!text.StartsWith("```", StringComparison.Ordinal) ||
+            !text.EndsWith("```", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return ContainsPotentialFencedJsonWrapper(text);
+    }
+
     private static bool ContainsTaggedToolUsePayload(string response)
     {
         if (string.IsNullOrWhiteSpace(response))
@@ -1575,8 +1893,129 @@ public sealed class AgentLoop
     private static bool ContainsTaggedToolPayload(string response) =>
         ContainsTaggedToolUsePayload(response) || ContainsTaggedToolCallPayload(response);
 
+    private static bool ContainsPotentialTaggedToolPayload(string response) =>
+        response.Contains("<tool", StringComparison.OrdinalIgnoreCase);
+
+    private static bool ContainsPotentialFencedJsonWrapper(string response)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+            return false;
+
+        foreach (var candidate in EnumerateFencedJsonCandidates(response))
+        {
+            if (LooksLikePotentialToolWrapper(candidate))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool ContainsPotentialFencedJsonStreamingPayload(string response)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+            return false;
+
+        if (response.Contains("```json", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        var lastFenceStart = response.LastIndexOf("```", StringComparison.Ordinal);
+        if (lastFenceStart < 0)
+            return false;
+
+        var afterFence = response[(lastFenceStart + 3)..];
+        if (string.IsNullOrWhiteSpace(afterFence))
+            return true;
+
+        if (afterFence.StartsWith("json", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        var trimmed = afterFence.TrimStart();
+        return trimmed.StartsWith('{') || trimmed.StartsWith('[');
+    }
+
     private static bool ContainsFencedShellCommandPayload(string response) =>
         ExtractFirstFencedShellCommand(response) is not null;
+
+    private static IEnumerable<string> EnumerateFencedJsonCandidates(string response)
+    {
+        foreach (Match match in FencedJsonRegex.Matches(response))
+        {
+            var candidate = match.Groups["json"].Value.Trim();
+            if (!string.IsNullOrWhiteSpace(candidate))
+                yield return candidate;
+        }
+
+        var searchIndex = 0;
+        while (searchIndex < response.Length)
+        {
+            var fenceStart = response.IndexOf("```", searchIndex, StringComparison.Ordinal);
+            if (fenceStart < 0)
+                yield break;
+
+            var candidateStart = fenceStart + 3;
+            if (candidateStart >= response.Length)
+                yield break;
+
+            var remainder = response[candidateStart..];
+            var trimmedRemainder = remainder.TrimStart();
+            candidateStart += remainder.Length - trimmedRemainder.Length;
+
+            if (trimmedRemainder.StartsWith("json", StringComparison.OrdinalIgnoreCase))
+            {
+                candidateStart += 4;
+                if (candidateStart >= response.Length)
+                    yield break;
+
+                remainder = response[candidateStart..];
+                trimmedRemainder = remainder.TrimStart();
+                candidateStart += remainder.Length - trimmedRemainder.Length;
+            }
+
+            if (candidateStart >= response.Length ||
+                (response[candidateStart] != '{' && response[candidateStart] != '['))
+            {
+                searchIndex = fenceStart + 3;
+                continue;
+            }
+
+            var fenceEnd = response.IndexOf("```", candidateStart, StringComparison.Ordinal);
+            if (fenceEnd < 0)
+            {
+                yield return response[candidateStart..].Trim();
+                yield break;
+            }
+
+            yield return response[candidateStart..fenceEnd].Trim();
+            searchIndex = fenceEnd + 3;
+        }
+    }
+
+    private static bool LooksLikePotentialToolWrapper(string jsonLike)
+    {
+        if (string.IsNullOrWhiteSpace(jsonLike))
+            return false;
+
+        return jsonLike.Contains("\"name\"", StringComparison.OrdinalIgnoreCase) ||
+               jsonLike.Contains("\"arguments\"", StringComparison.OrdinalIgnoreCase) ||
+               jsonLike.Contains("\"parameters\"", StringComparison.OrdinalIgnoreCase) ||
+               jsonLike.Contains("\"input\"", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool ContainsPotentialFencedShellPayload(string response)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+            return false;
+
+        return response.Contains("```bash", StringComparison.OrdinalIgnoreCase) ||
+               response.Contains("```sh", StringComparison.OrdinalIgnoreCase) ||
+               response.Contains("```shell", StringComparison.OrdinalIgnoreCase) ||
+               response.Contains("```zsh", StringComparison.OrdinalIgnoreCase) ||
+               response.Contains("```pwsh", StringComparison.OrdinalIgnoreCase) ||
+               response.Contains("```powershell", StringComparison.OrdinalIgnoreCase) ||
+               response.Contains("```ps1", StringComparison.OrdinalIgnoreCase) ||
+               response.Contains("```cmd", StringComparison.OrdinalIgnoreCase) ||
+               response.Contains("```bat", StringComparison.OrdinalIgnoreCase);
+    }
 
     internal static string? ExtractFirstFencedShellCommand(string response)
     {
@@ -1641,21 +2080,32 @@ public sealed class AgentLoop
     /// for text-based tool calls that bypass the SK auto-function-invocation pipeline.
     /// Delegates to <see cref="EvaluateTextToolCallSafety"/> for testability.
     /// </summary>
-    private bool CheckTextToolCallSafety(string functionName, string argsSummary)
+    private static string BuildTextToolAssistantMessage(string toolName, string argsSummary, string? outcome = null)
+    {
+        var invocation = string.IsNullOrWhiteSpace(argsSummary)
+            ? toolName
+            : $"{toolName}({argsSummary})";
+
+        return string.IsNullOrWhiteSpace(outcome)
+            ? $"[Text tool call]: {invocation}"
+            : $"[Text tool call]: {invocation} — {outcome}";
+    }
+
+    private TextToolSafetyResult CheckTextToolCallSafety(string functionName, string argsSummary)
     {
         var canonicalName = OpenClawToolAliasResolver.Resolve(functionName);
         return EvaluateTextToolCallSafety(
             canonicalName, argsSummary,
             _session.PermissionMode, _session.SkipPermissions, _session.AutoRunEnabled,
-            _session.ToolSafetyTiers, _session.ToolPermissionProfile, _textToolConfirmedOnce, AgentOutput.Current,
+            _session.ToolSafetyTiers, _session.ToolPermissionProfile, _session.ConfirmedOnceTools, AgentOutput.Current,
             _session.EventBus, _session.SessionInfo?.Id);
     }
 
     /// <summary>
     /// Pure-logic safety evaluation for text-based tool calls.
-    /// Returns true if the tool call should proceed, false if blocked.
+    /// Returns a structured decision so callers can persist accurate denial reasons.
     /// </summary>
-    internal static bool EvaluateTextToolCallSafety(
+    internal static TextToolSafetyResult EvaluateTextToolCallSafety(
         string canonicalName, string argsSummary,
         PermissionMode permissionMode, bool skipPermissions, bool autoRunEnabled,
         IReadOnlyDictionary<string, Tools.SafetyTier>? tierMap,
@@ -1664,33 +2114,82 @@ public sealed class AgentLoop
         IEventBus? eventBus = null,
         string? sessionId = null)
     {
+        var effectivePermissionMode = (skipPermissions || autoRunEnabled)
+            ? PermissionMode.BypassAll
+            : permissionMode;
         var tier = tierMap?.GetValueOrDefault(canonicalName, Tools.SafetyTier.AlwaysConfirm)
                    ?? Tools.SafetyTier.AlwaysConfirm;
         var gate = ToolExecutionPermissionEvaluator.Evaluate(
             canonicalName,
-            permissionMode,
+            effectivePermissionMode,
             tier,
-            permissionProfile,
-            eventBus,
-            sessionId);
+            permissionProfile);
 
         if (gate.Decision == ToolExecutionGateDecision.Blocked)
         {
+            ToolExecutionPermissionEvaluator.PublishAuditDecision(
+                canonicalName,
+                ToolExecutionGateDecision.Blocked,
+                eventBus,
+                sessionId);
             output.RenderWarning($"  \u2717 {canonicalName} blocked ({gate.Reason})");
-            return false;
+            return new TextToolSafetyResult(
+                Allowed: false,
+                Status: "denied",
+                Message: $"Tool blocked: {gate.Reason}.");
         }
 
         if (gate.Decision == ToolExecutionGateDecision.AllowWithoutPrompt)
         {
+            ToolExecutionPermissionEvaluator.PublishAuditDecision(
+                canonicalName,
+                ToolExecutionGateDecision.AllowWithoutPrompt,
+                eventBus,
+                sessionId);
             output.RenderInfo($"  \u25b8 [text-tool] {canonicalName}({argsSummary})");
-            return true;
+            return new TextToolSafetyResult(
+                Allowed: true,
+                Status: "ok",
+                Message: "Allowed without prompt.");
         }
 
         _ = skipPermissions;
         _ = autoRunEnabled;
-        _ = confirmedOnce;
-        _ = tier;
-        return output.ConfirmToolCall(canonicalName, argsSummary);
+
+        if (tier == Tools.SafetyTier.ConfirmOnce && confirmedOnce.Contains(canonicalName))
+        {
+            ToolExecutionPermissionEvaluator.PublishAuditDecision(
+                canonicalName,
+                ToolExecutionGateDecision.AllowWithoutPrompt,
+                eventBus,
+                sessionId);
+            output.RenderInfo($"  \u25b8 [text-tool] {canonicalName}({argsSummary})");
+            return new TextToolSafetyResult(
+                Allowed: true,
+                Status: "ok",
+                Message: "Allowed by prior confirmation.");
+        }
+
+        ToolExecutionPermissionEvaluator.PublishAuditDecision(
+            canonicalName,
+            ToolExecutionGateDecision.RequirePrompt,
+            eventBus,
+            sessionId);
+        var approved = output.ConfirmToolCall(canonicalName, argsSummary);
+        if (approved && tier == Tools.SafetyTier.ConfirmOnce)
+        {
+            confirmedOnce.Add(canonicalName);
+        }
+
+        return approved
+            ? new TextToolSafetyResult(
+                Allowed: true,
+                Status: "ok",
+                Message: "Allowed by user confirmation.")
+            : new TextToolSafetyResult(
+                Allowed: false,
+                Status: "denied",
+                Message: "User denied tool execution.");
     }
 
     /// <summary>

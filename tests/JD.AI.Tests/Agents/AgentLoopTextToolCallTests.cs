@@ -262,6 +262,30 @@ public sealed class AgentLoopTextToolCallTests
     }
 
     [Fact]
+    public void IsStandaloneToolCallPayload_EntireFencedJson_ReturnsTrue()
+    {
+        const string Response = """
+            ```json
+            {"name":"run_command","arguments":{"command":"pwd"}}
+            ```
+            """;
+
+        AgentLoop.IsStandaloneToolCallPayload(Response).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsStandaloneToolCallPayload_EntireFencedJsonMissingArguments_ReturnsFalse()
+    {
+        const string Response = """
+            ```json
+            {"name":"run_command","params":{"command":"pwd"}}
+            ```
+            """;
+
+        AgentLoop.IsStandaloneToolCallPayload(Response).Should().BeFalse();
+    }
+
+    [Fact]
     public void IsStandaloneToolCallPayload_ProsePlusTaggedCall_ReturnsFalse()
     {
         const string Response = """
