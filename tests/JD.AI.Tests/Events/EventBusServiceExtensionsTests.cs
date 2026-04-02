@@ -1,6 +1,7 @@
 using FluentAssertions;
 using JD.AI.Core.Events;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace JD.AI.Tests.Events;
 

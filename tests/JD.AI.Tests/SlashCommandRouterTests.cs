@@ -6,6 +6,7 @@ using JD.AI.Core.Governance;
 using JD.AI.Core.Governance.Audit;
 using JD.AI.Core.Plugins;
 using JD.AI.Core.Providers;
+using JD.AI.Tests.Fixtures;
 using Microsoft.SemanticKernel;
 using NSubstitute;
 using Xunit;
@@ -13,19 +14,26 @@ using Xunit;
 namespace JD.AI.Tests;
 
 [Collection("DataDirectories")]
-public sealed class SlashCommandRouterTests
+public sealed class SlashCommandRouterTests : IClassFixture<TempDirectoryFixture>, IDisposable
 {
     private readonly IProviderRegistry _registry = Substitute.For<IProviderRegistry>();
     private readonly AgentSession _session;
     private readonly SlashCommandRouter _router;
 
-    public SlashCommandRouterTests()
+    public SlashCommandRouterTests(TempDirectoryFixture fixture)
     {
+        var dataRoot = fixture.GetPath($"jdai-root-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dataRoot);
+        DataDirectories.Reset();
+        DataDirectories.SetRoot(dataRoot);
+
         var kernel = Kernel.CreateBuilder().Build();
         var model = new ProviderModelInfo("test-model", "Test Model", "TestProvider");
         _session = new AgentSession(_registry, kernel, model);
         _router = new SlashCommandRouter(_session, _registry);
     }
+
+    public void Dispose() => DataDirectories.Reset();
 
     [Theory]
     [InlineData("/help")]
@@ -55,6 +63,61 @@ public sealed class SlashCommandRouterTests
         Assert.Contains("/help", result);
         Assert.Contains("/models", result);
         Assert.Contains("/quit", result);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhitespaceInput_ReturnsNoCommandMessage()
+    {
+        var result = await _router.ExecuteAsync("   ");
+
+        Assert.Equal("No command provided. Type /help for available commands.", result);
+    }
+
+    [Fact]
+    public async Task Instructions_ReturnsSummary_WhenInstructionsAreLoaded()
+    {
+        var instructions = new InstructionsResult();
+        instructions.Add(new InstructionFile("copilot-instructions.md", @"C:\repo\.github\copilot-instructions.md", "Follow repo rules."));
+        var router = new SlashCommandRouter(_session, _registry, instructions: instructions);
+
+        var result = await router.ExecuteAsync("/instructions");
+
+        Assert.NotNull(result);
+        Assert.Contains("Loaded instructions:", result);
+        Assert.Contains("copilot-instructions.md", result);
+    }
+
+    [Fact]
+    public async Task SystemPrompt_WithoutPrompt_ReturnsNoPromptMessage()
+    {
+        var result = await _router.ExecuteAsync("/system-prompt");
+
+        Assert.Equal("No system prompt is currently loaded.", result);
+    }
+
+    [Fact]
+    public async Task SystemPrompt_Append_UpdatesSessionPrompt()
+    {
+        _session.ReplaceSystemPrompt("Base system prompt");
+
+        var result = await _router.ExecuteAsync("/system-prompt append Add a checklist.");
+
+        Assert.NotNull(result);
+        Assert.Contains("Appended to system prompt", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("Base system prompt\n\nAdd a checklist.", _session.History[0].Content);
+    }
+
+    [Fact]
+    public async Task SystemPrompt_Reset_RestoresOriginalPrompt()
+    {
+        _session.ReplaceSystemPrompt("Base system prompt");
+        await _router.ExecuteAsync("/system-prompt append Add a checklist.");
+
+        var result = await _router.ExecuteAsync("/system-prompt reset");
+
+        Assert.NotNull(result);
+        Assert.Contains("reset to original startup text", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("Base system prompt", _session.History[0].Content);
     }
 
     [Fact]
@@ -115,9 +178,12 @@ public sealed class SlashCommandRouterTests
             using var configStore = new AtomicConfigStore(configPath);
             var router = new SlashCommandRouter(_session, _registry, configStore: configStore);
 
-            await router.ExecuteAsync("/model set saved-model");
+            var result = await router.ExecuteAsync("/model set saved-model");
             var config = await configStore.ReadAsync();
 
+            Assert.NotNull(result);
+            Assert.Contains("Switched", result);
+            Assert.Equal("saved-model", _session.CurrentModel?.Id);
             Assert.False(config.ProjectDefaults.TryGetValue(tempDirectory, out _));
         }
         finally
