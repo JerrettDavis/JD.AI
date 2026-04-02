@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using FluentAssertions;
 using JD.AI.Rendering;
 using JD.AI.Startup;
@@ -43,6 +44,28 @@ public sealed class WelcomeServiceStatusProbeExtendedTests
             var uri = WelcomeServiceStatusProbe.ResolveGatewayHealthUri(new CliOptions());
 
             uri.Should().Be(new Uri("http://127.0.0.1:7777/health"));
+        });
+    }
+
+    [Fact]
+    public void ResolveGatewayHealthUri_AppendsHealthToConfiguredBasePath()
+    {
+        WithGatewayUrlOverride("http://127.0.0.1:7777/api", () =>
+        {
+            var uri = WelcomeServiceStatusProbe.ResolveGatewayHealthUri(new CliOptions());
+
+            uri.Should().Be(new Uri("http://127.0.0.1:7777/api/health"));
+        });
+    }
+
+    [Fact]
+    public void ResolveGatewayHealthUri_IgnoresInvalidConfiguredUrl()
+    {
+        WithGatewayUrlOverride("not a valid uri", () =>
+        {
+            var uri = WelcomeServiceStatusProbe.ResolveGatewayHealthUri(new CliOptions { GatewayPort = "9090" });
+
+            uri.Should().Be(new Uri("http://localhost:9090/health"));
         });
     }
 
@@ -161,6 +184,23 @@ public sealed class WelcomeServiceStatusProbeExtendedTests
             CancellationToken.None);
 
         indicators.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ProbeSafeAsync_WhenProbeSucceeds_ReturnsProbeResults()
+    {
+        var expected = new[]
+        {
+            new WelcomeIndicator("Daemon", "running", IndicatorState.Healthy),
+            new WelcomeIndicator("Gateway", "online", IndicatorState.Healthy),
+        };
+
+        var indicators = await WelcomeServiceStatusProbe.ProbeSafeAsync(
+            new CliOptions(),
+            (_, _) => Task.FromResult<IReadOnlyList<WelcomeIndicator>>(expected),
+            CancellationToken.None);
+
+        indicators.Should().Equal(expected);
     }
 
     [Fact]
@@ -322,6 +362,49 @@ public sealed class WelcomeServiceStatusProbeExtendedTests
         });
     }
 
+    [Fact]
+    public async Task RunCommandAsync_WhenCommandSucceeds_CapturesExitCodeOutputAndError()
+    {
+        var result = await InvokeRunCommandAsync(
+            "pwsh",
+            "-NoLogo -NoProfile -Command \"Write-Output 'hello'; Write-Error 'oops'; exit 7\"",
+            TimeSpan.FromSeconds(2),
+            CancellationToken.None);
+
+        result.ExitCode.Should().Be(7);
+        result.Output.Should().Contain("hello");
+        result.Error.Should().Contain("oops");
+        result.TimedOut.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RunCommandAsync_WhenCommandTimesOut_ReturnsTimedOut()
+    {
+        var result = await InvokeRunCommandAsync(
+            "pwsh",
+            "-NoLogo -NoProfile -Command \"Start-Sleep -Milliseconds 300\"",
+            TimeSpan.FromMilliseconds(50),
+            CancellationToken.None);
+
+        result.ExitCode.Should().Be(1);
+        result.TimedOut.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RunCommandAsync_WhenExecutableIsMissing_ReturnsWin32Error()
+    {
+        var result = await InvokeRunCommandAsync(
+            "jdai-definitely-missing-executable",
+            string.Empty,
+            TimeSpan.FromSeconds(1),
+            CancellationToken.None);
+
+        result.ExitCode.Should().Be(1);
+        result.Output.Should().BeEmpty();
+        result.Error.Should().NotBeNullOrWhiteSpace();
+        result.TimedOut.Should().BeFalse();
+    }
+
     private sealed class StubHttpMessageHandler(
         Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler) : HttpMessageHandler
     {
@@ -355,5 +438,24 @@ public sealed class WelcomeServiceStatusProbeExtendedTests
         {
             Environment.SetEnvironmentVariable("JDAI_GATEWAY_URL", previous);
         }
+    }
+
+    private static async Task<(int ExitCode, string Output, string Error, bool TimedOut)> InvokeRunCommandAsync(
+        string fileName,
+        string arguments,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        var method = typeof(WelcomeServiceStatusProbe).GetMethod(
+            "RunCommandAsync",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        method.Should().NotBeNull();
+
+        var task = (Task<(int ExitCode, string Output, string Error, bool TimedOut)>)method!.Invoke(
+            null,
+            [fileName, arguments, timeout, cancellationToken])!;
+
+        return await task;
     }
 }
