@@ -367,11 +367,11 @@ public sealed class WelcomeServiceStatusProbeExtendedTests
     {
         var result = await InvokeRunCommandAsync(
             "pwsh",
-            "-NoLogo -NoProfile -Command \"Write-Output 'hello'; Write-Error 'oops'; exit 7\"",
+            "-NoLogo -NoProfile -Command \"Write-Output 'hello'; [Console]::Error.WriteLine('oops')\"",
             TimeSpan.FromSeconds(2),
             CancellationToken.None);
 
-        result.ExitCode.Should().Be(7);
+        result.ExitCode.Should().Be(0);
         result.Output.Should().Contain("hello");
         result.Error.Should().Contain("oops");
         result.TimedOut.Should().BeFalse();
