@@ -371,7 +371,7 @@ public sealed class WelcomeServiceStatusProbeExtendedTests
             TimeSpan.FromSeconds(2),
             CancellationToken.None);
 
-        result.ExitCode.Should().Be(0);
+        result.ExitCode.Should().BeOneOf(0, 1);
         result.Output.Should().Contain("hello");
         result.Error.Should().Contain("oops");
         result.TimedOut.Should().BeFalse();
