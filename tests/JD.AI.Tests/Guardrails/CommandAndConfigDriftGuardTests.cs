@@ -49,6 +49,14 @@ public sealed class CommandAndConfigDriftGuardTests
 
         foreach (var command in commands)
         {
+            var dispatchToken = command.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries)[0];
+            Assert.True(
+                SlashCommandCatalog.TryResolveDispatch(dispatchToken, out _),
+                $"Completion entry '{command}' is not resolvable via SlashCommandCatalog dispatch map.");
+
+            if (!string.Equals(command, dispatchToken, StringComparison.Ordinal))
+                continue;
+
             var result = await router.ExecuteAsync(command);
             if (string.Equals(command, "/quit", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(command, "/exit", StringComparison.OrdinalIgnoreCase))
