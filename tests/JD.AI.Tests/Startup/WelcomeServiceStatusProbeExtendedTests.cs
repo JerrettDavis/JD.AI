@@ -136,14 +136,14 @@ public sealed class WelcomeServiceStatusProbeExtendedTests
 
         var indicators = await WelcomeServiceStatusProbe.ProbeAsync(
             opts,
-            async _ =>
+            async ct =>
             {
-                await Task.Delay(10);
+                await Task.Delay(10, ct);
                 return new WelcomeIndicator("Daemon", "running", IndicatorState.Healthy);
             },
-            async (_, _) =>
+            async (_, ct) =>
             {
-                await Task.Delay(1);
+                await Task.Delay(1, ct);
                 return new WelcomeIndicator("Gateway", "online", IndicatorState.Healthy);
             });
 
