@@ -17,9 +17,17 @@ internal static class WelcomeServiceStatusProbe
         CliOptions opts,
         CancellationToken ct = default)
     {
+        return await ProbeSafeAsync(opts, ProbeAsync, ct).ConfigureAwait(false);
+    }
+
+    internal static async Task<IReadOnlyList<WelcomeIndicator>> ProbeSafeAsync(
+        CliOptions opts,
+        Func<CliOptions, CancellationToken, Task<IReadOnlyList<WelcomeIndicator>>> probeAsync,
+        CancellationToken ct = default)
+    {
         try
         {
-            return await ProbeAsync(opts, ct).ConfigureAwait(false);
+            return await probeAsync(opts, ct).ConfigureAwait(false);
         }
 #pragma warning disable CA1031 // welcome indicators should not break startup
         catch
@@ -40,6 +48,19 @@ internal static class WelcomeServiceStatusProbe
         return [await daemonTask.ConfigureAwait(false), await gatewayTask.ConfigureAwait(false)];
     }
 
+    internal static async Task<IReadOnlyList<WelcomeIndicator>> ProbeAsync(
+        CliOptions opts,
+        Func<CancellationToken, Task<WelcomeIndicator>> daemonProbe,
+        Func<CliOptions, CancellationToken, Task<WelcomeIndicator>> gatewayProbe,
+        CancellationToken ct = default)
+    {
+        var daemonTask = daemonProbe(ct);
+        var gatewayTask = gatewayProbe(opts, ct);
+        await Task.WhenAll(daemonTask, gatewayTask).ConfigureAwait(false);
+
+        return [await daemonTask.ConfigureAwait(false), await gatewayTask.ConfigureAwait(false)];
+    }
+
     internal static Uri ResolveGatewayHealthUri(CliOptions opts)
     {
         var configured = Environment.GetEnvironmentVariable("JDAI_GATEWAY_URL");
@@ -55,15 +76,25 @@ internal static class WelcomeServiceStatusProbe
 
     private static async Task<WelcomeIndicator> ProbeDaemonAsync(CancellationToken ct)
     {
-        if (OperatingSystem.IsWindows())
+        return await ProbeDaemonAsync(OperatingSystem.IsWindows(), OperatingSystem.IsLinux(), RunCommandAsync, ct)
+            .ConfigureAwait(false);
+    }
+
+    internal static async Task<WelcomeIndicator> ProbeDaemonAsync(
+        bool isWindows,
+        bool isLinux,
+        Func<string, string, TimeSpan, CancellationToken, Task<(int ExitCode, string Output, string Error, bool TimedOut)>> commandRunner,
+        CancellationToken ct)
+    {
+        if (isWindows)
         {
-            var result = await RunCommandAsync("sc", "query JDAIDaemon", CommandTimeout, ct).ConfigureAwait(false);
+            var result = await commandRunner("sc", "query JDAIDaemon", CommandTimeout, ct).ConfigureAwait(false);
             return ParseWindowsDaemonProbe(result.ExitCode, $"{result.Output}\n{result.Error}", result.TimedOut);
         }
 
-        if (OperatingSystem.IsLinux())
+        if (isLinux)
         {
-            var result = await RunCommandAsync("systemctl", "is-active jdai-daemon", CommandTimeout, ct).ConfigureAwait(false);
+            var result = await commandRunner("systemctl", "is-active jdai-daemon", CommandTimeout, ct).ConfigureAwait(false);
             return ParseSystemdDaemonProbe(result.ExitCode, $"{result.Output}\n{result.Error}", result.TimedOut);
         }
 
@@ -74,8 +105,16 @@ internal static class WelcomeServiceStatusProbe
         CliOptions opts,
         CancellationToken ct)
     {
-        var healthUri = ResolveGatewayHealthUri(opts);
         using var http = new HttpClient { Timeout = GatewayTimeout };
+        return await ProbeGatewayAsync(opts, http, ct).ConfigureAwait(false);
+    }
+
+    internal static async Task<WelcomeIndicator> ProbeGatewayAsync(
+        CliOptions opts,
+        HttpClient http,
+        CancellationToken ct)
+    {
+        var healthUri = ResolveGatewayHealthUri(opts);
 
         try
         {
@@ -184,7 +223,7 @@ internal static class WelcomeServiceStatusProbe
         return builder.Uri;
     }
 
-    private static async Task<CommandResult> RunCommandAsync(
+    private static async Task<(int ExitCode, string Output, string Error, bool TimedOut)> RunCommandAsync(
         string fileName,
         string arguments,
         TimeSpan timeout,
@@ -204,7 +243,7 @@ internal static class WelcomeServiceStatusProbe
         {
             using var process = new Process { StartInfo = startInfo };
             if (!process.Start())
-                return new CommandResult(1, string.Empty, "failed to start process", false);
+                return (1, string.Empty, "failed to start process", false);
 
             var outputTask = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
             var errorTask = process.StandardError.ReadToEndAsync(CancellationToken.None);
@@ -217,19 +256,19 @@ internal static class WelcomeServiceStatusProbe
                 await process.WaitForExitAsync(linkedCts.Token).ConfigureAwait(false);
                 var output = await outputTask.ConfigureAwait(false);
                 var error = await errorTask.ConfigureAwait(false);
-                return new CommandResult(process.ExitCode, output, error, false);
+                return (process.ExitCode, output, error, false);
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
                 TryKill(process);
                 var output = await outputTask.ConfigureAwait(false);
                 var error = await errorTask.ConfigureAwait(false);
-                return new CommandResult(1, output, error, true);
+                return (1, output, error, true);
             }
         }
         catch (Win32Exception ex)
         {
-            return new CommandResult(1, string.Empty, ex.Message, false);
+            return (1, string.Empty, ex.Message, false);
         }
     }
 
@@ -247,6 +286,4 @@ internal static class WelcomeServiceStatusProbe
             // best effort
         }
     }
-
-    private sealed record CommandResult(int ExitCode, string Output, string Error, bool TimedOut);
 }

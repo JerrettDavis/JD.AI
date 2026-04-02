@@ -36,7 +36,7 @@ jobs:
 
       - name: Determine version (NBGV)
         id: nbgv
-        uses: dotnet/nbgv@master
+        uses: dotnet/nbgv@v0.5.1
         with:
           setAllVars: true
 
@@ -69,21 +69,56 @@ jobs:
           --blame-hang-timeout 5m
           --
           DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
-          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI]*"
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[JD.AI*]*"
           DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*"
 
       - name: Install ReportGenerator
-        run: dotnet tool update -g dotnet-reportgenerator-globaltool
+        if: always()
+        run: dotnet tool update -g dotnet-reportgenerator-globaltool --version 5.5.4
 
       - name: Generate coverage report
+        if: always()
         shell: bash
         run: |
-          REPORTS=$(find . -type f -path "*/TestResults/*/coverage.cobertura.xml" | tr '\n' ';')
+          REPORTS=$(find . -type f -path "*/TestResults/*/coverage.cobertura.xml" 2>/dev/null | tr '\n' ';')
+          if [ -z "$REPORTS" ] || [ "$REPORTS" = ";" ]; then
+            echo "No coverage files found — skipping report generation."
+            exit 0
+          fi
           reportgenerator \
             -reports:"$REPORTS" \
             -targetdir:"coverage-report" \
-            -reporttypes:"Cobertura;TextSummary" \
-            -assemblyfilters:"+JD.AI*;-*Tests*"
+            -reporttypes:"HtmlInline;Cobertura;TextSummary;Badges" \
+            -assemblyfilters:"+JD.AI*;-*Tests*" \
+            -filefilters:"-**/*.Tests/*;-**/*Tests*/**"
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage-report
+
+      - name: Enforce coverage floor
+        if: always()
+        shell: bash
+        env:
+          MIN_LINE_COVERAGE: "60"
+        run: |
+          if [ ! -f coverage-report/Cobertura.xml ]; then
+            echo "Coverage report missing."
+            exit 1
+          fi
+          python - <<'PY'
+          import os
+          import xml.etree.ElementTree as ET
+
+          min_cov = float(os.environ["MIN_LINE_COVERAGE"])
+          rate = float(ET.parse("coverage-report/Cobertura.xml").getroot().attrib["line-rate"]) * 100
+          if rate < min_cov:
+              raise SystemExit(f"Coverage {rate:.2f}% is below {min_cov:.2f}%")
+          print(f"Coverage {rate:.2f}% meets threshold {min_cov:.2f}%")
+          PY
 
       - name: Coverage gate — check changed source files
         if: always()
@@ -146,7 +181,7 @@ jobs:
             --configuration Release \
             --no-build \
             --output ./dry-run-packages \
-            /p:ContinuousIntegrationBuild=true || true
+            /p:ContinuousIntegrationBuild=true
           PACKAGE_COUNT=$(ls -1 ./dry-run-packages/*.nupkg 2>/dev/null | wc -l)
           if [ "$PACKAGE_COUNT" -eq 0 ]; then
             echo "❌ No packages were created"

@@ -7,6 +7,7 @@ using Xunit.Abstractions;
 
 namespace JD.AI.Tests.Startup;
 
+[Collection("EnvironmentVariables")]
 [Feature("Welcome Service Status Probe")]
 public sealed class WelcomeServiceStatusProbeBddTests : TinyBddXunitBase
 {

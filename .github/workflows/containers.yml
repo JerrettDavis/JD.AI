@@ -90,6 +90,7 @@ jobs:
 
       - name: Attest SBOM to image
         uses: actions/attest-sbom@v4
+        continue-on-error: true
         with:
           subject-name: ${{ steps.image.outputs.name }}
           subject-digest: ${{ steps.build.outputs.digest }}
