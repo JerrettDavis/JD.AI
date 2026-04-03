@@ -9,48 +9,63 @@ namespace JD.AI.Gateway.Client;
 /// </summary>
 public sealed class GatewayHttpClient(HttpClient http)
 {
+    private sealed record SendMessageResponse(string Response);
+    private sealed record CreatedAgentResponse(string Id);
+
     // --- Agents ---
 
     public async Task<AgentInfo[]> GetAgentsAsync(CancellationToken ct = default)
         => await http.GetFromJsonAsync<AgentInfo[]>("api/v1/agents", ct) ?? [];
 
-    public async Task<AgentInfo?> SpawnAgentAsync(AgentDefinition definition, CancellationToken ct = default)
+    public async Task<string?> SpawnAgentAsync(AgentDefinition definition, CancellationToken ct = default)
     {
         var response = await http.PostAsJsonAsync("api/v1/agents", definition, ct);
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<AgentInfo>(cancellationToken: ct);
+
+        var created = await response.Content.ReadFromJsonAsync<CreatedAgentResponse>(cancellationToken: ct);
+        return created?.Id;
     }
 
     public async Task<string?> SendMessageAsync(string agentId, string message, CancellationToken ct = default)
     {
-        var response = await http.PostAsJsonAsync($"api/v1/agents/{agentId}/message", new { message }, ct);
+        var response = await http.PostAsJsonAsync($"api/v1/agents/{Segment(agentId, nameof(agentId))}/message", new { message }, ct);
         response.EnsureSuccessStatusCode();
+
+        if (response.Content.Headers.ContentType?.MediaType?.Contains("json", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            var payload = await response.Content.ReadFromJsonAsync<SendMessageResponse>(cancellationToken: ct);
+            return payload?.Response;
+        }
+
         return await response.Content.ReadAsStringAsync(ct);
     }
 
     public async Task DeleteAgentAsync(string agentId, CancellationToken ct = default)
     {
-        var response = await http.DeleteAsync(new Uri($"api/v1/agents/{agentId}", UriKind.Relative), ct);
+        var response = await http.DeleteAsync(new Uri($"api/v1/agents/{Segment(agentId, nameof(agentId))}", UriKind.Relative), ct);
         response.EnsureSuccessStatusCode();
     }
 
     // --- Sessions ---
 
     public async Task<SessionInfo[]> GetSessionsAsync(int limit = 50, CancellationToken ct = default)
-        => await http.GetFromJsonAsync<SessionInfo[]>($"api/v1/sessions?limit={limit}", ct) ?? [];
+    {
+        ValidateSessionLimit(limit);
+        return await http.GetFromJsonAsync<SessionInfo[]>($"api/v1/sessions?limit={limit}", ct) ?? [];
+    }
 
     public async Task<SessionInfo?> GetSessionAsync(string id, CancellationToken ct = default)
-        => await http.GetFromJsonAsync<SessionInfo>($"api/v1/sessions/{id}", ct);
+        => await http.GetFromJsonAsync<SessionInfo>($"api/v1/sessions/{Segment(id, nameof(id))}", ct);
 
     public async Task CloseSessionAsync(string id, CancellationToken ct = default)
     {
-        var response = await http.PostAsync(new Uri($"api/v1/sessions/{id}/close", UriKind.Relative), null, ct);
+        var response = await http.PostAsync(new Uri($"api/v1/sessions/{Segment(id, nameof(id))}/close", UriKind.Relative), null, ct);
         response.EnsureSuccessStatusCode();
     }
 
     public async Task ExportSessionAsync(string id, CancellationToken ct = default)
     {
-        var response = await http.PostAsync(new Uri($"api/v1/sessions/{id}/export", UriKind.Relative), null, ct);
+        var response = await http.PostAsync(new Uri($"api/v1/sessions/{Segment(id, nameof(id))}/export", UriKind.Relative), null, ct);
         response.EnsureSuccessStatusCode();
     }
 
@@ -60,7 +75,7 @@ public sealed class GatewayHttpClient(HttpClient http)
         => await http.GetFromJsonAsync<ProviderInfo[]>("api/v1/providers", ct) ?? [];
 
     public async Task<ProviderModelInfo[]> GetProviderModelsAsync(string name, CancellationToken ct = default)
-        => await http.GetFromJsonAsync<ProviderModelInfo[]>($"api/v1/providers/{name}/models", ct) ?? [];
+        => await http.GetFromJsonAsync<ProviderModelInfo[]>($"api/v1/providers/{Segment(name, nameof(name))}/models", ct) ?? [];
 
     // --- Channels ---
 
@@ -69,13 +84,13 @@ public sealed class GatewayHttpClient(HttpClient http)
 
     public async Task ConnectChannelAsync(string type, CancellationToken ct = default)
     {
-        var response = await http.PostAsync(new Uri($"api/v1/channels/{type}/connect", UriKind.Relative), null, ct);
+        var response = await http.PostAsync(new Uri($"api/v1/channels/{Segment(type, nameof(type))}/connect", UriKind.Relative), null, ct);
         response.EnsureSuccessStatusCode();
     }
 
     public async Task DisconnectChannelAsync(string type, CancellationToken ct = default)
     {
-        var response = await http.PostAsync(new Uri($"api/v1/channels/{type}/disconnect", UriKind.Relative), null, ct);
+        var response = await http.PostAsync(new Uri($"api/v1/channels/{Segment(type, nameof(type))}/disconnect", UriKind.Relative), null, ct);
         response.EnsureSuccessStatusCode();
     }
 
@@ -122,9 +137,30 @@ public sealed class GatewayHttpClient(HttpClient http)
             var response = await http.GetAsync(new Uri("api/v1/gateway/status", UriKind.Relative), ct);
             return response.IsSuccessStatusCode;
         }
-        catch
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (HttpRequestException)
         {
             return false;
         }
+        catch (TaskCanceledException)
+        {
+            return false;
+        }
+    }
+
+    private static string Segment(string value, string paramName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(value, paramName);
+        return Uri.EscapeDataString(value);
+    }
+
+    private static void ValidateSessionLimit(int limit)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
+        if (limit > 1000)
+            throw new ArgumentOutOfRangeException(nameof(limit));
     }
 }

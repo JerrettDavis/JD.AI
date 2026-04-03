@@ -10,8 +10,9 @@ namespace JD.AI.Services;
 /// </summary>
 public sealed class GatewayConnectionService : IAsyncDisposable
 {
-    private readonly GatewayHttpClient _http;
-    private readonly GatewaySignalRClient _signalR;
+    private readonly IGatewayHttpClient _http;
+    private readonly IGatewaySignalRClient _signalR;
+    private readonly HttpClient? _ownedHttpClient;
     private readonly string _gatewayUrl;
     private string? _activeAgentId;
 
@@ -22,10 +23,19 @@ public sealed class GatewayConnectionService : IAsyncDisposable
     public GatewayConnectionService(string gatewayUrl)
     {
         _gatewayUrl = gatewayUrl.TrimEnd('/');
+        _ownedHttpClient = new HttpClient { BaseAddress = new Uri(_gatewayUrl + "/") };
+        _http = new GatewayHttpClientAdapter(new GatewayHttpClient(_ownedHttpClient));
+        _signalR = new GatewaySignalRClientAdapter(new GatewaySignalRClient(_gatewayUrl));
+    }
 
-        var httpClient = new HttpClient { BaseAddress = new Uri(_gatewayUrl + "/") };
-        _http = new GatewayHttpClient(httpClient);
-        _signalR = new GatewaySignalRClient(_gatewayUrl);
+    internal GatewayConnectionService(
+        string gatewayUrl,
+        IGatewayHttpClient http,
+        IGatewaySignalRClient signalR)
+    {
+        _gatewayUrl = gatewayUrl.TrimEnd('/');
+        _http = http;
+        _signalR = signalR;
     }
 
     /// <summary>
@@ -49,24 +59,36 @@ public sealed class GatewayConnectionService : IAsyncDisposable
     /// </summary>
     public async Task<string?> EnsureAgentAsync(string? provider = null, string? model = null, CancellationToken ct = default)
     {
-        // Check for existing agents
         var agents = await _http.GetAgentsAsync(ct);
-        if (agents.Length > 0)
+        var existing = agents.FirstOrDefault(agent =>
+            (provider is null || string.Equals(agent.Provider, provider, StringComparison.OrdinalIgnoreCase))
+            && (model is null || string.Equals(agent.Model, model, StringComparison.OrdinalIgnoreCase)));
+
+        if (existing is not null)
         {
-            _activeAgentId = agents[0].Id;
+            _activeAgentId = existing.Id;
             return _activeAgentId;
         }
 
-        // Spawn a new agent with defaults
+        var providers = await _http.GetProvidersAsync(ct);
+        var providerInfo = SelectProvider(providers, provider, model);
+        if (providerInfo is null)
+            return null;
+
+        var selectedProvider = providerInfo.Name;
+        var selectedModel = SelectModel(providerInfo, model);
+        if (selectedModel is null)
+            return null;
+
         var definition = new GatewayModels.AgentDefinition
         {
             Id = $"tui-{Guid.NewGuid():N}"[..16],
-            Provider = provider ?? "anthropic",
-            Model = model ?? "claude-sonnet-4-20250514",
+            Provider = selectedProvider!,
+            Model = selectedModel!,
         };
 
-        var spawned = await _http.SpawnAgentAsync(definition, ct);
-        _activeAgentId = spawned?.Id;
+        var spawnedId = await _http.SpawnAgentAsync(definition, ct);
+        _activeAgentId = spawnedId;
         return _activeAgentId;
     }
 
@@ -98,18 +120,12 @@ public sealed class GatewayConnectionService : IAsyncDisposable
     }
 
     /// <summary>
-    /// Create a new session on the gateway and return its ID.
-    /// Currently reuses the most recent session or implicitly creates one via agent spawn.
+    /// Returns the most recent persisted session ID, or null when none exist.
     /// </summary>
-    public async Task<string?> CreateSessionAsync(CancellationToken ct = default)
+    public async Task<string?> GetLatestSessionAsync(CancellationToken ct = default)
     {
         var sessions = await _http.GetSessionsAsync(1, ct).ConfigureAwait(false);
-        if (sessions.Length > 0)
-            return sessions[0].Id;
-
-        // No explicit create endpoint — spawning an agent implicitly creates a session
-        var agentId = await EnsureAgentAsync(ct: ct).ConfigureAwait(false);
-        return agentId;
+        return sessions.FirstOrDefault()?.Id;
     }
 
     /// <summary>
@@ -128,7 +144,13 @@ public sealed class GatewayConnectionService : IAsyncDisposable
     /// Get sessions list.
     /// </summary>
     public async Task<GatewayModels.SessionInfo[]> GetSessionsAsync(int limit = 50, CancellationToken ct = default)
-        => await _http.GetSessionsAsync(limit, ct);
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
+        if (limit > 1000)
+            throw new ArgumentOutOfRangeException(nameof(limit));
+
+        return await _http.GetSessionsAsync(limit, ct);
+    }
 
     /// <summary>
     /// Print connection status to console.
@@ -152,5 +174,80 @@ public sealed class GatewayConnectionService : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await _signalR.DisposeAsync();
+        _ownedHttpClient?.Dispose();
+    }
+
+    private static GatewayModels.ProviderInfo? SelectProvider(
+        GatewayModels.ProviderInfo[] providers,
+        string? provider,
+        string? model)
+    {
+        if (provider is not null)
+        {
+            return providers.FirstOrDefault(p =>
+                p.IsAvailable
+                && p.Models.Length > 0
+                && string.Equals(p.Name, provider, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (model is not null)
+        {
+            return providers.FirstOrDefault(p =>
+                p.IsAvailable
+                && p.Models.Any(m => string.Equals(m.Id, model, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        return providers.FirstOrDefault(p => p.IsAvailable && p.Models.Length > 0);
+    }
+
+    private static string? SelectModel(GatewayModels.ProviderInfo provider, string? model)
+    {
+        if (model is null)
+            return provider.Models.FirstOrDefault()?.Id;
+
+        return provider.Models.FirstOrDefault(m => string.Equals(m.Id, model, StringComparison.OrdinalIgnoreCase))?.Id;
+    }
+
+    internal interface IGatewayHttpClient
+    {
+        Task<bool> IsHealthyAsync(CancellationToken ct = default);
+        Task<GatewayModels.AgentInfo[]> GetAgentsAsync(CancellationToken ct = default);
+        Task<string?> SpawnAgentAsync(GatewayModels.AgentDefinition definition, CancellationToken ct = default);
+        Task<string?> SendMessageAsync(string agentId, string message, CancellationToken ct = default);
+        Task<GatewayModels.SessionInfo[]> GetSessionsAsync(int limit = 50, CancellationToken ct = default);
+        Task<GatewayModels.GatewayStatus?> GetStatusAsync(CancellationToken ct = default);
+        Task<GatewayModels.ProviderInfo[]> GetProvidersAsync(CancellationToken ct = default);
+    }
+
+    internal interface IGatewaySignalRClient : IAsyncDisposable
+    {
+        bool IsConnected { get; }
+        string? ConnectionError { get; }
+        Task ConnectAsync(CancellationToken ct = default);
+        IAsyncEnumerable<GatewayModels.AgentStreamChunk> StreamChatAsync(
+            string agentId,
+            string message,
+            CancellationToken ct = default);
+    }
+
+    private sealed class GatewayHttpClientAdapter(GatewayHttpClient inner) : IGatewayHttpClient
+    {
+        public Task<bool> IsHealthyAsync(CancellationToken ct = default) => inner.IsHealthyAsync(ct);
+        public Task<GatewayModels.AgentInfo[]> GetAgentsAsync(CancellationToken ct = default) => inner.GetAgentsAsync(ct);
+        public Task<string?> SpawnAgentAsync(GatewayModels.AgentDefinition definition, CancellationToken ct = default) => inner.SpawnAgentAsync(definition, ct);
+        public Task<string?> SendMessageAsync(string agentId, string message, CancellationToken ct = default) => inner.SendMessageAsync(agentId, message, ct);
+        public Task<GatewayModels.SessionInfo[]> GetSessionsAsync(int limit = 50, CancellationToken ct = default) => inner.GetSessionsAsync(limit, ct);
+        public Task<GatewayModels.GatewayStatus?> GetStatusAsync(CancellationToken ct = default) => inner.GetStatusAsync(ct);
+        public Task<GatewayModels.ProviderInfo[]> GetProvidersAsync(CancellationToken ct = default) => inner.GetProvidersAsync(ct);
+    }
+
+    private sealed class GatewaySignalRClientAdapter(GatewaySignalRClient inner) : IGatewaySignalRClient
+    {
+        public bool IsConnected => inner.IsConnected;
+        public string? ConnectionError => inner.ConnectionError;
+        public Task ConnectAsync(CancellationToken ct = default) => inner.ConnectAsync(ct);
+        public IAsyncEnumerable<GatewayModels.AgentStreamChunk> StreamChatAsync(string agentId, string message, CancellationToken ct = default)
+            => inner.StreamChatAsync(agentId, message, ct);
+        public ValueTask DisposeAsync() => inner.DisposeAsync();
     }
 }

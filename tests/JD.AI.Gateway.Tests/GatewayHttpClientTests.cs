@@ -94,12 +94,10 @@ public sealed class GatewayHttpClientTests
         var handler = new StubHttpMessageHandler(request =>
         {
             captured = request;
-            return Json(HttpStatusCode.OK, new AgentInfo(
-                "agent-123",
-                "openai",
-                "gpt-test",
-                0,
-                DateTimeOffset.Parse("2026-04-02T00:00:00Z", CultureInfo.InvariantCulture)));
+            return Json(HttpStatusCode.Created, new
+            {
+                Id = "agent-123",
+            });
         });
         var client = CreateClient(handler);
         var definition = new AgentDefinition
@@ -115,8 +113,7 @@ public sealed class GatewayHttpClientTests
 
         var created = await client.SpawnAgentAsync(definition);
 
-        Assert.NotNull(created);
-        Assert.Equal("agent-123", created!.Id);
+        Assert.Equal("agent-123", created);
         Assert.NotNull(captured);
         Assert.Equal(HttpMethod.Post, captured!.Method);
         Assert.Equal("https://gateway.test/api/v1/agents", captured.RequestUri!.ToString());
@@ -149,6 +146,35 @@ public sealed class GatewayHttpClientTests
         var body = await captured.Content!.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(body);
         Assert.Equal("hello there", doc.RootElement.GetProperty("message").GetString());
+    }
+
+    [Fact]
+    public async Task SendMessageAsync_WhenGatewayReturnsJsonPayload_ReadsResponseProperty()
+    {
+        var handler = new StubHttpMessageHandler(_ =>
+            Json(HttpStatusCode.OK, new { Response = "assistant: acknowledged" }));
+        var client = CreateClient(handler);
+
+        var response = await client.SendMessageAsync("agent-123", "hello there");
+
+        Assert.Equal("assistant: acknowledged", response);
+    }
+
+    [Fact]
+    public async Task SendMessageAsync_EscapesAgentIdInPath()
+    {
+        HttpRequestMessage? captured = null;
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            captured = request;
+            return Text(HttpStatusCode.OK, "assistant: acknowledged");
+        });
+        var client = CreateClient(handler);
+
+        await client.SendMessageAsync("agent/123", "hello there");
+
+        Assert.NotNull(captured);
+        Assert.Equal("https://gateway.test/api/v1/agents/agent%2F123/message", captured!.RequestUri!.ToString());
     }
 
     [Fact]
@@ -200,6 +226,34 @@ public sealed class GatewayHttpClientTests
         Assert.Equal("session-42", session.Id);
         Assert.Equal("Coverage session", session.Name);
         Assert.Equal("https://gateway.test/api/v1/sessions?limit=12", captured!.RequestUri!.ToString());
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(1001)]
+    public async Task GetSessionsAsync_WhenLimitIsOutOfRange_Throws(int limit)
+    {
+        var client = CreateClient(new StubHttpMessageHandler(_ => throw new InvalidOperationException("should not send request")));
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => client.GetSessionsAsync(limit));
+    }
+
+    [Fact]
+    public async Task GetProviderModelsAsync_EscapesProviderNameInPath()
+    {
+        HttpRequestMessage? captured = null;
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            captured = request;
+            return Json(HttpStatusCode.OK, Array.Empty<ProviderModelInfo>());
+        });
+        var client = CreateClient(handler);
+
+        _ = await client.GetProviderModelsAsync("OpenAI?x=1");
+
+        Assert.NotNull(captured);
+        Assert.Equal("https://gateway.test/api/v1/providers/OpenAI%3Fx%3D1/models", captured!.RequestUri!.ToString());
     }
 
     [Fact]
@@ -429,6 +483,17 @@ public sealed class GatewayHttpClientTests
         var healthy = await client.IsHealthyAsync();
 
         Assert.True(healthy);
+    }
+
+    [Fact]
+    public async Task IsHealthyAsync_WhenCancellationRequested_PropagatesCancellation()
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        var handler = new StubHttpMessageHandler(_ => throw new OperationCanceledException(cts.Token));
+        var client = CreateClient(handler);
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => client.IsHealthyAsync(cts.Token));
     }
 
     private static GatewayHttpClient CreateClient(HttpMessageHandler handler)
