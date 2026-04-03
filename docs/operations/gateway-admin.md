@@ -270,6 +270,7 @@ dotnet tool install -g JD.AI.Daemon
 tar xzf jdai-backup-20250115.tar.gz -C /
 cp /backup/sessions-20250115.db ~/.jdai/sessions.db
 jdai-daemon start
+jdai-daemon restart
 jdai-daemon status
 ```
 

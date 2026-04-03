@@ -144,6 +144,7 @@ Caddy automatically provisions TLS certificates and handles WebSocket upgrades.
 | `jdai-daemon uninstall` | Remove the system service |
 | `jdai-daemon start` | Start the installed service |
 | `jdai-daemon stop` | Stop the running service |
+| `jdai-daemon restart` | Restart the installed service |
 | `jdai-daemon status` | Show service state, version, uptime |
 | `jdai-daemon update` | Check/apply NuGet updates and refresh installed service/task config |
 | `jdai-daemon update --check-only` | Check for updates without applying |

@@ -104,6 +104,22 @@ stopCommand.SetAction(async parseResult =>
 });
 rootCommand.Subcommands.Add(stopCommand);
 
+// ── restart ────────────────────────────────────────────────────────
+var restartCommand = new Command("restart", "Restart the installed service");
+restartCommand.Options.Add(serviceElevatedOption);
+restartCommand.SetAction(async parseResult =>
+{
+    var privilegeExitCode = EnsureServicePrivilegesForAction("restart", parseResult.GetValue(serviceElevatedOption));
+    if (privilegeExitCode.HasValue)
+        return privilegeExitCode.Value;
+
+    var mgr = CreateServiceManager();
+    var result = await ServiceRestartCoordinator.RestartAsync(mgr).ConfigureAwait(false);
+    Console.WriteLine(result.Message);
+    return result.Success ? 0 : 1;
+});
+rootCommand.Subcommands.Add(restartCommand);
+
 // ── status ─────────────────────────────────────────────────────────
 var statusCommand = new Command("status", "Show service status, version, and uptime");
 statusCommand.SetAction(async _ =>
