@@ -1,4 +1,6 @@
+using FluentAssertions;
 using JD.AI.Core.Agents;
+using JD.AI.Core.Providers;
 using JD.AI.Startup;
 using JD.AI.Tests.Fixtures;
 
@@ -6,6 +8,25 @@ namespace JD.AI.Tests.Startup;
 
 public sealed class SystemPromptBuilderTests
 {
+    [Fact]
+    public void PrependIdentity_IncludesModelMetadataAndOriginalPrompt()
+    {
+        var model = new ProviderModelInfo(
+            Id: "gpt-test",
+            DisplayName: "GPT Test",
+            ProviderName: "OpenAI",
+            ContextWindowTokens: 200000,
+            MaxOutputTokens: 4000);
+
+        var prompt = SystemPromptBuilder.PrependIdentity("Original prompt", model);
+
+        prompt.Should().StartWith("[System Identity] You are JDAI, powered by OpenAI/gpt-test.");
+        prompt.Should().Contain("Context window: 200,000 tokens.");
+        prompt.Should().Contain("Max output: 4,000 tokens.");
+        prompt.Should().Contain("Capabilities: Chat, Tools.");
+        prompt.Should().EndWith("Original prompt");
+    }
+
     [Fact]
     public async Task BuildAsync_UsesExplicitOverrideBeforeFilePrompt()
     {

@@ -6,7 +6,11 @@ internal static class WelcomeRuntimeInfo
 {
     public static string GetDisplayVersion()
     {
-        var assembly = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
+        return GetDisplayVersion(Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly());
+    }
+
+    internal static string GetDisplayVersion(Assembly assembly)
+    {
         var informational = assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
             .InformationalVersion;
