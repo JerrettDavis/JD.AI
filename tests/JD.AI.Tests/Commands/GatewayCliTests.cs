@@ -100,6 +100,90 @@ public sealed class GatewayCliTests
     }
 
     [Fact]
+    public async Task GatewayCliHandler_RunAsync_DefaultsToStart()
+    {
+        var startCalls = 0;
+        var restartCalls = 0;
+
+        var exitCode = await GatewayCliHandler.RunAsync(
+            Array.Empty<string>(),
+            () =>
+            {
+                startCalls++;
+                return Task.FromResult(12);
+            },
+            () =>
+            {
+                restartCalls++;
+                return Task.FromResult(34);
+            });
+
+        Assert.Equal(12, exitCode);
+        Assert.Equal(1, startCalls);
+        Assert.Equal(0, restartCalls);
+    }
+
+    [Fact]
+    public async Task GatewayCliHandler_RunAsync_DispatchesRestartAction()
+    {
+        var startCalls = 0;
+        var restartCalls = 0;
+
+        var exitCode = await GatewayCliHandler.RunAsync(
+            [" restart "],
+            () =>
+            {
+                startCalls++;
+                return Task.FromResult(12);
+            },
+            () =>
+            {
+                restartCalls++;
+                return Task.FromResult(34);
+            });
+
+        Assert.Equal(34, exitCode);
+        Assert.Equal(0, startCalls);
+        Assert.Equal(1, restartCalls);
+    }
+
+    [Fact]
+    public async Task GatewayCliHandler_RunAsync_WhenActionIsUnknown_WritesUsageAndSkipsHandlers()
+    {
+        var originalError = Console.Error;
+        using var writer = new StringWriter();
+        Console.SetError(writer);
+
+        var startCalls = 0;
+        var restartCalls = 0;
+
+        try
+        {
+            var exitCode = await GatewayCliHandler.RunAsync(
+                ["status"],
+                () =>
+                {
+                    startCalls++;
+                    return Task.FromResult(12);
+                },
+                () =>
+                {
+                    restartCalls++;
+                    return Task.FromResult(34);
+                });
+
+            Assert.Equal(1, exitCode);
+            Assert.Equal(0, startCalls);
+            Assert.Equal(0, restartCalls);
+            Assert.Contains("Unknown gateway action 'status'", writer.ToString(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
+    }
+
+    [Fact]
     public void BrowserLauncher_Open_DoesNotThrow()
     {
         // Verify that calling Open with a dummy URL does not throw.

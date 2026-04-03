@@ -14,15 +14,30 @@ internal static class GatewayCliHandler
 {
     internal readonly record struct DaemonCommandResult(bool Success, string Output);
 
-    public static async Task<int> RunAsync(string[] args)
+    public static Task<int> RunAsync(string[] args)
     {
-        var action = NormalizeAction(args);
         var baseUrl = GatewayHealthChecker.DefaultBaseUrl;
+        return RunAsync(
+            args,
+            () => RunStartAsync(baseUrl),
+            () => RunRestartAsync());
+    }
+
+    internal static async Task<int> RunAsync(
+        string[] args,
+        Func<Task<int>> runStartAsync,
+        Func<Task<int>> runRestartAsync)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        ArgumentNullException.ThrowIfNull(runStartAsync);
+        ArgumentNullException.ThrowIfNull(runRestartAsync);
+
+        var action = NormalizeAction(args);
 
         return action switch
         {
-            "start" => await RunStartAsync(baseUrl).ConfigureAwait(false),
-            "restart" => await RunRestartAsync().ConfigureAwait(false),
+            "start" => await runStartAsync().ConfigureAwait(false),
+            "restart" => await runRestartAsync().ConfigureAwait(false),
             _ => WriteUsageError(action),
         };
     }
@@ -163,10 +178,16 @@ internal static class GatewayCliHandler
             };
 
             process.Start();
-            await process.WaitForExitAsync().ConfigureAwait(false);
 
-            var standardOutput = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
-            var standardError = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
+            var standardOutputTask = process.StandardOutput.ReadToEndAsync();
+            var standardErrorTask = process.StandardError.ReadToEndAsync();
+            await Task.WhenAll(
+                process.WaitForExitAsync(),
+                standardOutputTask,
+                standardErrorTask).ConfigureAwait(false);
+
+            var standardOutput = await standardOutputTask.ConfigureAwait(false);
+            var standardError = await standardErrorTask.ConfigureAwait(false);
             var output = string.IsNullOrWhiteSpace(standardError)
                 ? standardOutput
                 : string.IsNullOrWhiteSpace(standardOutput)
