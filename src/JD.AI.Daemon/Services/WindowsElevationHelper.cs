@@ -1,9 +1,11 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace JD.AI.Daemon.Services;
 
 internal static class WindowsElevationHelper
 {
+    [StructLayout(LayoutKind.Auto)]
     internal readonly record struct LaunchResult(bool Started, int ExitCode);
 
     public static int? RelaunchAndWait(

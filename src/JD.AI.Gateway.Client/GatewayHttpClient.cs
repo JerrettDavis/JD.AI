@@ -160,7 +160,6 @@ public sealed class GatewayHttpClient(HttpClient http)
     private static void ValidateSessionLimit(int limit)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
-        if (limit > 1000)
-            throw new ArgumentOutOfRangeException(nameof(limit));
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(limit, 1000);
     }
 }
