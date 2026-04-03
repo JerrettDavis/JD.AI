@@ -13,20 +13,7 @@ public sealed class RateLimitMiddleware(RequestDelegate next, IRateLimiter rateL
     {
         var path = context.Request.Path.Value ?? "";
 
-        if (path.StartsWith(GatewayRuntimeDefaults.HealthPath, StringComparison.OrdinalIgnoreCase) ||
-            path.StartsWith(GatewayRuntimeDefaults.ReadyPath, StringComparison.OrdinalIgnoreCase) ||
-            path.StartsWith("/_framework", StringComparison.OrdinalIgnoreCase) ||
-            path.StartsWith("/_content", StringComparison.OrdinalIgnoreCase) ||
-            path.StartsWith("/css", StringComparison.OrdinalIgnoreCase) ||
-            path.StartsWith("/js", StringComparison.OrdinalIgnoreCase) ||
-            path.EndsWith(".js", StringComparison.OrdinalIgnoreCase) ||
-            path.EndsWith(".css", StringComparison.OrdinalIgnoreCase) ||
-            path.EndsWith(".wasm", StringComparison.OrdinalIgnoreCase) ||
-            path.EndsWith(".json", StringComparison.OrdinalIgnoreCase) ||
-            path.EndsWith(".ico", StringComparison.OrdinalIgnoreCase) ||
-            path.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
-            path.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(path, "/", StringComparison.Ordinal))
+        if (ShouldBypassRateLimit(path))
         {
             await next(context);
             return;
@@ -59,4 +46,36 @@ public sealed class RateLimitMiddleware(RequestDelegate next, IRateLimiter rateL
 
         await next(context);
     }
+
+    private static bool ShouldBypassRateLimit(string path)
+    {
+        if (string.Equals(path, "/", StringComparison.Ordinal))
+            return true;
+
+        if (string.Equals(path, GatewayRuntimeDefaults.HealthPath, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(path, GatewayRuntimeDefaults.HealthReadyPath, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(path, GatewayRuntimeDefaults.HealthLivePath, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(path, GatewayRuntimeDefaults.HealthStartupPath, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(path, GatewayRuntimeDefaults.ReadyPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (HasPathSegmentPrefix(path, "/_framework") ||
+            HasPathSegmentPrefix(path, "/_content") ||
+            HasPathSegmentPrefix(path, "/css") ||
+            HasPathSegmentPrefix(path, "/js"))
+        {
+            return true;
+        }
+
+        return string.Equals(path, "/index.html", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(path, "/appsettings.json", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(path, "/favicon.png", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(path, "/icon-192.png", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool HasPathSegmentPrefix(string path, string prefix) =>
+        path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) &&
+        (path.Length == prefix.Length || path[prefix.Length] == '/');
 }
