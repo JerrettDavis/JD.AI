@@ -16,10 +16,9 @@ internal static class GatewayCliHandler
 
     public static Task<int> RunAsync(string[] args)
     {
-        var baseUrl = GatewayHealthChecker.DefaultBaseUrl;
         return RunAsync(
             args,
-            () => RunStartAsync(baseUrl),
+            () => RunStartAsync(null),
             () => RunRestartAsync());
     }
 
@@ -75,88 +74,174 @@ internal static class GatewayCliHandler
         return 0;
     }
 
-    private static async Task<int> RunStartAsync(string baseUrl)
+    internal static async Task<int> RunStartAsync(
+        string? baseUrl,
+        Func<string?, Task<bool>>? isRunningAsync = null,
+        Func<string?, int, Task<bool>>? waitForHealthyAsync = null,
+        Func<IDaemonProcessHandle>? startDaemonProcess = null,
+        Func<CancellationToken, Task>? waitForShutdownAsync = null)
     {
+        isRunningAsync ??= url => GatewayHealthChecker.IsRunningAsync(url);
+        waitForHealthyAsync ??= (url, maxWaitMs) => GatewayHealthChecker.WaitForHealthyAsync(url, maxWaitMs: maxWaitMs);
+        startDaemonProcess ??= StartDaemonProcessCore;
+        waitForShutdownAsync ??= WaitForShutdownAsync;
+        var displayBaseUrl = baseUrl ?? GatewayHealthChecker.DefaultBaseUrl;
+
         // Check if gateway is already running
-        if (await GatewayHealthChecker.IsRunningAsync(baseUrl).ConfigureAwait(false))
+        if (await isRunningAsync(baseUrl).ConfigureAwait(false))
         {
-            Console.WriteLine($"Gateway is already running at {baseUrl}");
+            Console.WriteLine($"Gateway is already running at {displayBaseUrl}");
             return 0;
         }
 
-        Console.WriteLine($"Starting gateway on {baseUrl} ...");
+        Console.WriteLine($"Starting gateway on {displayBaseUrl} ...");
 
-        // Spawn jdai-daemon run as a child process
-        var daemonExe = DaemonServiceIdentity.ToolCommand;
-        Process process;
-        try
-        {
-            process = new Process
-            {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = daemonExe,
-                    Arguments = "run",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true,
-                },
-            };
-            process.Start();
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine(
-                $"Failed to start daemon: {ex.Message}");
-            Console.Error.WriteLine(
-                $"Ensure '{daemonExe}' is installed (dotnet tool install -g JD.AI.Daemon).");
-            return 1;
-        }
-
-        // Wait for the health check to pass
-        if (!await GatewayHealthChecker.WaitForHealthyAsync(baseUrl, maxWaitMs: 15000).ConfigureAwait(false))
-        {
-            Console.Error.WriteLine("Gateway did not become healthy within 15 seconds.");
-            if (!process.HasExited)
-            {
-                process.Kill(entireProcessTree: true);
-                process.Dispose();
-            }
-
-            return 1;
-        }
-
-        Console.WriteLine($"Gateway running at {baseUrl}");
-        Console.WriteLine("Press Ctrl+C to stop.");
-
-        // Block until Ctrl+C
-        using var cts = new CancellationTokenSource();
-        Console.CancelKeyPress += (_, e) =>
+        using var shutdownCts = new CancellationTokenSource();
+        ConsoleCancelEventHandler handler = (_, e) =>
         {
             e.Cancel = true;
-            cts.Cancel();
+            shutdownCts.Cancel();
         };
 
+        Console.CancelKeyPress += handler;
+        IDaemonProcessHandle? process = null;
         try
         {
-            await Task.Delay(Timeout.Infinite, cts.Token).ConfigureAwait(false);
+            if (shutdownCts.IsCancellationRequested)
+            {
+                Console.WriteLine("Stopping gateway...");
+                return 0;
+            }
+
+            // Spawn jdai-daemon run as a child process
+            var daemonExe = DaemonServiceIdentity.ToolCommand;
+            try
+            {
+                process = startDaemonProcess();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(
+                    $"Failed to start daemon: {ex.Message}");
+                Console.Error.WriteLine(
+                    $"Ensure '{daemonExe}' is installed (dotnet tool install -g JD.AI.Daemon).");
+                return 1;
+            }
+
+            // Wait for the health check to pass
+            var healthyTask = waitForHealthyAsync(baseUrl, 15000);
+            var exitTask = process.WaitForExitAsync();
+            var shutdownTask = waitForShutdownAsync(shutdownCts.Token);
+            var startupCompletedTask = await Task.WhenAny(healthyTask, exitTask, shutdownTask).ConfigureAwait(false);
+            if (ReferenceEquals(startupCompletedTask, shutdownTask))
+            {
+                try
+                {
+                    await shutdownTask.ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (shutdownCts.IsCancellationRequested)
+                {
+                    // Expected on Ctrl+C
+                }
+
+                Console.WriteLine("Stopping gateway...");
+                return 0;
+            }
+
+            if (ReferenceEquals(startupCompletedTask, exitTask))
+            {
+                Console.Error.WriteLine("Gateway exited before becoming healthy.");
+                return 1;
+            }
+
+            if (!await healthyTask.ConfigureAwait(false))
+            {
+                Console.Error.WriteLine("Gateway did not become healthy within 15 seconds.");
+                return 1;
+            }
+
+            Console.WriteLine($"Gateway running at {displayBaseUrl}");
+            Console.WriteLine("Press Ctrl+C to stop.");
+
+            var completedTask = await Task.WhenAny(shutdownTask, exitTask).ConfigureAwait(false);
+            if (ReferenceEquals(completedTask, exitTask) && !shutdownCts.IsCancellationRequested)
+            {
+                Console.Error.WriteLine("Gateway exited unexpectedly.");
+                return 1;
+            }
+
+            try
+            {
+                await shutdownTask.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (shutdownCts.IsCancellationRequested)
+            {
+                // Expected on Ctrl+C
+            }
+
+            Console.WriteLine("Stopping gateway...");
         }
-        catch (OperationCanceledException)
+        finally
         {
-            // Expected on Ctrl+C
+            try
+            {
+                if (process is not null)
+                {
+                    await CleanupDaemonProcessAsync(process).ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                Console.CancelKeyPress -= handler;
+            }
         }
 
-        Console.WriteLine("Stopping gateway...");
-        if (!process.HasExited)
-        {
-            process.Kill(entireProcessTree: true);
-            await process.WaitForExitAsync().ConfigureAwait(false);
-        }
-
-        process.Dispose();
         Console.WriteLine("Gateway stopped.");
         return 0;
+    }
+
+    private static IDaemonProcessHandle StartDaemonProcessCore()
+    {
+        var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = DaemonServiceIdentity.ToolCommand,
+                Arguments = "run",
+                UseShellExecute = false,
+                RedirectStandardOutput = false,
+                RedirectStandardError = false,
+                CreateNoWindow = true,
+            },
+        };
+        process.Start();
+        return new DaemonProcessHandle(process);
+    }
+
+    private static async Task WaitForShutdownAsync(CancellationToken ct)
+    {
+        await Task.Delay(Timeout.Infinite, ct).ConfigureAwait(false);
+    }
+
+    private static async Task CleanupDaemonProcessAsync(IDaemonProcessHandle process)
+    {
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.Kill();
+                await process.WaitForExitAsync().ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex) when (
+            ex is InvalidOperationException or ObjectDisposedException)
+        {
+            // Best-effort shutdown cleanup for the foreground daemon child.
+        }
+        finally
+        {
+            process.Dispose();
+        }
     }
 
     private static async Task<DaemonCommandResult> RunDaemonCommandAsync(string daemonArguments)
@@ -209,5 +294,23 @@ internal static class GatewayCliHandler
     {
         Console.Error.WriteLine($"Unknown gateway action '{action}'. Usage: jdai gateway [start|restart]");
         return 1;
+    }
+
+    internal interface IDaemonProcessHandle : IDisposable
+    {
+        bool HasExited { get; }
+        void Kill();
+        Task WaitForExitAsync();
+    }
+
+    private sealed class DaemonProcessHandle(Process process) : IDaemonProcessHandle
+    {
+        public bool HasExited => process.HasExited;
+
+        public void Kill() => process.Kill(entireProcessTree: true);
+
+        public Task WaitForExitAsync() => process.WaitForExitAsync();
+
+        public void Dispose() => process.Dispose();
     }
 }

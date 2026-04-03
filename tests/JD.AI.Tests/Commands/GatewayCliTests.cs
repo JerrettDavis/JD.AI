@@ -227,6 +227,214 @@ public sealed class GatewayCliTests
         }
     }
 
+    [Fact]
+    public async Task GatewayCliHandler_RunStartAsync_WhenGatewayAlreadyRunning_SkipsDaemonStart()
+    {
+        var started = false;
+
+        var exitCode = await GatewayCliHandler.RunStartAsync(
+            null,
+            isRunningAsync: _ => Task.FromResult(true),
+            startDaemonProcess: () =>
+            {
+                started = true;
+                return new FakeGatewayDaemonProcessHandle();
+            });
+
+        Assert.Equal(0, exitCode);
+        Assert.False(started);
+    }
+
+    [Fact]
+    public async Task GatewayCliHandler_RunStartAsync_WhenDaemonStartFails_ReturnsFailure()
+    {
+        var originalError = Console.Error;
+        using var writer = new StringWriter();
+        Console.SetError(writer);
+
+        try
+        {
+            var exitCode = await GatewayCliHandler.RunStartAsync(
+                null,
+                isRunningAsync: _ => Task.FromResult(false),
+                startDaemonProcess: () => throw new InvalidOperationException("boom"));
+
+            Assert.Equal(1, exitCode);
+            Assert.Contains("Failed to start daemon: boom", writer.ToString(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
+    }
+
+    [Fact]
+    public async Task GatewayCliHandler_RunStartAsync_WhenGatewayDoesNotBecomeHealthy_KillsAndDisposesProcess()
+    {
+        var process = new FakeGatewayDaemonProcessHandle();
+
+        var exitCode = await GatewayCliHandler.RunStartAsync(
+            null,
+            isRunningAsync: _ => Task.FromResult(false),
+            waitForHealthyAsync: (_, _) => Task.FromResult(false),
+            startDaemonProcess: () => process);
+
+        Assert.Equal(1, exitCode);
+        Assert.True(process.KillCalled);
+        Assert.True(process.DisposeCalled);
+        Assert.Equal(2, process.WaitForExitCalls);
+    }
+
+    [Fact]
+    public async Task GatewayCliHandler_RunStartAsync_WhenGatewayBecomesHealthy_StopsProcessOnShutdown()
+    {
+        var process = new FakeGatewayDaemonProcessHandle();
+        var shutdown = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var exitCode = await GatewayCliHandler.RunStartAsync(
+            null,
+            isRunningAsync: _ => Task.FromResult(false),
+            waitForHealthyAsync: (_, _) =>
+            {
+                _ = Task.Run(() => shutdown.TrySetResult(true));
+                return Task.FromResult(true);
+            },
+            startDaemonProcess: () => process,
+            waitForShutdownAsync: _ => shutdown.Task);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(process.KillCalled);
+        Assert.True(process.DisposeCalled);
+        Assert.Equal(2, process.WaitForExitCalls);
+    }
+
+    [Fact]
+    public async Task GatewayCliHandler_RunStartAsync_WhenShutdownSeesExitedProcess_DisposesWithoutKilling()
+    {
+        var process = new FakeGatewayDaemonProcessHandle();
+        var shutdown = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var exitCode = await GatewayCliHandler.RunStartAsync(
+            null,
+            isRunningAsync: _ => Task.FromResult(false),
+            waitForHealthyAsync: (_, _) =>
+            {
+                _ = Task.Run(() =>
+                {
+                    process.HasExited = true;
+                    shutdown.TrySetResult(true);
+                });
+                return Task.FromResult(true);
+            },
+            startDaemonProcess: () => process,
+            waitForShutdownAsync: _ => shutdown.Task);
+
+        Assert.Equal(0, exitCode);
+        Assert.False(process.KillCalled);
+        Assert.True(process.DisposeCalled);
+        Assert.Equal(1, process.WaitForExitCalls);
+    }
+
+    [Fact]
+    public async Task GatewayCliHandler_RunStartAsync_WhenShutdownOccursBeforeHealthy_CleansUpDaemon()
+    {
+        var process = new FakeGatewayDaemonProcessHandle();
+        var healthy = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var shutdown = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var runTask = GatewayCliHandler.RunStartAsync(
+            null,
+            isRunningAsync: _ => Task.FromResult(false),
+            waitForHealthyAsync: (_, _) => healthy.Task,
+            startDaemonProcess: () => process,
+            waitForShutdownAsync: _ => shutdown.Task);
+
+        shutdown.TrySetResult(true);
+
+        var exitCode = await runTask;
+
+        Assert.Equal(0, exitCode);
+        Assert.True(process.KillCalled);
+        Assert.True(process.DisposeCalled);
+        Assert.Equal(2, process.WaitForExitCalls);
+    }
+
+    [Fact]
+    public async Task GatewayCliHandler_RunStartAsync_WhenBaseUrlIsNull_UsesDefaultHealthCheckFallback()
+    {
+        string? observedBaseUrl = "unset";
+
+        var exitCode = await GatewayCliHandler.RunStartAsync(
+            null,
+            isRunningAsync: baseUrl =>
+            {
+                observedBaseUrl = baseUrl;
+                return Task.FromResult(true);
+            });
+
+        Assert.Equal(0, exitCode);
+        Assert.Null(observedBaseUrl);
+    }
+
+    [Fact]
+    public async Task GatewayCliHandler_RunStartAsync_WhenDaemonExitsUnexpectedly_ReturnsFailure()
+    {
+        var process = new FakeGatewayDaemonProcessHandle();
+        process.CompleteExit();
+
+        var originalError = Console.Error;
+        using var writer = new StringWriter();
+        Console.SetError(writer);
+
+        try
+        {
+            var exitCode = await GatewayCliHandler.RunStartAsync(
+                null,
+                isRunningAsync: _ => Task.FromResult(false),
+                waitForHealthyAsync: (_, _) => Task.FromResult(true),
+                startDaemonProcess: () => process,
+                waitForShutdownAsync: _ => new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously).Task);
+
+            Assert.Equal(1, exitCode);
+            Assert.Contains("Gateway exited unexpectedly.", writer.ToString(), StringComparison.Ordinal);
+            Assert.False(process.KillCalled);
+            Assert.True(process.DisposeCalled);
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
+    }
+
+    [Fact]
+    public async Task GatewayCliHandler_RunStartAsync_WhenDaemonExitsBeforeHealthy_ReturnsFailure()
+    {
+        var process = new FakeGatewayDaemonProcessHandle();
+        process.CompleteExit();
+
+        var originalError = Console.Error;
+        using var writer = new StringWriter();
+        Console.SetError(writer);
+
+        try
+        {
+            var exitCode = await GatewayCliHandler.RunStartAsync(
+                null,
+                isRunningAsync: _ => Task.FromResult(false),
+                waitForHealthyAsync: (_, _) => new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously).Task,
+                startDaemonProcess: () => process);
+
+            Assert.Equal(1, exitCode);
+            Assert.Contains("Gateway exited before becoming healthy.", writer.ToString(), StringComparison.Ordinal);
+            Assert.False(process.KillCalled);
+            Assert.True(process.DisposeCalled);
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
+    }
+
     [Theory]
     [InlineData(null, "start")]
     [InlineData("start", "start")]
@@ -357,5 +565,36 @@ public sealed class GatewayCliTests
         public void Kill() => KillCalled = true;
 
         public void Dispose() => DisposeCalled = true;
+    }
+
+    private sealed class FakeGatewayDaemonProcessHandle : GatewayCliHandler.IDaemonProcessHandle
+    {
+        private readonly TaskCompletionSource _exit = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public bool HasExited { get; set; }
+        public bool KillCalled { get; private set; }
+        public bool DisposeCalled { get; private set; }
+        public int WaitForExitCalls { get; private set; }
+
+        public void Kill()
+        {
+            KillCalled = true;
+            HasExited = true;
+            _exit.TrySetResult();
+        }
+
+        public Task WaitForExitAsync()
+        {
+            WaitForExitCalls++;
+            return HasExited ? Task.CompletedTask : _exit.Task;
+        }
+
+        public void Dispose() => DisposeCalled = true;
+
+        public void CompleteExit()
+        {
+            HasExited = true;
+            _exit.TrySetResult();
+        }
     }
 }
