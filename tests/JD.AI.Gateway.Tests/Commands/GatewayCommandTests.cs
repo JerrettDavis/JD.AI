@@ -228,6 +228,77 @@ public class GatewayCommandTests
         result.Content.Should().Contain("specify a model");
     }
 
+    [Fact]
+    public async Task SwitchCommand_WithoutProviderAndNoAgents_DefaultsToOllama()
+    {
+        var cmd = new SwitchCommand(_pool);
+
+        var result = await cmd.ExecuteAsync(MakeContext("switch", new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["model"] = "llama3.2:latest"
+        }));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain("**Ollama/llama3.2:latest**");
+        _pool.ListAgents().Should().ContainSingle(a =>
+            a.Provider == "Ollama" &&
+            a.Model == "llama3.2:latest");
+    }
+
+    [Fact]
+    public async Task SwitchCommand_WithoutProvider_UsesFirstRunningAgentProvider()
+    {
+        await _pool.SpawnAgentAsync("OpenAI", "gpt-5.3-codex", null, CancellationToken.None);
+        var cmd = new SwitchCommand(_pool);
+
+        var result = await cmd.ExecuteAsync(MakeContext("switch", new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["model"] = "gpt-5.3-codex"
+        }));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain("**OpenAI/gpt-5.3-codex**");
+        _pool.ListAgents().Should().HaveCount(2);
+        _pool.ListAgents().Should().Contain(a =>
+            a.Provider == "OpenAI" &&
+            a.Model == "gpt-5.3-codex");
+    }
+
+    [Fact]
+    public async Task SwitchCommand_WithExplicitProvider_UsesRequestedProvider()
+    {
+        var cmd = new SwitchCommand(_pool);
+
+        var result = await cmd.ExecuteAsync(MakeContext("switch", new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["model"] = "gpt-5.3-codex",
+            ["provider"] = "OpenAI"
+        }));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain("**OpenAI/gpt-5.3-codex**");
+        _pool.ListAgents().Should().ContainSingle(a =>
+            a.Provider == "OpenAI" &&
+            a.Model == "gpt-5.3-codex");
+    }
+
+    [Fact]
+    public async Task SwitchCommand_WhenSpawnFails_ReturnsError()
+    {
+        var cmd = new SwitchCommand(_pool);
+
+        var result = await cmd.ExecuteAsync(MakeContext("switch", new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["model"] = "missing-model",
+            ["provider"] = "OpenAI"
+        }));
+
+        result.Success.Should().BeFalse();
+        result.Content.Should().Contain("Failed to spawn agent");
+        result.Content.Should().Contain("missing-model");
+        _pool.ListAgents().Should().BeEmpty();
+    }
+
     // --- HelpCommand integration ---
 
     [Fact]
