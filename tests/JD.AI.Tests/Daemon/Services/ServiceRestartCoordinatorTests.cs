@@ -9,7 +9,8 @@ public sealed class ServiceRestartCoordinatorTests
     {
         var manager = new RecordingServiceManager
         {
-            StatusToReturn = new ServiceStatus(ServiceState.NotInstalled, null, null, null)
+            StatusesToReturn = new Queue<ServiceStatus>(
+                [new ServiceStatus(ServiceState.NotInstalled, null, null, null)])
         };
 
         var result = await ServiceRestartCoordinator.RestartAsync(manager);
@@ -26,14 +27,24 @@ public sealed class ServiceRestartCoordinatorTests
     {
         var manager = new RecordingServiceManager
         {
-            StatusToReturn = new ServiceStatus(ServiceState.Running, null, null, null)
+            StatusesToReturn = new Queue<ServiceStatus>(
+            [
+                new ServiceStatus(ServiceState.Running, null, null, null),
+                new ServiceStatus(ServiceState.Stopping, null, null, null),
+                new ServiceStatus(ServiceState.Stopped, null, null, null),
+                new ServiceStatus(ServiceState.Starting, null, null, null),
+                new ServiceStatus(ServiceState.Running, null, null, null)
+            ])
         };
 
-        var result = await ServiceRestartCoordinator.RestartAsync(manager);
+        var result = await ServiceRestartCoordinator.RestartAsync(
+            manager,
+            transitionTimeout: TimeSpan.FromMilliseconds(50),
+            pollInterval: TimeSpan.Zero);
 
         Assert.True(result.Success);
         Assert.Equal("Service restarted.", result.Message);
-        Assert.Equal(1, manager.GetStatusCalls);
+        Assert.Equal(5, manager.GetStatusCalls);
         Assert.Equal(1, manager.StopCalls);
         Assert.Equal(1, manager.StartCalls);
     }
@@ -43,14 +54,22 @@ public sealed class ServiceRestartCoordinatorTests
     {
         var manager = new RecordingServiceManager
         {
-            StatusToReturn = new ServiceStatus(ServiceState.Stopped, null, null, null)
+            StatusesToReturn = new Queue<ServiceStatus>(
+            [
+                new ServiceStatus(ServiceState.Stopped, null, null, null),
+                new ServiceStatus(ServiceState.Starting, null, null, null),
+                new ServiceStatus(ServiceState.Running, null, null, null)
+            ])
         };
 
-        var result = await ServiceRestartCoordinator.RestartAsync(manager);
+        var result = await ServiceRestartCoordinator.RestartAsync(
+            manager,
+            transitionTimeout: TimeSpan.FromMilliseconds(50),
+            pollInterval: TimeSpan.Zero);
 
         Assert.True(result.Success);
         Assert.Equal("Service restarted.", result.Message);
-        Assert.Equal(1, manager.GetStatusCalls);
+        Assert.Equal(3, manager.GetStatusCalls);
         Assert.Equal(0, manager.StopCalls);
         Assert.Equal(1, manager.StartCalls);
     }
@@ -60,7 +79,8 @@ public sealed class ServiceRestartCoordinatorTests
     {
         var manager = new RecordingServiceManager
         {
-            StatusToReturn = new ServiceStatus(ServiceState.Running, null, null, null),
+            StatusesToReturn = new Queue<ServiceStatus>(
+                [new ServiceStatus(ServiceState.Running, null, null, null)]),
             StopToReturn = new ServiceResult(false, "stop failed")
         };
 
@@ -77,7 +97,8 @@ public sealed class ServiceRestartCoordinatorTests
     {
         var manager = new RecordingServiceManager
         {
-            StatusToReturn = new ServiceStatus(ServiceState.Stopped, null, null, null),
+            StatusesToReturn = new Queue<ServiceStatus>(
+                [new ServiceStatus(ServiceState.Stopped, null, null, null)]),
             StartToReturn = new ServiceResult(false, "start failed")
         };
 
@@ -89,13 +110,85 @@ public sealed class ServiceRestartCoordinatorTests
         Assert.Equal(1, manager.StartCalls);
     }
 
+    [Fact]
+    public async Task RestartAsync_WhenServiceDoesNotStopWithinTimeout_ReturnsFailureWithoutStarting()
+    {
+        var manager = new RecordingServiceManager
+        {
+            StatusesToReturn = new Queue<ServiceStatus>(
+            [
+                new ServiceStatus(ServiceState.Running, null, null, null),
+                new ServiceStatus(ServiceState.Stopping, null, null, null)
+            ])
+        };
+
+        var result = await ServiceRestartCoordinator.RestartAsync(
+            manager,
+            transitionTimeout: TimeSpan.Zero,
+            pollInterval: TimeSpan.Zero);
+
+        Assert.False(result.Success);
+        Assert.Equal("Service did not reach 'Stopped' within 0 ms during restart.", result.Message);
+        Assert.Equal(1, manager.StopCalls);
+        Assert.Equal(0, manager.StartCalls);
+    }
+
+    [Fact]
+    public async Task RestartAsync_WhenServiceDoesNotReachRunningWithinTimeout_ReturnsFailure()
+    {
+        var manager = new RecordingServiceManager
+        {
+            StatusesToReturn = new Queue<ServiceStatus>(
+            [
+                new ServiceStatus(ServiceState.Stopped, null, null, null),
+                new ServiceStatus(ServiceState.Starting, null, null, null)
+            ])
+        };
+
+        var result = await ServiceRestartCoordinator.RestartAsync(
+            manager,
+            transitionTimeout: TimeSpan.Zero,
+            pollInterval: TimeSpan.Zero);
+
+        Assert.False(result.Success);
+        Assert.Equal("Service did not reach 'Running' within 0 ms during restart.", result.Message);
+        Assert.Equal(0, manager.StopCalls);
+        Assert.Equal(1, manager.StartCalls);
+    }
+
+    [Fact]
+    public async Task RestartAsync_WhenServiceIsAlreadyStopping_WaitsForStoppedBeforeStarting()
+    {
+        var manager = new RecordingServiceManager
+        {
+            StatusesToReturn = new Queue<ServiceStatus>(
+            [
+                new ServiceStatus(ServiceState.Stopping, null, null, null),
+                new ServiceStatus(ServiceState.Stopped, null, null, null),
+                new ServiceStatus(ServiceState.Starting, null, null, null),
+                new ServiceStatus(ServiceState.Running, null, null, null)
+            ])
+        };
+
+        var result = await ServiceRestartCoordinator.RestartAsync(
+            manager,
+            transitionTimeout: TimeSpan.FromMilliseconds(50),
+            pollInterval: TimeSpan.Zero);
+
+        Assert.True(result.Success);
+        Assert.Equal("Service restarted.", result.Message);
+        Assert.Equal(0, manager.StopCalls);
+        Assert.Equal(1, manager.StartCalls);
+    }
+
     private sealed class RecordingServiceManager : IServiceManager
     {
         public int GetStatusCalls { get; private set; }
         public int StopCalls { get; private set; }
         public int StartCalls { get; private set; }
 
-        public ServiceStatus StatusToReturn { get; set; } = new(ServiceState.Stopped, null, null, null);
+        public Queue<ServiceStatus> StatusesToReturn { get; set; } =
+            new([new ServiceStatus(ServiceState.Stopped, null, null, null)]);
         public ServiceResult StopToReturn { get; set; } = new(true, "stopped");
         public ServiceResult StartToReturn { get; set; } = new(true, "started");
 
@@ -120,7 +213,10 @@ public sealed class ServiceRestartCoordinatorTests
         public Task<ServiceStatus> GetStatusAsync(CancellationToken ct = default)
         {
             GetStatusCalls++;
-            return Task.FromResult(StatusToReturn);
+            var status = StatusesToReturn.Count > 1
+                ? StatusesToReturn.Dequeue()
+                : StatusesToReturn.Peek();
+            return Task.FromResult(status);
         }
 
         public Task<ServiceResult> ShowLogsAsync(int lines = 50, CancellationToken ct = default) =>

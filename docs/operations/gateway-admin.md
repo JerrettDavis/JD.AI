@@ -270,9 +270,13 @@ dotnet tool install -g JD.AI.Daemon
 tar xzf jdai-backup-20250115.tar.gz -C /
 cp /backup/sessions-20250115.db ~/.jdai/sessions.db
 jdai-daemon start
+# Restart the installed service later with either command
+jdai gateway restart
 jdai-daemon restart
 jdai-daemon status
 ```
+
+`jdai gateway restart` delegates to the installed daemon service. If you started the foreground gateway with `jdai gateway start`, stop it with `Ctrl+C` and start it again instead of using the restart shortcut.
 
 ### Scheduled backups
 

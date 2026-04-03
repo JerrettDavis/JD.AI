@@ -919,8 +919,18 @@ static int? EnsureServicePrivilegesForAction(string action, bool elevatedAttempt
     if (OperatingSystem.IsWindows() && !IsWindowsElevated())
     {
         var cmdArgs = $"{action} --elevated";
-        if (!elevatedAttempt && TryRelaunchElevatedWithArgs(cmdArgs))
-            return 0;
+        if (!elevatedAttempt)
+        {
+            var elevatedExitCode = WindowsElevationHelper.RelaunchAndWait(cmdArgs);
+            if (elevatedExitCode.HasValue)
+            {
+                Console.WriteLine(
+                    elevatedExitCode.Value == 0
+                        ? $"Elevated '{action}' completed successfully."
+                        : $"Elevated '{action}' failed with exit code {elevatedExitCode.Value}.");
+                return elevatedExitCode.Value;
+            }
+        }
 
         Console.WriteLine($"✗ Admin rights are required for '{DaemonServiceIdentity.ToolCommand} {action}'.");
         Console.WriteLine($"  Re-run from an elevated terminal: {DaemonServiceIdentity.ToolCommand} {action}");

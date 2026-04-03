@@ -34,18 +34,16 @@ public sealed class GatewayCliTests
     }
 
     [Fact]
-    public async Task GatewayCliHandler_RunRestartAsync_InvokesDaemonRestartAndWaitsForHealth()
+    public async Task GatewayCliHandler_RunRestartAsync_InvokesDaemonRestart()
     {
         var receivedArguments = new List<string>();
 
         var exitCode = await GatewayCliHandler.RunRestartAsync(
-            "http://127.0.0.1:15790",
             daemonArguments =>
             {
                 receivedArguments.Add(daemonArguments);
                 return Task.FromResult(new GatewayCliHandler.DaemonCommandResult(true, "restarted"));
-            },
-            (_, maxWaitMs) => Task.FromResult(maxWaitMs == 15000));
+            });
 
         Assert.Equal(0, exitCode);
         Assert.Equal(["restart"], receivedArguments);
@@ -55,11 +53,39 @@ public sealed class GatewayCliTests
     public async Task GatewayCliHandler_RunRestartAsync_WhenDaemonRestartFails_ReturnsFailure()
     {
         var exitCode = await GatewayCliHandler.RunRestartAsync(
-            "http://127.0.0.1:15790",
-            _ => Task.FromResult(new GatewayCliHandler.DaemonCommandResult(false, "boom")),
-            (_, _) => Task.FromResult(true));
+            _ => Task.FromResult(new GatewayCliHandler.DaemonCommandResult(false, "boom")));
 
         Assert.Equal(1, exitCode);
+    }
+
+    [Fact]
+    public async Task GatewayCliHandler_RunRestartAsync_DoesNotProbeHealthAfterDelegatingToDaemon()
+    {
+        var exitCode = await GatewayCliHandler.RunRestartAsync(
+            _ => Task.FromResult(new GatewayCliHandler.DaemonCommandResult(true, "restarted")));
+
+        Assert.Equal(0, exitCode);
+    }
+
+    [Fact]
+    public async Task GatewayCliHandler_RunRestartAsync_WhenServiceIsNotInstalled_ShowsForegroundGuidance()
+    {
+        var originalError = Console.Error;
+        using var writer = new StringWriter();
+        Console.SetError(writer);
+
+        try
+        {
+            var exitCode = await GatewayCliHandler.RunRestartAsync(
+                _ => Task.FromResult(new GatewayCliHandler.DaemonCommandResult(false, "Service is not installed.")));
+
+            Assert.Equal(1, exitCode);
+            Assert.Contains("Use 'jdai gateway start' for the foreground gateway", writer.ToString(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
     }
 
     [Theory]

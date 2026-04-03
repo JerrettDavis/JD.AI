@@ -8,7 +8,7 @@ namespace JD.AI.Commands;
 /// Handles <c>jdai gateway</c>.
 /// By default this starts the full gateway persistently in the foreground by spawning
 /// <c>jdai-daemon run</c> as a subprocess to avoid duplicating the gateway host setup.
-/// The explicit <c>restart</c> action delegates to <c>jdai-daemon restart</c>.
+/// The explicit <c>restart</c> action delegates to the installed <c>jdai-daemon</c> service.
 /// </summary>
 internal static class GatewayCliHandler
 {
@@ -22,7 +22,7 @@ internal static class GatewayCliHandler
         return action switch
         {
             "start" => await RunStartAsync(baseUrl).ConfigureAwait(false),
-            "restart" => await RunRestartAsync(baseUrl).ConfigureAwait(false),
+            "restart" => await RunRestartAsync().ConfigureAwait(false),
             _ => WriteUsageError(action),
         };
     }
@@ -35,32 +35,28 @@ internal static class GatewayCliHandler
         return args[0].Trim().ToLowerInvariant();
     }
 
-    internal static async Task<int> RunRestartAsync(
-        string baseUrl,
-        Func<string, Task<DaemonCommandResult>>? daemonCommandRunner = null,
-        Func<string, int, Task<bool>>? waitForHealthyAsync = null)
+    internal static async Task<int> RunRestartAsync(Func<string, Task<DaemonCommandResult>>? daemonCommandRunner = null)
     {
         daemonCommandRunner ??= RunDaemonCommandAsync;
-        waitForHealthyAsync ??= GatewayHealthChecker.WaitForHealthyAsync;
 
-        Console.WriteLine($"Restarting gateway on {baseUrl} ...");
+        Console.WriteLine("Restarting installed gateway service ...");
 
         var restartResult = await daemonCommandRunner("restart").ConfigureAwait(false);
         if (!restartResult.Success)
         {
+            if (restartResult.Output.Contains("Service is not installed.", StringComparison.Ordinal))
+            {
+                Console.Error.WriteLine("The installed gateway service is not available.");
+                Console.Error.WriteLine("Use 'jdai gateway start' for the foreground gateway, or install the service before using 'jdai gateway restart'.");
+            }
+
             if (!string.IsNullOrWhiteSpace(restartResult.Output))
                 Console.Error.WriteLine(restartResult.Output.Trim());
 
             return 1;
         }
 
-        if (!await waitForHealthyAsync(baseUrl, 15000).ConfigureAwait(false))
-        {
-            Console.Error.WriteLine("Gateway did not become healthy within 15 seconds after restart.");
-            return 1;
-        }
-
-        Console.WriteLine($"Gateway running at {baseUrl}");
+        Console.WriteLine("Installed gateway service restart completed.");
         return 0;
     }
 
