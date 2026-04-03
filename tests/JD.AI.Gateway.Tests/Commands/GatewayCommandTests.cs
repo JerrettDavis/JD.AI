@@ -215,6 +215,53 @@ public class GatewayCommandTests
         result.Content.Should().Contain("No agents are running");
     }
 
+    [Fact]
+    public async Task ClearCommand_WithoutFilter_ClearsAllAgents()
+    {
+        await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        await _pool.SpawnAgentAsync("OpenAI", "gpt-5.3-codex", null, CancellationToken.None);
+        var cmd = new ClearCommand(_pool);
+
+        var result = await cmd.ExecuteAsync(MakeContext("clear"));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain("Cleared conversation history for 2 agent(s).");
+        _pool.ListAgents().Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task ClearCommand_WithMatchingPrefix_ClearsOnlyMatchingAgents()
+    {
+        var matchingAgent = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        await _pool.SpawnAgentAsync("OpenAI", "gpt-5.3-codex", null, CancellationToken.None);
+        var cmd = new ClearCommand(_pool);
+
+        var result = await cmd.ExecuteAsync(MakeContext("clear", new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["agent"] = matchingAgent[..6].ToUpperInvariant()
+        }));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain("Cleared conversation history for 1 agent(s).");
+        _pool.ListAgents().Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task ClearCommand_WithUnknownPrefix_ReturnsNotFound()
+    {
+        await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        var cmd = new ClearCommand(_pool);
+
+        var result = await cmd.ExecuteAsync(MakeContext("clear", new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["agent"] = "missing"
+        }));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain("No agent found matching `missing`.");
+        _pool.ListAgents().Should().ContainSingle();
+    }
+
     // --- SwitchCommand ---
 
     [Fact]
