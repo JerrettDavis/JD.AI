@@ -9,6 +9,7 @@ using JD.AI.Gateway.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.SemanticKernel;
 using NSubstitute;
+using System.Reflection;
 
 namespace JD.AI.Gateway.Tests.Commands;
 
@@ -200,6 +201,52 @@ public class GatewayCommandTests
 
         result.Success.Should().BeTrue();
         result.Content.Should().Contain("No agents are running");
+    }
+
+    [Fact]
+    public async Task AgentsCommand_WithRunningAgentAndRoutes_ShowsAgentDetailsAndRoutingTable()
+    {
+        var agentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        _router.MapChannel("discord", agentId);
+        _router.MapChannel("slack", agentId);
+        var cmd = new AgentsCommand(_pool, _router);
+
+        var result = await cmd.ExecuteAsync(MakeContext("agents"));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain($"🤖 **`{agentId[..8]}`** — Ollama/llama3.2:latest");
+        result.Content.Should().Contain("Turns: 0 | Up:");
+        result.Content.Should().Contain("Routes: discord, slack");
+        result.Content.Should().Contain("**Routing Table:**");
+        result.Content.Should().Contain($"• discord → `{agentId[..8]}`");
+        result.Content.Should().Contain($"• slack → `{agentId[..8]}`");
+    }
+
+    [Fact]
+    public async Task AgentsCommand_WithShortMappedAgentId_ShowsFullIdInRoutingTable()
+    {
+        _router.MapChannel("discord", "abc");
+        var cmd = new AgentsCommand(_pool, _router);
+
+        var result = await cmd.ExecuteAsync(MakeContext("agents"));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain("No agents are running.");
+        result.Content.Should().Contain("**Routing Table:**");
+        result.Content.Should().Contain("• discord → `abc`");
+    }
+
+    [Theory]
+    [InlineData(45, "45m")]
+    [InlineData(120, "2h")]
+    public void AgentsCommand_FormatAge_FormatsMinutesAndHours(double minutes, string expected)
+    {
+        var method = typeof(AgentsCommand).GetMethod("FormatAge", BindingFlags.Static | BindingFlags.NonPublic);
+        method.Should().NotBeNull();
+
+        var formatted = method!.Invoke(null, [TimeSpan.FromMinutes(minutes)]);
+
+        formatted.Should().Be(expected);
     }
 
     // --- ClearCommand ---
