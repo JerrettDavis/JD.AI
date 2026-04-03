@@ -15,6 +15,7 @@
     <ProjectReference Include="..\..\src\JD.AI.Channels.Telegram\JD.AI.Channels.Telegram.csproj" />
     <ProjectReference Include="..\..\src\JD.AI.Channels.Web\JD.AI.Channels.Web.csproj" />
     <ProjectReference Include="..\..\src\JD.AI.Daemon\JD.AI.Daemon.csproj" />
+    <ProjectReference Include="..\..\src\JD.AI.Dashboard.Wasm\JD.AI.Dashboard.Wasm.csproj" />
     <ProjectReference Include="..\..\src\JD.AI.Credentials.Azure\JD.AI.Credentials.Azure.csproj" />
     <ProjectReference Include="..\..\src\JD.AI.Credentials.Aws\JD.AI.Credentials.Aws.csproj" />
     <ProjectReference Include="..\..\src\JD.AI.Workflows\JD.AI.Workflows.csproj" />
@@ -29,9 +30,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="bunit" />
     <PackageReference Include="coverlet.collector" PrivateAssets="all" />
     <PackageReference Include="Spectre.Console" />
     <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="NSubstitute" />
     <PackageReference Include="SixLabors.ImageSharp" />
