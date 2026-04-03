@@ -159,6 +159,49 @@ public class GatewayCommandTests
         result.Content.Should().Contain("Connected");
     }
 
+    [Fact]
+    public async Task StatusCommand_ShowsDisconnectedChannels()
+    {
+        var mockChannel = Substitute.For<IChannel>();
+        mockChannel.ChannelType.Returns("slack");
+        mockChannel.DisplayName.Returns("Slack");
+        mockChannel.IsConnected.Returns(false);
+        _channels.Register(mockChannel);
+
+        var cmd = new StatusCommand(_pool, _channels);
+        var result = await cmd.ExecuteAsync(MakeContext("status"));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain("Slack");
+        result.Content.Should().Contain("Disconnected");
+    }
+
+    [Fact]
+    public async Task StatusCommand_WithRunningAgent_ShowsAgentDetails()
+    {
+        var agentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        var cmd = new StatusCommand(_pool, _channels);
+
+        var result = await cmd.ExecuteAsync(MakeContext("status"));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain($"• `{agentId[..8]}` — Ollama/llama3.2:latest — 0 turns — up ");
+        result.Content.Should().NotContain("No agents running.");
+    }
+
+    [Theory]
+    [InlineData(45, "45m")]
+    [InlineData(120, "2h")]
+    public void StatusCommand_FormatAge_FormatsMinutesAndHours(double minutes, string expected)
+    {
+        var method = typeof(StatusCommand).GetMethod("FormatAge", BindingFlags.Static | BindingFlags.NonPublic);
+        method.Should().NotBeNull();
+
+        var formatted = method!.Invoke(null, [TimeSpan.FromMinutes(minutes)]);
+
+        formatted.Should().Be(expected);
+    }
+
     // --- UsageCommand ---
 
     [Fact]
