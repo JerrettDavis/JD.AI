@@ -7,8 +7,147 @@ namespace JD.AI.Tests.Commands;
 /// <summary>
 /// Tests for the gateway/dashboard CLI utilities.
 /// </summary>
+[Collection("Console")]
 public sealed class GatewayCliTests
 {
+    [Fact]
+    public async Task DashboardCliHandler_RunAsync_WhenGatewayAlreadyRunning_OpensBrowserAndSkipsDaemonStart()
+    {
+        using var restore = new DashboardCliOverrideScope();
+        var started = false;
+        string? openedUrl = null;
+
+        DashboardCliHandler.GetRunningGatewayBaseUrlAsync = () => Task.FromResult<string?>("http://localhost:15790");
+        DashboardCliHandler.StartDaemonProcess = () =>
+        {
+            started = true;
+            return new FakeDaemonProcessHandle();
+        };
+        DashboardCliHandler.OpenBrowser = url => openedUrl = url;
+
+        var exitCode = await DashboardCliHandler.RunAsync([]);
+
+        Assert.Equal(0, exitCode);
+        Assert.False(started);
+        Assert.Equal("http://localhost:15790/", openedUrl);
+    }
+
+    [Fact]
+    public async Task DashboardCliHandler_RunAsync_WhenArgsProvided_ReturnsUsageError()
+    {
+        var originalError = Console.Error;
+        using var writer = new StringWriter();
+        Console.SetError(writer);
+
+        try
+        {
+            var exitCode = await DashboardCliHandler.RunAsync(["unexpected"]);
+
+            Assert.Equal(1, exitCode);
+            Assert.Contains("Usage: jdai dashboard", writer.ToString(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
+    }
+
+    [Fact]
+    public async Task DashboardCliHandler_RunAsync_WhenDaemonStartFails_ReturnsFailure()
+    {
+        using var restore = new DashboardCliOverrideScope();
+
+        DashboardCliHandler.GetRunningGatewayBaseUrlAsync = () => Task.FromResult<string?>(null);
+        DashboardCliHandler.StartDaemonProcess = () => throw new InvalidOperationException("boom");
+
+        var exitCode = await DashboardCliHandler.RunAsync([]);
+
+        Assert.Equal(1, exitCode);
+    }
+
+    [Fact]
+    public async Task DashboardCliHandler_RunAsync_WhenGatewayDoesNotBecomeHealthy_KillsProcess()
+    {
+        using var restore = new DashboardCliOverrideScope();
+        var process = new FakeDaemonProcessHandle();
+
+        DashboardCliHandler.GetRunningGatewayBaseUrlAsync = () => Task.FromResult<string?>(null);
+        DashboardCliHandler.StartDaemonProcess = () => process;
+        DashboardCliHandler.WaitForGatewayHealthyBaseUrlAsync = _ => Task.FromResult<string?>(null);
+
+        var exitCode = await DashboardCliHandler.RunAsync([]);
+
+        Assert.Equal(1, exitCode);
+        Assert.True(process.KillCalled);
+        Assert.True(process.DisposeCalled);
+    }
+
+    [Fact]
+    public async Task DashboardCliHandler_RunAsync_WhenGatewayDoesNotBecomeHealthyAndProcessAlreadyExited_StillDisposes()
+    {
+        using var restore = new DashboardCliOverrideScope();
+        var process = new FakeDaemonProcessHandle { HasExited = true };
+
+        DashboardCliHandler.GetRunningGatewayBaseUrlAsync = () => Task.FromResult<string?>(null);
+        DashboardCliHandler.StartDaemonProcess = () => process;
+        DashboardCliHandler.WaitForGatewayHealthyBaseUrlAsync = _ => Task.FromResult<string?>(null);
+
+        var exitCode = await DashboardCliHandler.RunAsync([]);
+
+        Assert.Equal(1, exitCode);
+        Assert.False(process.KillCalled);
+        Assert.True(process.DisposeCalled);
+    }
+
+    [Fact]
+    public async Task DashboardCliHandler_RunAsync_WhenGatewayBecomesHealthy_OpensReachableUrlAndDisposesProcess()
+    {
+        using var restore = new DashboardCliOverrideScope();
+        var process = new FakeDaemonProcessHandle();
+        string? openedUrl = null;
+
+        DashboardCliHandler.GetRunningGatewayBaseUrlAsync = () => Task.FromResult<string?>(null);
+        DashboardCliHandler.StartDaemonProcess = () => process;
+        DashboardCliHandler.WaitForGatewayHealthyBaseUrlAsync = _ => Task.FromResult<string?>("http://localhost:15790");
+        DashboardCliHandler.OpenBrowser = url => openedUrl = url;
+
+        var exitCode = await DashboardCliHandler.RunAsync([]);
+
+        Assert.Equal(0, exitCode);
+        Assert.False(process.KillCalled);
+        Assert.True(process.DisposeCalled);
+        Assert.Equal("http://localhost:15790/", openedUrl);
+    }
+
+    [Fact]
+    public async Task DashboardCliHandler_RunAsync_WhenBrowserOpenFails_ReturnsFailureAndStillDisposesProcess()
+    {
+        using var restore = new DashboardCliOverrideScope();
+        var process = new FakeDaemonProcessHandle();
+        var originalError = Console.Error;
+        using var writer = new StringWriter();
+        Console.SetError(writer);
+
+        try
+        {
+            DashboardCliHandler.GetRunningGatewayBaseUrlAsync = () => Task.FromResult<string?>(null);
+            DashboardCliHandler.StartDaemonProcess = () => process;
+            DashboardCliHandler.WaitForGatewayHealthyBaseUrlAsync = _ => Task.FromResult<string?>("http://localhost:15790");
+            DashboardCliHandler.OpenBrowser = _ => throw new InvalidOperationException("browser failed");
+
+            var exitCode = await DashboardCliHandler.RunAsync([]);
+
+            Assert.Equal(1, exitCode);
+            Assert.True(process.DisposeCalled);
+            Assert.Contains("Failed to open dashboard automatically", writer.ToString(), StringComparison.Ordinal);
+            Assert.Contains("Open this URL manually: http://localhost:15790/", writer.ToString(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
+    }
+
     [Fact]
     public async Task GatewayHealthChecker_ReturnsFalse_WhenNothingIsRunning()
     {
@@ -191,5 +330,32 @@ public sealed class GatewayCliTests
         // we just verify no exception is raised on the current platform.
         var ex = Record.Exception(() => BrowserLauncher.Open("http://localhost:0/test"));
         Assert.Null(ex);
+    }
+
+    private sealed class DashboardCliOverrideScope : IDisposable
+    {
+        private readonly Func<Task<string?>> _getRunningGatewayBaseUrlAsync = DashboardCliHandler.GetRunningGatewayBaseUrlAsync;
+        private readonly Func<int, Task<string?>> _waitForGatewayHealthyBaseUrlAsync = DashboardCliHandler.WaitForGatewayHealthyBaseUrlAsync;
+        private readonly Func<DashboardCliHandler.IDaemonProcessHandle> _startDaemonProcess = DashboardCliHandler.StartDaemonProcess;
+        private readonly Action<string> _openBrowser = DashboardCliHandler.OpenBrowser;
+
+        public void Dispose()
+        {
+            DashboardCliHandler.GetRunningGatewayBaseUrlAsync = _getRunningGatewayBaseUrlAsync;
+            DashboardCliHandler.WaitForGatewayHealthyBaseUrlAsync = _waitForGatewayHealthyBaseUrlAsync;
+            DashboardCliHandler.StartDaemonProcess = _startDaemonProcess;
+            DashboardCliHandler.OpenBrowser = _openBrowser;
+        }
+    }
+
+    private sealed class FakeDaemonProcessHandle : DashboardCliHandler.IDaemonProcessHandle
+    {
+        public bool HasExited { get; set; }
+        public bool KillCalled { get; private set; }
+        public bool DisposeCalled { get; private set; }
+
+        public void Kill() => KillCalled = true;
+
+        public void Dispose() => DisposeCalled = true;
     }
 }
