@@ -143,4 +143,224 @@ public sealed class SessionConfiguratorTests
             DataDirectories.Reset();
         }
     }
+
+    [Fact]
+    public async Task ConfigureAsync_WhenContinuingSession_ResumesMostRecentSessionAndRestoresModel()
+    {
+        using var fixture = new JD.AI.Tests.Fixtures.TempDirectoryFixture();
+        var currentDirectory = Directory.GetCurrentDirectory();
+        AgentSession? olderSession = null;
+        AgentSession? latestSession = null;
+
+        try
+        {
+            DataDirectories.SetRoot(fixture.GetPath("jdai-root"));
+
+            var primaryModel = new ProviderModelInfo("primary-model", "Primary Model", "TestProvider");
+            var secondaryModel = new ProviderModelInfo("secondary-model", "Secondary Model", "TestProvider");
+            var providerSetup = CreateProviderSetup(primaryModel, secondaryModel);
+
+            olderSession = await CreatePersistedSessionAsync(
+                providerSetup,
+                currentDirectory,
+                "older-session",
+                assistantReply: "older assistant");
+
+            latestSession = await CreatePersistedSessionAsync(
+                providerSetup,
+                currentDirectory,
+                "latest-session",
+                switchToModel: secondaryModel,
+                assistantReply: "latest assistant");
+            latestSession.SessionInfo!.UpdatedAt = DateTime.UtcNow.AddMinutes(1);
+            await latestSession.Store!.UpdateSessionAsync(latestSession.SessionInfo);
+
+            var setup = await SessionConfigurator.ConfigureAsync(
+                new CliOptions
+                {
+                    ContinueSession = true,
+                    PrintMode = true,
+                },
+                providerSetup);
+
+            Assert.Equal(latestSession.SessionInfo!.Id, setup.Session.SessionInfo!.Id);
+            Assert.Equal(2, setup.Session.SessionInfo.Turns.Count);
+            Assert.Equal("latest assistant", setup.Session.SessionInfo.Turns[^1].Content);
+            Assert.Equal(secondaryModel, setup.SelectedModel);
+            Assert.Equal(secondaryModel, setup.Session.CurrentModel);
+            Assert.NotSame(providerSetup.Kernel, setup.Kernel);
+            Assert.Same(setup.Kernel, setup.Session.Kernel);
+            var sessions = await setup.Session.Store!.ListSessionsAsync(setup.Session.SessionInfo.ProjectHash, 10);
+            Assert.Equal(2, sessions.Count);
+        }
+        finally
+        {
+            olderSession?.Store?.Dispose();
+            latestSession?.Store?.Dispose();
+            DataDirectories.Reset();
+        }
+    }
+
+    [Fact]
+    public async Task ConfigureAsync_WhenCliSessionIdProvided_PrefersItOverResumeId()
+    {
+        using var fixture = new JD.AI.Tests.Fixtures.TempDirectoryFixture();
+        var currentDirectory = Directory.GetCurrentDirectory();
+        AgentSession? requestedSession = null;
+        AgentSession? ignoredSession = null;
+
+        try
+        {
+            DataDirectories.SetRoot(fixture.GetPath("jdai-root"));
+
+            var primaryModel = new ProviderModelInfo("primary-model", "Primary Model", "TestProvider");
+            var providerSetup = CreateProviderSetup(primaryModel);
+
+            requestedSession = await CreatePersistedSessionAsync(
+                providerSetup,
+                currentDirectory,
+                "requested-session",
+                assistantReply: "requested assistant");
+
+            ignoredSession = await CreatePersistedSessionAsync(
+                providerSetup,
+                currentDirectory,
+                "ignored-session",
+                assistantReply: "ignored assistant");
+
+            var setup = await SessionConfigurator.ConfigureAsync(
+                new CliOptions
+                {
+                    ResumeId = ignoredSession.SessionInfo!.Id,
+                    CliSessionId = requestedSession.SessionInfo!.Id,
+                    PrintMode = true,
+                },
+                providerSetup);
+
+            Assert.Equal(requestedSession.SessionInfo!.Id, setup.Session.SessionInfo!.Id);
+            Assert.Equal("requested assistant", setup.Session.SessionInfo.Turns[^1].Content);
+        }
+        finally
+        {
+            requestedSession?.Store?.Dispose();
+            ignoredSession?.Store?.Dispose();
+            DataDirectories.Reset();
+        }
+    }
+
+    [Fact]
+    public async Task ConfigureAsync_WhenCliSessionIdIsMissing_Throws()
+    {
+        using var fixture = new JD.AI.Tests.Fixtures.TempDirectoryFixture();
+
+        try
+        {
+            DataDirectories.SetRoot(fixture.GetPath("jdai-root"));
+
+            var primaryModel = new ProviderModelInfo("primary-model", "Primary Model", "TestProvider");
+            var providerSetup = CreateProviderSetup(primaryModel);
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                SessionConfigurator.ConfigureAsync(
+                    new CliOptions
+                    {
+                        CliSessionId = "missing-session",
+                        PrintMode = true,
+                    },
+                    providerSetup));
+
+            Assert.Contains("missing-session", ex.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            DataDirectories.Reset();
+        }
+    }
+
+    [Fact]
+    public async Task ConfigureAsync_WhenForkSessionRequested_CreatesForkedCopyOfResumedSession()
+    {
+        using var fixture = new JD.AI.Tests.Fixtures.TempDirectoryFixture();
+        var currentDirectory = Directory.GetCurrentDirectory();
+        AgentSession? sourceSession = null;
+
+        try
+        {
+            DataDirectories.SetRoot(fixture.GetPath("jdai-root"));
+
+            var primaryModel = new ProviderModelInfo("primary-model", "Primary Model", "TestProvider");
+            var providerSetup = CreateProviderSetup(primaryModel);
+
+            sourceSession = await CreatePersistedSessionAsync(
+                providerSetup,
+                currentDirectory,
+                "source-session",
+                assistantReply: "fork me");
+
+            var setup = await SessionConfigurator.ConfigureAsync(
+                new CliOptions
+                {
+                    CliSessionId = sourceSession.SessionInfo!.Id,
+                    ForkSession = true,
+                    PrintMode = true,
+                },
+                providerSetup);
+
+            var sessions = await setup.Session.Store!.ListSessionsAsync(sourceSession.SessionInfo.ProjectHash, 10);
+            var fork = Assert.Single(sessions, s => s.Name == "CLI fork");
+            var forkedSession = await setup.Session.Store.GetSessionAsync(fork.Id);
+
+            Assert.Equal(sourceSession.SessionInfo.Id, setup.Session.SessionInfo!.Id);
+            Assert.NotNull(forkedSession);
+            Assert.NotEqual(sourceSession.SessionInfo.Id, forkedSession!.Id);
+            Assert.Equal(sourceSession.SessionInfo.MessageCount, forkedSession.MessageCount);
+            Assert.Equal(sourceSession.SessionInfo.Turns.Count, forkedSession.Turns.Count);
+            Assert.Equal("fork me", forkedSession.Turns[^1].Content);
+        }
+        finally
+        {
+            sourceSession?.Store?.Dispose();
+            DataDirectories.Reset();
+        }
+    }
+
+    private static ProviderSetup CreateProviderSetup(params ProviderModelInfo[] models)
+    {
+        var primaryModel = models[0];
+        var (registry, providerConfig, metadataProvider) = StartupTestProviderFactory.CreateRegistry(
+            StartupTestProviderFactory.AvailableProvider("TestProvider", models));
+
+        return new ProviderSetup(
+            registry,
+            providerConfig,
+            metadataProvider,
+            models,
+            primaryModel,
+            [],
+            registry.BuildKernel(primaryModel));
+    }
+
+    private static async Task<AgentSession> CreatePersistedSessionAsync(
+        ProviderSetup providerSetup,
+        string projectPath,
+        string sessionName,
+        ProviderModelInfo? switchToModel = null,
+        string assistantReply = "assistant reply")
+    {
+        var session = new AgentSession(providerSetup.Registry, providerSetup.Kernel, providerSetup.SelectedModel);
+        await session.InitializePersistenceAsync(projectPath);
+
+        session.SessionInfo!.Name = sessionName;
+
+        if (switchToModel is not null)
+        {
+            session.SwitchModel(switchToModel, "manual");
+        }
+
+        await session.RecordUserTurnAsync("hello");
+        await session.RecordAssistantTurnAsync(assistantReply);
+        await session.Store!.UpdateSessionAsync(session.SessionInfo);
+
+        return session;
+    }
 }

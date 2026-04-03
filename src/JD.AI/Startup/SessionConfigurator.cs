@@ -141,15 +141,13 @@ internal static class SessionConfigurator
 
             if (opts.ContinueSession && resumeId == null)
             {
-                await session.InitializePersistenceAsync(projectPath).ConfigureAwait(false);
-                if (session.Store != null)
+                using var store = new JD.AI.Core.Sessions.SessionStore();
+                await store.InitializeAsync().ConfigureAwait(false);
+                var projectHash = JD.AI.Core.Sessions.ProjectHasher.Hash(projectPath);
+                var recentSessions = await store.ListSessionsAsync(projectHash, 1).ConfigureAwait(false);
+                if (recentSessions.Count > 0)
                 {
-                    var projectHash = JD.AI.Core.Sessions.ProjectHasher.Hash(projectPath);
-                    var recentSessions = await session.Store.ListSessionsAsync(projectHash, 1).ConfigureAwait(false);
-                    if (recentSessions.Count > 0)
-                    {
-                        resumeId = recentSessions[0].Id;
-                    }
+                    resumeId = recentSessions[0].Id;
                 }
             }
 
@@ -214,29 +212,7 @@ internal static class SessionConfigurator
 
         selectedModel = restored;
         kernel = registry.BuildKernel(selectedModel);
-        var newSession = new AgentSession(registry, kernel, selectedModel)
-        {
-            Store = session.Store,
-            SessionInfo = session.SessionInfo,
-            SkipPermissions = session.SkipPermissions,
-            Verbose = session.Verbose,
-            PermissionMode = session.PermissionMode,
-            FallbackModels = session.FallbackModels,
-            NoSessionPersistence = session.NoSessionPersistence,
-        };
-
-        // Re-restore history
-        foreach (var turn in session.SessionInfo.Turns)
-        {
-            if (string.Equals(turn.Role, "user", StringComparison.Ordinal))
-                newSession.History.AddUserMessage(turn.Content ?? string.Empty);
-            else if (string.Equals(turn.Role, "assistant", StringComparison.Ordinal))
-                newSession.History.AddAssistantMessage(turn.Content ?? string.Empty);
-        }
-
-        // Copy state back to the original session object fields
-        // Since session is a reference type, the caller's reference still points to the original.
-        // We need to update it through the out parameters and caller must use them.
+        session.RestorePersistedModel(selectedModel, kernel);
         if (!printMode) ChatRenderer.RenderInfo($"Restored model: [{restored.ProviderName}] {restored.DisplayName}");
     }
 }

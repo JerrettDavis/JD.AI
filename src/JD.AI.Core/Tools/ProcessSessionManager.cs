@@ -181,14 +181,24 @@ public sealed class ProcessSessionManager
         }
 
         var standardInput = record.Process!.StandardInput;
-
-        standardInput.Write(input);
-        if (!input.EndsWith('\n'))
+        try
         {
-            standardInput.WriteLine();
+            standardInput.Write(input);
+            if (!input.EndsWith('\n'))
+            {
+                standardInput.WriteLine();
+            }
+
+            standardInput.Flush();
+        }
+        catch (Exception ex) when (
+            ex is IOException or ObjectDisposedException or InvalidOperationException)
+        {
+            snapshot = Snapshot(record);
+            error = $"Process session '{sessionId}' is not running.";
+            return false;
         }
 
-        standardInput.Flush();
         snapshot = Snapshot(record);
         return true;
     }
@@ -240,11 +250,13 @@ public sealed class ProcessSessionManager
 
             if (IsRunning(record) && includeRunning)
             {
+                MarkRemoved(record);
                 TryKill(scopeKey, pair.Key, out _, out _);
             }
 
             if (scope.Sessions.TryRemove(pair.Key, out var removedRecord))
             {
+                MarkRemoved(removedRecord);
                 DeleteMetadata(removedRecord);
                 removed++;
             }
@@ -286,6 +298,14 @@ public sealed class ProcessSessionManager
             // we only need them to reach a terminal state.
         }
 #pragma warning restore CA1031
+        finally
+        {
+            foreach (var task in pending)
+            {
+                if (!task.IsCompleted)
+                    _allExitMonitors.Enqueue(task);
+            }
+        }
     }
 
     public bool TryRemove(
@@ -310,10 +330,12 @@ public sealed class ProcessSessionManager
                 return false;
             }
 
+            MarkRemoved(record);
             TryKill(scopeKey, sessionId, out _, out _);
         }
 
         scope.Sessions.TryRemove(sessionId, out _);
+        MarkRemoved(record);
         DeleteMetadata(record);
         return true;
     }
@@ -408,8 +430,8 @@ public sealed class ProcessSessionManager
             record.EndedAtUtc ??= DateTimeOffset.UtcNow;
         }
 
-        record.Completion.TrySetResult(true);
         Persist(record);
+        record.Completion.TrySetResult(true);
     }
 
     private async Task EnforceTimeoutAsync(ProcessRecord record, int timeoutMs)
@@ -425,8 +447,8 @@ public sealed class ProcessSessionManager
             process.Kill(entireProcessTree: true);
         }
 
-        record.Completion.TrySetResult(true);
         Persist(record);
+        record.Completion.TrySetResult(true);
     }
 
     private void SetFinalState(
@@ -509,8 +531,17 @@ public sealed class ProcessSessionManager
 
             if (scope.Sessions.TryRemove(pair.Key, out var removed))
             {
+                MarkRemoved(removed);
                 DeleteMetadata(removed);
             }
+        }
+    }
+
+    private static void MarkRemoved(ProcessRecord record)
+    {
+        lock (record.Sync)
+        {
+            record.IsRemoved = true;
         }
     }
 
@@ -524,6 +555,12 @@ public sealed class ProcessSessionManager
 
     private void Persist(ProcessRecord record)
     {
+        lock (record.Sync)
+        {
+            if (record.IsRemoved)
+                return;
+        }
+
         var snapshot = Snapshot(record);
         var payload = new PersistedProcessSession
         {
@@ -721,6 +758,7 @@ public sealed class ProcessSessionManager
         public string? FailureReason { get; set; }
         public DateTimeOffset StartedAtUtc { get; set; } = DateTimeOffset.UtcNow;
         public DateTimeOffset? EndedAtUtc { get; set; }
+        public bool IsRemoved { get; set; }
 
         public Task? StdoutPump { get; set; }
         public Task? StderrPump { get; set; }

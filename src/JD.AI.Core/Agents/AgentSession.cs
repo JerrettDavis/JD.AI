@@ -384,26 +384,26 @@ public sealed class AgentSession
         if (resumeId != null)
         {
             SessionInfo = await Store.GetSessionAsync(resumeId).ConfigureAwait(false);
-            if (SessionInfo != null)
+            if (SessionInfo == null)
+                throw new InvalidOperationException($"Session '{resumeId}' was not found.");
+
+            _turnIndex = SessionInfo.Turns.Count;
+            // Restore model switch history and fork points
+            _modelSwitchHistory.Clear();
+            _modelSwitchHistory.AddRange(SessionInfo.ModelSwitchHistory);
+            _forkPoints.Clear();
+            _forkPoints.AddRange(SessionInfo.ForkPoints);
+            // Restore chat history from persisted turns
+            foreach (var turn in SessionInfo.Turns)
             {
-                _turnIndex = SessionInfo.Turns.Count;
-                // Restore model switch history and fork points
-                _modelSwitchHistory.Clear();
-                _modelSwitchHistory.AddRange(SessionInfo.ModelSwitchHistory);
-                _forkPoints.Clear();
-                _forkPoints.AddRange(SessionInfo.ForkPoints);
-                // Restore chat history from persisted turns
-                foreach (var turn in SessionInfo.Turns)
-                {
-                    if (string.Equals(turn.Role, "user", StringComparison.Ordinal))
-                        History.AddUserMessage(turn.Content ?? string.Empty);
-                    else if (string.Equals(turn.Role, "assistant", StringComparison.Ordinal))
-                        History.AddAssistantMessage(turn.Content ?? string.Empty);
-                }
-                SessionInfo.IsActive = true;
-                await Store.UpdateSessionAsync(SessionInfo).ConfigureAwait(false);
-                return;
+                if (string.Equals(turn.Role, "user", StringComparison.Ordinal))
+                    History.AddUserMessage(turn.Content ?? string.Empty);
+                else if (string.Equals(turn.Role, "assistant", StringComparison.Ordinal))
+                    History.AddAssistantMessage(turn.Content ?? string.Empty);
             }
+            SessionInfo.IsActive = true;
+            await Store.UpdateSessionAsync(SessionInfo).ConfigureAwait(false);
+            return;
         }
 
         SessionInfo = new SessionInfo
@@ -617,6 +617,19 @@ public sealed class AgentSession
     /// Switches the backing LLM while preserving chat history and tools.
     /// </summary>
     public void SwitchModel(ProviderModelInfo model) => SwitchModel(model, "preserve");
+
+    /// <summary>
+    /// Restores the active model/kernel pair from persisted session state
+    /// without recording an additional model switch.
+    /// </summary>
+    public void RestorePersistedModel(ProviderModelInfo model, Kernel kernel)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        ArgumentNullException.ThrowIfNull(kernel);
+
+        _kernel = kernel;
+        CurrentModel = model;
+    }
 
     /// <summary>
     /// Switches the backing LLM with an explicit switch mode.

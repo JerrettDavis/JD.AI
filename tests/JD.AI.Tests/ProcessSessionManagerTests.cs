@@ -200,10 +200,21 @@ public sealed class ProcessSessionManagerTests : IAsyncLifetime
             Background: true,
             YieldMs: 0,
             TimeoutMs: 20_000));
+        var metadataPath = BuildMetadataPath(_tempDir, Scope, running.SessionId);
 
         var removed = _manager.TryRemove(Scope, running.SessionId, force: true, out var error);
         Assert.True(removed, error);
         Assert.Empty(_manager.List(Scope));
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        await _manager.WaitForIdleAsync(cts.Token);
+
+        Assert.False(File.Exists(metadataPath));
+
+        var recovered = new ProcessSessionManager(
+            metadataRoot: _tempDir,
+            completedRetention: TimeSpan.FromMinutes(30));
+        Assert.Empty(recovered.List(Scope));
     }
 
     [Fact]
