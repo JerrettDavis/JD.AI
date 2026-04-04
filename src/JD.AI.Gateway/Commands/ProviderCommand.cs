@@ -1,6 +1,7 @@
 using JD.AI.Core.Commands;
 using JD.AI.Core.Providers;
 using JD.AI.Gateway.Services;
+using Microsoft.Extensions.Logging;
 
 namespace JD.AI.Gateway.Commands;
 
@@ -8,7 +9,8 @@ namespace JD.AI.Gateway.Commands;
 public sealed class ProviderCommand(
     AgentRouter router,
     AgentPoolService pool,
-    IProviderRegistry registry) : IChannelCommand
+    IProviderRegistry registry,
+    ILogger<ProviderCommand> logger) : IChannelCommand
 {
     public string Name => "provider";
     public string Description => "View or switch the AI provider for this channel's agent.";
@@ -24,7 +26,9 @@ public sealed class ProviderCommand(
 
     public async Task<CommandResult> ExecuteAsync(CommandContext context, CancellationToken ct = default)
     {
-        var channelId = context.ChannelType;
+        var channelId = string.IsNullOrWhiteSpace(context.ChannelId)
+            ? context.ChannelType
+            : context.ChannelId;
         var currentAgentId = router.GetAgentForChannel(channelId);
 
         if (!context.Arguments.TryGetValue("name", out var providerName) ||
@@ -52,12 +56,51 @@ public sealed class ProviderCommand(
             };
         }
 
+        if (currentAgentId is null)
+        {
+            return new CommandResult
+            {
+                Success = false,
+                Content = "❌ No agent mapped to this channel. Use `/jdai-route <agent>` first."
+            };
+        }
+
         // Switch provider: find matching provider and its default model
         var providers = await registry.DetectProvidersAsync(ct);
-        var match = providers.FirstOrDefault(p =>
-            p.Name.Contains(providerName, StringComparison.OrdinalIgnoreCase));
+        var exactMatches = providers.Where(p =>
+            string.Equals(p.Name, providerName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var partialMatches = exactMatches.Count == 0
+            ? providers.Where(p =>
+                p.Name.Contains(providerName, StringComparison.OrdinalIgnoreCase))
+                .ToList()
+            : [];
+        var matches = exactMatches.Count > 0 ? exactMatches : partialMatches;
 
-        if (match is null || !match.IsAvailable)
+        if (matches.Count == 0)
+        {
+            var available = string.Join(", ",
+                providers.Where(p => p.IsAvailable).Select(p => $"**{p.Name}**"));
+            return new CommandResult
+            {
+                Success = false,
+                Content = $"❌ Provider **{providerName}** not found or offline.\nAvailable: {available}"
+            };
+        }
+
+        if (matches.Count > 1)
+        {
+            var candidates = string.Join(", ", matches.Select(p => $"**{p.Name}**"));
+            return new CommandResult
+            {
+                Success = false,
+                Content = $"❌ Ambiguous provider **{providerName}**.\nMatches: {candidates}"
+            };
+        }
+
+        var match = matches[0];
+
+        if (!match.IsAvailable)
         {
             var available = string.Join(", ",
                 providers.Where(p => p.IsAvailable).Select(p => $"**{p.Name}**"));
@@ -81,8 +124,15 @@ public sealed class ProviderCommand(
         var model = match.Models[0];
         try
         {
+            var previousAgentId = currentAgentId;
             var newAgentId = await pool.SpawnAgentAsync(match.Name, model.Id, systemPrompt: null, ct);
             router.MapChannel(channelId, newAgentId);
+            if (!string.IsNullOrWhiteSpace(previousAgentId) &&
+                !router.GetMappings().Any(mapping =>
+                    string.Equals(mapping.Value, previousAgentId, StringComparison.Ordinal)))
+            {
+                pool.StopAgent(previousAgentId);
+            }
 
             return new CommandResult
             {
@@ -94,10 +144,11 @@ public sealed class ProviderCommand(
 #pragma warning disable CA1031
         catch (Exception ex)
         {
+            logger.LogError(ex, "Failed to switch provider for channel {ChannelId}", channelId);
             return new CommandResult
             {
                 Success = false,
-                Content = $"❌ Failed to spawn agent: {ex.Message}"
+                Content = "❌ Failed to switch provider."
             };
         }
 #pragma warning restore CA1031

@@ -22,7 +22,9 @@ public sealed class RouteCommand(
 
     public Task<CommandResult> ExecuteAsync(CommandContext context, CancellationToken ct = default)
     {
-        var channelId = context.ChannelType;
+        var channelId = string.IsNullOrWhiteSpace(context.ChannelId)
+            ? context.ChannelType
+            : context.ChannelId;
 
         if (!context.Arguments.TryGetValue("agent", out var targetAgent) ||
             string.IsNullOrWhiteSpace(targetAgent))
@@ -52,14 +54,23 @@ public sealed class RouteCommand(
             });
         }
 
-        // Reroute: try to find matching agent by ID prefix or provider name
+        // Reroute: prefer exact matches, then allow a unique partial match.
         var agents = pool.ListAgents();
-        var match = agents.FirstOrDefault(a =>
-            a.Id.StartsWith(targetAgent, StringComparison.OrdinalIgnoreCase) ||
-            a.Provider.Contains(targetAgent, StringComparison.OrdinalIgnoreCase) ||
-            a.Model.Contains(targetAgent, StringComparison.OrdinalIgnoreCase));
+        var exactMatches = agents.Where(a =>
+            string.Equals(a.Id, targetAgent, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(a.Provider, targetAgent, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(a.Model, targetAgent, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var partialMatches = exactMatches.Count == 0
+            ? agents.Where(a =>
+                a.Id.StartsWith(targetAgent, StringComparison.OrdinalIgnoreCase) ||
+                a.Provider.Contains(targetAgent, StringComparison.OrdinalIgnoreCase) ||
+                a.Model.Contains(targetAgent, StringComparison.OrdinalIgnoreCase))
+                .ToList()
+            : [];
+        var matches = exactMatches.Count > 0 ? exactMatches : partialMatches;
 
-        if (match is null)
+        if (matches.Count == 0)
         {
             var available = agents.Count > 0
                 ? string.Join(", ", agents.Select(a => $"`{a.Id[..8]}` ({a.Provider}/{a.Model})"))
@@ -70,6 +81,18 @@ public sealed class RouteCommand(
                 Content = $"❌ No agent matching **{targetAgent}** found.\nAvailable: {available}"
             });
         }
+
+        if (matches.Count > 1)
+        {
+            var candidates = string.Join(", ", matches.Select(a => $"`{a.Id[..8]}` ({a.Provider}/{a.Model})"));
+            return Task.FromResult(new CommandResult
+            {
+                Success = false,
+                Content = $"❌ Ambiguous agent **{targetAgent}**.\nMatches: {candidates}"
+            });
+        }
+
+        var match = matches[0];
 
         router.MapChannel(channelId, match.Id);
 

@@ -74,15 +74,7 @@ builder.Services.AddEventBus(new EventBusOptions
     RedisConnectionString = gatewayConfig.EventBus.RedisConnectionString,
 });
 builder.Services.AddSingleton<IChannelRegistry, ChannelRegistry>();
-builder.Services.AddSingleton<IProviderDetector, ClaudeCodeDetector>();
-builder.Services.AddSingleton<IProviderDetector, CopilotDetector>();
-builder.Services.AddSingleton<IProviderDetector, OpenAICodexDetector>();
-builder.Services.AddSingleton<IProviderDetector, OllamaDetector>();
-builder.Services.AddSingleton<IProviderDetector, FoundryLocalDetector>();
-builder.Services.AddSingleton<IProviderDetector>(sp =>
-    new LocalModelDetector(logger: sp.GetService<Microsoft.Extensions.Logging.ILogger<LocalModelDetector>>()));
-builder.Services.AddSingleton<IProviderRegistry>(sp =>
-    new ProviderRegistry(sp.GetServices<IProviderDetector>()));
+builder.Services.AddDefaultProviderRegistry();
 builder.Services.AddSingleton<SessionStore>(_ =>
     new SessionStore(DataDirectories.SessionsDb));
 builder.Services.AddSingleton<IMemoryService, MemoryService>();
@@ -132,7 +124,8 @@ builder.Services.AddSingleton<ICommandRegistry>(sp =>
     registry.Register(new ProviderCommand(
         sp.GetRequiredService<AgentRouter>(),
         sp.GetRequiredService<AgentPoolService>(),
-        sp.GetRequiredService<IProviderRegistry>()));
+        sp.GetRequiredService<IProviderRegistry>(),
+        sp.GetRequiredService<ILogger<ProviderCommand>>()));
     registry.Register(new ConfigCommand(
         sp.GetRequiredService<AgentRouter>(),
         sp.GetRequiredService<AgentPoolService>(),

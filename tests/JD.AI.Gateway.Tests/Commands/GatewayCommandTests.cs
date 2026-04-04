@@ -20,18 +20,20 @@ public class GatewayCommandTests
     private readonly ChannelRegistry _channels;
     private readonly AgentRouter _router;
     private readonly GatewayConfig _config;
+    private static readonly Microsoft.Extensions.Logging.ILogger<ProviderCommand> ProviderCommandLogger =
+        NullLogger<ProviderCommand>.Instance;
 
     public GatewayCommandTests()
     {
         _providers = Substitute.For<IProviderRegistry>();
 
         var ollamaModel = new ProviderModelInfo("llama3.2:latest", "llama3.2:latest", "Ollama");
-        var openAiModel = new ProviderModelInfo("gpt-5.3-codex", "gpt-5.3-codex", "OpenAI");
+        var copilotModel = new ProviderModelInfo("gpt-5.3-codex", "gpt-5.3-codex", "GitHub Copilot");
 
         var detectedProviders = new List<ProviderInfo>
         {
             new("Ollama", true, null, [ollamaModel]),
-            new("OpenAI", true, null, [openAiModel]),
+            new("GitHub Copilot", true, null, [copilotModel]),
             new("Claude", false, "offline", [])
         };
 
@@ -41,7 +43,7 @@ public class GatewayCommandTests
         _providers.DetectProvidersAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyList<ProviderInfo>>(detectedProviders));
         _providers.GetModelsAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => Task.FromResult<IReadOnlyList<ProviderModelInfo>>([ollamaModel, openAiModel]));
+            .Returns(_ => Task.FromResult<IReadOnlyList<ProviderModelInfo>>([ollamaModel, copilotModel]));
         _providers.GetDetector(Arg.Any<string>()).Returns(detector);
 
         var eventBus = Substitute.For<IEventBus>();
@@ -71,6 +73,8 @@ public class GatewayCommandTests
         Arguments = args ?? new Dictionary<string, string>(StringComparer.Ordinal)
     };
 
+    private ProviderCommand CreateProviderCommand() => new(_router, _pool, _providers, ProviderCommandLogger);
+
     // --- Route commands ---
 
     [Fact]
@@ -85,21 +89,65 @@ public class GatewayCommandTests
         }));
 
         result.Success.Should().BeTrue();
-        _router.GetAgentForChannel("discord").Should().Be(agentId);
+        _router.GetAgentForChannel("ch456").Should().Be(agentId);
+        _router.GetAgentForChannel("discord").Should().BeNull();
         result.Content.Should().Contain("now routes");
+    }
+
+    [Fact]
+    public async Task RouteCommand_WhenAgentMatchIsAmbiguous_ReturnsCandidates()
+    {
+        await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        var cmd = new RouteCommand(_router, _pool);
+
+        var result = await cmd.ExecuteAsync(MakeContext("route", new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["agent"] = "ollama"
+        }));
+
+        result.Success.Should().BeFalse();
+        result.Content.Should().Contain("Ambiguous agent");
+        result.Content.Should().Contain("Ollama/llama3.2:latest");
+    }
+
+    [Fact]
+    public async Task RouteCommand_WithoutArgument_ShowsCurrentRoute()
+    {
+        var agentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        _router.MapChannel("ch456", agentId);
+        var cmd = new RouteCommand(_router, _pool);
+
+        var result = await cmd.ExecuteAsync(MakeContext("route"));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain("📡 **ch456** → Ollama/llama3.2:latest");
+        result.Content.Should().Contain(agentId[..8]);
+    }
+
+    [Fact]
+    public async Task RouteCommand_WithoutArgumentAndNoMapping_ShowsUnmappedHint()
+    {
+        var cmd = new RouteCommand(_router, _pool);
+
+        var result = await cmd.ExecuteAsync(MakeContext("route"));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain("📡 **ch456** — No agent mapped.");
+        result.Content.Should().Contain("/jdai-route <agent>");
     }
 
     [Fact]
     public async Task RoutesCommand_ListsMappedChannels()
     {
         var agentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
-        _router.MapChannel("discord", agentId);
+        _router.MapChannel("ch456", agentId);
         var cmd = new RoutesCommand(_router, _pool);
 
         var result = await cmd.ExecuteAsync(MakeContext("routes"));
 
         result.Success.Should().BeTrue();
-        result.Content.Should().Contain("discord");
+        result.Content.Should().Contain("ch456");
         result.Content.Should().Contain("Ollama/llama3.2:latest");
     }
 
@@ -107,31 +155,33 @@ public class GatewayCommandTests
     public async Task ProviderCommand_SwitchesProvider_ForMappedChannel()
     {
         var initialAgentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
-        _router.MapChannel("discord", initialAgentId);
-        var cmd = new ProviderCommand(_router, _pool, _providers);
+        _router.MapChannel("ch456", initialAgentId);
+        var cmd = CreateProviderCommand();
 
         var result = await cmd.ExecuteAsync(MakeContext("provider", new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["name"] = "openai"
+            ["name"] = "copilot"
         }));
 
         result.Success.Should().BeTrue();
-        var mappedAgentId = _router.GetAgentForChannel("discord");
+        var mappedAgentId = _router.GetAgentForChannel("ch456");
         mappedAgentId.Should().NotBeNull();
         mappedAgentId.Should().NotBe(initialAgentId);
 
         var mappedAgent = _pool.ListAgents().Single(a =>
             string.Equals(a.Id, mappedAgentId, StringComparison.Ordinal));
-        mappedAgent.Provider.Should().Be("OpenAI");
+        mappedAgent.Provider.Should().Be("GitHub Copilot");
         mappedAgent.Model.Should().Be("gpt-5.3-codex");
+        _pool.ListAgents().Should().NotContain(a =>
+            string.Equals(a.Id, initialAgentId, StringComparison.Ordinal));
 
-        result.Content.Should().Contain("Switched to **OpenAI**");
+        result.Content.Should().Contain("Switched to **GitHub Copilot**");
     }
 
     [Fact]
     public async Task ProviderCommand_WithoutMappedAgent_ShowsRouteHint()
     {
-        var cmd = new ProviderCommand(_router, _pool, _providers);
+        var cmd = CreateProviderCommand();
 
         var result = await cmd.ExecuteAsync(MakeContext("provider"));
 
@@ -144,8 +194,8 @@ public class GatewayCommandTests
     public async Task ProviderCommand_WithoutName_ShowsCurrentProviderDetails()
     {
         var agentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
-        _router.MapChannel("discord", agentId);
-        var cmd = new ProviderCommand(_router, _pool, _providers);
+        _router.MapChannel("ch456", agentId);
+        var cmd = CreateProviderCommand();
 
         var result = await cmd.ExecuteAsync(MakeContext("provider"));
 
@@ -155,9 +205,30 @@ public class GatewayCommandTests
     }
 
     [Fact]
+    public async Task RouteCommand_RemapsOnlyTheCurrentChannel()
+    {
+        var agentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        var otherAgentId = await _pool.SpawnAgentAsync("GitHub Copilot", "gpt-5.3-codex", null, CancellationToken.None);
+        var otherChannelContext = MakeContext("route") with { ChannelId = "ch999" };
+        _router.MapChannel(otherChannelContext.ChannelId, otherAgentId);
+        var cmd = new RouteCommand(_router, _pool);
+
+        var result = await cmd.ExecuteAsync(MakeContext("route", new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["agent"] = "ollama"
+        }));
+
+        result.Success.Should().BeTrue();
+        _router.GetAgentForChannel("ch456").Should().Be(agentId);
+        _router.GetAgentForChannel(otherChannelContext.ChannelId).Should().Be(otherAgentId);
+    }
+
+    [Fact]
     public async Task ProviderCommand_WhenProviderIsOffline_ReturnsAvailableProviders()
     {
-        var cmd = new ProviderCommand(_router, _pool, _providers);
+        var agentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        _router.MapChannel("ch456", agentId);
+        var cmd = CreateProviderCommand();
 
         var result = await cmd.ExecuteAsync(MakeContext("provider", new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -167,18 +238,20 @@ public class GatewayCommandTests
         result.Success.Should().BeFalse();
         result.Content.Should().Contain("Provider **Claude** not found or offline");
         result.Content.Should().Contain("**Ollama**");
-        result.Content.Should().Contain("**OpenAI**");
+        result.Content.Should().Contain("**GitHub Copilot**");
     }
 
     [Fact]
     public async Task ProviderCommand_WhenMatchedProviderHasNoModels_ReturnsError()
     {
+        var agentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        _router.MapChannel("ch456", agentId);
         _providers.DetectProvidersAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<ProviderInfo>>(
             [
                 new ProviderInfo("TestProvider", true, null, [])
             ]));
-        var cmd = new ProviderCommand(_router, _pool, _providers);
+        var cmd = CreateProviderCommand();
 
         var result = await cmd.ExecuteAsync(MakeContext("provider", new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -187,6 +260,76 @@ public class GatewayCommandTests
 
         result.Success.Should().BeFalse();
         result.Content.Should().Contain("**TestProvider** has no available models");
+    }
+
+    [Fact]
+    public async Task ProviderCommand_WithNameAndNoMappedAgent_ReturnsRouteHint()
+    {
+        var cmd = CreateProviderCommand();
+
+        var result = await cmd.ExecuteAsync(MakeContext("provider", new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["name"] = "copilot"
+        }));
+
+        result.Success.Should().BeFalse();
+        result.Content.Should().Contain("No agent mapped to this channel");
+        result.Content.Should().Contain("/jdai-route <agent>");
+    }
+
+    [Fact]
+    public async Task ProviderCommand_WhenProviderMatchIsAmbiguous_ReturnsCandidates()
+    {
+        var agentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        _router.MapChannel("ch456", agentId);
+        _providers.DetectProvidersAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<ProviderInfo>>(
+            [
+                new ProviderInfo("GitHub Copilot", true, null,
+                [
+                    new ProviderModelInfo("gpt-5.3-codex", "gpt-5.3-codex", "GitHub Copilot")
+                ]),
+                new ProviderInfo("GitHub Copilot Enterprise", true, null,
+                [
+                    new ProviderModelInfo("gpt-5.3-codex", "gpt-5.3-codex", "GitHub Copilot Enterprise")
+                ])
+            ]));
+        var cmd = CreateProviderCommand();
+
+        var result = await cmd.ExecuteAsync(MakeContext("provider", new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["name"] = "copilot"
+        }));
+
+        result.Success.Should().BeFalse();
+        result.Content.Should().Contain("Ambiguous provider");
+        result.Content.Should().Contain("**GitHub Copilot**");
+        result.Content.Should().Contain("**GitHub Copilot Enterprise**");
+    }
+
+    [Fact]
+    public async Task ProviderCommand_WhenSpawnFails_HidesInternalExceptionDetails()
+    {
+        var agentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        _router.MapChannel("ch456", agentId);
+        _providers.DetectProvidersAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<ProviderInfo>>(
+            [
+                new ProviderInfo("BrokenProvider", true, null,
+                [
+                    new ProviderModelInfo("broken-model", "broken-model", "BrokenProvider")
+                ])
+            ]));
+        _providers.GetDetector("BrokenProvider").Returns((IProviderDetector?)null);
+        var cmd = CreateProviderCommand();
+
+        var result = await cmd.ExecuteAsync(MakeContext("provider", new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["name"] = "BrokenProvider"
+        }));
+
+        result.Success.Should().BeFalse();
+        result.Content.Should().Be("❌ Failed to switch provider.");
     }
 
     // --- StatusCommand ---
@@ -429,7 +572,7 @@ public class GatewayCommandTests
     public async Task ClearCommand_WithoutFilter_ClearsAllAgents()
     {
         await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
-        await _pool.SpawnAgentAsync("OpenAI", "gpt-5.3-codex", null, CancellationToken.None);
+        await _pool.SpawnAgentAsync("GitHub Copilot", "gpt-5.3-codex", null, CancellationToken.None);
         var cmd = new ClearCommand(_pool);
 
         var result = await cmd.ExecuteAsync(MakeContext("clear"));
@@ -443,7 +586,7 @@ public class GatewayCommandTests
     public async Task ClearCommand_WithMatchingPrefix_ClearsOnlyMatchingAgents()
     {
         var matchingAgent = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
-        await _pool.SpawnAgentAsync("OpenAI", "gpt-5.3-codex", null, CancellationToken.None);
+        await _pool.SpawnAgentAsync("GitHub Copilot", "gpt-5.3-codex", null, CancellationToken.None);
         var cmd = new ClearCommand(_pool);
 
         var result = await cmd.ExecuteAsync(MakeContext("clear", new Dictionary<string, string>(StringComparer.Ordinal)
@@ -505,7 +648,7 @@ public class GatewayCommandTests
     [Fact]
     public async Task SwitchCommand_WithoutProvider_UsesFirstRunningAgentProvider()
     {
-        await _pool.SpawnAgentAsync("OpenAI", "gpt-5.3-codex", null, CancellationToken.None);
+        await _pool.SpawnAgentAsync("GitHub Copilot", "gpt-5.3-codex", null, CancellationToken.None);
         var cmd = new SwitchCommand(_pool);
 
         var result = await cmd.ExecuteAsync(MakeContext("switch", new Dictionary<string, string>(StringComparer.Ordinal)
@@ -514,10 +657,10 @@ public class GatewayCommandTests
         }));
 
         result.Success.Should().BeTrue();
-        result.Content.Should().Contain("**OpenAI/gpt-5.3-codex**");
+        result.Content.Should().Contain("**GitHub Copilot/gpt-5.3-codex**");
         _pool.ListAgents().Should().HaveCount(2);
         _pool.ListAgents().Should().Contain(a =>
-            a.Provider == "OpenAI" &&
+            a.Provider == "GitHub Copilot" &&
             a.Model == "gpt-5.3-codex");
     }
 
@@ -529,13 +672,13 @@ public class GatewayCommandTests
         var result = await cmd.ExecuteAsync(MakeContext("switch", new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["model"] = "gpt-5.3-codex",
-            ["provider"] = "OpenAI"
+            ["provider"] = "GitHub Copilot"
         }));
 
         result.Success.Should().BeTrue();
-        result.Content.Should().Contain("**OpenAI/gpt-5.3-codex**");
+        result.Content.Should().Contain("**GitHub Copilot/gpt-5.3-codex**");
         _pool.ListAgents().Should().ContainSingle(a =>
-            a.Provider == "OpenAI" &&
+            a.Provider == "GitHub Copilot" &&
             a.Model == "gpt-5.3-codex");
     }
 
@@ -547,7 +690,7 @@ public class GatewayCommandTests
         var result = await cmd.ExecuteAsync(MakeContext("switch", new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["model"] = "missing-model",
-            ["provider"] = "OpenAI"
+            ["provider"] = "GitHub Copilot"
         }));
 
         result.Success.Should().BeFalse();
@@ -569,7 +712,7 @@ public class GatewayCommandTests
         registry.Register(new RouteCommand(_router, _pool));
         registry.Register(new RoutesCommand(_router, _pool));
         registry.Register(new ProvidersCommand(_providers));
-        registry.Register(new ProviderCommand(_router, _pool, _providers));
+        registry.Register(CreateProviderCommand());
 
         var result = await helpCmd.ExecuteAsync(MakeContext("help"));
 
