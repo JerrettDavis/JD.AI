@@ -71,13 +71,14 @@ public sealed class UpdateChecker
 
         var entries = plan.Tools.Select(tool =>
         {
-            var update = plan.Updates.FirstOrDefault(u => string.Equals(u.Tool.PackageId, tool.PackageId, StringComparison.Ordinal));
+            var update = plan.Results.FirstOrDefault(u => string.Equals(u.Tool.PackageId, tool.PackageId, StringComparison.Ordinal));
             return new AllToolsUpdateEntry(
                 tool.PackageId,
                 tool.ToolName,
                 tool.CurrentVersion,
                 update?.LatestVersion,
-                update?.IsNewer ?? false);
+                update?.IsNewer ?? false,
+                update?.LatestVersion is null);
         }).ToList().AsReadOnly();
 
         return new AllToolsUpdatePlan(entries, plan.HasUpdates, DateTimeOffset.UtcNow);
@@ -133,9 +134,14 @@ public sealed record AllToolsUpdateEntry(
     string ToolName,
     string CurrentVersion,
     string? LatestVersion,
-    bool HasUpdate)
+    bool HasUpdate,
+    bool VersionCheckFailed)
 {
-    public string Status => HasUpdate ? $"Update available ({LatestVersion})" : "Up to date";
+    public string Status => VersionCheckFailed
+        ? "Version check failed"
+        : HasUpdate
+            ? $"Update available ({LatestVersion})"
+            : "Up to date";
 }
 
 /// <summary>Information about an available update.</summary>

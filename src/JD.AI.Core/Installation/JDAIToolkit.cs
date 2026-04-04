@@ -22,9 +22,11 @@ public sealed record UpdatePlan(
     IReadOnlyList<ToolUpdate> Updates,
     bool HasUpdates)
 {
+    public IReadOnlyList<ToolUpdate> Results { get; init; } = Updates;
     public int TotalCount => Tools.Count;
     public int UpdateCount => Updates.Count;
     public int UpToDateCount => Tools.Count - Updates.Count;
+    public int UnknownCount => Results.Count(r => r.LatestVersion is null);
 }
 
 /// <summary>
@@ -102,7 +104,10 @@ public static class JDAIToolkit
         return new UpdatePlan(
             Tools: tools,
             Updates: updates.Where(u => u.IsNewer).ToList().AsReadOnly(),
-            HasUpdates: updates.Any(u => u.IsNewer));
+            HasUpdates: updates.Any(u => u.IsNewer))
+        {
+            Results = updates.ToList().AsReadOnly(),
+        };
     }
 
     /// <summary>
@@ -207,8 +212,23 @@ public static class JDAIToolkit
         var latestVer = TryParseVersion(latest);
         var currentVer = TryParseVersion(current);
         if (latestVer is null) return -1;
-        if (currentVer is null) return 1;
-        return latestVer.CompareTo(currentVer);
+        if (currentVer is null) return -1;
+
+        var comparison = latestVer.CompareTo(currentVer);
+        if (comparison != 0)
+        {
+            return comparison;
+        }
+
+        var latestIsPrerelease = latest.Contains('-', StringComparison.Ordinal);
+        var currentIsPrerelease = current.Contains('-', StringComparison.Ordinal);
+
+        return (latestIsPrerelease, currentIsPrerelease) switch
+        {
+            (false, true) => 1,
+            (true, false) => -1,
+            _ => 0,
+        };
     }
 
     // ── Private helpers ───────────────────────────────────────────

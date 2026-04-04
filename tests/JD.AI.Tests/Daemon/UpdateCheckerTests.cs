@@ -110,6 +110,20 @@ public sealed class UpdateCheckerTests
         Assert.Equal(latest, info.LatestVersion);
     }
 
+    [Fact]
+    public void AllToolsUpdateEntry_Status_IsVersionCheckFailed_WhenLatestVersionIsUnknown()
+    {
+        var entry = new AllToolsUpdateEntry(
+            "JD.AI.Daemon",
+            "jdai-daemon",
+            "1.0.0",
+            LatestVersion: null,
+            HasUpdate: false,
+            VersionCheckFailed: true);
+
+        Assert.Equal("Version check failed", entry.Status);
+    }
+
     private sealed class StubHttpHandler(string content, HttpStatusCode statusCode) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)

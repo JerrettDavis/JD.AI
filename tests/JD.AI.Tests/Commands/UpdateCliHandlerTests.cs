@@ -15,11 +15,27 @@ public sealed class UpdateCliHandlerTests : IDisposable
     private readonly Func<InstallationInfo, IInstallStrategy> _originalUpdateFactory =
         UpdateCliHandler.UpdateStrategyFactory;
 
+    private readonly Func<CancellationToken, Task<IReadOnlyList<InstalledTool>>> _originalGetInstalledToolsAsync =
+        UpdateCliHandler.GetInstalledToolsAsync;
+
+    private readonly Func<IReadOnlyList<InstalledTool>?, CancellationToken, Task<UpdatePlan>> _originalCheckAllAsync =
+        UpdateCliHandler.CheckAllAsync;
+
+    private readonly Func<string, CancellationToken, Task<string?>> _originalGetLatestVersionAsync =
+        UpdateCliHandler.GetLatestVersionAsync;
+
+    private readonly Func<string, CancellationToken, Task<string?>> _originalGetInstalledToolVersionAsync =
+        UpdateCliHandler.GetInstalledToolVersionAsync;
+
     public void Dispose()
     {
         UpdateCliHandler.DetectInstallationAsync = _originalDetect;
         UpdateCliHandler.UpdateStrategyFactory = _originalUpdateFactory;
         UpdateCliHandler.InstallStrategyFactory = _originalInstallFactory;
+        UpdateCliHandler.GetInstalledToolsAsync = _originalGetInstalledToolsAsync;
+        UpdateCliHandler.CheckAllAsync = _originalCheckAllAsync;
+        UpdateCliHandler.GetLatestVersionAsync = _originalGetLatestVersionAsync;
+        UpdateCliHandler.GetInstalledToolVersionAsync = _originalGetInstalledToolVersionAsync;
     }
 
     [Fact]
@@ -58,6 +74,92 @@ public sealed class UpdateCliHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task Update_CheckOnly_WhenNoToolsInstalled_FallsBackToSelfCheck()
+    {
+        var strategy = CreateStrategy("1.2.0", true);
+        ConfigureHandlers("1.0.0", strategy, fakeTools: []);
+
+        var code = await UpdateCliHandler.RunAsync("update", ["--check"]);
+
+        Assert.Equal(0, code);
+        Assert.Equal(0, strategy.ApplyCalls);
+    }
+
+    [Fact]
+    public async Task Update_SelfCheck_UsesSelfUpdatePath()
+    {
+        var strategy = CreateStrategy("1.2.0", true);
+        ConfigureHandlers("1.0.0", strategy, fakeTools: []);
+
+        var code = await UpdateCliHandler.RunAsync("update", ["--self", "--check"]);
+
+        Assert.Equal(0, code);
+        Assert.Equal(0, strategy.ApplyCalls);
+    }
+
+    [Fact]
+    public async Task Update_WhenTargetsConflict_ReturnsOne()
+    {
+        ConfigureHandlers("1.0.0");
+
+        var code = await UpdateCliHandler.RunAsync("update", ["--self", "--all"]);
+
+        Assert.Equal(1, code);
+    }
+
+    [Fact]
+    public async Task Update_WhenCheckAndForceAreCombined_ReturnsOne()
+    {
+        ConfigureHandlers("1.0.0");
+
+        var code = await UpdateCliHandler.RunAsync("update", ["jdai-daemon", "--check", "--force"]);
+
+        Assert.Equal(1, code);
+    }
+
+    [Fact]
+    public async Task Update_WhenUnknownFlagIsProvided_ReturnsOne()
+    {
+        ConfigureHandlers("1.0.0");
+
+        var code = await UpdateCliHandler.RunAsync("update", ["--bogus"]);
+
+        Assert.Equal(1, code);
+    }
+
+    [Fact]
+    public async Task Update_WhenMultipleToolNamesAreProvided_ReturnsOne()
+    {
+        ConfigureHandlers("1.0.0");
+
+        var code = await UpdateCliHandler.RunAsync("update", ["jdai", "jdai-daemon"]);
+
+        Assert.Equal(1, code);
+    }
+
+    [Fact]
+    public async Task Update_NamedToolCheck_WhenToolIsNotInstalled_ReturnsOne()
+    {
+        ConfigureHandlers("1.0.0");
+        UpdateCliHandler.GetInstalledToolVersionAsync = (_, _) => Task.FromResult<string?>(null);
+
+        var code = await UpdateCliHandler.RunAsync("update", ["jdai-daemon", "--check"]);
+
+        Assert.Equal(1, code);
+    }
+
+    [Fact]
+    public async Task Update_NamedToolApply_WhenToolIsNotInstalled_ReturnsOne()
+    {
+        ConfigureHandlers("1.0.0");
+        UpdateCliHandler.GetInstalledToolVersionAsync = (_, _) => Task.FromResult<string?>(null);
+
+        var code = await UpdateCliHandler.RunAsync("update", ["jdai-daemon"]);
+
+        Assert.Equal(1, code);
+    }
+
+    [Fact]
     public async Task Update_WhenLatestVersionUnknown_ReturnsOneUnlessForced()
     {
         ConfigureHandlers(
@@ -82,6 +184,61 @@ public sealed class UpdateCliHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task Update_WhenNoOtherToolsInstalled_FallsBackToSelfUpdate()
+    {
+        var strategy = CreateStrategy("1.2.0", true);
+        ConfigureHandlers("1.0.0", strategy, fakeTools: []);
+
+        var code = await UpdateCliHandler.RunAsync("update", []);
+
+        Assert.Equal(0, code);
+        Assert.Equal(1, strategy.ApplyCalls);
+        Assert.Equal("1.2.0", strategy.LastTargetVersion);
+    }
+
+    [Fact]
+    public async Task Update_BulkForce_ReturnsOne()
+    {
+        ConfigureHandlers("1.0.0", fakeTools:
+        [
+            new InstalledTool("JD.AI.Daemon", "jdai-daemon", "1.0.0", InstallKind.Unknown),
+        ]);
+
+        var code = await UpdateCliHandler.RunAsync("update", ["--all", "--force"]);
+
+        Assert.Equal(1, code);
+    }
+
+    [Fact]
+    public async Task Update_All_WhenNoToolsInstalled_ReturnsOne()
+    {
+        ConfigureHandlers("1.0.0", fakeTools: []);
+
+        var code = await UpdateCliHandler.RunAsync("update", ["--all"]);
+
+        Assert.Equal(1, code);
+    }
+
+    [Fact]
+    public async Task Update_CheckOnly_WhenToolVersionLookupFails_ReturnsOne()
+    {
+        var tool = new InstalledTool("JD.AI.Daemon", "jdai-daemon", "1.0.0", InstallKind.Unknown);
+        var plan = new UpdatePlan([tool], [], HasUpdates: false)
+        {
+            Results =
+            [
+                new ToolUpdate(tool, null, IsNewer: false),
+            ],
+        };
+
+        ConfigureHandlers("1.0.0", fakeTools: [tool], fakeUpdatePlan: plan);
+
+        var code = await UpdateCliHandler.RunAsync("update", ["--check"]);
+
+        Assert.Equal(1, code);
+    }
+
+    [Fact]
     public async Task Update_ApplyPath_ReturnsZeroOnSuccess_AndOneOnFailure()
     {
         var ok = CreateStrategy("1.2.0", true);
@@ -96,6 +253,29 @@ public sealed class UpdateCliHandlerTests : IDisposable
         Assert.Equal(1, failureCode);
         Assert.Equal(1, ok.ApplyCalls);
         Assert.Equal(1, fail.ApplyCalls);
+    }
+
+    [Fact]
+    public async Task RunAsync_WhenOperationIsCancelled_Returns130()
+    {
+        UpdateCliHandler.DetectInstallationAsync = _ => Task.FromException<InstallationInfo>(new OperationCanceledException());
+
+        var code = await UpdateCliHandler.RunAsync("update", ["--self"]);
+
+        Assert.Equal(130, code);
+    }
+
+    [Fact]
+    public async Task Update_SelfForce_WhenLatestVersionUnknown_AppliesWithoutTargetVersion()
+    {
+        var strategy = CreateStrategy(null, true);
+        ConfigureHandlers("1.0.0", strategy);
+
+        var code = await UpdateCliHandler.RunAsync("update", ["--self", "--force"]);
+
+        Assert.Equal(0, code);
+        Assert.Equal(1, strategy.ApplyCalls);
+        Assert.Null(strategy.LastTargetVersion);
     }
 
     [Fact]
@@ -139,6 +319,26 @@ public sealed class UpdateCliHandlerTests : IDisposable
         Assert.Equal("2.0.0", failure.LastTargetVersion);
     }
 
+    [Fact]
+    public async Task Install_WhenUnknownFlagIsProvided_ReturnsOne()
+    {
+        ConfigureHandlers("1.0.0");
+
+        var code = await UpdateCliHandler.RunAsync("install", ["--bogus"]);
+
+        Assert.Equal(1, code);
+    }
+
+    [Fact]
+    public async Task Install_WhenMultipleVersionsAreProvided_ReturnsOne()
+    {
+        ConfigureHandlers("1.0.0");
+
+        var code = await UpdateCliHandler.RunAsync("install", ["1.2.3", "extra"]);
+
+        Assert.Equal(1, code);
+    }
+
     private static FakeInstallStrategy CreateStrategy(string? latest, bool applySuccess) =>
         new("fake",
             latest,
@@ -167,6 +367,9 @@ public sealed class UpdateCliHandlerTests : IDisposable
             fakeTools ?? []);
         UpdateCliHandler.CheckAllAsync = (_, _) => Task.FromResult(
             fakeUpdatePlan ?? new UpdatePlan([], [], HasUpdates: false));
+        UpdateCliHandler.GetInstalledToolVersionAsync = (packageId, _) =>
+            Task.FromResult(
+                fakeTools?.FirstOrDefault(t => string.Equals(t.PackageId, packageId, StringComparison.Ordinal))?.CurrentVersion);
     }
 
     private sealed class FakeInstallStrategy(

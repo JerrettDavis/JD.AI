@@ -31,54 +31,127 @@ internal static class UpdateCliHandler
     internal static Func<string, CancellationToken, Task<string?>> GetLatestVersionAsync { get; set; } =
         JDAIToolkit.GetLatestVersionAsync;
 
+    /// <summary>Factory for resolving the currently installed version of a named global tool.</summary>
+    internal static Func<string, CancellationToken, Task<string?>> GetInstalledToolVersionAsync { get; set; } =
+        GetInstalledToolVersionCoreAsync;
+
     public static async Task<int> RunAsync(string subcommand, string[] args)
     {
         using var cts = new CancellationTokenSource();
-        Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
-
-        return subcommand switch
+        ConsoleCancelEventHandler cancelHandler = (_, e) =>
         {
-            "update" => await RunUpdateAsync(args, cts.Token).ConfigureAwait(false),
-            "install" => await RunInstallAsync(args, cts.Token).ConfigureAwait(false),
-            _ => PrintHelp(),
+            e.Cancel = true;
+            cts.Cancel();
         };
+
+        Console.CancelKeyPress += cancelHandler;
+
+        try
+        {
+            return subcommand switch
+            {
+                "update" => await RunUpdateAsync(args, cts.Token).ConfigureAwait(false),
+                "install" => await RunInstallAsync(args, cts.Token).ConfigureAwait(false),
+                _ => PrintHelp(),
+            };
+        }
+        catch (OperationCanceledException)
+        {
+            AnsiConsole.MarkupLine("[yellow]Cancelled.[/]");
+            return 130;
+        }
+        finally
+        {
+            Console.CancelKeyPress -= cancelHandler;
+        }
     }
 
     // ── jdai update [--self] [--check] [--all] [tool] ──────────
 
     private static async Task<int> RunUpdateAsync(string[] args, CancellationToken ct)
     {
-        var checkOnly = args.Contains("--check");
-        var selfOnly = args.Contains("--self");
-        var allTools = args.Contains("--all");
-        var namedTool = args.FirstOrDefault(a => !a.StartsWith("--"));
-        var force = args.Contains("--force");
-
         if (args.Contains("--help") || args.Contains("-h"))
         {
             AnsiConsole.MarkupLine("[bold]Usage:[/] jdai update [[--self]] [[--check]] [[--all]] [[--force]]");
             AnsiConsole.MarkupLine("  [dim]--self[/]    Update only the jdai tool (default: all tools)");
             AnsiConsole.MarkupLine("  [dim]--check[/]   Show update plan without applying");
             AnsiConsole.MarkupLine("  [dim]--all[/]     Check and update all installed JD.AI tools");
-            AnsiConsole.MarkupLine("  [dim]--force[/]   Apply even if already on latest");
+            AnsiConsole.MarkupLine("  [dim]--force[/]   Apply even if already on latest (self or named tool only)");
             AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine("  Update a named tool: jdai update [dim]<tool-name>[/]");
             return 0;
         }
 
-        // Multi-tool mode: --check, --all, or positional tool name
-        if (checkOnly || allTools || namedTool is not null)
+        var allowedFlags = new HashSet<string>(StringComparer.Ordinal)
         {
-            return await RunMultiToolUpdateAsync(checkOnly, allTools, namedTool, force, ct)
-                .ConfigureAwait(false);
+            "--check",
+            "--self",
+            "--all",
+            "--force",
+            "--help",
+            "-h",
+        };
+
+        var unknownFlags = args
+            .Where(a => a.StartsWith('-') && !allowedFlags.Contains(a))
+            .ToArray();
+        var positionals = args
+            .Where(a => !a.StartsWith('-'))
+            .ToArray();
+
+        if (unknownFlags.Length > 0 || positionals.Length > 1)
+        {
+            AnsiConsole.MarkupLine("[red]Invalid arguments.[/]");
+            return 1;
         }
 
-        // Default (no flags): multi-tool update all
+        var checkOnly = args.Contains("--check");
+        var selfOnly = args.Contains("--self");
+        var allTools = args.Contains("--all");
+        var namedTool = positionals.FirstOrDefault();
+        var force = args.Contains("--force");
+
+        var targetModes = (selfOnly ? 1 : 0) + (allTools ? 1 : 0) + (namedTool is not null ? 1 : 0);
+        if (targetModes > 1)
+        {
+            AnsiConsole.MarkupLine("[red]Choose only one of --self, --all, or <tool>.[/]");
+            return 1;
+        }
+
+        if (checkOnly && force)
+        {
+            AnsiConsole.MarkupLine("[red]--force cannot be used with --check.[/]");
+            return 1;
+        }
+
+        if (force && !selfOnly && namedTool is null)
+        {
+            AnsiConsole.MarkupLine("[red]--force is not supported with bulk update yet.[/]");
+            return 1;
+        }
+
         if (selfOnly)
         {
             return await RunSelfUpdateAsync(checkOnly, force, ct).ConfigureAwait(false);
         }
 
+        if (checkOnly && !allTools && namedTool is null)
+        {
+            var installedTools = await GetInstalledToolsAsync(ct).ConfigureAwait(false);
+            if (installedTools.Count == 0)
+            {
+                return await RunSelfUpdateAsync(checkOnly: true, force: false, ct).ConfigureAwait(false);
+            }
+        }
+
+        // Multi-tool mode: --check, --all, or positional tool name
+        if (checkOnly || allTools || namedTool is not null)
+        {
+            return await RunMultiToolUpdateAsync(checkOnly, namedTool, force, ct)
+                .ConfigureAwait(false);
+        }
+
+        // Default (no flags): multi-tool update all
         var tools = await GetInstalledToolsAsync(ct).ConfigureAwait(false);
 
         // Fall back to single-tool mode if no other JD.AI tools are detected
@@ -87,7 +160,7 @@ internal static class UpdateCliHandler
             return await RunSelfUpdateAsync(checkOnly, force, ct).ConfigureAwait(false);
         }
 
-        return await RunMultiToolUpdateAsync(checkOnly: false, allTools: true, namedTool: null, force, ct)
+        return await RunMultiToolUpdateAsync(checkOnly: false, namedTool: null, force: false, ct)
             .ConfigureAwait(false);
     }
 
@@ -95,7 +168,6 @@ internal static class UpdateCliHandler
 
     private static async Task<int> RunMultiToolUpdateAsync(
         bool checkOnly,
-        bool allTools,
         string? namedTool,
         bool force,
         CancellationToken ct)
@@ -144,18 +216,26 @@ internal static class UpdateCliHandler
 
         foreach (var tool in plan.Tools)
         {
-            var update = plan.Updates.FirstOrDefault(u => string.Equals(u.Tool.PackageId, tool.PackageId, StringComparison.Ordinal));
-            var status = update is { IsNewer: true }
+            var result = plan.Results.FirstOrDefault(u => string.Equals(u.Tool.PackageId, tool.PackageId, StringComparison.Ordinal));
+            var status = result?.LatestVersion is null
+                ? "[yellow]Unknown[/]"
+                : result.IsNewer
                 ? $"[yellow]Update available[/]"
                 : "[green]Up to date[/]";
             table.AddRow(
                 tool.PackageId,
                 tool.CurrentVersion,
-                update?.LatestVersion ?? tool.CurrentVersion,
+                result?.LatestVersion ?? tool.CurrentVersion,
                 status);
         }
 
         AnsiConsole.Write(table);
+
+        if (plan.UnknownCount > 0)
+        {
+            AnsiConsole.MarkupLine("[yellow]Some tool versions could not be determined.[/]");
+            return 1;
+        }
 
         if (!plan.HasUpdates && !force)
         {
@@ -221,15 +301,16 @@ internal static class UpdateCliHandler
             .Spinner(Spinner.Known.Dots)
             .SpinnerStyle(Style.Parse("blue"))
             .StartAsync($"Checking {packageId}...", async _ =>
-            {
-                var r = await Core.Infrastructure.ProcessExecutor.RunAsync(
-                    "dotnet", $"tool show -g {packageId}",
-                    timeout: TimeSpan.FromSeconds(5),
-                    cancellationToken: ct).ConfigureAwait(false);
-                return r.Success ? ParseVersionFromOutput(r.StandardOutput) : null;
-            }).ConfigureAwait(false);
+                await GetInstalledToolVersionAsync(packageId, ct).ConfigureAwait(false))
+            .ConfigureAwait(false);
 
-        var currentVersion = showResult ?? "unknown";
+        if (showResult is null)
+        {
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(packageId)} is not installed as a global tool.[/]");
+            return 1;
+        }
+
+        var currentVersion = showResult;
         AnsiConsole.MarkupLine($"[dim]Current:[/] [bold]{currentVersion}[/]");
 
         var latest = await AnsiConsole.Status()
@@ -380,10 +461,28 @@ internal static class UpdateCliHandler
             return 0;
         }
 
-        var force = args.Contains("--force");
-        var targetVersion = args
+        var allowedFlags = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "--force",
+            "--help",
+            "-h",
+        };
+
+        var unknownFlags = args
+            .Where(a => a.StartsWith('-') && !allowedFlags.Contains(a))
+            .ToArray();
+        var positionals = args
             .Where(a => !a.StartsWith('-'))
-            .FirstOrDefault();
+            .ToArray();
+
+        if (unknownFlags.Length > 0 || positionals.Length > 1)
+        {
+            AnsiConsole.MarkupLine("[red]Invalid arguments.[/]");
+            return 1;
+        }
+
+        var force = args.Contains("--force");
+        var targetVersion = positionals.FirstOrDefault();
 
         var info = await AnsiConsole.Status()
             .Spinner(Spinner.Known.Dots)
@@ -482,5 +581,15 @@ internal static class UpdateCliHandler
             output, @"Version:\s*([^\s]+)",
             System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         return match.Success ? match.Groups[1].Value.Trim() : null;
+    }
+
+    private static async Task<string?> GetInstalledToolVersionCoreAsync(string packageId, CancellationToken ct)
+    {
+        var result = await Core.Infrastructure.ProcessExecutor.RunAsync(
+            "dotnet", $"tool show -g {packageId}",
+            timeout: TimeSpan.FromSeconds(5),
+            cancellationToken: ct).ConfigureAwait(false);
+
+        return result.Success ? ParseVersionFromOutput(result.StandardOutput) : null;
     }
 }

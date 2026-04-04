@@ -81,20 +81,7 @@ public static class UpdateChecker
 
     /// <summary>Compares two semver-ish version strings. Returns true if latest &gt; current.</summary>
     public static bool IsNewer(string latest, string current)
-    {
-        // Strip any pre-release suffixes for comparison
-        static Version? Parse(string v)
-        {
-            var dashIdx = v.IndexOf('-', StringComparison.Ordinal);
-            var clean = dashIdx >= 0 ? v[..dashIdx] : v;
-            return Version.TryParse(clean, out var result) ? result : null;
-        }
-
-        var latestVer = Parse(latest);
-        var currentVer = Parse(current);
-        if (latestVer is null || currentVer is null) return false;
-        return latestVer > currentVer;
-    }
+        => JDAIToolkit.CompareVersions(latest, current) > 0;
 
     private static UpdateCache? ReadCache()
     {

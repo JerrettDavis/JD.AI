@@ -19,6 +19,7 @@ public sealed class UpdateCheckerTests
     [InlineData("1.0.0-preview.1", "0.9.0", true)]
     [InlineData("1.0.0-beta", "1.0.0", false)]
     [InlineData("1.0.1-rc1", "1.0.0", true)]
+    [InlineData("1.0.0", "1.0.0-rc.1", true)]
     public void IsNewer_HandlesPreReleaseVersions(string latest, string current, bool expected)
     {
         Assert.Equal(expected, UpdateChecker.IsNewer(latest, current));
