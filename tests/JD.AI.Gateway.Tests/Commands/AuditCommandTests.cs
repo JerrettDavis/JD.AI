@@ -67,7 +67,8 @@ public sealed class AuditCommandTests
 
         result.Success.Should().BeTrue();
         result.Content.Should().Contain("1 total events");
-        result.Content.Should().Contain("tool.invoke");
+        result.Content.Should().Contain("**tool.invoke** [WriteFile] — Warning");
+        result.Content.Should().NotContain("**tool.invoke** [ReadFile] — Debug");
         result.Content.Should().NotContain("session.start");
     }
 
@@ -82,6 +83,9 @@ public sealed class AuditCommandTests
 
         result.Success.Should().BeTrue();
         result.Content.Should().Contain("showing 1");
+        result.Content.Should().Contain("**tool.invoke** [WriteFile] — Warning");
+        result.Content.Should().NotContain("**session.start**");
+        result.Content.Should().NotContain("**tool.invoke** [ReadFile] — Debug");
     }
 
     [Fact]
@@ -94,5 +98,72 @@ public sealed class AuditCommandTests
 
         result.Success.Should().BeTrue();
         result.Content.Should().Contain("No audit events found");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShowsErrorAndCriticalIcons()
+    {
+        var sink = new InMemoryAuditSink();
+        await sink.WriteAsync(new AuditEvent
+        {
+            Action = "policy.block",
+            Severity = AuditSeverity.Error,
+        });
+        await sink.WriteAsync(new AuditEvent
+        {
+            Action = "system.shutdown",
+            Severity = AuditSeverity.Critical,
+            Resource = "gateway",
+        });
+        var cmd = new AuditCommand(sink);
+
+        var result = await cmd.ExecuteAsync(MakeContext());
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain("`**`");
+        result.Content.Should().Contain("`!!`");
+        result.Content.Should().Contain("**policy.block**");
+        result.Content.Should().Contain("**system.shutdown** [gateway]");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_InvalidSeverityAndHighLimit_FallsBackToUnfilteredMaxClamp()
+    {
+        var sink = await SeedSink();
+        var cmd = new AuditCommand(sink);
+
+        var result = await cmd.ExecuteAsync(MakeContext(
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["severity"] = "not-a-severity",
+                ["limit"] = "999"
+            }));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain("3 total events");
+        result.Content.Should().Contain("showing 3");
+        result.Content.Should().Contain("**tool.invoke** [WriteFile] — Warning");
+        result.Content.Should().Contain("**session.start**");
+        result.Content.Should().Contain("**tool.invoke** [ReadFile] — Debug");
+        result.Content.Should().Contain("session.start");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_LowLimit_IsClampedToOne()
+    {
+        var sink = await SeedSink();
+        var cmd = new AuditCommand(sink);
+
+        var result = await cmd.ExecuteAsync(MakeContext(
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["limit"] = "0"
+            }));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain("showing 1");
+        result.Content.Should().Contain("**tool.invoke** [WriteFile] — Warning");
+        result.Content.Should().NotContain("**session.start**");
+        result.Content.Should().NotContain("**tool.invoke** [ReadFile] — Debug");
     }
 }
