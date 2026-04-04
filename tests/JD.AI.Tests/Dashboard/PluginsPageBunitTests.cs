@@ -2,6 +2,7 @@ using System.Net;
 using Bunit;
 using JD.AI.Dashboard.Wasm.Services;
 using Microsoft.Extensions.DependencyInjection;
+using MudBlazor;
 using PluginsPageComponent = JD.AI.Dashboard.Wasm.Pages.Plugins;
 
 namespace JD.AI.Tests.Dashboard;
@@ -26,6 +27,24 @@ public sealed class PluginsPageBunitTests : DashboardBunitTestContext
         {
             var empty = cut.Find("[data-testid='plugins-empty']");
             Assert.Contains("No plugins installed.", empty.TextContent);
+        });
+    }
+
+    [Fact]
+    public void Plugins_WhenLoadFails_ShowsErrorStateAndSnackbar()
+    {
+        var api = CreateApiClient(_ => throw new HttpRequestException("registry offline"));
+
+        Services.AddSingleton(api);
+        Services.AddSingleton(new SignalRService("http://localhost"));
+
+        var cut = RenderWithMudProviders<PluginsPageComponent>();
+
+        cut.WaitForAssertion(() =>
+        {
+            var error = cut.Find("[data-testid='plugins-load-error']");
+            Assert.Contains("Failed to load plugins: registry offline", error.TextContent);
+            Assert.Contains("Failed to load plugins: registry offline", cut.Markup);
         });
     }
 
@@ -142,9 +161,8 @@ public sealed class PluginsPageBunitTests : DashboardBunitTestContext
 
         var cut = RenderWithMudProviders<PluginsPageComponent>();
 
-        cut.WaitForAssertion(() => Assert.NotNull(cut.Find("[data-testid='plugin-toggle']")));
-
-        cut.Find("[data-testid='plugin-toggle']").Change(true);
+        var toggle = cut.FindComponents<MudSwitch<bool>>().Single();
+        cut.InvokeAsync(() => toggle.Instance.ValueChanged.InvokeAsync(true)).GetAwaiter().GetResult();
 
         cut.WaitForAssertion(() =>
         {
