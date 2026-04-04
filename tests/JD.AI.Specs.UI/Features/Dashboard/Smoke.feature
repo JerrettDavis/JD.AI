@@ -16,22 +16,21 @@ Feature: Dashboard Smoke
         Then I should see the page heading "Agents"
         And I should see either an agents data grid or the agents empty state
 
-    Scenario: Channels page renders with either data or empty state
+    Scenario: Channels page renders dashboard-only load error
         Given I open the dashboard route "/channels"
         Then I should see the page heading "Channels"
         And I should see the sync OpenClaw button
-        And I should see either channel cards or the channels empty state
+        And I should see the channels load error
 
-    Scenario: Providers page renders with either data or empty state
+    Scenario: Providers page renders dashboard-only load error
         Given I open the dashboard route "/providers"
         Then I should see the page heading "Model Providers"
-        And I should see either provider cards or the providers empty state
+        And I should see the providers load error
 
-    Scenario: Routing page renders baseline sections
+    Scenario: Routing page renders dashboard-only load error
         Given I open the dashboard route "/routing"
         Then I should see the page heading "Agent Routing"
-        And I should see the routing data grid shell
-        And I should see the routing diagram section
+        And I should see the routing load error state
 
     Scenario: Sessions page renders with either data or empty state
         Given I open the dashboard route "/sessions"

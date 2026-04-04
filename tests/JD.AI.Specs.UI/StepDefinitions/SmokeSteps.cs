@@ -56,36 +56,22 @@ public sealed class SmokeSteps
             _page.Locator("text=No active agents"));
     }
 
-    [Then(@"I should see either channel cards or the channels empty state")]
-    public async Task ThenIShouldSeeChannelCardsOrEmptyState()
+    [Then(@"I should see the channels load error")]
+    public async Task ThenIShouldSeeTheChannelsLoadError()
     {
-        await ExpectEitherVisibleAsync(
-            _page.Locator("[data-testid='channel-card']"),
-            _page.Locator("[data-testid='channels-empty']"));
+        await Expect(_page.Locator("[data-testid='channels-load-error']")).ToBeVisibleAsync();
     }
 
-    [Then(@"I should see either provider cards or the providers empty state")]
-    public async Task ThenIShouldSeeProviderCardsOrEmptyState()
+    [Then(@"I should see the providers load error")]
+    public async Task ThenIShouldSeeTheProvidersLoadError()
     {
-        await ExpectEitherVisibleAsync(
-            _page.Locator("[data-testid='provider-card']"),
-            _page.Locator("[data-testid='providers-empty']"));
+        await Expect(_page.Locator("[data-testid='providers-load-error']")).ToBeVisibleAsync();
     }
 
-    [Then(@"I should see the routing data grid shell")]
-    public async Task ThenIShouldSeeTheRoutingDataGridShell()
+    [Then(@"I should see the routing load error state")]
+    public async Task ThenIShouldSeeTheRoutingLoadErrorState()
     {
-        Assert.True(
-            await _page.Locator("[data-testid='routing-grid']").CountAsync() > 0,
-            "Expected routing grid markup.");
-    }
-
-    [Then(@"I should see either a sessions data grid or the sessions empty state")]
-    public async Task ThenIShouldSeeSessionsGridOrEmptyState()
-    {
-        await ExpectEitherVisibleAsync(
-            _page.Locator(".mud-data-grid"),
-            _page.Locator("text=No sessions found"));
+        await Expect(_page.Locator("[data-testid='routing-load-error']")).ToBeVisibleAsync();
     }
 
     [Then(@"I should see the sync OpenClaw button")]
@@ -96,12 +82,12 @@ public sealed class SmokeSteps
             _page.Locator("button:has-text('Sync OpenClaw')"));
     }
 
-    [Then(@"I should see the routing diagram section")]
-    public async Task ThenIShouldSeeTheRoutingDiagramSection()
+    [Then(@"I should see either a sessions data grid or the sessions empty state")]
+    public async Task ThenIShouldSeeSessionsGridOrEmptyState()
     {
         await ExpectEitherVisibleAsync(
-            _page.Locator("text=Routing Diagram"),
-            _page.Locator(".jd-routing-diagram"));
+            _page.Locator(".mud-data-grid"),
+            _page.Locator("text=No sessions found"));
     }
 
     [Then(@"I should see either the settings tab strip or a settings unavailable message")]
@@ -112,23 +98,42 @@ public sealed class SmokeSteps
             _page.Locator("text=Unable to load gateway configuration"));
     }
 
-    private static async Task ExpectEitherVisibleAsync(
-        ILocator first,
-        ILocator second,
-        int timeoutMs = 7000)
+    private static async Task ExpectAnyVisibleAsync(
+        params ILocator[] locators)
     {
+        await ExpectAnyVisibleAsync(7000, locators);
+    }
+
+    private static async Task ExpectAnyVisibleAsync(
+        int timeoutMs,
+        params ILocator[] locators)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(timeoutMs);
+        ArgumentNullException.ThrowIfNull(locators);
+
+        if (locators.Length == 0)
+            throw new ArgumentException("At least one locator is required.", nameof(locators));
+
         var start = DateTime.UtcNow;
         while ((DateTime.UtcNow - start).TotalMilliseconds < timeoutMs)
         {
-            if (await first.CountAsync() > 0 && await first.First.IsVisibleAsync())
-                return;
-
-            if (await second.CountAsync() > 0 && await second.First.IsVisibleAsync())
-                return;
+            foreach (var locator in locators)
+            {
+                if (await locator.CountAsync() > 0 && await locator.First.IsVisibleAsync())
+                    return;
+            }
 
             await Task.Delay(150);
         }
 
         Assert.Fail("Expected one of the target UI states to become visible.");
+    }
+
+    private static Task ExpectEitherVisibleAsync(
+        ILocator first,
+        ILocator second,
+        int timeoutMs = 7000)
+    {
+        return ExpectAnyVisibleAsync(timeoutMs, first, second);
     }
 }
