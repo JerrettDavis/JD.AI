@@ -3,6 +3,7 @@ using JD.AI.Services;
 
 namespace JD.AI.Tests.Services;
 
+[Collection("Console")]
 public sealed class GatewayConnectionServiceTests
 {
     [Fact]
@@ -116,6 +117,25 @@ public sealed class GatewayConnectionServiceTests
         var agentId = await sut.EnsureAgentAsync("openai");
 
         Assert.Equal("spawned-3", agentId);
+        Assert.NotNull(http.LastSpawnDefinition);
+        Assert.Equal("openai", http.LastSpawnDefinition!.Provider);
+        Assert.Equal("gpt-5.4", http.LastSpawnDefinition.Model);
+    }
+
+    [Fact]
+    public async Task EnsureAgentAsync_WhenModelSpecifiedWithoutProvider_UsesMatchingProvider()
+    {
+        var (sut, http, _) = CreateSut();
+        http.Providers =
+        [
+            new ProviderInfo("anthropic", true, null, [new ProviderModelInfo("claude-sonnet-4-20250514", "Claude Sonnet 4", "anthropic")]),
+            new ProviderInfo("openai", true, null, [new ProviderModelInfo("gpt-5.4", "GPT-5.4", "openai")]),
+        ];
+        http.SpawnedAgentId = "spawned-4";
+
+        var agentId = await sut.EnsureAgentAsync(model: "gpt-5.4");
+
+        Assert.Equal("spawned-4", agentId);
         Assert.NotNull(http.LastSpawnDefinition);
         Assert.Equal("openai", http.LastSpawnDefinition!.Provider);
         Assert.Equal("gpt-5.4", http.LastSpawnDefinition.Model);
@@ -255,11 +275,55 @@ public sealed class GatewayConnectionServiceTests
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => sut.GetSessionsAsync(limit));
     }
 
+    [Fact]
+    public async Task PrintStatus_WhenConnectedWithActiveAgent_PrintsConnectionAndAgentInfo()
+    {
+        var (sut, http, signalR) = CreateSut();
+        http.Agents =
+        [
+            new AgentInfo("agent-1", "openai", "gpt-5", 0, DateTimeOffset.UtcNow),
+        ];
+        signalR.IsConnected = true;
+
+        await sut.EnsureAgentAsync();
+        SuppressConsoleOutput(sut.PrintStatus);
+
+        Assert.Equal("agent-1", sut.ActiveAgentId);
+        Assert.True(sut.IsConnected);
+    }
+
+    [Fact]
+    public void PrintStatus_WhenDisconnectedWithError_PrintsError()
+    {
+        var (sut, _, signalR) = CreateSut();
+        signalR.ConnectionError = "gateway unavailable";
+
+        SuppressConsoleOutput(sut.PrintStatus);
+
+        Assert.False(sut.IsConnected);
+        Assert.Equal("http://localhost:5000", sut.GatewayUrl);
+    }
+
     private static (GatewayConnectionService Sut, FakeGatewayHttpClient Http, FakeGatewaySignalRClient SignalR) CreateSut()
     {
         var http = new FakeGatewayHttpClient();
         var signalR = new FakeGatewaySignalRClient();
         return (new GatewayConnectionService("http://localhost:5000/", http, signalR), http, signalR);
+    }
+
+    private static void SuppressConsoleOutput(Action action)
+    {
+        var original = Console.Out;
+        Console.SetOut(TextWriter.Null);
+
+        try
+        {
+            action();
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
     }
 
     private static async Task<List<string>> CollectAsync(IAsyncEnumerable<string> source)
