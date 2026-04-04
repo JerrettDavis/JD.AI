@@ -12,17 +12,6 @@
             <MudTextField @bind-Value="_agentId" Label="Agent ID" Variant="Variant.Outlined"
                           HelperText="The JD.AI agent to handle this channel"
                           data-testid="override-agent-id" />
-            <MudTextField @bind-Value="_model" Label="Model" Variant="Variant.Outlined"
-                          HelperText="e.g. ollama/qwen3:30b-instruct, anthropic/claude-opus-4-6"
-                          data-testid="override-model" />
-            <MudSelect @bind-Value="_routingMode" Label="Routing Mode" Variant="Variant.Outlined"
-                       data-testid="override-routing-mode">
-                <MudSelectItem T="string" Value="@("Passthrough")">Passthrough — OpenClaw handles natively</MudSelectItem>
-                <MudSelectItem T="string" Value="@("Sidecar")">Sidecar — JD.AI intercepts matching messages</MudSelectItem>
-                <MudSelectItem T="string" Value="@("Intercept")">Intercept — JD.AI handles all messages</MudSelectItem>
-            </MudSelect>
-            <MudSwitch @bind-Value="_enabled" Label="Override Enabled" Color="Color.Primary"
-                       data-testid="override-enabled" />
         </MudStack>
     </DialogContent>
     <DialogActions>
@@ -41,17 +30,11 @@
     [Parameter] public GatewayApiClient Api { get; set; } = null!;
 
     private string _agentId = "";
-    private string _model = "";
-    private string _routingMode = "Passthrough";
-    private bool _enabled = true;
     private bool _saving;
 
     protected override void OnParametersSet()
     {
         _agentId = "";
-        _model = "";
-        _routingMode = "Passthrough";
-        _enabled = Channel.IsConnected;
     }
 
     private void Cancel() => MudDialog.Cancel();

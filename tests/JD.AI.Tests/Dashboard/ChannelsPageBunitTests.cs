@@ -30,6 +30,24 @@ public sealed class ChannelsPageBunitTests : DashboardBunitTestContext
     }
 
     [Fact]
+    public void Channels_WhenLoadFails_ShowsErrorStateAndSnackbar()
+    {
+        var api = CreateApiClient(_ => throw new HttpRequestException("gateway offline"));
+
+        Services.AddSingleton(api);
+        Services.AddSingleton(new SignalRService("http://localhost"));
+
+        var cut = RenderWithMudProviders<ChannelsPageComponent>();
+
+        cut.WaitForAssertion(() =>
+        {
+            var error = cut.Find("[data-testid='channels-load-error']");
+            Assert.Contains("Failed to load channels: gateway offline", error.TextContent);
+            Assert.Contains("Failed to load channels: gateway offline", cut.Markup);
+        });
+    }
+
+    [Fact]
     public void Channels_WhenChannelsLoad_RendersCardsAndActionButtons()
     {
         var api = CreateApiClient(request =>

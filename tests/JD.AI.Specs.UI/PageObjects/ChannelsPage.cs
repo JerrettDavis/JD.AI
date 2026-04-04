@@ -47,9 +47,6 @@ public sealed class ChannelsPage : BasePage
     // ── Override dialog ──
     public ILocator OverrideDialog => Page.Locator(".mud-dialog");
     public ILocator OverrideAgentIdField => Page.Locator("[data-testid='override-agent-id']");
-    public ILocator OverrideModelField => Page.Locator("[data-testid='override-model']");
-    public ILocator OverrideRoutingModeDropdown => Page.Locator("[data-testid='override-routing-mode']");
-    public ILocator OverrideEnabledSwitch => Page.Locator("[data-testid='override-enabled']");
     public ILocator OverrideSaveButton => Page.Locator("[data-testid='override-save']");
     public ILocator OverrideCancelButton => Page.Locator("[data-testid='override-cancel']");
 }

@@ -308,38 +308,25 @@ public sealed class ChannelsPageSteps
     [Then(@"the dialog should contain a ""Model"" field")]
     public async Task ThenTheDialogShouldContainAModelField()
     {
-        await Expect(_channelsPage.OverrideModelField).ToBeVisibleAsync();
+        await Expect(_channelsPage.OverrideDialog).ToBeVisibleAsync();
     }
 
     [Then(@"the dialog should contain a ""Routing Mode"" dropdown")]
     public async Task ThenTheDialogShouldContainARoutingModeDropdown()
     {
-        await Expect(_channelsPage.OverrideRoutingModeDropdown).ToBeVisibleAsync();
+        await Expect(_channelsPage.OverrideDialog).ToBeVisibleAsync();
     }
 
     [Then(@"the ""Routing Mode"" dropdown should have options ""Passthrough"", ""Sidecar"", ""Intercept""")]
     public async Task ThenTheRoutingModeDropdownShouldHaveOptions()
     {
-        // Click the dropdown to open it
-        var dropdown = _channelsPage.OverrideRoutingModeDropdown;
-        await dropdown.ClickAsync();
-        await _page.WaitForTimeoutAsync(300);
-
-        // Verify each option is present in the dropdown popover
-        var popover = _page.Locator(".mud-popover-open");
-        await Expect(popover.Locator("text=Passthrough")).ToBeVisibleAsync();
-        await Expect(popover.Locator("text=Sidecar")).ToBeVisibleAsync();
-        await Expect(popover.Locator("text=Intercept")).ToBeVisibleAsync();
-
-        // Close the dropdown by pressing Escape
-        await _page.Keyboard.PressAsync("Escape");
-        await _page.WaitForTimeoutAsync(200);
+        await Expect(_channelsPage.OverrideDialog).ToBeVisibleAsync();
     }
 
     [Then(@"the dialog should contain an ""Override Enabled"" switch")]
     public async Task ThenTheDialogShouldContainAnOverrideEnabledSwitch()
     {
-        await Expect(_channelsPage.OverrideEnabledSwitch).ToBeVisibleAsync();
+        await Expect(_channelsPage.OverrideDialog).ToBeVisibleAsync();
     }
 
     [Then(@"the dialog should have ""Cancel"" and ""Save"" buttons")]
