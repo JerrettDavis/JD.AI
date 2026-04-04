@@ -45,7 +45,7 @@ public sealed class DashboardFixture : IDisposable
         if (RequiresTag(tags, "requires-audit"))
         {
             Skip.IfNot(
-                await HasItemsAsync($"{gatewayBaseUrl.TrimEnd('/')}/api/audit?limit=1"),
+                await HasAuditEventsAsync($"{gatewayBaseUrl.TrimEnd('/')}/api/v1/audit/events?limit=1"),
                 $"No audit events were found at {gatewayBaseUrl}. Generate gateway activity before running @requires-audit scenarios.");
         }
     }
@@ -76,6 +76,23 @@ public sealed class DashboardFixture : IDisposable
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
             var items = await client.GetFromJsonAsync<object[]>(url);
             return items is { Length: > 0 };
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static async Task<bool> HasAuditEventsAsync(string url)
+    {
+        try
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+            await using var stream = await client.GetStreamAsync(url);
+            using var document = await JsonDocument.ParseAsync(stream);
+            return document.RootElement.TryGetProperty("events", out var events)
+                && events.ValueKind == JsonValueKind.Array
+                && events.GetArrayLength() > 0;
         }
         catch
         {

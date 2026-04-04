@@ -390,6 +390,79 @@ public sealed class GatewayApiClientTests
         await client.SyncOpenClawAsync();
     }
 
+    [Fact]
+    public async Task GetAuditEventsAsync_UsesAuditEventsEndpointAndMapsNumericSeverityPayload()
+    {
+        using var handler = new StubHandler(req =>
+        {
+            Assert.Equal("http://localhost/api/v1/audit/events?limit=2", req.RequestUri!.ToString());
+            return JsonResponse(
+                """
+                {
+                  "totalCount": 1,
+                  "count": 1,
+                  "events": [
+                    {
+                      "eventId": "evt-1",
+                      "timestamp": "2026-04-04T12:00:00Z",
+                      "sessionId": "sess-123",
+                      "action": "tool.invoke",
+                      "resource": "read_file",
+                      "detail": "status=ok; args=path=README.md",
+                      "severity": 2,
+                      "toolName": "read_file",
+                      "toolArguments": "path=README.md"
+                    }
+                  ]
+                }
+                """);
+        });
+        using var http = CreateHttp(handler);
+        var client = new GatewayApiClient(http);
+
+        var events = await client.GetAuditEventsAsync(2);
+
+        Assert.Single(events);
+        Assert.Equal("evt-1", events[0].Id);
+        Assert.Equal("warning", events[0].Level);
+        Assert.Equal("read_file", events[0].Source);
+        Assert.Equal("tool.invoke", events[0].EventType);
+        Assert.Equal("status=ok; args=path=README.md", events[0].Message);
+        Assert.Contains("\"EventId\": \"evt-1\"", events[0].Payload, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GetAuditEventsAsync_MapsStringSeverityPayload()
+    {
+        using var handler = new StubHandler(_ =>
+            JsonResponse(
+                """
+                {
+                  "totalCount": 1,
+                  "count": 1,
+                  "events": [
+                    {
+                      "eventId": "evt-2",
+                      "timestamp": "2026-04-04T12:05:00Z",
+                      "userId": "operator",
+                      "action": "session.create",
+                      "detail": "Session created",
+                      "severity": "Info"
+                    }
+                  ]
+                }
+                """));
+        using var http = CreateHttp(handler);
+        var client = new GatewayApiClient(http);
+
+        var events = await client.GetAuditEventsAsync();
+
+        Assert.Single(events);
+        Assert.Equal("info", events[0].Level);
+        Assert.Equal("operator", events[0].Source);
+        Assert.Equal("session.create", events[0].EventType);
+    }
+
     private static HttpClient CreateHttp(HttpMessageHandler handler) =>
         new(handler) { BaseAddress = new Uri("http://localhost/") };
 

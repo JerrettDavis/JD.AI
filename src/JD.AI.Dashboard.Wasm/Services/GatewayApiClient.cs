@@ -1,10 +1,16 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using JD.AI.Dashboard.Wasm.Models;
 
 namespace JD.AI.Dashboard.Wasm.Services;
 
 public sealed class GatewayApiClient(HttpClient http)
 {
+    private static readonly JsonSerializerOptions AuditPayloadJsonOptions = new()
+    {
+        WriteIndented = true,
+    };
+
     // Agents
     public async Task<AgentInfo[]> GetAgentsAsync()
         => await http.GetFromJsonAsync<AgentInfo[]>("api/agents") ?? [];
@@ -158,7 +164,10 @@ public sealed class GatewayApiClient(HttpClient http)
 
     // Audit / Logs
     public async Task<AuditEvent[]> GetAuditEventsAsync(int limit = 100)
-        => await http.GetFromJsonAsync<AuditEvent[]>($"api/audit?limit={limit}") ?? [];
+    {
+        var response = await http.GetFromJsonAsync<AuditEventsResponse>($"api/v1/audit/events?limit={limit}");
+        return response?.Events.Select(MapAuditEvent).ToArray() ?? [];
+    }
 
     // API Keys
     public async Task<ApiKeyDisplayModel[]> GetApiKeysAsync()
@@ -202,4 +211,71 @@ public sealed class GatewayApiClient(HttpClient http)
 
     public async Task<MemoryStats> GetMemoryStatsAsync()
         => await http.GetFromJsonAsync<MemoryStats>("api/v1/memory/stats") ?? new MemoryStats();
+
+    private static AuditEvent MapAuditEvent(GatewayAuditEvent response) =>
+        new()
+        {
+            Id = response.EventId,
+            Timestamp = response.Timestamp,
+            Level = NormalizeSeverity(response.Severity),
+            Source = response.Resource
+                ?? response.SessionId
+                ?? response.UserId
+                ?? response.ToolName
+                ?? string.Empty,
+            EventType = response.Action,
+            Message = response.Detail
+                ?? response.ToolResult
+                ?? response.Resource
+                ?? response.Action,
+            Payload = JsonSerializer.Serialize(response, AuditPayloadJsonOptions),
+        };
+
+    private static string NormalizeSeverity(JsonElement severity) =>
+        severity.ValueKind switch
+        {
+            JsonValueKind.String => severity.GetString()?.Trim().ToLowerInvariant() switch
+            {
+                "warn" => "warning",
+                { Length: > 0 } text => text,
+                _ => "info",
+            },
+            JsonValueKind.Number when severity.TryGetInt32(out var value) => value switch
+            {
+                0 => "debug",
+                1 => "info",
+                2 => "warning",
+                3 => "error",
+                4 => "critical",
+                _ => "info",
+            },
+            _ => "info",
+        };
+
+    private sealed class AuditEventsResponse
+    {
+        public int TotalCount { get; init; }
+        public int Count { get; init; }
+        public GatewayAuditEvent[] Events { get; init; } = [];
+    }
+
+    private sealed class GatewayAuditEvent
+    {
+        public string EventId { get; init; } = string.Empty;
+        public DateTimeOffset Timestamp { get; init; }
+        public string? UserId { get; init; }
+        public string? SessionId { get; init; }
+        public string? TraceId { get; init; }
+        public string Action { get; init; } = string.Empty;
+        public string? Resource { get; init; }
+        public string? Detail { get; init; }
+        public JsonElement Severity { get; init; }
+        public JsonElement? PolicyResult { get; init; }
+        public string? ToolName { get; init; }
+        public string? ToolArguments { get; init; }
+        public string? ToolResult { get; init; }
+        public long? DurationMs { get; init; }
+        public string? PreviousHash { get; init; }
+        public string? TenantId { get; init; }
+    }
 }
