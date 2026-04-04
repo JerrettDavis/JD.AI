@@ -163,9 +163,24 @@ public sealed class GatewayApiClient(HttpClient http)
         http.DeleteAsync(new Uri($"api/plugins/{Uri.EscapeDataString(id)}", UriKind.Relative));
 
     // Audit / Logs
-    public async Task<AuditEvent[]> GetAuditEventsAsync(int limit = 100)
+    public async Task<AuditEvent[]> GetAuditEventsAsync(
+        int limit = 100,
+        string? action = null,
+        string? severity = null,
+        string? resource = null)
     {
-        var response = await http.GetFromJsonAsync<AuditEventsResponse>($"api/v1/audit/events?limit={limit}");
+        var query = new List<string> { $"limit={limit}" };
+
+        if (!string.IsNullOrWhiteSpace(action))
+            query.Add($"action={Uri.EscapeDataString(action)}");
+
+        if (!string.IsNullOrWhiteSpace(severity))
+            query.Add($"severity={Uri.EscapeDataString(severity)}");
+
+        if (!string.IsNullOrWhiteSpace(resource))
+            query.Add($"resource={Uri.EscapeDataString(resource)}");
+
+        var response = await http.GetFromJsonAsync<AuditEventsResponse>($"api/v1/audit/events?{string.Join("&", query)}");
         return response?.Events.Select(MapAuditEvent).ToArray() ?? [];
     }
 

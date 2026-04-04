@@ -12,7 +12,7 @@ public sealed class LogsPageBunitTests : DashboardBunitTestContext
     {
         var api = CreateApiClient(request =>
         {
-            Assert.Equal("http://localhost/api/v1/audit/events?limit=100", request.RequestUri!.ToString());
+            Assert.Equal("http://localhost/api/v1/audit/events?limit=1000", request.RequestUri!.ToString());
             return JsonResponse(SingleAuditEventResponse);
         });
 

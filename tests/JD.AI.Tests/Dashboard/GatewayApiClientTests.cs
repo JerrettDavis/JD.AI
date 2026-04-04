@@ -463,6 +463,28 @@ public sealed class GatewayApiClientTests
         Assert.Equal("session.create", events[0].EventType);
     }
 
+    [Fact]
+    public async Task GetAuditEventsAsync_AppendsFilterQueryParameters()
+    {
+        using var handler = new StubHandler(req =>
+        {
+            Assert.Equal(
+                "http://localhost/api/v1/audit/events?limit=50&action=tool.invoke&severity=warning&resource=read_file",
+                req.RequestUri!.ToString());
+            return JsonResponse("""{"totalCount":0,"count":0,"events":[]}""");
+        });
+        using var http = CreateHttp(handler);
+        var client = new GatewayApiClient(http);
+
+        var events = await client.GetAuditEventsAsync(
+            limit: 50,
+            action: "tool.invoke",
+            severity: "warning",
+            resource: "read_file");
+
+        Assert.Empty(events);
+    }
+
     private static HttpClient CreateHttp(HttpMessageHandler handler) =>
         new(handler) { BaseAddress = new Uri("http://localhost/") };
 

@@ -166,7 +166,13 @@ else
     private async Task LoadAsync()
     {
         _loading = true;
-        try { _allEvents = await Api.GetAuditEventsAsync(); }
+        try
+        {
+            _allEvents = await Api.GetAuditEventsAsync(
+                limit: 1000,
+                action: _eventTypeFilter,
+                severity: _severityFilter);
+        }
         catch { _allEvents = []; Snackbar.Add("Failed to load audit events", Severity.Error); }
         ApplyFilters();
         _loading = false;
