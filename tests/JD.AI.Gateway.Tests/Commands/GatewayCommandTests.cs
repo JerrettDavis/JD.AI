@@ -213,9 +213,35 @@ public class GatewayCommandTests
 
         result.Success.Should().BeTrue();
         result.Content.Should().Contain("Usage Statistics");
-        result.Content.Should().Contain("Uptime:");
-        result.Content.Should().Contain("Active Agents:");
-        result.Content.Should().Contain("Total Turns:");
+        result.Content.Should().Contain("🕐 **Uptime:**");
+        result.Content.Should().Contain("🤖 **Active Agents:** 0");
+        result.Content.Should().Contain("💬 **Total Turns:** 0");
+        result.Content.Should().NotContain("**Per-Agent Breakdown:**");
+    }
+
+    [Fact]
+    public async Task UsageCommand_WithRunningAgent_ShowsPerAgentBreakdown()
+    {
+        var agentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        var cmd = new UsageCommand(_pool);
+
+        var result = await cmd.ExecuteAsync(MakeContext("usage"));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain("**Per-Agent Breakdown:**");
+        result.Content.Should().Contain($"• `{agentId[..8]}` (Ollama/llama3.2:latest) — 0 turns");
+        result.Content.Should().Contain("🤖 **Active Agents:** 1");
+        result.Content.Should().Contain("💬 **Total Turns:** 0");
+    }
+
+    [Theory]
+    [InlineData(0, 0, 45, "45m 0s")]
+    [InlineData(0, 2, 0, "2h 0m")]
+    [InlineData(1, 2, 3, "1d 2h 3m")]
+    public void UsageCommand_FormatUptime_FormatsMinuteHourAndDayRanges(int days, int hours, int minutes, string expected)
+    {
+        var formatted = UsageCommand.FormatUptime(new TimeSpan(days, hours, minutes, 0));
+        formatted.Should().Be(expected);
     }
 
     // --- ModelsCommand ---

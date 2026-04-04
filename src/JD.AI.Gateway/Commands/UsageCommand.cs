@@ -39,7 +39,7 @@ public sealed class UsageCommand(AgentPoolService pool) : IChannelCommand
         return Task.FromResult(new CommandResult { Success = true, Content = sb.ToString() });
     }
 
-    private static string FormatUptime(TimeSpan ts) =>
+    internal static string FormatUptime(TimeSpan ts) =>
         ts.Days > 0 ? $"{ts.Days}d {ts.Hours}h {ts.Minutes}m"
         : ts.Hours > 0 ? $"{ts.Hours}h {ts.Minutes}m"
         : $"{ts.Minutes}m {ts.Seconds}s";
