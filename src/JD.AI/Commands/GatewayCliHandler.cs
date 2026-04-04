@@ -200,7 +200,7 @@ internal static class GatewayCliHandler
         return 0;
     }
 
-    private static IDaemonProcessHandle StartDaemonProcessCore()
+    private static DaemonProcessHandle StartDaemonProcessCore()
     {
         var process = new Process
         {

@@ -146,8 +146,7 @@ public sealed class GatewayConnectionService : IAsyncDisposable
     public async Task<GatewayModels.SessionInfo[]> GetSessionsAsync(int limit = 50, CancellationToken ct = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
-        if (limit > 1000)
-            throw new ArgumentOutOfRangeException(nameof(limit));
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(limit, 1000);
 
         return await _http.GetSessionsAsync(limit, ct);
     }

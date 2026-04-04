@@ -67,7 +67,7 @@ internal static class GatewayHealthChecker
         return null;
     }
 
-    private static IReadOnlyList<string> GetCandidates(string? baseUrl)
+    private static string[] GetCandidates(string? baseUrl)
     {
         if (baseUrl is null)
             return DefaultCandidates;
