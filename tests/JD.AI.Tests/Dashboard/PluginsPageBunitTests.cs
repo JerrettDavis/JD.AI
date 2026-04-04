@@ -130,7 +130,7 @@ public sealed class PluginsPageBunitTests : DashboardBunitTestContext
     }
 
     [Fact]
-    public void Plugins_WhenToggleSucceeds_UpdatesPluginState()
+    public async Task Plugins_WhenToggleSucceeds_UpdatesPluginState()
     {
         var enabled = false;
         var listCalls = 0;
@@ -162,7 +162,7 @@ public sealed class PluginsPageBunitTests : DashboardBunitTestContext
         var cut = RenderWithMudProviders<PluginsPageComponent>();
 
         var toggle = cut.FindComponents<MudSwitch<bool>>().Single();
-        cut.InvokeAsync(() => toggle.Instance.ValueChanged.InvokeAsync(true)).GetAwaiter().GetResult();
+        await cut.InvokeAsync(() => toggle.Instance.ValueChanged.InvokeAsync(true));
 
         cut.WaitForAssertion(() =>
         {

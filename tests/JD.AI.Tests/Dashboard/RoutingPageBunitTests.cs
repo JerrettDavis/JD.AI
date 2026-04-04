@@ -101,7 +101,7 @@ public sealed class RoutingPageBunitTests : DashboardBunitTestContext
     }
 
     [Fact]
-    public void Routing_WhenMappingChanges_PostsRouteUpdateAndShowsSuccess()
+    public async Task Routing_WhenMappingChanges_PostsRouteUpdateAndShowsSuccess()
     {
         var api = CreateApiClient(request =>
         {
@@ -133,13 +133,13 @@ public sealed class RoutingPageBunitTests : DashboardBunitTestContext
             AgentId = "jdai-default",
         };
 
-        cut.InvokeAsync(() => grid.Instance.CommittedItemChanges.InvokeAsync(updated)).GetAwaiter().GetResult();
+        await cut.InvokeAsync(() => grid.Instance.CommittedItemChanges.InvokeAsync(updated));
 
         cut.WaitForAssertion(() => Assert.Contains("Routing updated: discord → jdai-default", cut.Markup));
     }
 
     [Fact]
-    public void Routing_WhenMappingSaveFails_ReloadsServerStateAndShowsError()
+    public async Task Routing_WhenMappingSaveFails_ReloadsServerStateAndShowsError()
     {
         var listCalls = 0;
 
@@ -173,7 +173,7 @@ public sealed class RoutingPageBunitTests : DashboardBunitTestContext
             AgentId = "jdai-default",
         };
 
-        cut.InvokeAsync(() => grid.Instance.CommittedItemChanges.InvokeAsync(updated)).GetAwaiter().GetResult();
+        await cut.InvokeAsync(() => grid.Instance.CommittedItemChanges.InvokeAsync(updated));
 
         cut.WaitForAssertion(() =>
         {
