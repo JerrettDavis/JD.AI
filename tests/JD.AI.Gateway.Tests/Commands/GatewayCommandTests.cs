@@ -112,6 +112,23 @@ public class GatewayCommandTests
     }
 
     [Fact]
+    public async Task RouteCommand_WhenAgentMatchIsMissing_ReturnsAvailableAgents()
+    {
+        var agentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        var cmd = new RouteCommand(_router, _pool);
+
+        var result = await cmd.ExecuteAsync(MakeContext("route", new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["agent"] = "missing-agent"
+        }));
+
+        result.Success.Should().BeFalse();
+        result.Content.Should().Contain("No agent matching **missing-agent** found");
+        result.Content.Should().Contain(agentId[..8]);
+        result.Content.Should().Contain("Ollama/llama3.2:latest");
+    }
+
+    [Fact]
     public async Task RouteCommand_WithoutArgument_ShowsCurrentRoute()
     {
         var agentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
@@ -123,6 +140,18 @@ public class GatewayCommandTests
         result.Success.Should().BeTrue();
         result.Content.Should().Contain("📡 **ch456** → Ollama/llama3.2:latest");
         result.Content.Should().Contain(agentId[..8]);
+    }
+
+    [Fact]
+    public async Task RouteCommand_WithoutArgumentAndStaleMapping_ShowsMappedAgentIdPrefix()
+    {
+        _router.MapChannel("ch456", "deadbeef1234");
+        var cmd = new RouteCommand(_router, _pool);
+
+        var result = await cmd.ExecuteAsync(MakeContext("route"));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain("📡 **ch456** → `deadbeef`");
     }
 
     [Fact]
