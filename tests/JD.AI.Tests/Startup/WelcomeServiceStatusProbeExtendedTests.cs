@@ -365,16 +365,29 @@ public sealed class WelcomeServiceStatusProbeExtendedTests
     [Fact]
     public async Task RunCommandAsync_WhenCommandSucceeds_CapturesExitCodeOutputAndError()
     {
-        var result = await InvokeRunCommandAsync(
-            "pwsh",
-            "-NoLogo -NoProfile -Command \"Write-Output 'hello'; [Console]::Error.WriteLine('oops')\"",
-            TimeSpan.FromSeconds(2),
-            CancellationToken.None);
+        var scriptPath = WriteTempPowerShellScript(
+            """
+            Write-Output 'hello'
+            [Console]::Error.WriteLine('oops')
+            """);
 
-        result.ExitCode.Should().BeOneOf(0, 1);
-        result.Output.Should().Contain("hello");
-        result.Error.Should().Contain("oops");
-        result.TimedOut.Should().BeFalse();
+        try
+        {
+            var result = await InvokeRunCommandAsync(
+                "pwsh",
+                $"-NoLogo -NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                TimeSpan.FromSeconds(2),
+                CancellationToken.None);
+
+            result.ExitCode.Should().Be(0);
+            result.Output.Should().Contain("hello");
+            result.Error.Should().Contain("oops");
+            result.TimedOut.Should().BeFalse();
+        }
+        finally
+        {
+            File.Delete(scriptPath);
+        }
     }
 
     [Fact]
@@ -457,5 +470,12 @@ public sealed class WelcomeServiceStatusProbeExtendedTests
             [fileName, arguments, timeout, cancellationToken])!;
 
         return await task;
+    }
+
+    private static string WriteTempPowerShellScript(string contents)
+    {
+        var scriptPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.ps1");
+        File.WriteAllText(scriptPath, contents);
+        return scriptPath;
     }
 }
