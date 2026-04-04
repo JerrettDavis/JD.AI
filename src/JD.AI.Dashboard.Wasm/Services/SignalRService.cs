@@ -1,4 +1,5 @@
 using JD.AI.Dashboard.Wasm.Models;
+using Microsoft.AspNetCore.Http.Connections.Client;
 using Microsoft.AspNetCore.SignalR.Client;
 
 namespace JD.AI.Dashboard.Wasm.Services;
@@ -25,6 +26,7 @@ public sealed class SignalRService : IAsyncDisposable
     private HubConnection? _eventHub;
     private HubConnection? _agentHub;
     private readonly string _baseUrl;
+    private readonly Action<HttpConnectionOptions>? _configureConnection;
 
     public event EventHandler<ActivityEventArgs>? OnActivityEvent;
     public event EventHandler<ChannelStatusEventArgs>? OnChannelStatusChanged;
@@ -34,24 +36,18 @@ public sealed class SignalRService : IAsyncDisposable
     public bool IsConnected => _eventHub?.State == HubConnectionState.Connected;
     public string ConnectionError { get; private set; } = string.Empty;
 
-    public SignalRService(string baseUrl)
+    public SignalRService(string baseUrl, Action<HttpConnectionOptions>? configureConnection = null)
     {
         _baseUrl = baseUrl.TrimEnd('/');
+        _configureConnection = configureConnection;
     }
 
     public async Task ConnectAsync()
     {
         try
         {
-            _eventHub = new HubConnectionBuilder()
-                .WithUrl($"{_baseUrl}/hubs/events")
-                .WithAutomaticReconnect([TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30)])
-                .Build();
-
-            _agentHub = new HubConnectionBuilder()
-                .WithUrl($"{_baseUrl}/hubs/agent")
-                .WithAutomaticReconnect([TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30)])
-                .Build();
+            _eventHub = BuildHubConnection($"{_baseUrl}/hubs/events");
+            _agentHub = BuildHubConnection($"{_baseUrl}/hubs/agent");
 
             _eventHub.On<ActivityEvent>("ActivityEvent", evt =>
             {
@@ -123,6 +119,18 @@ public sealed class SignalRService : IAsyncDisposable
         {
             yield return chunk;
         }
+    }
+
+    private HubConnection BuildHubConnection(string url)
+    {
+        IHubConnectionBuilder builder = new HubConnectionBuilder();
+        builder = _configureConnection is null
+            ? builder.WithUrl(url)
+            : builder.WithUrl(url, _configureConnection);
+
+        return builder
+            .WithAutomaticReconnect([TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30)])
+            .Build();
     }
 }
 

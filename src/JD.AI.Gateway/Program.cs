@@ -279,6 +279,7 @@ if (gatewayConfig.OpenClaw.Enabled)
 
 // --- SignalR ---
 builder.Services.AddSignalR();
+builder.Services.AddHostedService<EventHubBroadcastService>();
 
 // --- OpenAPI ---
 builder.Services.AddOpenApi();
