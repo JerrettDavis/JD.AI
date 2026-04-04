@@ -167,6 +167,40 @@ public class GatewayCommandTests
     }
 
     [Fact]
+    public async Task RouteCommand_WhenChannelIdIsBlank_UsesChannelTypeFallback()
+    {
+        var agentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        var cmd = new RouteCommand(_router, _pool);
+
+        var result = await cmd.ExecuteAsync(
+            MakeContext("route", new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["agent"] = "ollama"
+            }) with { ChannelId = "" });
+
+        result.Success.Should().BeTrue();
+        _router.GetAgentForChannel("discord").Should().Be(agentId);
+        result.Content.Should().Contain("**discord** now routes");
+    }
+
+    [Fact]
+    public async Task RouteCommand_WhenPartialAgentMatchIsUnique_RoutesChannel()
+    {
+        var agentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        await _pool.SpawnAgentAsync("GitHub Copilot", "gpt-5.3-codex", null, CancellationToken.None);
+        var cmd = new RouteCommand(_router, _pool);
+
+        var result = await cmd.ExecuteAsync(MakeContext("route", new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["agent"] = "3.2:lat"
+        }));
+
+        result.Success.Should().BeTrue();
+        _router.GetAgentForChannel("ch456").Should().Be(agentId);
+        result.Content.Should().Contain("Ollama/llama3.2:latest");
+    }
+
+    [Fact]
     public async Task RoutesCommand_ListsMappedChannels()
     {
         var agentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
@@ -231,6 +265,19 @@ public class GatewayCommandTests
         result.Success.Should().BeTrue();
         result.Content.Should().Contain("**Ollama**");
         result.Content.Should().Contain("`llama3.2:latest`");
+    }
+
+    [Fact]
+    public async Task ProviderCommand_WithoutNameAndStaleMapping_ShowsUnknownProviderFallback()
+    {
+        _router.MapChannel("ch456", "deadbeef1234");
+        var cmd = CreateProviderCommand();
+
+        var result = await cmd.ExecuteAsync(MakeContext("provider"));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain("Agent `deadbeef`");
+        result.Content.Should().Contain("provider unknown");
     }
 
     [Fact]
@@ -334,6 +381,53 @@ public class GatewayCommandTests
         result.Content.Should().Contain("Ambiguous provider");
         result.Content.Should().Contain("**GitHub Copilot**");
         result.Content.Should().Contain("**GitHub Copilot Enterprise**");
+    }
+
+    [Fact]
+    public async Task ProviderCommand_WhenExactProviderMatchExists_PrefersItOverPartialMatches()
+    {
+        var agentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        _router.MapChannel("ch456", agentId);
+        _providers.DetectProvidersAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<ProviderInfo>>(
+            [
+                new ProviderInfo("GitHub Copilot", true, null,
+                [
+                    new ProviderModelInfo("gpt-5.3-codex", "gpt-5.3-codex", "GitHub Copilot")
+                ]),
+                new ProviderInfo("GitHub Copilot Enterprise", true, null,
+                [
+                    new ProviderModelInfo("gpt-5.3-codex", "gpt-5.3-codex", "GitHub Copilot Enterprise")
+                ])
+            ]));
+        var cmd = CreateProviderCommand();
+
+        var result = await cmd.ExecuteAsync(MakeContext("provider", new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["name"] = "GitHub Copilot"
+        }));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain("Switched to **GitHub Copilot**");
+        result.Content.Should().NotContain("Enterprise");
+    }
+
+    [Fact]
+    public async Task ProviderCommand_WhenChannelIdIsBlank_UsesChannelTypeFallback()
+    {
+        var agentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        _router.MapChannel("discord", agentId);
+        var cmd = CreateProviderCommand();
+
+        var result = await cmd.ExecuteAsync(
+            MakeContext("provider", new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["name"] = "copilot"
+            }) with { ChannelId = "" });
+
+        result.Success.Should().BeTrue();
+        _router.GetAgentForChannel("discord").Should().NotBe(agentId);
+        result.Content.Should().Contain("Channel **discord** now routes");
     }
 
     [Fact]
