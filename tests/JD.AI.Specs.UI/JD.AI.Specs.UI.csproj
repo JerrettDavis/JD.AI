@@ -3,10 +3,10 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <IsPackable>false</IsPackable>
-    <!-- Playwright UI tests require browser installation (npx playwright install).
-         Set IsTestProject=false so dotnet test JD.AI.slnx skips this project.
-         Run explicitly: dotnet test tests/JD.AI.Specs.UI/JD.AI.Specs.UI.csproj -->
-    <IsTestProject>false</IsTestProject>
+    <!-- Playwright UI tests are opt-in so solution-level dotnet test skips them by default.
+         Run explicitly: dotnet test tests\JD.AI.Specs.UI\JD.AI.Specs.UI.csproj /p:RunUiSpecs=true -->
+    <IsTestProject Condition="'$(RunUiSpecs)' == 'true'">true</IsTestProject>
+    <IsTestProject Condition="'$(RunUiSpecs)' != 'true'">false</IsTestProject>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,6 +16,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Reqnroll" />
     <PackageReference Include="Reqnroll.xUnit" />
+    <PackageReference Include="Xunit.SkippableFact" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
   </ItemGroup>

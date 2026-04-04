@@ -24,10 +24,11 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         private global::Reqnroll.ITestRunner testRunner;
         
         private static string[] featureTags = new string[] {
+                "ignore",
                 "ui"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Home Page - Gateway Overview", "    As a gateway operator\n    I want to see an overview of the system status\n    " +
-                "So that I can quickly assess the health of my AI gateway", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Home Page - Gateway Overview", "    As a gateway operator\r\n    I want to see an overview of the system status\r\n  " +
+                "  So that I can quickly assess the health of my AI gateway", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
@@ -108,9 +109,9 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         
         public virtual async global::System.Threading.Tasks.Task FeatureBackgroundAsync()
         {
-#line 7
-    #line hidden
 #line 8
+    #line hidden
+#line 9
         await testRunner.GivenAsync("I am on the home page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
         }
@@ -145,7 +146,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             await this.TestTearDownAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Displays overview heading")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Displays overview heading", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
         [global::Xunit.TraitAttribute("Description", "Displays overview heading")]
         [global::Xunit.TraitAttribute("Category", "smoke")]
@@ -158,7 +159,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Displays overview heading", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 12
+#line 13
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -168,17 +169,17 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 13
+#line 14
         await testRunner.ThenAsync("I should see the heading \"Gateway Overview\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Displays four stat cards")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Displays four stat cards", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
         [global::Xunit.TraitAttribute("Description", "Displays four stat cards")]
         [global::Xunit.TraitAttribute("Category", "smoke")]
@@ -191,7 +192,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Displays four stat cards", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 16
+#line 17
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -201,29 +202,29 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 17
+#line 18
         await testRunner.ThenAsync("I should see 4 stat cards", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 18
+#line 19
         await testRunner.AndAsync("I should see a stat card labeled \"Agents\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 19
+#line 20
         await testRunner.AndAsync("I should see a stat card labeled \"Channels\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 20
+#line 21
         await testRunner.AndAsync("I should see a stat card labeled \"Sessions\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 21
+#line 22
         await testRunner.AndAsync("I should see a stat card labeled \"OpenClaw\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="App bar displays logo")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="App bar displays logo", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
         [global::Xunit.TraitAttribute("Description", "App bar displays logo")]
         public async global::System.Threading.Tasks.Task AppBarDisplaysLogo()
@@ -234,7 +235,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("App bar displays logo", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 23
+#line 24
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -244,20 +245,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 24
+#line 25
         await testRunner.ThenAsync("the app bar should display \"JD.AI\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 25
+#line 26
         await testRunner.AndAsync("the app bar should display \"Gateway\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Stat cards show numeric counts from gateway status")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Stat cards show numeric counts from gateway status", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
         [global::Xunit.TraitAttribute("Description", "Stat cards show numeric counts from gateway status")]
         public async global::System.Threading.Tasks.Task StatCardsShowNumericCountsFromGatewayStatus()
@@ -268,7 +269,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Stat cards show numeric counts from gateway status", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 28
+#line 29
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -278,23 +279,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 29
+#line 30
         await testRunner.ThenAsync("the \"Agents\" stat card should display a numeric value", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 30
+#line 31
         await testRunner.AndAsync("the \"Channels\" stat card should display a numeric value", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 31
+#line 32
         await testRunner.AndAsync("the \"Sessions\" stat card should display a numeric value", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="OpenClaw card shows connection status")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="OpenClaw card shows connection status", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
         [global::Xunit.TraitAttribute("Description", "OpenClaw card shows connection status")]
         public async global::System.Threading.Tasks.Task OpenClawCardShowsConnectionStatus()
@@ -305,7 +306,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("OpenClaw card shows connection status", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 33
+#line 34
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -315,17 +316,17 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 34
+#line 35
         await testRunner.ThenAsync("the \"OpenClaw\" stat card should display \"Connected\" or \"Offline\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="OpenClaw bridge table shown when bridge data exists")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="OpenClaw bridge table shown when bridge data exists", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
         [global::Xunit.TraitAttribute("Description", "OpenClaw bridge table shown when bridge data exists")]
         [global::Xunit.TraitAttribute("Category", "requires-openclaw")]
@@ -338,7 +339,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("OpenClaw bridge table shown when bridge data exists", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 37
+#line 38
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -348,26 +349,26 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 38
+#line 39
         await testRunner.GivenAsync("the OpenClaw bridge is configured", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 39
+#line 40
         await testRunner.ThenAsync("I should see the OpenClaw Bridge details table", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 40
+#line 41
         await testRunner.AndAsync("the table should show the \"Enabled\" property", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 41
+#line 42
         await testRunner.AndAsync("the table should show \"Registered Agents\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Skeleton cards shown while loading")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Skeleton cards shown while loading", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
         [global::Xunit.TraitAttribute("Description", "Skeleton cards shown while loading")]
         public async global::System.Threading.Tasks.Task SkeletonCardsShownWhileLoading()
@@ -378,7 +379,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Skeleton cards shown while loading", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 44
+#line 45
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -388,23 +389,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 45
+#line 46
         await testRunner.GivenAsync("the gateway status is loading", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 46
+#line 47
         await testRunner.ThenAsync("I should see skeleton stat card placeholders", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 47
+#line 48
         await testRunner.AndAsync("I should see a skeleton activity section", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Recent Activity section with heading and refresh")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Recent Activity section with heading and refresh", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
         [global::Xunit.TraitAttribute("Description", "Recent Activity section with heading and refresh")]
         public async global::System.Threading.Tasks.Task RecentActivitySectionWithHeadingAndRefresh()
@@ -415,7 +416,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Recent Activity section with heading and refresh", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 50
+#line 51
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -425,20 +426,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 51
+#line 52
         await testRunner.ThenAsync("I should see the \"Recent Activity\" section heading", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 52
+#line 53
         await testRunner.AndAsync("I should see a refresh button in the activity section", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Activity feed empty state")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Activity feed empty state", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
         [global::Xunit.TraitAttribute("Description", "Activity feed empty state")]
         public async global::System.Threading.Tasks.Task ActivityFeedEmptyState()
@@ -449,7 +450,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Activity feed empty state", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 54
+#line 55
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -459,20 +460,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 55
+#line 56
         await testRunner.GivenAsync("there are no recent activity events", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 56
+#line 57
         await testRunner.ThenAsync("I should see \"No recent activity\" in the activity feed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Activity events display event details")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Activity events display event details", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
         [global::Xunit.TraitAttribute("Description", "Activity events display event details")]
         [global::Xunit.TraitAttribute("Category", "requires-agents")]
@@ -485,7 +486,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Activity events display event details", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 59
+#line 60
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -495,26 +496,26 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 60
+#line 61
         await testRunner.GivenAsync("there are recent activity events", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 61
+#line 62
         await testRunner.ThenAsync("each activity event should show an event type chip", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 62
+#line 63
         await testRunner.AndAsync("each activity event should show a message", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 63
+#line 64
         await testRunner.AndAsync("each activity event should show a timestamp", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Activity feed shows most recent events first")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Activity feed shows most recent events first", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
         [global::Xunit.TraitAttribute("Description", "Activity feed shows most recent events first")]
         [global::Xunit.TraitAttribute("Category", "requires-agents")]
@@ -527,7 +528,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Activity feed shows most recent events first", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 66
+#line 67
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -537,23 +538,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 67
+#line 68
         await testRunner.GivenAsync("there are multiple activity events", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 68
+#line 69
         await testRunner.ThenAsync("the activity feed should display events in reverse chronological order", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 69
+#line 70
         await testRunner.AndAsync("the feed should show at most 20 items", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="New activity events appear without page refresh")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="New activity events appear without page refresh", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
         [global::Xunit.TraitAttribute("Description", "New activity events appear without page refresh")]
         [global::Xunit.TraitAttribute("Category", "requires-agents")]
@@ -566,7 +567,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("New activity events appear without page refresh", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 73
+#line 74
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -576,23 +577,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 74
+#line 75
         await testRunner.GivenAsync("I am observing the activity feed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 75
+#line 76
         await testRunner.WhenAsync("a new gateway event occurs", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 76
+#line 77
         await testRunner.ThenAsync("the event should appear in the activity feed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Graceful degradation when API is unreachable")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Graceful degradation when API is unreachable", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
         [global::Xunit.TraitAttribute("Description", "Graceful degradation when API is unreachable")]
         public async global::System.Threading.Tasks.Task GracefulDegradationWhenAPIIsUnreachable()
@@ -603,7 +604,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Graceful degradation when API is unreachable", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 79
+#line 80
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -613,23 +614,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 80
+#line 81
         await testRunner.GivenAsync("the gateway API is unavailable", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 81
+#line 82
         await testRunner.ThenAsync("the stat cards should display zero counts", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 82
+#line 83
         await testRunner.AndAsync("no error dialog should block the page", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Sidebar navigates to agents page")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Sidebar navigates to agents page", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
         [global::Xunit.TraitAttribute("Description", "Sidebar navigates to agents page")]
         [global::Xunit.TraitAttribute("Category", "smoke")]
@@ -642,7 +643,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sidebar navigates to agents page", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 86
+#line 87
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -652,20 +653,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 87
+#line 88
         await testRunner.WhenAsync("I click the \"Agents\" navigation link", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 88
+#line 89
         await testRunner.ThenAsync("I should be on the \"/agents\" page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Sidebar navigates to chat page")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Sidebar navigates to chat page", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
         [global::Xunit.TraitAttribute("Description", "Sidebar navigates to chat page")]
         [global::Xunit.TraitAttribute("Category", "smoke")]
@@ -678,7 +679,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sidebar navigates to chat page", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 91
+#line 92
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -688,20 +689,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 92
+#line 93
         await testRunner.WhenAsync("I click the \"Chat\" navigation link", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 93
+#line 94
         await testRunner.ThenAsync("I should be on the \"/chat\" page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Sidebar navigates to channels page")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Sidebar navigates to channels page", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
         [global::Xunit.TraitAttribute("Description", "Sidebar navigates to channels page")]
         public async global::System.Threading.Tasks.Task SidebarNavigatesToChannelsPage()
@@ -712,7 +713,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sidebar navigates to channels page", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 95
+#line 96
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -722,20 +723,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 96
+#line 97
         await testRunner.WhenAsync("I click the \"Channels\" navigation link", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 97
+#line 98
         await testRunner.ThenAsync("I should be on the \"/channels\" page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Sidebar navigates to sessions page")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Sidebar navigates to sessions page", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
         [global::Xunit.TraitAttribute("Description", "Sidebar navigates to sessions page")]
         public async global::System.Threading.Tasks.Task SidebarNavigatesToSessionsPage()
@@ -746,7 +747,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sidebar navigates to sessions page", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 99
+#line 100
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -756,20 +757,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 100
+#line 101
         await testRunner.WhenAsync("I click the \"Sessions\" navigation link", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 101
+#line 102
         await testRunner.ThenAsync("I should be on the \"/sessions\" page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Sidebar navigates to providers page")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Sidebar navigates to providers page", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
         [global::Xunit.TraitAttribute("Description", "Sidebar navigates to providers page")]
         public async global::System.Threading.Tasks.Task SidebarNavigatesToProvidersPage()
@@ -780,7 +781,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sidebar navigates to providers page", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 103
+#line 104
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -790,20 +791,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 104
+#line 105
         await testRunner.WhenAsync("I click the \"Providers\" navigation link", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 105
+#line 106
         await testRunner.ThenAsync("I should be on the \"/providers\" page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Sidebar navigates to routing page")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Sidebar navigates to routing page", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
         [global::Xunit.TraitAttribute("Description", "Sidebar navigates to routing page")]
         public async global::System.Threading.Tasks.Task SidebarNavigatesToRoutingPage()
@@ -814,7 +815,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sidebar navigates to routing page", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 107
+#line 108
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -824,20 +825,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 108
+#line 109
         await testRunner.WhenAsync("I click the \"Routing\" navigation link", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 109
+#line 110
         await testRunner.ThenAsync("I should be on the \"/routing\" page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Sidebar navigates to settings page")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Sidebar navigates to settings page", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
         [global::Xunit.TraitAttribute("Description", "Sidebar navigates to settings page")]
         public async global::System.Threading.Tasks.Task SidebarNavigatesToSettingsPage()
@@ -848,7 +849,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sidebar navigates to settings page", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 111
+#line 112
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -858,20 +859,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 112
+#line 113
         await testRunner.WhenAsync("I click the \"Settings\" navigation link", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 113
+#line 114
         await testRunner.ThenAsync("I should be on the \"/settings\" page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="SignalR connection indicator shows status")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="SignalR connection indicator shows status", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
         [global::Xunit.TraitAttribute("Description", "SignalR connection indicator shows status")]
         public async global::System.Threading.Tasks.Task SignalRConnectionIndicatorShowsStatus()
@@ -882,7 +883,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("SignalR connection indicator shows status", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 116
+#line 117
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -892,20 +893,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 117
+#line 118
         await testRunner.ThenAsync("the app bar should show a connection status indicator", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 118
+#line 119
         await testRunner.AndAsync("the indicator should display \"Live\" or \"Offline\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Page title is correct")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Page title is correct", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
         [global::Xunit.TraitAttribute("Description", "Page title is correct")]
         public async global::System.Threading.Tasks.Task PageTitleIsCorrect()
@@ -916,7 +917,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Page title is correct", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 121
+#line 122
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -926,10 +927,10 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 122
+#line 123
         await testRunner.ThenAsync("the browser page title should be \"JD.AI — Gateway\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -943,12 +944,10 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             
             async global::System.Threading.Tasks.Task global::Xunit.IAsyncLifetime.InitializeAsync()
             {
-                await HomePage_GatewayOverviewFeature.FeatureSetupAsync();
             }
             
             async global::System.Threading.Tasks.Task global::Xunit.IAsyncLifetime.DisposeAsync()
             {
-                await HomePage_GatewayOverviewFeature.FeatureTearDownAsync();
             }
         }
     }

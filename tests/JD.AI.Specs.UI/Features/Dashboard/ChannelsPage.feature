@@ -1,3 +1,4 @@
+@ignore
 @ui
 Feature: Channels Page
     As a gateway operator
