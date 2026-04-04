@@ -128,6 +128,67 @@ public class GatewayCommandTests
         result.Content.Should().Contain("Switched to **OpenAI**");
     }
 
+    [Fact]
+    public async Task ProviderCommand_WithoutMappedAgent_ShowsRouteHint()
+    {
+        var cmd = new ProviderCommand(_router, _pool, _providers);
+
+        var result = await cmd.ExecuteAsync(MakeContext("provider"));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain("No agent mapped to this channel");
+        result.Content.Should().Contain("/jdai-route");
+    }
+
+    [Fact]
+    public async Task ProviderCommand_WithoutName_ShowsCurrentProviderDetails()
+    {
+        var agentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        _router.MapChannel("discord", agentId);
+        var cmd = new ProviderCommand(_router, _pool, _providers);
+
+        var result = await cmd.ExecuteAsync(MakeContext("provider"));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain("**Ollama**");
+        result.Content.Should().Contain("`llama3.2:latest`");
+    }
+
+    [Fact]
+    public async Task ProviderCommand_WhenProviderIsOffline_ReturnsAvailableProviders()
+    {
+        var cmd = new ProviderCommand(_router, _pool, _providers);
+
+        var result = await cmd.ExecuteAsync(MakeContext("provider", new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["name"] = "Claude"
+        }));
+
+        result.Success.Should().BeFalse();
+        result.Content.Should().Contain("Provider **Claude** not found or offline");
+        result.Content.Should().Contain("**Ollama**");
+        result.Content.Should().Contain("**OpenAI**");
+    }
+
+    [Fact]
+    public async Task ProviderCommand_WhenMatchedProviderHasNoModels_ReturnsError()
+    {
+        _providers.DetectProvidersAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<ProviderInfo>>(
+            [
+                new ProviderInfo("TestProvider", true, null, [])
+            ]));
+        var cmd = new ProviderCommand(_router, _pool, _providers);
+
+        var result = await cmd.ExecuteAsync(MakeContext("provider", new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["name"] = "Test"
+        }));
+
+        result.Success.Should().BeFalse();
+        result.Content.Should().Contain("**TestProvider** has no available models");
+    }
+
     // --- StatusCommand ---
 
     [Fact]
