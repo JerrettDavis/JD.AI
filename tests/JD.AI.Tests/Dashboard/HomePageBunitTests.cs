@@ -42,7 +42,7 @@ public sealed class HomePageBunitTests : DashboardBunitTestContext
         Services.AddSingleton(api);
         Services.AddSingleton(new SignalRService("http://localhost"));
 
-        var cut = RenderComponent<Home>();
+        var cut = RenderWithMudProviders<Home>();
 
         var statCards = cut.FindAll("[data-testid='stat-card']");
         Assert.Equal(4, statCards.Count);
@@ -65,7 +65,7 @@ public sealed class HomePageBunitTests : DashboardBunitTestContext
         Services.AddSingleton(api);
         Services.AddSingleton(new SignalRService("http://localhost"));
 
-        var cut = RenderComponent<Home>();
+        var cut = RenderWithMudProviders<Home>();
 
         var statValues = cut.FindAll("[data-testid='stat-value']").Select(x => x.TextContent.Trim()).ToArray();
         Assert.Contains("0", statValues);

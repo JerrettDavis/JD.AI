@@ -12,6 +12,7 @@ on:
 
 env:
   DOTNET_NOLOGO: true
+  TEST_RESULTS_DIR: artifacts/test-results
 
 permissions:
   contents: read
@@ -62,9 +63,10 @@ jobs:
           dotnet test JD.AI.slnx
           --configuration Release
           --no-build
+          --results-directory ${{ env.TEST_RESULTS_DIR }}
           --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E"
           --verbosity normal
-          --logger "trx;LogFileName=test-results.trx"
+          --logger trx
           --collect:"XPlat Code Coverage"
           --blame-hang-timeout 5m
           --
@@ -80,7 +82,7 @@ jobs:
         if: always()
         shell: bash
         run: |
-          REPORTS=$(find . -type f -path "*/TestResults/*/coverage.cobertura.xml" 2>/dev/null | tr '\n' ';')
+          REPORTS=$(find "${TEST_RESULTS_DIR}" -type f -name "coverage.cobertura.xml" 2>/dev/null | tr '\n' ';')
           if [ -z "$REPORTS" ] || [ "$REPORTS" = ";" ]; then
             echo "No coverage files found — skipping report generation."
             exit 0
@@ -121,7 +123,7 @@ jobs:
           PY
 
       - name: Coverage gate — check changed source files
-        if: always()
+        if: always() && github.event_name == 'pull_request'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -170,7 +172,7 @@ jobs:
         if: always()
         with:
           files: |
-            **/TestResults/**/*.trx
+            ${{ env.TEST_RESULTS_DIR }}/**/*.trx
           check_name: Test Results
 
       - name: Dry-run NuGet packaging

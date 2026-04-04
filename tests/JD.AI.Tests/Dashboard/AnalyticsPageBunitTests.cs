@@ -59,7 +59,7 @@ public sealed class AnalyticsPageBunitTests : DashboardBunitTestContext
 
         Services.AddSingleton(api);
 
-        var cut = RenderComponent<Analytics>();
+        var cut = RenderWithMudProviders<Analytics>();
 
         var statCards = cut.FindAll("[data-testid='stat-card']");
         Assert.Equal(4, statCards.Count);
@@ -92,7 +92,7 @@ public sealed class AnalyticsPageBunitTests : DashboardBunitTestContext
 
         Services.AddSingleton(api);
 
-        var cut = RenderComponent<Analytics>();
+        var cut = RenderWithMudProviders<Analytics>();
 
         Assert.NotNull(cut.Find("[data-testid='analytics-empty']"));
         Assert.Empty(cut.FindAll("[data-testid='top-agents-table']"));

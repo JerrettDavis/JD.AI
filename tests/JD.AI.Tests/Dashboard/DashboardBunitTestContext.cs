@@ -3,13 +3,15 @@ using System.Text;
 using Bunit;
 using JD.AI.Dashboard.Wasm.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using MudBlazor.Services;
+using Xunit;
 
 namespace JD.AI.Tests.Dashboard;
 
-public abstract class DashboardBunitTestContext : TestContext
+public abstract class DashboardBunitTestContext : BunitContext, IAsyncLifetime
 {
     protected DashboardBunitTestContext()
     {
@@ -27,49 +29,13 @@ public abstract class DashboardBunitTestContext : TestContext
         return new GatewayApiClient(http);
     }
 
-    protected IRenderedFragment RenderWithMudProviders<TComponent>(Action<ComponentParameterCollectionBuilder<TComponent>>? parameters = null)
+    protected IRenderedComponent<MudProvidersHost> RenderWithMudProviders<TComponent>(Action<ComponentParameterCollectionBuilder<TComponent>>? parameters = null)
         where TComponent : IComponent
-    {
-        var parameterDictionary = BuildParameterDictionary(parameters);
+        => Render<MudProvidersHost>(host => host.AddChildContent<TComponent>(parameters ?? (_ => { })));
 
-        return Render(renderTreeBuilder =>
-        {
-            renderTreeBuilder.OpenComponent<MudThemeProvider>(0);
-            renderTreeBuilder.CloseComponent();
+    public Task InitializeAsync() => Task.CompletedTask;
 
-            renderTreeBuilder.OpenComponent<MudPopoverProvider>(1);
-            renderTreeBuilder.CloseComponent();
-
-            renderTreeBuilder.OpenComponent<MudDialogProvider>(2);
-            renderTreeBuilder.CloseComponent();
-
-            renderTreeBuilder.OpenComponent<MudSnackbarProvider>(3);
-            renderTreeBuilder.CloseComponent();
-
-            renderTreeBuilder.OpenComponent<TComponent>(4);
-            foreach (var parameter in parameterDictionary)
-                renderTreeBuilder.AddAttribute(5, parameter.Key, parameter.Value);
-            renderTreeBuilder.CloseComponent();
-        });
-    }
-
-    private static Dictionary<string, object?> BuildParameterDictionary<TComponent>(Action<ComponentParameterCollectionBuilder<TComponent>>? parameters)
-        where TComponent : IComponent
-    {
-        var result = new Dictionary<string, object?>(StringComparer.Ordinal);
-        if (parameters is null)
-            return result;
-
-        var builder = new ComponentParameterCollectionBuilder<TComponent>();
-        parameters(builder);
-        foreach (var parameter in builder.Build())
-        {
-            if (parameter.Name is not null)
-                result[parameter.Name] = parameter.Value;
-        }
-
-        return result;
-    }
+    async Task IAsyncLifetime.DisposeAsync() => await base.DisposeAsync().ConfigureAwait(false);
 
     protected static HttpResponseMessage JsonResponse(string body, HttpStatusCode statusCode = HttpStatusCode.OK) =>
         new(statusCode)
@@ -81,5 +47,28 @@ public abstract class DashboardBunitTestContext : TestContext
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
             Task.FromResult(responder(request));
+    }
+
+    protected sealed class MudProvidersHost : ComponentBase
+    {
+        [Parameter]
+        public RenderFragment? ChildContent { get; set; }
+
+        protected override void BuildRenderTree(RenderTreeBuilder builder)
+        {
+            builder.OpenComponent<MudThemeProvider>(0);
+            builder.CloseComponent();
+
+            builder.OpenComponent<MudPopoverProvider>(1);
+            builder.CloseComponent();
+
+            builder.OpenComponent<MudDialogProvider>(2);
+            builder.CloseComponent();
+
+            builder.OpenComponent<MudSnackbarProvider>(3);
+            builder.CloseComponent();
+
+            builder.AddContent(4, ChildContent);
+        }
     }
 }

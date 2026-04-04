@@ -9,6 +9,7 @@ on:
 
 env:
   DOTNET_NOLOGO: true
+  TEST_RESULTS_DIR: artifacts/test-results
 
 jobs:
   pr-checks:
@@ -50,6 +51,7 @@ jobs:
           dotnet test JD.AI.slnx
           --configuration Release
           --no-build
+          --results-directory ${{ env.TEST_RESULTS_DIR }}
           --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E"
           --collect:"XPlat Code Coverage"
           --blame-hang-timeout 5m
@@ -65,7 +67,7 @@ jobs:
         if: always()
         shell: bash
         run: |
-          REPORTS=$(find . -type f -path "*/TestResults/*/coverage.cobertura.xml" 2>/dev/null | tr '\n' ';')
+          REPORTS=$(find "${TEST_RESULTS_DIR}" -type f -name "coverage.cobertura.xml" 2>/dev/null | tr '\n' ';')
           if [ -z "$REPORTS" ] || [ "$REPORTS" = ";" ]; then
             echo "No coverage files found — skipping report generation."
             exit 0
@@ -168,6 +170,7 @@ jobs:
           dotnet test JD.AI.slnx
           --configuration Release
           --no-build
+          --results-directory ${{ env.TEST_RESULTS_DIR }}
           --filter "Category!=Integration&Category!=MlModel&Category!=FlakyEnvironment&Category!=E2E"
           --collect:"XPlat Code Coverage"
           --blame-hang-timeout 5m
@@ -183,7 +186,7 @@ jobs:
         if: always()
         shell: bash
         run: |
-          REPORTS=$(find . -type f -path "*/TestResults/*/coverage.cobertura.xml" 2>/dev/null | tr '\n' ';')
+          REPORTS=$(find "${TEST_RESULTS_DIR}" -type f -name "coverage.cobertura.xml" 2>/dev/null | tr '\n' ';')
           if [ -z "$REPORTS" ] || [ "$REPORTS" = ";" ]; then
             echo "No coverage files found — skipping report generation."
             exit 0
