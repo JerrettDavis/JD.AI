@@ -31,6 +31,12 @@ public sealed class AgentDefinitionRegistry : IAgentDefinitionRegistry
         _definitions[definition.Name] = definition;
     }
 
+    public bool Unregister(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        return _definitions.TryRemove(name, out _);
+    }
+
     /// <inheritdoc />
     public IReadOnlyList<AgentDefinition> GetByTag(string tag)
     {

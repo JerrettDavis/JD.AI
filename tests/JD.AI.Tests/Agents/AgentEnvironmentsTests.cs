@@ -30,6 +30,36 @@ public sealed class AgentEnvironmentsTests
         AgentEnvironments.All.Should().ContainInOrder("dev", "staging", "prod");
     }
 
+    [Theory]
+    [InlineData("dev")]
+    [InlineData("DEV")]
+    [InlineData("Staging")]
+    [InlineData("prod")]
+    public void IsKnown_RecognizesSupportedValues(string input) =>
+        AgentEnvironments.IsKnown(input).Should().BeTrue();
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("qa")]
+    [InlineData("..\\prod")]
+    public void IsKnown_RejectsUnsupportedValues(string? input) =>
+        AgentEnvironments.IsKnown(input).Should().BeFalse();
+
+    [Theory]
+    [InlineData("dev", "dev")]
+    [InlineData("DEV", "dev")]
+    [InlineData("Staging", "staging")]
+    public void Normalize_ReturnsCanonicalEnvironment(string input, string expected) =>
+        AgentEnvironments.Normalize(input).Should().Be(expected);
+
+    [Fact]
+    public void Normalize_Unknown_Throws() =>
+        FluentActions.Invoking(() => AgentEnvironments.Normalize("..\\prod"))
+            .Should()
+            .Throw<ArgumentException>()
+            .WithMessage("Environment must be one of:*");
+
     // ── NextAfter ───────────────────────────────────────────────────────────
 
     [Fact]

@@ -61,6 +61,16 @@ public sealed class AgentsCliHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task List_WithInvalidEnvFlag_ReturnsValidationError()
+    {
+        var result = await CaptureStderrAsync(
+            () => AgentsCliHandler.RunAsync(["list", "--env", "..\\prod"]));
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Invalid value for --env. Expected one of:", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task List_WithVerboseFlag_PrintsDetailedAgentMetadata()
     {
         var registry = new FileAgentDefinitionRegistry(Path.Combine(DataDirectories.Root, "agents"));
@@ -136,6 +146,65 @@ public sealed class AgentsCliHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task Tag_WhenTargetVersionAlreadyExists_ReturnsError_AndDoesNotOverwrite()
+    {
+        var registry = new FileAgentDefinitionRegistry(Path.Combine(DataDirectories.Root, "agents"));
+        await registry.RegisterAsync(new AgentDefinition
+        {
+            Name = "reviewer",
+            Version = "1.0.0",
+            Description = "Original",
+        }, AgentEnvironments.Dev);
+        await registry.RegisterAsync(new AgentDefinition
+        {
+            Name = "reviewer",
+            Version = "1.1.0",
+            Description = "Existing target",
+        }, AgentEnvironments.Dev);
+
+        var result = await CaptureStderrAsync(
+            () => AgentsCliHandler.RunAsync(["tag", "reviewer", "1.1.0", "--env", "dev"]));
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Agent 'reviewer@1.1.0' already exists in 'dev'.", result.Output, StringComparison.Ordinal);
+        Assert.Equal("Existing target", (await registry.ResolveAsync("reviewer", "1.1.0", AgentEnvironments.Dev))?.Description);
+    }
+
+    [Fact]
+    public async Task Tag_WhenVersionIsLatest_ReturnsValidationError()
+    {
+        var registry = new FileAgentDefinitionRegistry(Path.Combine(DataDirectories.Root, "agents"));
+        await registry.RegisterAsync(new AgentDefinition
+        {
+            Name = "reviewer",
+            Version = "1.0.0",
+        }, AgentEnvironments.Dev);
+
+        var result = await CaptureStderrAsync(
+            () => AgentsCliHandler.RunAsync(["tag", "reviewer", "latest", "--env", "dev"]));
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Version must be a concrete version, not 'latest'.", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Tag_WhenVersionFormatIsInvalid_ReturnsValidationError()
+    {
+        var registry = new FileAgentDefinitionRegistry(Path.Combine(DataDirectories.Root, "agents"));
+        await registry.RegisterAsync(new AgentDefinition
+        {
+            Name = "reviewer",
+            Version = "1.0.0",
+        }, AgentEnvironments.Dev);
+
+        var result = await CaptureStderrAsync(
+            () => AgentsCliHandler.RunAsync(["tag", "reviewer", "1.0-beta", "--env", "dev"]));
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Version must use numeric dot-separated components", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Promote_WhenAgentIsMissing_ReturnsPromotionFailedError()
     {
         var result = await CaptureStderrAsync(
@@ -144,6 +213,56 @@ public sealed class AgentsCliHandlerTests : IDisposable
         Assert.Equal(1, result.ExitCode);
         Assert.Contains("Promotion failed:", result.Output, StringComparison.Ordinal);
         Assert.Contains("missing-agent@1.1.0", result.Output, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("tag", "..\\prod")]
+    [InlineData("remove", "..\\prod")]
+    public async Task Commands_WithInvalidEnvFlag_ReturnValidationError(string command, string invalidEnvironment)
+    {
+        var registry = new FileAgentDefinitionRegistry(Path.Combine(DataDirectories.Root, "agents"));
+        await registry.RegisterAsync(new AgentDefinition
+        {
+            Name = "reviewer",
+            Version = "1.0.0",
+        }, AgentEnvironments.Dev);
+
+        var result = command switch
+        {
+            "tag" => await CaptureStderrAsync(
+                () => AgentsCliHandler.RunAsync(["tag", "reviewer", "1.1.0", "--env", invalidEnvironment])),
+            "remove" => await CaptureStderrAsync(
+                () => AgentsCliHandler.RunAsync(["remove", "reviewer", "1.0.0", "--env", invalidEnvironment])),
+            _ => throw new ArgumentOutOfRangeException(nameof(command)),
+        };
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Invalid value for --env. Expected one of:", result.Output, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("--from")]
+    [InlineData("--to")]
+    public async Task Promote_WithInvalidEnvironmentFlag_ReturnsValidationError(string flag)
+    {
+        var args = string.Equals(flag, "--from", StringComparison.Ordinal)
+            ? new[] { "promote", "reviewer", "1.0.0", "--from", "..\\dev", "--to", "staging" }
+            : new[] { "promote", "reviewer", "1.0.0", "--from", "dev", "--to", "..\\prod" };
+
+        var result = await CaptureStderrAsync(() => AgentsCliHandler.RunAsync(args));
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains($"Invalid value for {flag}. Expected one of:", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Promote_WithReverseEnvironmentPath_ReturnsValidationError()
+    {
+        var result = await CaptureStderrAsync(
+            () => AgentsCliHandler.RunAsync(["promote", "reviewer", "1.0.0", "--from", "staging", "--to", "dev"]));
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Invalid promotion path: 'staging' can only promote to 'prod'.", result.Output, StringComparison.Ordinal);
     }
 
     [Fact]

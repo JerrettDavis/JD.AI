@@ -93,6 +93,7 @@ jobs:
         uses: codecov/codecov-action@v6
         with:
           files: coverage-report/Cobertura.xml
+          disable_search: true
           handle_no_reports_found: true
           fail_ci_if_error: false
 
@@ -207,6 +208,7 @@ jobs:
         with:
           files: coverage-report/Cobertura.xml
           token: ${{ secrets.CODECOV_TOKEN }}
+          disable_search: true
           handle_no_reports_found: true
           fail_ci_if_error: false
 

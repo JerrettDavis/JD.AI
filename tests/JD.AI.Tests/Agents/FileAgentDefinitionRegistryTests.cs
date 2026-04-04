@@ -1,3 +1,4 @@
+using System.Globalization;
 using JD.AI.Core.Agents;
 using JD.AI.Core.Config;
 using Xunit;
@@ -48,6 +49,18 @@ public sealed class FileAgentDefinitionRegistryTests : IDisposable
     }
 
     [Fact]
+    public async Task Resolve_Latest_PrefersNormalizedThreePartVersionForEquivalentSemVer()
+    {
+        await _registry.RegisterAsync(MakeDef("agent", "1.0"), AgentEnvironments.Dev);
+        await _registry.RegisterAsync(MakeDef("agent", "1.0.0"), AgentEnvironments.Dev);
+
+        var resolved = await _registry.ResolveAsync("agent", "latest", AgentEnvironments.Dev);
+
+        Assert.NotNull(resolved);
+        Assert.Equal("1.0.0", resolved.Version);
+    }
+
+    [Fact]
     public async Task Resolve_NullVersion_ReturnsLatest()
     {
         await _registry.RegisterAsync(MakeDef("agent", "1.0"), AgentEnvironments.Dev);
@@ -62,6 +75,28 @@ public sealed class FileAgentDefinitionRegistryTests : IDisposable
     {
         var resolved = await _registry.ResolveAsync("nonexistent", null, AgentEnvironments.Dev);
         Assert.Null(resolved);
+    }
+
+    [Fact]
+    public async Task Register_InvalidKeyCharacters_Throws()
+    {
+        var definition = MakeDef("agent/name", "1.0");
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            _registry.RegisterAsync(definition, AgentEnvironments.Dev));
+
+        Assert.Contains("Only letters, digits, '.', and '-' are allowed.", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Register_InvalidVersionFormat_Throws()
+    {
+        var definition = MakeDef("agent", "1.0-beta");
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            _registry.RegisterAsync(definition, AgentEnvironments.Dev));
+
+        Assert.Contains("Version must use numeric dot-separated components", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -81,6 +116,15 @@ public sealed class FileAgentDefinitionRegistryTests : IDisposable
 
         var inStaging = await _registry.ResolveAsync("agent", null, AgentEnvironments.Staging);
         Assert.Null(inStaging);
+    }
+
+    [Fact]
+    public async Task ListAsync_InvalidEnvironment_Throws()
+    {
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            _registry.ListAsync("..\\prod"));
+
+        Assert.Contains("Environment must be one of:", ex.Message, StringComparison.Ordinal);
     }
 
     // ── ListAsync ─────────────────────────────────────────────────────────
@@ -116,6 +160,33 @@ public sealed class FileAgentDefinitionRegistryTests : IDisposable
 
         var resolved = await _registry.ResolveAsync("agent", "1.0", AgentEnvironments.Dev);
         Assert.Null(resolved);
+        Assert.Null(_registry.GetByName("agent"));
+    }
+
+    [Fact]
+    public async Task Unregister_RemovingLatestDevVersion_FallsBackToRemainingVersion()
+    {
+        await _registry.RegisterAsync(MakeDef("agent", "1.0"), AgentEnvironments.Dev);
+        await _registry.RegisterAsync(MakeDef("agent", "2.0"), AgentEnvironments.Dev);
+
+        await _registry.UnregisterAsync("agent", "2.0", AgentEnvironments.Dev);
+
+        var cached = _registry.GetByName("agent");
+        Assert.NotNull(cached);
+        Assert.Equal("1.0", cached.Version);
+    }
+
+    [Fact]
+    public async Task NonDevRegistrationsAndDeletes_DoNotMutateSyncCache()
+    {
+        await _registry.RegisterAsync(MakeDef("agent", "1.0"), AgentEnvironments.Dev);
+        await _registry.RegisterAsync(MakeDef("agent", "2.0"), AgentEnvironments.Staging);
+
+        Assert.Equal("1.0", _registry.GetByName("agent")?.Version);
+
+        await _registry.UnregisterAsync("agent", "2.0", AgentEnvironments.Staging);
+
+        Assert.Equal("1.0", _registry.GetByName("agent")?.Version);
     }
 
     [Fact]
@@ -155,6 +226,17 @@ public sealed class FileAgentDefinitionRegistryTests : IDisposable
             _registry.PromoteAsync("nonexistent", "1.0", AgentEnvironments.Dev, AgentEnvironments.Staging));
     }
 
+    [Fact]
+    public async Task Promote_ReverseEnvironmentPath_Throws()
+    {
+        await _registry.RegisterAsync(MakeDef("agent", "1.0"), AgentEnvironments.Staging);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _registry.PromoteAsync("agent", "1.0", AgentEnvironments.Staging, AgentEnvironments.Dev));
+
+        Assert.Contains("Invalid promotion path: 'staging' can only promote to 'prod'.", ex.Message, StringComparison.Ordinal);
+    }
+
     // ── Checksum verification ─────────────────────────────────────────────
 
     [Fact]
@@ -174,6 +256,61 @@ public sealed class FileAgentDefinitionRegistryTests : IDisposable
 
         // Tampered file should be skipped
         Assert.Empty(list);
+    }
+
+    [Fact]
+    public async Task MissingChecksumFile_SkippedOnLoad()
+    {
+        var def = MakeDef("agent", "1.0");
+        await _registry.RegisterAsync(def, AgentEnvironments.Dev);
+
+        var dir = Path.Combine(_tempRoot, AgentEnvironments.Dev);
+        var checksumFile = Directory.GetFiles(dir, "*.sha256").Single();
+        File.Delete(checksumFile);
+
+        var freshRegistry = new FileAgentDefinitionRegistry(_tempRoot);
+        var list = await freshRegistry.ListAsync(AgentEnvironments.Dev);
+
+        Assert.Empty(list);
+    }
+
+    [Fact]
+    public async Task InvalidEnvironmentMetadata_SkippedOnLoad()
+    {
+        var dir = Path.Combine(_tempRoot, AgentEnvironments.Dev);
+        Directory.CreateDirectory(dir);
+
+        var yaml = """
+            name: agent
+            version: 1.0
+            environment: ..\prod
+            description: invalid environment
+            """;
+
+        var yamlPath = Path.Combine(dir, "agent@1.0.agent.yaml");
+        await File.WriteAllTextAsync(yamlPath, yaml);
+        await File.WriteAllTextAsync(
+            Path.Combine(dir, "agent@1.0.sha256"),
+            string.Concat(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(yaml))
+                .Select(static b => b.ToString("x2", CultureInfo.InvariantCulture))));
+
+        var freshRegistry = new FileAgentDefinitionRegistry(_tempRoot);
+        var list = await freshRegistry.ListAsync(AgentEnvironments.Dev);
+
+        Assert.Empty(list);
+    }
+
+    [Fact]
+    public async Task FreshRegistry_PreloadsLatestDevDefinitionIntoSyncCache()
+    {
+        await _registry.RegisterAsync(MakeDef("agent", "1.0"), AgentEnvironments.Dev);
+        await _registry.RegisterAsync(MakeDef("agent", "2.0"), AgentEnvironments.Dev);
+
+        var freshRegistry = new FileAgentDefinitionRegistry(_tempRoot);
+
+        var found = freshRegistry.GetByName("agent");
+        Assert.NotNull(found);
+        Assert.Equal("2.0", found.Version);
     }
 
     // ── AgentEnvironments ─────────────────────────────────────────────────

@@ -64,11 +64,12 @@ On `RegisterAsync`:
 3. The checksum is written to `{name}@{version}.sha256`.
 
 On `LoadAndVerifyAsync` (called by `ListAsync`):
-1. If a companion `.sha256` file exists, the stored and computed checksums are
-   compared.
-2. Mismatch → the file is silently skipped (not surfaced to callers).
-3. Missing `.sha256` → file is loaded without verification (backwards compat
-   with hand-authored files).
+1. A companion `.sha256` file is required.
+2. The stored and computed checksums are compared.
+3. Missing or mismatched `.sha256` → the file is silently skipped (not surfaced
+   to callers).
+4. After checksum verification, the deserialized definition's name, version, and
+   optional environment are validated before it is returned.
 
 ### Interface Design
 
@@ -100,7 +101,6 @@ jdai agents remove <name> <version> [--env <env>]
 - Multiple versions coexist without conflict.
 - Environment promotion mirrors standard infrastructure promotion workflows.
 - Integrity checks prevent loading tampered definitions.
-- Backwards compatible: hand-authored YAML files (no `.sha256`) still load.
 
 ### Negative / Trade-offs
 

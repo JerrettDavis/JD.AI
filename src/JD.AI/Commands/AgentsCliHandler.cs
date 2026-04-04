@@ -38,7 +38,9 @@ internal static class AgentsCliHandler
 
     private static async Task<int> ListAsync(FileAgentDefinitionRegistry registry, string[] args)
     {
-        var env = GetFlag(args, "--env") ?? AgentEnvironments.Dev;
+        if (!TryGetEnvironment(GetFlag(args, "--env"), "--env", AgentEnvironments.Dev, out var env))
+            return 1;
+
         var verbose = args.Contains("--verbose") || args.Contains("-v");
 
         var agentsRoot = Path.Combine(DataDirectories.Root, "agents");
@@ -86,7 +88,20 @@ internal static class AgentsCliHandler
 
         var nameArg = args[0];
         var version = args[1];
-        var env = GetFlag(args[2..], "--env") ?? AgentEnvironments.Dev;
+        if (!TryGetEnvironment(GetFlag(args[2..], "--env"), "--env", AgentEnvironments.Dev, out var env))
+            return 1;
+
+        if (string.Equals(version, "latest", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.Error.WriteLine("Version must be a concrete version, not 'latest'.");
+            return 1;
+        }
+
+        if (!AgentVersions.IsSupported(version))
+        {
+            Console.Error.WriteLine("Version must use numeric dot-separated components like 1.0 or 1.0.0.");
+            return 1;
+        }
 
         // Resolve existing or require explicit file path
         var existing = await registry.ResolveAsync(nameArg, null, env).ConfigureAwait(false);
@@ -96,9 +111,42 @@ internal static class AgentsCliHandler
             return 1;
         }
 
-        existing.Version = version;
-        existing.UpdatedAt = DateTime.UtcNow;
-        await registry.RegisterAsync(existing, env).ConfigureAwait(false);
+        var versionExists = (await registry.ListAsync(env).ConfigureAwait(false))
+            .Any(a => a.Name.Equals(nameArg, StringComparison.OrdinalIgnoreCase) &&
+                      a.Version.Equals(version, StringComparison.OrdinalIgnoreCase));
+        if (versionExists)
+        {
+            Console.Error.WriteLine($"Agent '{nameArg}@{version}' already exists in '{env}'.");
+            return 1;
+        }
+
+        var tagged = new AgentDefinition
+        {
+            Name = existing.Name,
+            DisplayName = existing.DisplayName,
+            Description = existing.Description,
+            Version = version,
+            Model = existing.Model is null
+                ? null
+                : new AgentModelSpec
+                {
+                    Provider = existing.Model.Provider,
+                    Id = existing.Model.Id,
+                    MaxOutputTokens = existing.Model.MaxOutputTokens,
+                    Temperature = existing.Model.Temperature,
+                },
+            Loadout = existing.Loadout,
+            SystemPrompt = existing.SystemPrompt,
+            Workflows = [.. existing.Workflows],
+            Tags = [.. existing.Tags],
+            IsDeprecated = existing.IsDeprecated,
+            MigrationGuidance = existing.MigrationGuidance,
+            Environment = existing.Environment,
+            CreatedAt = existing.CreatedAt,
+            UpdatedAt = DateTime.UtcNow,
+        };
+
+        await registry.RegisterAsync(tagged, env).ConfigureAwait(false);
 
         Console.WriteLine($"✓ Tagged '{nameArg}' as v{version} in '{env}'.");
         return 0;
@@ -117,7 +165,9 @@ internal static class AgentsCliHandler
 
         var name = args[0];
         var version = args.Length > 1 && !args[1].StartsWith("--") ? args[1] : "latest";
-        var from = GetFlag(args, "--from") ?? AgentEnvironments.Dev;
+        if (!TryGetEnvironment(GetFlag(args, "--from"), "--from", AgentEnvironments.Dev, out var from))
+            return 1;
+
         var to = GetFlag(args, "--to");
 
         if (to is null)
@@ -129,6 +179,19 @@ internal static class AgentsCliHandler
                 Console.Error.WriteLine($"'{from}' is the highest environment. Use --to to specify a target.");
                 return 1;
             }
+        }
+        else if (!TryGetEnvironment(to, "--to", AgentEnvironments.Dev, out to))
+        {
+            return 1;
+        }
+
+        var expectedTarget = AgentEnvironments.NextAfter(from);
+        if (!string.Equals(to, expectedTarget, StringComparison.OrdinalIgnoreCase))
+        {
+            var destination = expectedTarget ?? "no further environment";
+            Console.Error.WriteLine(
+                $"Invalid promotion path: '{from}' can only promote to '{destination}'.");
+            return 1;
         }
 
         try
@@ -157,7 +220,8 @@ internal static class AgentsCliHandler
 
         var name = args[0];
         var version = args[1];
-        var env = GetFlag(args[2..], "--env") ?? AgentEnvironments.Dev;
+        if (!TryGetEnvironment(GetFlag(args[2..], "--env"), "--env", AgentEnvironments.Dev, out var env))
+            return 1;
 
         await registry.UnregisterAsync(name, version, env).ConfigureAwait(false);
         Console.WriteLine($"✓ Removed '{name}@{version}' from '{env}'.");
@@ -173,6 +237,30 @@ internal static class AgentsCliHandler
     {
         var idx = Array.IndexOf(args, flag);
         return idx >= 0 && idx + 1 < args.Length ? args[idx + 1] : null;
+    }
+
+    private static bool TryGetEnvironment(
+        string? value,
+        string flagName,
+        string defaultEnvironment,
+        out string environment)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            environment = defaultEnvironment;
+            return true;
+        }
+
+        if (AgentEnvironments.IsKnown(value))
+        {
+            environment = AgentEnvironments.Normalize(value);
+            return true;
+        }
+
+        Console.Error.WriteLine(
+            $"Invalid value for {flagName}. Expected one of: {string.Join(", ", AgentEnvironments.All)}.");
+        environment = defaultEnvironment;
+        return false;
     }
 
     private static int PrintHelp()

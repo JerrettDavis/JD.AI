@@ -42,11 +42,14 @@ public sealed class FileAgentDefinitionRegistry : IVersionedAgentDefinitionRegis
         Directory.CreateDirectory(rootPath);
 
         // Pre-warm in-memory cache from dev by default (used by sync IAgentDefinitionRegistry)
-        _ = Task.Run(async () =>
+        // synchronously so callers don't race background file reads against writes/deletes.
+        var all = ListAsync(AgentEnvironments.Dev).ConfigureAwait(false).GetAwaiter().GetResult();
+        foreach (var definition in all
+                     .GroupBy(d => d.Name, StringComparer.OrdinalIgnoreCase)
+                     .Select(group => ResolveLatest(group.ToList())))
         {
-            var all = await ListAsync(AgentEnvironments.Dev).ConfigureAwait(false);
-            foreach (var d in all) _memCache.Register(d);
-        });
+            _memCache.Register(definition);
+        }
     }
 
     // ── IAgentDefinitionRegistry (sync, in-memory) ─────────────────────────
@@ -64,10 +67,8 @@ public sealed class FileAgentDefinitionRegistry : IVersionedAgentDefinitionRegis
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(definition);
-        if (string.IsNullOrWhiteSpace(definition.Name))
-            throw new ArgumentException("AgentDefinition.Name is required.", nameof(definition));
-        if (string.IsNullOrWhiteSpace(definition.Version))
-            throw new ArgumentException("AgentDefinition.Version is required.", nameof(definition));
+        ValidateKeyPart(definition.Name, nameof(definition.Name));
+        AgentVersions.Normalize(definition.Version, nameof(definition.Version));
 
         var dir = GetEnvDir(environment);
         Directory.CreateDirectory(dir);
@@ -81,7 +82,8 @@ public sealed class FileAgentDefinitionRegistry : IVersionedAgentDefinitionRegis
         var checksum = ComputeChecksum(yaml);
         await File.WriteAllTextAsync(checksumPath, checksum, cancellationToken).ConfigureAwait(false);
 
-        _memCache.Register(definition);
+        if (IsDevEnvironment(environment))
+            await RefreshDevCacheEntryAsync(definition.Name, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<AgentDefinition?> ResolveAsync(
@@ -127,6 +129,9 @@ public sealed class FileAgentDefinitionRegistry : IVersionedAgentDefinitionRegis
         string environment = AgentEnvironments.Dev,
         CancellationToken cancellationToken = default)
     {
+        ValidateKeyPart(name, nameof(name));
+        AgentVersions.Normalize(version, nameof(version));
+
         var dir = GetEnvDir(environment);
         var filePath = GetFilePath(dir, name, version);
         var checksumPath = GetChecksumPath(dir, name, version);
@@ -136,7 +141,8 @@ public sealed class FileAgentDefinitionRegistry : IVersionedAgentDefinitionRegis
         if (File.Exists(checksumPath))
             File.Delete(checksumPath);
 
-        await Task.CompletedTask.ConfigureAwait(false);
+        if (IsDevEnvironment(environment))
+            await RefreshDevCacheEntryAsync(name, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task PromoteAsync(
@@ -146,6 +152,17 @@ public sealed class FileAgentDefinitionRegistry : IVersionedAgentDefinitionRegis
         string toEnvironment,
         CancellationToken cancellationToken = default)
     {
+        fromEnvironment = AgentEnvironments.Normalize(fromEnvironment, nameof(fromEnvironment));
+        toEnvironment = AgentEnvironments.Normalize(toEnvironment, nameof(toEnvironment));
+
+        var expectedTarget = AgentEnvironments.NextAfter(fromEnvironment);
+        if (!string.Equals(toEnvironment, expectedTarget, StringComparison.OrdinalIgnoreCase))
+        {
+            var destination = expectedTarget ?? "no further environment";
+            throw new InvalidOperationException(
+                $"Invalid promotion path: '{fromEnvironment}' can only promote to '{destination}'.");
+        }
+
         var definition = await ResolveAsync(name, version, fromEnvironment, cancellationToken)
             .ConfigureAwait(false);
 
@@ -159,7 +176,10 @@ public sealed class FileAgentDefinitionRegistry : IVersionedAgentDefinitionRegis
     // ── Private helpers ────────────────────────────────────────────────────
 
     private string GetEnvDir(string environment) =>
-        Path.Combine(_rootPath, environment.ToLowerInvariant());
+        Path.Combine(_rootPath, AgentEnvironments.Normalize(environment));
+
+    private static bool IsDevEnvironment(string environment) =>
+        environment.Equals(AgentEnvironments.Dev, StringComparison.OrdinalIgnoreCase);
 
     private static string GetFilePath(string dir, string name, string version) =>
         Path.Combine(dir, $"{SanitizeName(name)}@{SanitizeName(version)}.agent.yaml");
@@ -170,6 +190,32 @@ public sealed class FileAgentDefinitionRegistry : IVersionedAgentDefinitionRegis
     private static string SanitizeName(string s) =>
         string.Concat(s.Select(c => char.IsLetterOrDigit(c) || c is '.' or '-' ? c : '_'));
 
+    private static void ValidateKeyPart(string value, string paramName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(value, paramName);
+        if (value.Any(c => !char.IsLetterOrDigit(c) && c is not '.' and not '-'))
+        {
+            throw new ArgumentException(
+                "Only letters, digits, '.', and '-' are allowed.",
+                paramName);
+        }
+    }
+
+    private async Task RefreshDevCacheEntryAsync(string name, CancellationToken cancellationToken)
+    {
+        var matches = (await ListAsync(AgentEnvironments.Dev, cancellationToken).ConfigureAwait(false))
+            .Where(d => d.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (matches.Count == 0)
+        {
+            _memCache.Unregister(name);
+            return;
+        }
+
+        _memCache.Register(ResolveLatest(matches));
+    }
+
     private async Task<AgentDefinition?> LoadAndVerifyAsync(
         string filePath, CancellationToken ct)
     {
@@ -177,19 +223,24 @@ public sealed class FileAgentDefinitionRegistry : IVersionedAgentDefinitionRegis
         {
             var yaml = await File.ReadAllTextAsync(filePath, ct).ConfigureAwait(false);
 
-            // Verify checksum if a companion file exists
             var dir = Path.GetDirectoryName(filePath)!;
             var fileName = Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(filePath));
             var checksumPath = Path.Combine(dir, fileName + ".sha256");
-            if (File.Exists(checksumPath))
-            {
-                var storedChecksum = await File.ReadAllTextAsync(checksumPath, ct).ConfigureAwait(false);
-                var actualChecksum = ComputeChecksum(yaml);
-                if (!storedChecksum.Equals(actualChecksum, StringComparison.Ordinal))
-                    return null; // checksum mismatch — skip tampered file
-            }
+            if (!File.Exists(checksumPath))
+                return null;
 
-            return _deserializer.Deserialize<AgentDefinition>(yaml);
+            var storedChecksum = await File.ReadAllTextAsync(checksumPath, ct).ConfigureAwait(false);
+            var actualChecksum = ComputeChecksum(yaml);
+            if (!storedChecksum.Equals(actualChecksum, StringComparison.Ordinal))
+                return null; // checksum mismatch — skip tampered file
+
+            var definition = _deserializer.Deserialize<AgentDefinition>(yaml);
+            ValidateKeyPart(definition.Name, nameof(definition.Name));
+            AgentVersions.Normalize(definition.Version, nameof(definition.Version));
+            if (!string.IsNullOrWhiteSpace(definition.Environment))
+                definition.Environment = AgentEnvironments.Normalize(definition.Environment);
+
+            return definition;
         }
         catch
         {
@@ -209,13 +260,13 @@ public sealed class FileAgentDefinitionRegistry : IVersionedAgentDefinitionRegis
     {
         return candidates
             .OrderByDescending(d => ParseSemVer(d.Version))
+            .ThenByDescending(d => d.Version.Count(c => c == '.'))
+            .ThenByDescending(d => d.Version, StringComparer.OrdinalIgnoreCase)
             .First();
     }
 
     private static Version ParseSemVer(string version)
     {
-        // Normalize "1.0" → "1.0.0" for consistent comparison
-        var normalized = version.Contains('.') ? version : version + ".0";
-        return System.Version.TryParse(normalized, out var v) ? v : new Version(0, 0, 0);
+        return AgentVersions.ParseOrZero(version);
     }
 }
