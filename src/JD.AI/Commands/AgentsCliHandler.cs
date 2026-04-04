@@ -11,17 +11,18 @@ internal static class AgentsCliHandler
     public static async Task<int> RunAsync(string[] args)
     {
         var sub = args.Length > 0 ? args[0].ToLowerInvariant() : "list";
+        var remainingArgs = args.Length > 1 ? args[1..] : Array.Empty<string>();
         var registry = CreateRegistry();
 
         try
         {
             return sub switch
             {
-                "list" => await ListAsync(registry, args[1..]).ConfigureAwait(false),
-                "tag" => await TagAsync(registry, args[1..]).ConfigureAwait(false),
-                "promote" => await PromoteAsync(registry, args[1..]).ConfigureAwait(false),
+                "list" => await ListAsync(registry, remainingArgs).ConfigureAwait(false),
+                "tag" => await TagAsync(registry, remainingArgs).ConfigureAwait(false),
+                "promote" => await PromoteAsync(registry, remainingArgs).ConfigureAwait(false),
                 "remove" or "unregister"
-                          => await RemoveAsync(registry, args[1..]).ConfigureAwait(false),
+                          => await RemoveAsync(registry, remainingArgs).ConfigureAwait(false),
                 "help" or "--help" or "-h" => PrintHelp(),
                 _ => PrintUnknown(sub),
             };
