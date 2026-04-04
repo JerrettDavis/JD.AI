@@ -681,6 +681,19 @@ public class GatewayCommandTests
     // --- ClearCommand ---
 
     [Fact]
+    public void ClearCommand_ExposesExpectedMetadata()
+    {
+        var cmd = new ClearCommand(_pool);
+
+        cmd.Name.Should().Be("clear");
+        cmd.Description.Should().Be("Clears conversation history for an agent.");
+        cmd.Parameters.Should().ContainSingle();
+        cmd.Parameters[0].Name.Should().Be("agent");
+        cmd.Parameters[0].Description.Should().Be("Agent ID (first 8 chars). Clears all if omitted.");
+        cmd.Parameters[0].IsRequired.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task ClearCommand_WhenNoAgents_ShowsInfo()
     {
         var cmd = new ClearCommand(_pool);
@@ -739,6 +752,22 @@ public class GatewayCommandTests
     }
 
     // --- SwitchCommand ---
+
+    [Fact]
+    public void SwitchCommand_ExposesExpectedMetadata()
+    {
+        var cmd = new SwitchCommand(_pool);
+
+        cmd.Name.Should().Be("switch");
+        cmd.Description.Should().Be("Switch the model for an agent (spawns a new agent with the specified model).");
+        cmd.Parameters.Should().HaveCount(2);
+        cmd.Parameters[0].Name.Should().Be("model");
+        cmd.Parameters[0].Description.Should().Be("Model name to switch to (e.g., gpt-4, llama3.2:latest)");
+        cmd.Parameters[0].IsRequired.Should().BeTrue();
+        cmd.Parameters[1].Name.Should().Be("provider");
+        cmd.Parameters[1].Description.Should().Be("Provider name (e.g., Ollama, Claude). Defaults to current agent's provider.");
+        cmd.Parameters[1].IsRequired.Should().BeFalse();
+    }
 
     [Fact]
     public async Task SwitchCommand_WithoutModel_ReturnsError()
