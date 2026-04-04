@@ -511,8 +511,8 @@ public class GatewayCommandTests
     {
         var cmd = new ModelsCommand(_pool, new GatewayConfig
         {
-            Providers = null,
-            Agents = null
+            Providers = null!,
+            Agents = null!
         });
 
         var result = await cmd.ExecuteAsync(MakeContext("models"));

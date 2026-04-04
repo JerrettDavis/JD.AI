@@ -196,13 +196,12 @@ public sealed class WelcomeMotdProviderTests
     public async Task TryGetMotdAsync_WhenCancellationIsRequested_PropagatesCancellation()
     {
         using var cts = new CancellationTokenSource();
-        cts.Cancel();
+        await cts.CancelAsync();
         using var http = CreateHttpClient(_ => throw new OperationCanceledException(cts.Token));
         var settings = CreateSettings(motdUrl: "https://motd.test/");
 
-        Func<Task> act = () => WelcomeMotdProvider.TryGetMotdAsync(settings, http, cts.Token);
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => WelcomeMotdProvider.TryGetMotdAsync(settings, http, cts.Token));
     }
 
     private static WelcomePanelSettings CreateSettings(

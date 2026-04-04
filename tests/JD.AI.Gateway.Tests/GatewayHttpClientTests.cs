@@ -489,7 +489,7 @@ public sealed class GatewayHttpClientTests
     public async Task IsHealthyAsync_WhenCancellationRequested_PropagatesCancellation()
     {
         using var cts = new CancellationTokenSource();
-        cts.Cancel();
+        await cts.CancelAsync();
         var handler = new StubHttpMessageHandler(_ => throw new OperationCanceledException(cts.Token));
         var client = CreateClient(handler);
 

@@ -108,6 +108,7 @@ public sealed class SessionConfiguratorTests
     {
         using var fixture = new JD.AI.Tests.Fixtures.TempDirectoryFixture();
         var currentDirectory = Directory.GetCurrentDirectory();
+        SessionSetup? setup = null;
 
         try
         {
@@ -125,7 +126,7 @@ public sealed class SessionConfiguratorTests
                 [],
                 registry.BuildKernel(primaryModel));
 
-            var setup = await SessionConfigurator.ConfigureAsync(
+            setup = await SessionConfigurator.ConfigureAsync(
                 new CliOptions
                 {
                     IsNewSession = true,
@@ -140,6 +141,7 @@ public sealed class SessionConfiguratorTests
         }
         finally
         {
+            setup?.Session.Store?.Dispose();
             DataDirectories.Reset();
         }
     }
@@ -151,6 +153,7 @@ public sealed class SessionConfiguratorTests
         var currentDirectory = Directory.GetCurrentDirectory();
         AgentSession? olderSession = null;
         AgentSession? latestSession = null;
+        SessionSetup? setup = null;
 
         try
         {
@@ -175,7 +178,7 @@ public sealed class SessionConfiguratorTests
             latestSession.SessionInfo!.UpdatedAt = DateTime.UtcNow.AddMinutes(1);
             await latestSession.Store!.UpdateSessionAsync(latestSession.SessionInfo);
 
-            var setup = await SessionConfigurator.ConfigureAsync(
+            setup = await SessionConfigurator.ConfigureAsync(
                 new CliOptions
                 {
                     ContinueSession = true,
@@ -195,6 +198,7 @@ public sealed class SessionConfiguratorTests
         }
         finally
         {
+            setup?.Session.Store?.Dispose();
             olderSession?.Store?.Dispose();
             latestSession?.Store?.Dispose();
             DataDirectories.Reset();
@@ -208,6 +212,7 @@ public sealed class SessionConfiguratorTests
         var currentDirectory = Directory.GetCurrentDirectory();
         AgentSession? requestedSession = null;
         AgentSession? ignoredSession = null;
+        SessionSetup? setup = null;
 
         try
         {
@@ -228,7 +233,7 @@ public sealed class SessionConfiguratorTests
                 "ignored-session",
                 assistantReply: "ignored assistant");
 
-            var setup = await SessionConfigurator.ConfigureAsync(
+            setup = await SessionConfigurator.ConfigureAsync(
                 new CliOptions
                 {
                     ResumeId = ignoredSession.SessionInfo!.Id,
@@ -242,6 +247,7 @@ public sealed class SessionConfiguratorTests
         }
         finally
         {
+            setup?.Session.Store?.Dispose();
             requestedSession?.Store?.Dispose();
             ignoredSession?.Store?.Dispose();
             DataDirectories.Reset();
@@ -283,6 +289,7 @@ public sealed class SessionConfiguratorTests
         using var fixture = new JD.AI.Tests.Fixtures.TempDirectoryFixture();
         var currentDirectory = Directory.GetCurrentDirectory();
         AgentSession? sourceSession = null;
+        SessionSetup? setup = null;
 
         try
         {
@@ -297,7 +304,7 @@ public sealed class SessionConfiguratorTests
                 "source-session",
                 assistantReply: "fork me");
 
-            var setup = await SessionConfigurator.ConfigureAsync(
+            setup = await SessionConfigurator.ConfigureAsync(
                 new CliOptions
                 {
                     CliSessionId = sourceSession.SessionInfo!.Id,
@@ -307,7 +314,7 @@ public sealed class SessionConfiguratorTests
                 providerSetup);
 
             var sessions = await setup.Session.Store!.ListSessionsAsync(sourceSession.SessionInfo.ProjectHash, 10);
-            var fork = Assert.Single(sessions, s => s.Name == "CLI fork");
+            var fork = Assert.Single(sessions, s => string.Equals(s.Name, "CLI fork", StringComparison.Ordinal));
             var forkedSession = await setup.Session.Store.GetSessionAsync(fork.Id);
 
             Assert.Equal(sourceSession.SessionInfo.Id, setup.Session.SessionInfo!.Id);
@@ -319,6 +326,7 @@ public sealed class SessionConfiguratorTests
         }
         finally
         {
+            setup?.Session.Store?.Dispose();
             sourceSession?.Store?.Dispose();
             DataDirectories.Reset();
         }
