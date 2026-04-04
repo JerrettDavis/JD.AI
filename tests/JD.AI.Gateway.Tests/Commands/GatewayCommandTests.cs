@@ -259,6 +259,39 @@ public class GatewayCommandTests
         result.Content.Should().Contain("llama3.2");
     }
 
+    [Fact]
+    public async Task ModelsCommand_WithRunningAgent_ShowsActiveAgentSection()
+    {
+        var agentId = await _pool.SpawnAgentAsync("Ollama", "llama3.2:latest", null, CancellationToken.None);
+        var cmd = new ModelsCommand(_pool, _config);
+
+        var result = await cmd.ExecuteAsync(MakeContext("models"));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain("**Running Agents:**");
+        result.Content.Should().Contain($"• `{agentId[..8]}` — Ollama/llama3.2:latest (active)");
+        result.Content.Should().NotContain("📦 **Claude**");
+    }
+
+    [Fact]
+    public async Task ModelsCommand_WithNullProviderAndAgentConfig_UsesEmptySections()
+    {
+        var cmd = new ModelsCommand(_pool, new GatewayConfig
+        {
+            Providers = null,
+            Agents = null
+        });
+
+        var result = await cmd.ExecuteAsync(MakeContext("models"));
+
+        result.Success.Should().BeTrue();
+        result.Content.Should().Contain("**Available Models**");
+        result.Content.Should().Contain("**Configured Agent Models:**");
+        result.Content.Should().NotContain("📦 **");
+        result.Content.Should().NotContain("• `default`");
+        result.Content.Should().NotContain("**Running Agents:**");
+    }
+
     // --- AgentsCommand ---
 
     [Fact]
