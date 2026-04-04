@@ -8,7 +8,7 @@
 
 <div class="jd-page-header">
     <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-        <MudText Typo="Typo.h4">Model Providers</MudText>
+        <MudText data-testid="page-title" Typo="Typo.h4">Model Providers</MudText>
         <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small" data-testid="refresh-button" />
     </MudStack>
 </div>
@@ -40,6 +40,12 @@
             </MudItem>
         }
     </MudGrid>
+}
+else if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true" data-testid="providers-load-error">
+        Failed to load providers: @_loadError
+    </MudAlert>
 }
 else if (_providers is null || _providers.Length == 0)
 {
@@ -107,6 +113,8 @@ else
 @code {
     private ProviderInfo[]? _providers;
     private bool _loading = true;
+    private string? _loadError;
+    private int _loadVersion;
     private EventHandler<ActivityEventArgs>? _activityHandler;
 
     protected override async Task OnInitializedAsync()
@@ -130,10 +138,31 @@ else
 
     private async Task LoadAsync()
     {
+        var loadVersion = Interlocked.Increment(ref _loadVersion);
         _loading = true;
-        try { _providers = await Api.GetProvidersAsync(); }
-        catch { _providers = null; }
-        _loading = false;
+        _loadError = null;
+        try
+        {
+            var providers = await Api.GetProvidersAsync();
+            if (loadVersion != _loadVersion)
+                return;
+
+            _providers = providers;
+        }
+        catch (Exception ex)
+        {
+            if (loadVersion != _loadVersion)
+                return;
+
+            _providers = [];
+            _loadError = ex.Message;
+            Snackbar.Add($"Failed to load providers: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            if (loadVersion == _loadVersion)
+                _loading = false;
+        }
     }
 
     public void Dispose()
