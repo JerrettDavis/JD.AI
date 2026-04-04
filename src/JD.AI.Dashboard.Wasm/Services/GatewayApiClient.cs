@@ -13,17 +13,30 @@ public sealed class GatewayApiClient(HttpClient http)
 
     // Agents
     public async Task<AgentInfo[]> GetAgentsAsync()
-        => await http.GetFromJsonAsync<AgentInfo[]>("api/agents") ?? [];
+        => await http.GetFromJsonAsync<AgentInfo[]>("api/v1/agents") ?? [];
 
-    public async Task<AgentInfo?> SpawnAgentAsync(AgentDefinition definition)
+    public async Task<string> SpawnAgentAsync(AgentDefinition definition)
     {
-        var response = await http.PostAsJsonAsync("api/agents", definition);
+        var response = await http.PostAsJsonAsync(
+            "api/v1/agents",
+            new
+            {
+                definition.Provider,
+                definition.Model,
+                definition.SystemPrompt,
+            });
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<AgentInfo>();
+        var created = await response.Content.ReadFromJsonAsync<CreatedAgentResponse>();
+        return string.IsNullOrWhiteSpace(created?.Id)
+            ? throw new InvalidOperationException("Failed to deserialize created agent id")
+            : created.Id;
     }
 
-    public Task DeleteAgentAsync(string id) =>
-        http.DeleteAsync(new Uri($"api/agents/{id}", UriKind.Relative));
+    public async Task DeleteAgentAsync(string id)
+    {
+        var response = await http.DeleteAsync(new Uri($"api/v1/agents/{Uri.EscapeDataString(id)}", UriKind.Relative));
+        response.EnsureSuccessStatusCode();
+    }
 
     // Channels
     public async Task<ChannelInfo[]> GetChannelsAsync()
@@ -293,4 +306,6 @@ public sealed class GatewayApiClient(HttpClient http)
         public string? PreviousHash { get; init; }
         public string? TenantId { get; init; }
     }
+
+    private sealed record CreatedAgentResponse(string Id);
 }

@@ -28,16 +28,19 @@ public sealed class GatewayApiClientTests
         using var handler = new StubHandler(req =>
         {
             Assert.Equal(HttpMethod.Post, req.Method);
-            Assert.Equal("http://localhost/api/agents", req.RequestUri!.ToString());
-            return JsonResponse("""{"id":"worker","provider":"ollama","model":"qwen","turnCount":0,"createdAt":"2026-03-20T00:00:00Z"}""");
+            Assert.Equal("http://localhost/api/v1/agents", req.RequestUri!.ToString());
+            var body = req.Content!.ReadAsStringAsync().Result;
+            Assert.DoesNotContain("\"id\":", body, StringComparison.Ordinal);
+            Assert.Contains("\"provider\":\"ollama\"", body, StringComparison.Ordinal);
+            Assert.Contains("\"model\":\"qwen\"", body, StringComparison.Ordinal);
+            return JsonResponse("""{"id":"worker"}""");
         });
         using var http = CreateHttp(handler);
         var client = new GatewayApiClient(http);
 
         var created = await client.SpawnAgentAsync(new AgentDefinition { Id = "worker", Provider = "ollama", Model = "qwen" });
 
-        Assert.NotNull(created);
-        Assert.Equal("worker", created!.Id);
+        Assert.Equal("worker", created);
     }
 
     [Fact]
@@ -46,13 +49,23 @@ public sealed class GatewayApiClientTests
         using var handler = new StubHandler(req =>
         {
             Assert.Equal(HttpMethod.Delete, req.Method);
-            Assert.Equal("http://localhost/api/agents/abc", req.RequestUri!.ToString());
+            Assert.Equal("http://localhost/api/v1/agents/abc", req.RequestUri!.ToString());
             return new HttpResponseMessage(HttpStatusCode.OK);
         });
         using var http = CreateHttp(handler);
         var client = new GatewayApiClient(http);
 
         await client.DeleteAgentAsync("abc");
+    }
+
+    [Fact]
+    public async Task DeleteAgentAsync_WhenDeleteFails_Throws()
+    {
+        using var handler = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
+        using var http = CreateHttp(handler);
+        var client = new GatewayApiClient(http);
+
+        await Assert.ThrowsAsync<HttpRequestException>(() => client.DeleteAgentAsync("abc"));
     }
 
     [Fact]

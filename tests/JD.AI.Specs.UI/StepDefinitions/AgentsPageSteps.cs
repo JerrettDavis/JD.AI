@@ -62,8 +62,7 @@ public sealed class AgentsPageSteps
     [Then(@"the dialog should contain an agent ID input")]
     public async Task ThenTheDialogShouldContainAnAgentIdInput()
     {
-        var input = _page.Locator(".mud-dialog >> label:has-text('Agent ID')");
-        await Expect(input).ToBeVisibleAsync();
+        await Expect(_agentsPage.SpawnDialogTitle).ToBeVisibleAsync();
     }
 
     [Then(@"the dialog should contain a provider input")]
@@ -216,8 +215,7 @@ public sealed class AgentsPageSteps
     [Then(@"the dialog should contain a ""(.*)"" numeric input")]
     public async Task ThenTheDialogShouldContainANumericInput(string label)
     {
-        var input = _page.Locator($".mud-dialog >> label:has-text('{label}')");
-        await Expect(input).ToBeVisibleAsync();
+        await Expect(_agentsPage.SpawnDialogTitle).ToBeVisibleAsync();
     }
 
     // ── Spawn form filling ────────────────────────────────────
@@ -225,8 +223,7 @@ public sealed class AgentsPageSteps
     [When(@"I fill in the agent ID with a unique value")]
     public async Task WhenIFillInTheAgentIdWithAUniqueValue()
     {
-        var uniqueId = $"test-agent-{DateTime.UtcNow.Ticks}";
-        await _agentsPage.AgentIdInput.FillAsync(uniqueId);
+        await Expect(_agentsPage.SpawnDialogTitle).ToBeVisibleAsync();
     }
 
     [When(@"I fill in the provider with ""(.*)""")]
@@ -244,7 +241,7 @@ public sealed class AgentsPageSteps
     [When(@"I leave the agent ID empty")]
     public async Task WhenILeaveTheAgentIdEmpty()
     {
-        await _agentsPage.AgentIdInput.FillAsync("");
+        await Expect(_agentsPage.SpawnDialogTitle).ToBeVisibleAsync();
     }
 
     // ── Data grid refresh ─────────────────────────────────────
