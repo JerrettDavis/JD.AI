@@ -1,7 +1,10 @@
 using JD.AI.Commands;
 using JD.AI.Core.Infrastructure;
 using JD.AI.Utilities;
+using System.Net;
+using System.Net.Sockets;
 using System.Reflection;
+using System.Text;
 
 namespace JD.AI.Tests.Commands;
 
@@ -152,16 +155,45 @@ public sealed class GatewayCliTests
     [Fact]
     public async Task GatewayHealthChecker_ReturnsFalse_WhenNothingIsRunning()
     {
-        // Use a port that is almost certainly not in use
-        var result = await GatewayHealthChecker.IsRunningAsync("http://localhost:19999", timeoutMs: 500);
+        var result = await GatewayHealthChecker.IsRunningAsync(GetUnusedLoopbackUrl(), timeoutMs: 500);
         Assert.False(result);
     }
 
     [Fact]
     public async Task GatewayHealthChecker_WaitForHealthy_ReturnsFalse_WhenNothingIsRunning()
     {
-        var result = await GatewayHealthChecker.WaitForHealthyAsync("http://localhost:19999", maxWaitMs: 1000);
+        var result = await GatewayHealthChecker.WaitForHealthyAsync(GetUnusedLoopbackUrl(), maxWaitMs: 1000);
         Assert.False(result);
+    }
+
+    [Fact]
+    public async Task GatewayHealthChecker_GetReachableBaseUrlAsync_WhenHealthEndpointReturnsSuccess_ReturnsBaseUrl()
+    {
+        using var server = TestHealthServer.Start(HttpStatusCode.OK);
+
+        var result = await GatewayHealthChecker.GetReachableBaseUrlAsync(server.BaseUrl, timeoutMs: 1000);
+
+        Assert.Equal(server.BaseUrl, result);
+    }
+
+    [Fact]
+    public async Task GatewayHealthChecker_GetReachableBaseUrlAsync_WhenHealthEndpointReturnsFailure_ReturnsNull()
+    {
+        using var server = TestHealthServer.Start(HttpStatusCode.ServiceUnavailable);
+
+        var result = await GatewayHealthChecker.GetReachableBaseUrlAsync(server.BaseUrl, timeoutMs: 1000);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GatewayHealthChecker_WaitForHealthyBaseUrlAsync_WhenHealthEndpointReturnsSuccess_ReturnsBaseUrl()
+    {
+        using var server = TestHealthServer.Start(HttpStatusCode.OK);
+
+        var result = await GatewayHealthChecker.WaitForHealthyBaseUrlAsync(server.BaseUrl, maxWaitMs: 1000);
+
+        Assert.Equal(server.BaseUrl, result);
     }
 
     [Fact]
@@ -171,6 +203,28 @@ public sealed class GatewayCliTests
         // while it still uses the default port from runtime defaults.
         var expected = $"http://127.0.0.1:{GatewayRuntimeDefaults.DefaultPort}";
         Assert.Equal(expected, GatewayHealthChecker.DefaultBaseUrl);
+    }
+
+    [Fact]
+    public void GatewayHealthChecker_GetCandidates_WhenBaseUrlIsNull_ReturnsRuntimeDefaults()
+    {
+        var candidates = InvokeGetCandidates(null);
+
+        Assert.Equal(
+            [
+                $"http://127.0.0.1:{GatewayRuntimeDefaults.DefaultPort}",
+                $"http://localhost:{GatewayRuntimeDefaults.DefaultPort}",
+            ],
+            candidates);
+    }
+
+    [Fact]
+    public void GatewayHealthChecker_GetCandidates_WhenBaseUrlIsInvalid_Throws()
+    {
+        var ex = Assert.Throws<TargetInvocationException>(() => InvokeGetCandidates("not-a-uri"));
+
+        Assert.IsType<ArgumentException>(ex.InnerException);
+        Assert.Contains("Base URL must be an absolute URI.", ex.InnerException!.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -586,6 +640,69 @@ public sealed class GatewayCliTests
         public void Kill() => KillCalled = true;
 
         public void Dispose() => DisposeCalled = true;
+    }
+
+    private sealed class TestHealthServer : IDisposable
+    {
+        private readonly TcpListener _listener;
+        private readonly Task _serverTask;
+
+        private TestHealthServer(TcpListener listener, Task serverTask, string baseUrl)
+        {
+            _listener = listener;
+            _serverTask = serverTask;
+            BaseUrl = baseUrl;
+        }
+
+        public string BaseUrl { get; }
+
+        public static TestHealthServer Start(HttpStatusCode statusCode)
+        {
+            var listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            var serverTask = Task.Run(async () =>
+            {
+                using var client = await listener.AcceptTcpClientAsync();
+                using var stream = client.GetStream();
+                using var reader = new StreamReader(stream, Encoding.ASCII, leaveOpen: true);
+
+                while (!string.IsNullOrEmpty(await reader.ReadLineAsync()))
+                {
+                }
+
+                const string Body = "OK";
+                var response = Encoding.ASCII.GetBytes(
+                    $"HTTP/1.1 {(int)statusCode} {statusCode}\r\nContent-Length: {Body.Length}\r\nConnection: close\r\n\r\n{Body}");
+                await stream.WriteAsync(response);
+                await stream.FlushAsync();
+            });
+
+            return new TestHealthServer(listener, serverTask, $"http://127.0.0.1:{port}");
+        }
+
+        public void Dispose()
+        {
+            _listener.Stop();
+            _serverTask.GetAwaiter().GetResult();
+        }
+    }
+
+    private static string[] InvokeGetCandidates(string? baseUrl)
+    {
+        var method = typeof(GatewayHealthChecker).GetMethod("GetCandidates", BindingFlags.NonPublic | BindingFlags.Static);
+        Assert.NotNull(method);
+        return (string[])method.Invoke(null, [baseUrl])!;
+    }
+
+    private static string GetUnusedLoopbackUrl()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        listener.Stop();
+        return $"http://127.0.0.1:{port}";
     }
 
     private sealed class FakeGatewayDaemonProcessHandle : GatewayCliHandler.IDaemonProcessHandle
