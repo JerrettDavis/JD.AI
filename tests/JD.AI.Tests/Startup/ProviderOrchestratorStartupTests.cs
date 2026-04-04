@@ -18,7 +18,7 @@ public sealed class ProviderOrchestratorStartupTests : IDisposable
         _originalRegistryFactory = ProviderOrchestrator.RegistryFactory;
 
     [Fact]
-    public async Task DetectAndSelectAsync_UsesPreferredProviderFastPath()
+    public async Task DetectAndSelectAsync_UsesValidatedSavedDefaultWithFullCatalog()
     {
         var projectPath = _fixture.CreateSubdirectory("project-fast");
         Directory.SetCurrentDirectory(projectPath);
@@ -50,10 +50,46 @@ public sealed class ProviderOrchestratorStartupTests : IDisposable
 
         Assert.NotNull(setup);
         Assert.Equal("preferred-model", setup!.SelectedModel.Id);
-        Assert.Single(setup.AllModels);
+        Assert.Equal(2, setup.AllModels.Count);
         Assert.Equal("Preferred", setup.SelectedModel.ProviderName);
-        Assert.Equal(0, preferred.DetectCount);
-        Assert.Equal(0, secondary.DetectCount);
+        Assert.Contains(setup.AllModels, model => string.Equals(model.Id, "secondary-model", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task DetectAndSelectAsync_StalePersistedModel_FallsBackToActiveDetection()
+    {
+        var projectPath = _fixture.CreateSubdirectory("project-stale-default");
+        Directory.SetCurrentDirectory(projectPath);
+
+        using var configStore = new AtomicConfigStore(_fixture.GetPath("config-stale-default.json"));
+        await configStore.SetDefaultProviderAsync("Preferred", projectPath);
+        await configStore.SetDefaultModelAsync("preferred-model-old", projectPath);
+
+        var preferred = new FakeDetector(
+            "Preferred",
+            new ProviderInfo(
+                "Preferred",
+                IsAvailable: true,
+                StatusMessage: "ready",
+                Models: [new ProviderModelInfo("preferred-model-new", "Preferred Model New", "Preferred")]));
+
+        var secondary = new FakeDetector(
+            "Secondary",
+            new ProviderInfo(
+                "Secondary",
+                IsAvailable: true,
+                StatusMessage: "ready",
+                Models: [new ProviderModelInfo("secondary-model", "Secondary Model", "Secondary")]));
+
+        ConfigureRegistryFactory(preferred, secondary);
+
+        var setup = await ProviderOrchestrator
+            .DetectAndSelectAsync(new CliOptions { PrintMode = true }, configStore);
+
+        Assert.NotNull(setup);
+        Assert.Equal("preferred-model-new", setup!.SelectedModel.Id);
+        Assert.Equal(3, preferred.DetectCount);
+        Assert.Equal(2, secondary.DetectCount);
     }
 
     [Fact]
@@ -88,8 +124,6 @@ public sealed class ProviderOrchestratorStartupTests : IDisposable
 
         Assert.NotNull(setup);
         Assert.Equal("secondary-model", setup!.SelectedModel.Id);
-        Assert.Equal(3, preferred.DetectCount);
-        Assert.Equal(2, secondary.DetectCount);
     }
 
     [Fact]
@@ -115,13 +149,82 @@ public sealed class ProviderOrchestratorStartupTests : IDisposable
 
         Assert.NotNull(setup);
         Assert.Equal("primary-model", setup!.SelectedModel.Id);
-        Assert.Equal(2, primary.DetectCount);
 
         var persistedProvider = await configStore.GetDefaultProviderAsync(projectPath);
         var persistedModel = await configStore.GetDefaultModelAsync(projectPath);
 
         Assert.Equal("Primary", persistedProvider);
         Assert.Equal("primary-model", persistedModel);
+    }
+
+    [Fact]
+    public async Task DetectAndSelectAsync_ProviderOnlyPersistedDefault_NarrowsSelectionToThatProvider()
+    {
+        var projectPath = _fixture.CreateSubdirectory("project-provider-only-default");
+        Directory.SetCurrentDirectory(projectPath);
+
+        using var configStore = new AtomicConfigStore(_fixture.GetPath("config-provider-only-default.json"));
+        await configStore.SetDefaultProviderAsync("Preferred", projectPath);
+
+        var preferred = new FakeDetector(
+            "Preferred",
+            new ProviderInfo(
+                "Preferred",
+                IsAvailable: true,
+                StatusMessage: "ready",
+                Models: [new ProviderModelInfo("preferred-model", "Preferred Model", "Preferred")]));
+
+        var local = new FakeDetector(
+            "Local",
+            new ProviderInfo(
+                "Local",
+                IsAvailable: true,
+                StatusMessage: "ready",
+                Models: [new ProviderModelInfo("local-model", "Local Model", "Local")]));
+
+        ConfigureRegistryFactory(preferred, local);
+
+        var setup = await ProviderOrchestrator
+            .DetectAndSelectAsync(new CliOptions { PrintMode = true }, configStore);
+
+        Assert.NotNull(setup);
+        Assert.Equal("preferred-model", setup!.SelectedModel.Id);
+        Assert.Contains(setup.AllModels, model => string.Equals(model.ProviderName, "Preferred", StringComparison.Ordinal));
+        Assert.Contains(setup.AllModels, model => string.Equals(model.ProviderName, "Local", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task DetectAndSelectAsync_ModelOnlyPersistedDefault_SelectsUniqueExactMatch()
+    {
+        var projectPath = _fixture.CreateSubdirectory("project-model-only-default");
+        Directory.SetCurrentDirectory(projectPath);
+
+        using var configStore = new AtomicConfigStore(_fixture.GetPath("config-model-only-default.json"));
+        await configStore.SetDefaultModelAsync("preferred-model", projectPath);
+
+        var preferred = new FakeDetector(
+            "Preferred",
+            new ProviderInfo(
+                "Preferred",
+                IsAvailable: true,
+                StatusMessage: "ready",
+                Models: [new ProviderModelInfo("preferred-model", "Preferred Model", "Preferred")]));
+
+        var local = new FakeDetector(
+            "Local",
+            new ProviderInfo(
+                "Local",
+                IsAvailable: true,
+                StatusMessage: "ready",
+                Models: [new ProviderModelInfo("local-model", "Local Model", "Local")]));
+
+        ConfigureRegistryFactory(preferred, local);
+
+        var setup = await ProviderOrchestrator
+            .DetectAndSelectAsync(new CliOptions { PrintMode = true }, configStore);
+
+        Assert.NotNull(setup);
+        Assert.Equal("preferred-model", setup!.SelectedModel.Id);
     }
 
     public void Dispose()

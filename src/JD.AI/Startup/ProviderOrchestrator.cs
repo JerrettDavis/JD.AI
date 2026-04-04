@@ -148,82 +148,44 @@ internal static class ProviderOrchestrator
         var (registry, providerConfig, metadataProvider) = CreateRegistry();
         var router = RouterFactory();
         var routingPolicy = BuildRoutingPolicy(opts);
+        var hasPersistedProvider = !string.IsNullOrWhiteSpace(defaultProvider);
+        var hasPersistedModel = !string.IsNullOrWhiteSpace(defaultModel);
 
-        // Startup fast path: trust persisted provider+model defaults and skip provider probing.
+        // Startup fast path: reuse the saved provider+model only when the provider still offers that exact model.
+        // Provider-only and model-only defaults still require the full catalog so ambiguity can be resolved safely.
         if (opts.CliModel is null
             && opts.CliProvider is null
-            && !string.IsNullOrWhiteSpace(defaultProvider)
-            && !string.IsNullOrWhiteSpace(defaultModel))
+            && hasPersistedProvider
+            && hasPersistedModel)
         {
-            var configuredModel = new ProviderModelInfo(
-                defaultModel,
-                defaultModel,
-                defaultProvider);
+            var preferred = await registry.DetectProviderAsync(defaultProvider!, true).ConfigureAwait(false);
+            var exactSavedModel = preferred?.Models.FirstOrDefault(model =>
+                string.Equals(model.Id, defaultModel, StringComparison.OrdinalIgnoreCase));
 
-            try
+            if (preferred is { IsAvailable: true } && exactSavedModel is not null)
             {
-                var kernelConfigured = registry.BuildKernel(configuredModel);
-                return new ProviderSetup(
-                    registry,
-                    providerConfig,
-                    metadataProvider,
-                    [configuredModel],
-                    configuredModel,
-                    [],
-                    kernelConfigured);
-            }
-            catch (InvalidOperationException)
-            {
-                // Unknown provider name persisted in config; fall through to active detection.
+                var detectedModels = await registry.GetModelsAsync(true).ConfigureAwait(false);
+                var selectedModel = detectedModels.FirstOrDefault(model =>
+                    string.Equals(model.Id, exactSavedModel.Id, StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(model.ProviderName, exactSavedModel.ProviderName, StringComparison.OrdinalIgnoreCase));
+
+                if (selectedModel is not null)
+                {
+                    var kernelConfigured = registry.BuildKernel(selectedModel);
+                    return new ProviderSetup(
+                        registry,
+                        providerConfig,
+                        metadataProvider,
+                        detectedModels,
+                        selectedModel,
+                        [],
+                        kernelConfigured);
+                }
             }
         }
 
         if (!opts.PrintMode)
             AnsiConsole.MarkupLine("[dim]Detecting providers...[/]");
-
-        // Fast path: prefer the persisted provider/model and refresh auth only for that provider.
-        if (opts.CliModel is null
-            && opts.CliProvider is null
-            && !string.IsNullOrWhiteSpace(defaultProvider))
-        {
-            var preferred = await registry.DetectProviderAsync(defaultProvider, true).ConfigureAwait(false);
-
-            if (preferred is { IsAvailable: true } && preferred.Models.Count > 0)
-            {
-                var fastSelection = EvaluateSelection(
-                    opts,
-                    preferred.Models,
-                    defaultProvider,
-                    defaultModel,
-                    router,
-                    routingPolicy);
-
-                if (fastSelection.ErrorMessage is not null)
-                {
-                    RenderSelectionError(opts, fastSelection.ErrorMessage);
-                    return null;
-                }
-
-                if (fastSelection.SelectedModel is not null)
-                {
-                    if (!opts.PrintMode)
-                        AnsiConsole.MarkupLine(
-                            $"  [green]✓[/] [bold]{Markup.Escape(preferred.Name)}[/]: " +
-                            $"{Markup.Escape(preferred.StatusMessage ?? "Using saved default")}");
-
-                    await PersistSelectionAsync(configStore, projectPath, fastSelection.SelectedModel).ConfigureAwait(false);
-                    var kernelFast = registry.BuildKernel(fastSelection.SelectedModel);
-                    return new ProviderSetup(
-                        registry,
-                        providerConfig,
-                        metadataProvider,
-                        preferred.Models,
-                        fastSelection.SelectedModel,
-                        fastSelection.FallbackModelIds ?? [],
-                        kernelFast);
-                }
-            }
-        }
 
         var providers = await registry.DetectProvidersAsync(true).ConfigureAwait(false);
         if (!opts.PrintMode)
@@ -316,6 +278,23 @@ internal static class ProviderOrchestrator
         if (candidates.Count == 0)
             return ModelSelectionDecision.Error($"No model matching '{context.Options.CliModel}' found.");
 
+        var exactMatches = candidates
+            .Where(model =>
+                (string.Equals(model.Id, context.Options.CliModel, StringComparison.OrdinalIgnoreCase)
+                 || string.Equals(model.DisplayName, context.Options.CliModel, StringComparison.OrdinalIgnoreCase))
+                && (string.IsNullOrWhiteSpace(context.Options.CliProvider)
+                    || string.Equals(model.ProviderName, context.Options.CliProvider, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+
+        if (exactMatches.Count == 1)
+            return ModelSelectionDecision.Select(exactMatches[0]);
+
+        if (exactMatches.Count > 1 || candidates.Count > 1)
+        {
+            return ModelSelectionDecision.Error(
+                $"Model '{context.Options.CliModel}' is ambiguous. Please specify the exact provider/model.");
+        }
+
         return ModelSelectionDecision.Select(candidates[0]);
     }
 
@@ -336,29 +315,80 @@ internal static class ProviderOrchestrator
                 $"No models from provider '{context.Options.CliProvider}' found.");
         }
 
-        if (candidates.Count == 1 || context.Options.PrintMode)
-            return ModelSelectionDecision.Select(candidates[0]);
+        var exactProviderMatches = candidates
+            .Where(model => string.Equals(model.ProviderName, context.Options.CliProvider, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var narrowedCandidates = exactProviderMatches.Count > 0 ? exactProviderMatches : candidates;
 
-        return ModelSelectionDecision.Select(context.PromptSelector(candidates));
+        if (narrowedCandidates.Count == 1)
+            return ModelSelectionDecision.Select(narrowedCandidates[0]);
+
+        if (context.Options.PrintMode)
+        {
+            return ModelSelectionDecision.Error(
+                $"Provider '{context.Options.CliProvider}' is ambiguous. Please specify the exact provider/model.");
+        }
+
+        return TryPrompt(narrowedCandidates, context.PromptSelector);
     }
 
     private static ModelSelectionDecision EvaluatePersistedDefaultPolicy(ModelSelectionContext context)
     {
-        if (string.IsNullOrWhiteSpace(context.DefaultModel) &&
-            string.IsNullOrWhiteSpace(context.DefaultProvider))
+        var hasDefaultProvider = !string.IsNullOrWhiteSpace(context.DefaultProvider);
+        var hasDefaultModel = !string.IsNullOrWhiteSpace(context.DefaultModel);
+        if (!hasDefaultProvider && !hasDefaultModel)
         {
             return ModelSelectionDecision.Continue;
         }
 
-        var defaultCandidates = FilterCandidates(
-            context.Models,
-            new ProviderModelSpecification(
-                ModelQuery: context.DefaultModel,
-                ProviderQuery: context.DefaultProvider));
+        var providerScopedModels = hasDefaultProvider
+            ? context.Models
+                .Where(model => string.Equals(model.ProviderName, context.DefaultProvider, StringComparison.OrdinalIgnoreCase))
+                .ToList()
+            : context.Models.ToList();
 
-        return defaultCandidates.Count > 0
-            ? ModelSelectionDecision.Select(defaultCandidates[0])
-            : ModelSelectionDecision.Continue;
+        if (providerScopedModels.Count == 0)
+            return ModelSelectionDecision.Continue;
+
+        if (hasDefaultModel)
+        {
+            var exactModelMatches = providerScopedModels
+                .Where(model => string.Equals(model.Id, context.DefaultModel, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (exactModelMatches.Count == 1)
+                return ModelSelectionDecision.Select(exactModelMatches[0]);
+
+            if (exactModelMatches.Count > 1)
+            {
+                if (context.Options.PrintMode)
+                {
+                    return ModelSelectionDecision.Error(
+                        $"Default model '{context.DefaultModel}' is ambiguous. Please also set a default provider.");
+                }
+
+                return TryPrompt(exactModelMatches, context.PromptSelector);
+            }
+        }
+
+        if (!hasDefaultProvider)
+            return ModelSelectionDecision.Continue;
+
+        var route = context.Router.Route(providerScopedModels, context.RoutingPolicy);
+        if (route.SelectedModel is not null)
+        {
+            var fallbackIds = route.FallbackModels
+                .Select(static model => model.Id)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            return ModelSelectionDecision.Select(route.SelectedModel, fallbackIds);
+        }
+
+        if (providerScopedModels.Count == 1 || context.Options.PrintMode)
+            return ModelSelectionDecision.Select(providerScopedModels[0]);
+
+        return TryPrompt(providerScopedModels, context.PromptSelector);
     }
 
     private static ModelSelectionDecision EvaluateRoutingPolicy(ModelSelectionContext context)
@@ -377,6 +407,9 @@ internal static class ProviderOrchestrator
 
     private static ModelSelectionDecision EvaluateNonInteractivePolicy(ModelSelectionContext context)
     {
+        if (context.Models.Count == 0)
+            return ModelSelectionDecision.Error("No models available.");
+
         if (context.Models.Count == 1 || context.Options.PrintMode)
             return ModelSelectionDecision.Select(context.Models[0]);
 
@@ -388,15 +421,18 @@ internal static class ProviderOrchestrator
         if (context.Models.Count == 0)
             return ModelSelectionDecision.Error("No models available.");
 
+        return TryPrompt(context.Models, context.PromptSelector);
+    }
+
+    private static ModelSelectionDecision TryPrompt(
+        IReadOnlyList<ProviderModelInfo> models,
+        Func<IReadOnlyList<ProviderModelInfo>, ProviderModelInfo> promptSelector)
+    {
         try
         {
-            return ModelSelectionDecision.Select(context.PromptSelector(context.Models));
+            return ModelSelectionDecision.Select(promptSelector(models));
         }
         catch (OperationCanceledException)
-        {
-            return ModelSelectionDecision.Error("Model selection cancelled.");
-        }
-        catch (InvalidOperationException)
         {
             return ModelSelectionDecision.Error("Model selection cancelled.");
         }

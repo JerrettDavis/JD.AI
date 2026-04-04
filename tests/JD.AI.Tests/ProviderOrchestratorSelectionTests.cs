@@ -60,25 +60,33 @@ public sealed class ProviderOrchestratorSelectionTests
             opts,
             models,
             defaultProvider: "claudecode",
-            defaultModel: "haiku");
+            defaultModel: "claude-haiku");
 
         Assert.Equal("claude-haiku", decision.SelectedModel?.Id);
     }
 
     [Fact]
-    public void EvaluateSelection_DefaultProviderAppliedWhenDefaultModelMissing()
+    public void EvaluateSelection_DefaultProvider_NarrowsSelectionBeforePrompt()
     {
         var models = CreateModels();
         var opts = new CliOptions { PrintMode = false };
+        var promptInvoked = false;
 
         var decision = ProviderOrchestrator.EvaluateSelection(
             opts,
             models,
             defaultProvider: "ollama",
             defaultModel: null,
-            promptSelector: _ => throw new InvalidOperationException("Prompt should not be used."));
+            router: new NoopRouter(),
+            promptSelector: candidates =>
+            {
+                promptInvoked = true;
+                Assert.All(candidates, candidate => Assert.Equal("Ollama", candidate.ProviderName));
+                return candidates[^1];
+            });
 
-        Assert.Equal("ollama-chat", decision.SelectedModel?.Id);
+        Assert.True(promptInvoked);
+        Assert.Equal("ollama-coder", decision.SelectedModel?.Id);
     }
 
     [Fact]
