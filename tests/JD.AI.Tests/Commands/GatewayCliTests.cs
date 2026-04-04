@@ -1,6 +1,7 @@
 using JD.AI.Commands;
 using JD.AI.Core.Infrastructure;
 using JD.AI.Utilities;
+using System.Reflection;
 
 namespace JD.AI.Tests.Commands;
 
@@ -531,6 +532,26 @@ public sealed class GatewayCliTests
     }
 
     [Fact]
+    public async Task GatewayCliHandler_RunAsync_PublicOverload_WhenActionIsUnknown_WritesUsageError()
+    {
+        var originalError = Console.Error;
+        using var writer = new StringWriter();
+        Console.SetError(writer);
+
+        try
+        {
+            var exitCode = await GatewayCliHandler.RunAsync(["status"]);
+
+            Assert.Equal(1, exitCode);
+            Assert.Contains("Unknown gateway action 'status'", writer.ToString(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
+    }
+
+    [Fact]
     public void BrowserLauncher_Open_DoesNotThrow()
     {
         // Verify that calling Open with a dummy URL does not throw.
@@ -595,6 +616,109 @@ public sealed class GatewayCliTests
         {
             HasExited = true;
             _exit.TrySetResult();
+        }
+    }
+}
+
+[Collection("EnvironmentVariables")]
+public sealed class GatewayCliPrivateTests
+{
+    [Fact]
+    public async Task GatewayCliHandler_CleanupDaemonProcessAsync_WhenKillThrows_StillDisposes()
+    {
+        var handle = new ThrowingGatewayDaemonProcessHandle();
+
+        await InvokePrivateTaskAsync("CleanupDaemonProcessAsync", handle);
+
+        Assert.True(handle.KillCalled);
+        Assert.True(handle.DisposeCalled);
+        Assert.Equal(0, handle.WaitForExitCalls);
+    }
+
+    [Fact]
+    public async Task GatewayCliHandler_RunDaemonCommandAsync_WhenDaemonCommandIsMissing_ReturnsGuidance()
+    {
+        using var scope = new PathOverrideScope(string.Empty);
+
+        var result = await InvokePrivateTaskWithResultAsync<GatewayCliHandler.DaemonCommandResult>(
+            "RunDaemonCommandAsync",
+            "status");
+
+        Assert.False(result.Success);
+        Assert.Contains("Failed to run daemon command 'status'", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Ensure 'jdai-daemon' is installed", result.Output, StringComparison.Ordinal);
+    }
+
+    private static async Task InvokePrivateTaskAsync(string methodName, params object?[] args)
+    {
+        var method = typeof(GatewayCliHandler).GetMethod(
+            methodName,
+            BindingFlags.NonPublic | BindingFlags.Static,
+            binder: null,
+            types: [typeof(GatewayCliHandler.IDaemonProcessHandle)],
+            modifiers: null);
+        Assert.NotNull(method);
+
+        var task = Assert.IsAssignableFrom<Task>(method.Invoke(null, args));
+        await task;
+    }
+
+    private static async Task<T> InvokePrivateTaskWithResultAsync<T>(string methodName, params object?[] args)
+    {
+        var method = typeof(GatewayCliHandler).GetMethod(
+            methodName,
+            BindingFlags.NonPublic | BindingFlags.Static,
+            binder: null,
+            types: [typeof(string)],
+            modifiers: null);
+        Assert.NotNull(method);
+
+        var task = Assert.IsAssignableFrom<Task<T>>(method.Invoke(null, args));
+        return await task;
+    }
+
+    private sealed class PathOverrideScope : IDisposable
+    {
+        private readonly string? _originalPath = Environment.GetEnvironmentVariable("PATH");
+
+        public PathOverrideScope(string commandDirectory)
+        {
+            var newPath = string.IsNullOrWhiteSpace(_originalPath)
+                ? commandDirectory
+                : string.IsNullOrWhiteSpace(commandDirectory)
+                    ? string.Empty
+                    : string.Join(Path.PathSeparator, commandDirectory, _originalPath);
+            Environment.SetEnvironmentVariable("PATH", newPath);
+        }
+
+        public void Dispose()
+        {
+            Environment.SetEnvironmentVariable("PATH", _originalPath);
+        }
+    }
+
+    private sealed class ThrowingGatewayDaemonProcessHandle : GatewayCliHandler.IDaemonProcessHandle
+    {
+        public bool HasExited => false;
+        public bool KillCalled { get; private set; }
+        public bool DisposeCalled { get; private set; }
+        public int WaitForExitCalls { get; private set; }
+
+        public void Kill()
+        {
+            KillCalled = true;
+            throw new InvalidOperationException("already exited");
+        }
+
+        public Task WaitForExitAsync()
+        {
+            WaitForExitCalls++;
+            return Task.CompletedTask;
+        }
+
+        public void Dispose()
+        {
+            DisposeCalled = true;
         }
     }
 }
