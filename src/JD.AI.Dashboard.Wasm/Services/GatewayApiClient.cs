@@ -43,10 +43,10 @@ public sealed class GatewayApiClient(HttpClient http)
         => await http.GetFromJsonAsync<ChannelInfo[]>("api/channels") ?? [];
 
     public Task ConnectChannelAsync(string type) =>
-        http.PostAsync(new Uri($"api/channels/{type}/connect", UriKind.Relative), null);
+        SendWithoutContentAsync(HttpMethod.Post, $"api/channels/{Uri.EscapeDataString(type)}/connect");
 
     public Task DisconnectChannelAsync(string type) =>
-        http.PostAsync(new Uri($"api/channels/{type}/disconnect", UriKind.Relative), null);
+        SendWithoutContentAsync(HttpMethod.Post, $"api/channels/{Uri.EscapeDataString(type)}/disconnect");
 
     // Sessions
     public async Task<SessionInfo[]> GetSessionsAsync(int limit = 50)
@@ -56,10 +56,10 @@ public sealed class GatewayApiClient(HttpClient http)
         http.GetFromJsonAsync<SessionInfo>($"api/sessions/{Uri.EscapeDataString(id)}");
 
     public Task CloseSessionAsync(string id) =>
-        http.PostAsync(new Uri($"api/sessions/{Uri.EscapeDataString(id)}/close", UriKind.Relative), null);
+        SendWithoutContentAsync(HttpMethod.Post, $"api/sessions/{Uri.EscapeDataString(id)}/close");
 
     public Task ExportSessionAsync(string id) =>
-        http.PostAsync(new Uri($"api/sessions/{Uri.EscapeDataString(id)}/export", UriKind.Relative), null);
+        SendWithoutContentAsync(HttpMethod.Post, $"api/sessions/{Uri.EscapeDataString(id)}/export");
 
     // Providers
     public async Task<ProviderInfo[]> GetProvidersAsync()
@@ -148,7 +148,7 @@ public sealed class GatewayApiClient(HttpClient http)
         http.GetFromJsonAsync<object[]>("api/gateway/openclaw/agents");
 
     public Task SyncOpenClawAsync() =>
-        http.PostAsync(new Uri("api/gateway/openclaw/agents/sync", UriKind.Relative), null);
+        SendWithoutContentAsync(HttpMethod.Post, "api/gateway/openclaw/agents/sync");
 
     // Plugins
     public async Task<PluginInfo[]> GetPluginsAsync()
@@ -173,7 +173,7 @@ public sealed class GatewayApiClient(HttpClient http)
     }
 
     public Task UninstallPluginAsync(string id) =>
-        http.DeleteAsync(new Uri($"api/plugins/{Uri.EscapeDataString(id)}", UriKind.Relative));
+        SendWithoutContentAsync(HttpMethod.Delete, $"api/plugins/{Uri.EscapeDataString(id)}");
 
     // Audit / Logs
     public async Task<AuditEvent[]> GetAuditEventsAsync(
@@ -210,7 +210,7 @@ public sealed class GatewayApiClient(HttpClient http)
     }
 
     public Task RevokeApiKeyAsync(string maskedKey)
-        => http.DeleteAsync(new Uri($"api/v1/gateway/apikeys/{Uri.EscapeDataString(maskedKey)}", UriKind.Relative));
+        => SendWithoutContentAsync(HttpMethod.Delete, $"api/v1/gateway/apikeys/{Uri.EscapeDataString(maskedKey)}");
 
     public async Task<RotateApiKeyResponse> RotateApiKeyAsync(string maskedKey, int? expiryDays = null)
     {
@@ -279,6 +279,13 @@ public sealed class GatewayApiClient(HttpClient http)
             },
             _ => "info",
         };
+
+    private async Task SendWithoutContentAsync(HttpMethod method, string relativeUri)
+    {
+        using var request = new HttpRequestMessage(method, new Uri(relativeUri, UriKind.Relative));
+        var response = await http.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+    }
 
     private sealed class AuditEventsResponse
     {

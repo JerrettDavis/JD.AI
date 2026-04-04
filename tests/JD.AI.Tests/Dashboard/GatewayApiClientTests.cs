@@ -113,6 +113,16 @@ public sealed class GatewayApiClientTests
     }
 
     [Fact]
+    public async Task ConnectChannelAsync_WhenPostFails_Throws()
+    {
+        using var handler = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
+        using var http = CreateHttp(handler);
+        var client = new GatewayApiClient(http);
+
+        await Assert.ThrowsAsync<HttpRequestException>(() => client.ConnectChannelAsync("discord"));
+    }
+
+    [Fact]
     public async Task GetSessionsAsync_UsesLimitQuery()
     {
         using var handler = new StubHandler(req =>
@@ -174,6 +184,16 @@ public sealed class GatewayApiClientTests
         var client = new GatewayApiClient(http);
 
         await client.ExportSessionAsync("a/b c");
+    }
+
+    [Fact]
+    public async Task CloseSessionAsync_WhenPostFails_Throws()
+    {
+        using var handler = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
+        using var http = CreateHttp(handler);
+        var client = new GatewayApiClient(http);
+
+        await Assert.ThrowsAsync<HttpRequestException>(() => client.CloseSessionAsync("session-1"));
     }
 
     [Fact]
