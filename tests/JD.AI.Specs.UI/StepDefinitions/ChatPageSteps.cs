@@ -63,15 +63,10 @@ public sealed class ChatPageSteps
     [Then(@"I should see the agent selector or no-agents warning")]
     public async Task ThenIShouldSeeTheAgentSelectorOrNoAgentsWarning()
     {
-        // Use the data-testid on the agent-selector MudSelect, or fall back
-        // to the "No agents running" warning chip.
-        var selector = _page.Locator("[data-testid=agent-selector]");
-        var warning = _page.Locator(".jd-chat-header >> text=No agents running");
+        var hasSelector = await _chatPage.AgentSelector.CountAsync() > 0;
+        var warningVisible = await _chatPage.NoAgentsWarning.IsVisibleAsync();
 
-        var selectorVisible = await selector.IsVisibleAsync();
-        var warningVisible = await warning.IsVisibleAsync();
-
-        Assert.True(selectorVisible || warningVisible,
+        Assert.True(hasSelector || warningVisible,
             "Expected either the agent selector or the no-agents warning to be visible");
     }
 
@@ -85,31 +80,26 @@ public sealed class ChatPageSteps
     [Given(@"an agent is selected")]
     public async Task GivenAnAgentIsSelected()
     {
-        // Verify an agent is selected in the dropdown, or skip if no agents
-        var selector = _page.Locator(".jd-chat-header .mud-select");
-        var isVisible = await selector.IsVisibleAsync();
-        if (!isVisible)
-        {
-            // No agents available; scenario will proceed but send will likely not work
-            return;
-        }
-        await _page.WaitForTimeoutAsync(300);
+        Skip.If(await _chatPage.NoAgentsWarning.IsVisibleAsync(), "No agents are available on the chat page.");
+
+        Assert.True(await _chatPage.AgentSelector.CountAsync() > 0,
+            "Expected the chat page to render an agent selector.");
+
+        var selectedAgentId = await _chatPage.AgentSelector.InputValueAsync();
+        Assert.False(string.IsNullOrWhiteSpace(selectedAgentId),
+            "Expected the chat page to have a selected agent.");
     }
 
     [When(@"I type ""(.*)"" in the message input")]
     public async Task WhenITypeInTheMessageInput(string text)
     {
-        var input = _page.Locator(".jd-chat-input input");
-        await input.FillAsync(text);
+        await _chatPage.MessageInput.FillAsync(text);
     }
 
     [When(@"I send the message")]
     public async Task WhenISendTheMessage()
     {
-        // Press Enter to send
-        var input = _page.Locator(".jd-chat-input input");
-        await input.PressAsync("Enter");
-        await _page.WaitForTimeoutAsync(500);
+        await _chatPage.MessageInput.PressAsync("Enter");
     }
 
     [Then(@"a user message bubble should appear")]
@@ -122,8 +112,7 @@ public sealed class ChatPageSteps
     [Then(@"the message bubble should contain ""(.*)""")]
     public async Task ThenTheMessageBubbleShouldContain(string text)
     {
-        var bubble = _page.Locator($".jd-chat-user >> text={text}");
-        await Expect(bubble).ToBeVisibleAsync();
+        await Expect(_chatPage.UserBubbles.Last).ToContainTextAsync(text);
     }
 
     [Then(@"I should see the clear chat button")]
@@ -182,14 +171,16 @@ public sealed class ChatPageSteps
     [Then(@"I should see the agent selector dropdown")]
     public async Task ThenIShouldSeeTheAgentSelectorDropdown()
     {
-        await Expect(_chatPage.AgentSelector).ToBeVisibleAsync();
+        Assert.True(await _chatPage.AgentSelector.CountAsync() > 0,
+            "Expected the chat page to render an agent selector.");
+        await Expect(_chatPage.AgentSelectorField).ToBeVisibleAsync();
     }
 
     [Then(@"the dropdown should contain at least one agent option")]
     public async Task ThenTheDropdownShouldContainAtLeastOneAgentOption()
     {
         // Click the select to open the dropdown and verify options
-        await _chatPage.AgentSelector.ClickAsync();
+        await _chatPage.AgentSelectorField.ClickAsync();
         await _page.WaitForTimeoutAsync(300);
         var options = _page.Locator(".mud-popover-open .mud-list-item");
         var count = await options.CountAsync();
@@ -250,7 +241,7 @@ public sealed class ChatPageSteps
     [Then(@"a user message bubble should appear on the right")]
     public async Task ThenAUserMessageBubbleShouldAppearOnTheRight()
     {
-        var userBubble = _chatPage.UserBubbles.First;
+        var userBubble = _chatPage.UserBubbles.Last;
         await Expect(userBubble).ToBeVisibleAsync();
         // Verify alignment: the user bubble has jd-chat-user class which applies align-self: flex-end
         var classes = await userBubble.GetAttributeAsync("class");
@@ -263,16 +254,16 @@ public sealed class ChatPageSteps
     [Then(@"the user bubble should show ""(.*)"" label")]
     public async Task ThenTheUserBubbleShouldShowLabel(string label)
     {
-        var labelLocator = _page.Locator($"[data-testid='chat-bubble-user'] .jd-chat-bubble-header >> text={label}");
+        var labelLocator = _chatPage.UserBubbles.Last.Locator($".jd-chat-bubble-header >> text={label}");
         await Expect(labelLocator).ToBeVisibleAsync();
     }
 
     [Then(@"the user bubble should show a timestamp")]
     public async Task ThenTheUserBubbleShouldShowATimestamp()
     {
-        var timestamp = _chatPage.UserBubbleTimestamp;
-        await Expect(timestamp.First).ToBeVisibleAsync();
-        var text = await timestamp.First.TextContentAsync();
+        var timestamp = _chatPage.UserBubbles.Last.Locator(".jd-chat-bubble-header .mud-typography-caption.ml-auto");
+        await Expect(timestamp).ToBeVisibleAsync();
+        var text = await timestamp.TextContentAsync();
         Assert.NotNull(text);
         // Timestamp format is HH:mm:ss
         Assert.Matches(@"\d{1,2}:\d{2}:\d{2}", text);

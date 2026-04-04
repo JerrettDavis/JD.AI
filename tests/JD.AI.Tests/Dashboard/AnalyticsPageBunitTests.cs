@@ -47,7 +47,7 @@ public sealed class AnalyticsPageBunitTests : DashboardBunitTestContext
                   }
                 ]
                 """),
-            "http://localhost/api/agents" => JsonResponse(
+            "http://localhost/api/v1/agents" => JsonResponse(
                 """
                 [
                   { "id": "jdai-research", "provider": "anthropic", "model": "claude-opus", "turnCount": 12, "createdAt": "2026-04-01T10:00:00Z" },
@@ -86,7 +86,7 @@ public sealed class AnalyticsPageBunitTests : DashboardBunitTestContext
         var api = CreateApiClient(request => request.RequestUri!.ToString() switch
         {
             "http://localhost/api/sessions?limit=50" => JsonResponse("[]"),
-            "http://localhost/api/agents" => JsonResponse("[]"),
+            "http://localhost/api/v1/agents" => JsonResponse("[]"),
             _ => throw new Xunit.Sdk.XunitException($"Unexpected request: {request.RequestUri}")
         });
 

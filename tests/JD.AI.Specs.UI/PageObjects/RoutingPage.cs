@@ -25,7 +25,7 @@ public sealed class RoutingPage : BasePage
 
     // ── Column cells ──
     public ILocator ChannelCells => Page.Locator("[data-testid='routing-channel']");
-    public ILocator AgentIdCells => Page.Locator("[data-testid='routing-agent-id']");
+    public ILocator AgentIdCells => Page.Locator("[data-testid='routing-grid'] tbody tr td:nth-child(2)");
     public ILocator StatusChips => Page.Locator("[data-testid='routing-status']");
 
     // ── Skeleton loading ──

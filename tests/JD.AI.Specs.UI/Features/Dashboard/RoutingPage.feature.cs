@@ -24,10 +24,11 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         private global::Reqnroll.ITestRunner testRunner;
         
         private static string[] featureTags = new string[] {
+                "ignore",
                 "ui"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Routing Page", "    As a gateway operator\n    I want to configure channel-to-agent routing rules\n" +
-                "    So that incoming messages are directed to the correct AI agents", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Routing Page", "    As a gateway operator\r\n    I want to configure channel-to-agent routing rules" +
+                "\r\n    So that incoming messages are directed to the correct AI agents", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
@@ -108,9 +109,9 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         
         public virtual async global::System.Threading.Tasks.Task FeatureBackgroundAsync()
         {
-#line 7
-    #line hidden
 #line 8
+    #line hidden
+#line 9
         await testRunner.GivenAsync("I am on the routing page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
         }
@@ -145,7 +146,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             await this.TestTearDownAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Displays routing page heading")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Displays routing page heading", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Routing Page")]
         [global::Xunit.TraitAttribute("Description", "Displays routing page heading")]
         [global::Xunit.TraitAttribute("Category", "smoke")]
@@ -158,7 +159,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Displays routing page heading", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 12
+#line 13
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -168,17 +169,17 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 13
+#line 14
         await testRunner.ThenAsync("I should see the heading \"Channel → Agent Routing\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Sync OpenClaw button is available")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Sync OpenClaw button is available", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Routing Page")]
         [global::Xunit.TraitAttribute("Description", "Sync OpenClaw button is available")]
         [global::Xunit.TraitAttribute("Category", "smoke")]
@@ -191,7 +192,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sync OpenClaw button is available", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 16
+#line 17
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -201,17 +202,17 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 17
+#line 18
         await testRunner.ThenAsync("I should see the \"Sync OpenClaw\" button with sync icon", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Refresh button is visible")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Refresh button is visible", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Routing Page")]
         [global::Xunit.TraitAttribute("Description", "Refresh button is visible")]
         public async global::System.Threading.Tasks.Task RefreshButtonIsVisible()
@@ -222,7 +223,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Refresh button is visible", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 19
+#line 20
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -232,17 +233,17 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 20
+#line 21
         await testRunner.ThenAsync("I should see the refresh button", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Skeleton rows shown while loading")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Skeleton rows shown while loading", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Routing Page")]
         [global::Xunit.TraitAttribute("Description", "Skeleton rows shown while loading")]
         public async global::System.Threading.Tasks.Task SkeletonRowsShownWhileLoading()
@@ -253,7 +254,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Skeleton rows shown while loading", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 23
+#line 24
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -263,20 +264,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 24
+#line 25
         await testRunner.GivenAsync("the routing mappings are loading", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 25
+#line 26
         await testRunner.ThenAsync("I should see 4 skeleton loading rows", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Routing data grid displays with correct columns")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Routing data grid displays with correct columns", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Routing Page")]
         [global::Xunit.TraitAttribute("Description", "Routing data grid displays with correct columns")]
         [global::Xunit.TraitAttribute("Category", "requires-routing")]
@@ -289,7 +290,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Routing data grid displays with correct columns", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 29
+#line 30
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -299,29 +300,29 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 30
+#line 31
         await testRunner.GivenAsync("there are routing mappings", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 31
+#line 32
         await testRunner.ThenAsync("I should see the routing data grid", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 32
+#line 33
         await testRunner.AndAsync("the grid should have a \"Channel\" column", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 33
+#line 34
         await testRunner.AndAsync("the grid should have an \"Agent ID\" column", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 34
+#line 35
         await testRunner.AndAsync("the grid should have a \"Status\" column", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Channel column shows icon and name")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Channel column shows icon and name", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Routing Page")]
         [global::Xunit.TraitAttribute("Description", "Channel column shows icon and name")]
         [global::Xunit.TraitAttribute("Category", "requires-routing")]
@@ -334,7 +335,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Channel column shows icon and name", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 37
+#line 38
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -344,23 +345,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 38
+#line 39
         await testRunner.GivenAsync("there are routing mappings", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 39
+#line 40
         await testRunner.ThenAsync("each routing row should display a channel icon", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 40
+#line 41
         await testRunner.AndAsync("each routing row should display the channel type name", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Status chips show Override or Default")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Status chips show Override or Default", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Routing Page")]
         [global::Xunit.TraitAttribute("Description", "Status chips show Override or Default")]
         [global::Xunit.TraitAttribute("Category", "requires-routing")]
@@ -373,7 +374,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Status chips show Override or Default", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 43
+#line 44
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -383,23 +384,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 44
+#line 45
         await testRunner.GivenAsync("there are routing mappings", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 45
+#line 46
         await testRunner.ThenAsync("rows with an assigned agent should show \"Override\" chip in primary color", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 46
+#line 47
         await testRunner.AndAsync("rows without an assigned agent should show \"Default\" chip", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Agent ID column is editable inline")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Agent ID column is editable inline", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Routing Page")]
         [global::Xunit.TraitAttribute("Description", "Agent ID column is editable inline")]
         [global::Xunit.TraitAttribute("Category", "requires-routing")]
@@ -412,7 +413,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Agent ID column is editable inline", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 49
+#line 50
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -422,20 +423,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 50
+#line 51
         await testRunner.GivenAsync("there are routing mappings", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 51
+#line 52
         await testRunner.ThenAsync("the Agent ID column should support inline cell editing", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Editing agent ID updates routing via API")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Editing agent ID updates routing via API", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Routing Page")]
         [global::Xunit.TraitAttribute("Description", "Editing agent ID updates routing via API")]
         [global::Xunit.TraitAttribute("Category", "requires-routing")]
@@ -448,7 +449,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Editing agent ID updates routing via API", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 54
+#line 55
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -458,26 +459,26 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 55
+#line 56
         await testRunner.GivenAsync("there are routing mappings", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 56
+#line 57
         await testRunner.WhenAsync("I edit the agent ID on a routing row", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 57
+#line 58
         await testRunner.AndAsync("I commit the cell edit", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 58
+#line 59
         await testRunner.ThenAsync("a success snackbar should appear with \"Routing updated\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Routing diagram section is displayed")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Routing diagram section is displayed", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Routing Page")]
         [global::Xunit.TraitAttribute("Description", "Routing diagram section is displayed")]
         [global::Xunit.TraitAttribute("Category", "requires-routing")]
@@ -490,7 +491,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Routing diagram section is displayed", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 62
+#line 63
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -500,23 +501,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 63
+#line 64
         await testRunner.GivenAsync("there are routing mappings", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 64
+#line 65
         await testRunner.ThenAsync("I should see the \"Routing Diagram\" section", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 65
+#line 66
         await testRunner.AndAsync("the diagram should use a timeline layout", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Diagram shows channel-to-agent flow")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Diagram shows channel-to-agent flow", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Routing Page")]
         [global::Xunit.TraitAttribute("Description", "Diagram shows channel-to-agent flow")]
         [global::Xunit.TraitAttribute("Category", "requires-routing")]
@@ -529,7 +530,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Diagram shows channel-to-agent flow", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 68
+#line 69
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -539,26 +540,26 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 69
+#line 70
         await testRunner.GivenAsync("there are routing mappings", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 70
+#line 71
         await testRunner.ThenAsync("each timeline item should show a channel chip", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 71
+#line 72
         await testRunner.AndAsync("each timeline item should show an arrow", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 72
+#line 73
         await testRunner.AndAsync("each timeline item should show an agent chip or \"OpenClaw Default\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Timeline items are color-coded by assignment")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Timeline items are color-coded by assignment", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Routing Page")]
         [global::Xunit.TraitAttribute("Description", "Timeline items are color-coded by assignment")]
         [global::Xunit.TraitAttribute("Category", "requires-routing")]
@@ -571,7 +572,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Timeline items are color-coded by assignment", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 75
+#line 76
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -581,23 +582,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 76
+#line 77
         await testRunner.GivenAsync("there are routing mappings", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 77
+#line 78
         await testRunner.ThenAsync("timeline items with assigned agents should be primary colored", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 78
+#line 79
         await testRunner.AndAsync("timeline items using default should be default colored", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Sync OpenClaw triggers sync and shows snackbar")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Sync OpenClaw triggers sync and shows snackbar", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Routing Page")]
         [global::Xunit.TraitAttribute("Description", "Sync OpenClaw triggers sync and shows snackbar")]
         public async global::System.Threading.Tasks.Task SyncOpenClawTriggersSyncAndShowsSnackbar()
@@ -608,7 +609,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sync OpenClaw triggers sync and shows snackbar", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 81
+#line 82
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -618,23 +619,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 82
+#line 83
         await testRunner.WhenAsync("I click the \"Sync OpenClaw\" button", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 83
+#line 84
         await testRunner.ThenAsync("a success snackbar should appear with \"sync complete\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 84
+#line 85
         await testRunner.AndAsync("the routing data should refresh", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Channel icons match channel type")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Channel icons match channel type", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Routing Page")]
         [global::Xunit.TraitAttribute("Description", "Channel icons match channel type")]
         [global::Xunit.TraitAttribute("Category", "requires-routing")]
@@ -647,7 +648,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Channel icons match channel type", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 88
+#line 89
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -657,20 +658,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 89
+#line 90
         await testRunner.GivenAsync("there are routing mappings", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 90
+#line 91
         await testRunner.ThenAsync("routing channel icons should match their type", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Page title is correct")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Page title is correct", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Routing Page")]
         [global::Xunit.TraitAttribute("Description", "Page title is correct")]
         public async global::System.Threading.Tasks.Task PageTitleIsCorrect()
@@ -681,7 +682,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Page title is correct", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 93
+#line 94
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -691,17 +692,17 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 94
+#line 95
         await testRunner.ThenAsync("the browser page title should be \"Routing — JD.AI\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Agent selector dropdown replaces free-text editing")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Agent selector dropdown replaces free-text editing", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Routing Page")]
         [global::Xunit.TraitAttribute("Description", "Agent selector dropdown replaces free-text editing")]
         [global::Xunit.TraitAttribute("Category", "planned")]
@@ -714,7 +715,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Agent selector dropdown replaces free-text editing", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 98
+#line 99
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -724,16 +725,16 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 99
+#line 100
         await testRunner.GivenAsync("there are routing mappings", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 100
+#line 101
         await testRunner.WhenAsync("I click to edit an agent ID", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 101
+#line 102
         await testRunner.ThenAsync("a dropdown with available agents should appear", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -747,12 +748,10 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             
             async global::System.Threading.Tasks.Task global::Xunit.IAsyncLifetime.InitializeAsync()
             {
-                await RoutingPageFeature.FeatureSetupAsync();
             }
             
             async global::System.Threading.Tasks.Task global::Xunit.IAsyncLifetime.DisposeAsync()
             {
-                await RoutingPageFeature.FeatureTearDownAsync();
             }
         }
     }

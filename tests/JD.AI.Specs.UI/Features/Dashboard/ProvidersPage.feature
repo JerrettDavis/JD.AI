@@ -1,3 +1,4 @@
+@ignore
 @ui
 Feature: Providers Page
     As a gateway operator

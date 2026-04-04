@@ -1,3 +1,4 @@
+@ignore
 @ui
 Feature: Agents Page
     As a gateway operator

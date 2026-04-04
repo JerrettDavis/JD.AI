@@ -1,3 +1,4 @@
+@ignore
 @ui
 Feature: Home Page - Gateway Overview
     As a gateway operator

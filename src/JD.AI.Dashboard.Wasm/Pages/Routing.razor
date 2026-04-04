@@ -6,7 +6,7 @@
 
 <div class="jd-page-header">
     <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-        <MudText Typo="Typo.h4">Channel → Agent Routing</MudText>
+        <MudText data-testid="page-title" Typo="Typo.h4">Channel → Agent Routing</MudText>
         <MudStack Row="true" Spacing="2">
             <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
                        StartIcon="@Icons.Material.Filled.Sync" OnClick="SyncAsync" data-testid="sync-openclaw-button">Sync OpenClaw</MudButton>
@@ -29,6 +29,12 @@
             </div>
         }
     </MudPaper>
+}
+else if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true" data-testid="routing-load-error">
+        Failed to load routing mappings: @_loadError
+    </MudAlert>
 }
 else
 {
@@ -85,14 +91,24 @@ else
 @code {
     private RoutingMapping[]? _mappings;
     private bool _loading = true;
+    private string? _loadError;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
     private async Task LoadAsync()
     {
         _loading = true;
-        try { _mappings = await Api.GetRoutingMappingsAsync(); }
-        catch { _mappings = null; }
+        _loadError = null;
+        try
+        {
+            _mappings = await Api.GetRoutingMappingsAsync();
+        }
+        catch (Exception ex)
+        {
+            _mappings = [];
+            _loadError = ex.Message;
+            Snackbar.Add($"Failed to load routing mappings: {ex.Message}", Severity.Error);
+        }
         _loading = false;
     }
 
@@ -103,7 +119,11 @@ else
             await Api.MapRoutingAsync(mapping.ChannelType, mapping.AgentId);
             Snackbar.Add($"Routing updated: {mapping.ChannelType} → {mapping.AgentId}", Severity.Success);
         }
-        catch (Exception ex) { Snackbar.Add($"Failed: {ex.Message}", Severity.Error); }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed: {ex.Message}", Severity.Error);
+            await LoadAsync();
+        }
     }
 
     private async Task SyncAsync()

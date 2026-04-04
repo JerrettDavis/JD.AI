@@ -23,23 +23,25 @@
         <MudItem xs="12" sm="2">
             <MudSelect T="string" @bind-Value="_severityFilter" Label="Severity" Variant="Variant.Outlined" Dense="true"
                        Clearable="true" data-testid="severity-filter">
+                <MudSelectItem Value="@("debug")">Debug</MudSelectItem>
                 <MudSelectItem Value="@("info")">Info</MudSelectItem>
-                <MudSelectItem Value="@("warn")">Warning</MudSelectItem>
+                <MudSelectItem Value="@("warning")">Warning</MudSelectItem>
                 <MudSelectItem Value="@("error")">Error</MudSelectItem>
+                <MudSelectItem Value="@("critical")">Critical</MudSelectItem>
             </MudSelect>
         </MudItem>
         <MudItem xs="12" sm="2">
             <MudSelect T="string" @bind-Value="_eventTypeFilter" Label="Event Type" Variant="Variant.Outlined" Dense="true"
                        Clearable="true" data-testid="event-type-filter">
-                <MudSelectItem Value="@("tool.audit")">tool.audit</MudSelectItem>
-                <MudSelectItem Value="@("session.start")">session.start</MudSelectItem>
-                <MudSelectItem Value="@("session.end")">session.end</MudSelectItem>
-                <MudSelectItem Value="@("workflow.recording")">workflow.recording</MudSelectItem>
+                <MudSelectItem Value="@("tool.invoke")">tool.invoke</MudSelectItem>
+                <MudSelectItem Value="@("session.create")">session.create</MudSelectItem>
+                <MudSelectItem Value="@("session.close")">session.close</MudSelectItem>
+                <MudSelectItem Value="@("policy.deny")">policy.deny</MudSelectItem>
             </MudSelect>
         </MudItem>
         <MudItem xs="12" sm="3">
-            <MudTextField T="string" @bind-Value="_agentFilter" Label="Agent" Variant="Variant.Outlined" Margin="Margin.Dense"
-                          Clearable="true" data-testid="agent-filter" />
+            <MudTextField T="string" @bind-Value="_sourceFilter" Label="Source" Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Clearable="true" data-testid="source-filter" />
         </MudItem>
         <MudItem xs="12" sm="3">
             <MudTextField T="string" @bind-Value="_searchText" Label="Search" Variant="Variant.Outlined" Margin="Margin.Dense"
@@ -93,7 +95,7 @@ else
                         </MudChip>
                     </CellTemplate>
                 </TemplateColumn>
-                <PropertyColumn Property="x => x.AgentId" Title="Agent" />
+                <PropertyColumn Property="x => x.Source" Title="Source" />
                 <PropertyColumn Property="x => x.EventType" Title="Event" />
                 <PropertyColumn Property="x => x.Message" Title="Message" />
                 <TemplateColumn Title="" CellClass="d-flex justify-end">
@@ -128,7 +130,7 @@ else
     private bool _loading = true;
     private string? _severityFilter;
     private string? _eventTypeFilter;
-    private string? _agentFilter;
+    private string? _sourceFilter;
     private string? _searchText;
     private string? _selectedEventId;
     private bool _autoRefresh;
@@ -164,7 +166,13 @@ else
     private async Task LoadAsync()
     {
         _loading = true;
-        try { _allEvents = await Api.GetAuditEventsAsync(); }
+        try
+        {
+            _allEvents = await Api.GetAuditEventsAsync(
+                limit: 1000,
+                action: _eventTypeFilter,
+                severity: _severityFilter);
+        }
         catch { _allEvents = []; Snackbar.Add("Failed to load audit events", Severity.Error); }
         ApplyFilters();
         _loading = false;
@@ -180,13 +188,13 @@ else
         if (!string.IsNullOrWhiteSpace(_eventTypeFilter))
             events = events.Where(e => string.Equals(e.EventType, _eventTypeFilter, StringComparison.OrdinalIgnoreCase));
 
-        if (!string.IsNullOrWhiteSpace(_agentFilter))
-            events = events.Where(e => e.AgentId is not null &&
-                e.AgentId.Contains(_agentFilter, StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrWhiteSpace(_sourceFilter))
+            events = events.Where(e => e.Source.Contains(_sourceFilter, StringComparison.OrdinalIgnoreCase));
 
         if (!string.IsNullOrWhiteSpace(_searchText))
-            events = events.Where(e => e.Message.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
-                e.EventType.Contains(_searchText, StringComparison.OrdinalIgnoreCase));
+            events = events.Where(e => e.Message.Contains(_searchText, StringComparison.OrdinalIgnoreCase)
+                || e.EventType.Contains(_searchText, StringComparison.OrdinalIgnoreCase)
+                || e.Source.Contains(_searchText, StringComparison.OrdinalIgnoreCase));
 
         _filteredEvents = events.ToArray();
     }

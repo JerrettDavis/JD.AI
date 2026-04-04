@@ -24,10 +24,11 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         private global::Reqnroll.ITestRunner testRunner;
         
         private static string[] featureTags = new string[] {
+                "ignore",
                 "ui"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Sessions Page", "    As a gateway operator\n    I want to view and manage conversation sessions\n   " +
-                " So that I can monitor active conversations and review past ones", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Sessions Page", "    As a gateway operator\r\n    I want to view and manage conversation sessions\r\n " +
+                "   So that I can monitor active conversations and review past ones", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
@@ -108,9 +109,9 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         
         public virtual async global::System.Threading.Tasks.Task FeatureBackgroundAsync()
         {
-#line 7
-    #line hidden
 #line 8
+    #line hidden
+#line 9
         await testRunner.GivenAsync("I am on the sessions page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
         }
@@ -145,7 +146,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             await this.TestTearDownAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Displays sessions page heading")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Displays sessions page heading", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Sessions Page")]
         [global::Xunit.TraitAttribute("Description", "Displays sessions page heading")]
         [global::Xunit.TraitAttribute("Category", "smoke")]
@@ -158,7 +159,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Displays sessions page heading", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 12
+#line 13
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -168,17 +169,17 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 13
+#line 14
         await testRunner.ThenAsync("I should see the heading \"Sessions\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Refresh button is visible")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Refresh button is visible", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Sessions Page")]
         [global::Xunit.TraitAttribute("Description", "Refresh button is visible")]
         public async global::System.Threading.Tasks.Task RefreshButtonIsVisible()
@@ -189,7 +190,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Refresh button is visible", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 15
+#line 16
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -199,17 +200,17 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 16
+#line 17
         await testRunner.ThenAsync("I should see the refresh button", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Skeleton rows shown while loading")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Skeleton rows shown while loading", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Sessions Page")]
         [global::Xunit.TraitAttribute("Description", "Skeleton rows shown while loading")]
         public async global::System.Threading.Tasks.Task SkeletonRowsShownWhileLoading()
@@ -220,7 +221,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Skeleton rows shown while loading", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 19
+#line 20
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -230,20 +231,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 20
+#line 21
         await testRunner.GivenAsync("the sessions list is loading", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 21
+#line 22
         await testRunner.ThenAsync("I should see 5 skeleton loading rows", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Empty state when no sessions")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Empty state when no sessions", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Sessions Page")]
         [global::Xunit.TraitAttribute("Description", "Empty state when no sessions")]
         public async global::System.Threading.Tasks.Task EmptyStateWhenNoSessions()
@@ -254,7 +255,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Empty state when no sessions", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 24
+#line 25
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -264,23 +265,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 25
+#line 26
         await testRunner.GivenAsync("there are no sessions", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 26
+#line 27
         await testRunner.ThenAsync("I should see the sessions empty state", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 27
+#line 28
         await testRunner.AndAsync("the empty state should display \"No sessions found\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Session data grid displays with correct columns")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Session data grid displays with correct columns", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Sessions Page")]
         [global::Xunit.TraitAttribute("Description", "Session data grid displays with correct columns")]
         [global::Xunit.TraitAttribute("Category", "requires-sessions")]
@@ -293,7 +294,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Session data grid displays with correct columns", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 31
+#line 32
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -303,41 +304,41 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 32
+#line 33
         await testRunner.GivenAsync("there are sessions", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 33
+#line 34
         await testRunner.ThenAsync("I should see the sessions data grid", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 34
+#line 35
         await testRunner.AndAsync("the grid should have a \"Session ID\" column", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 35
+#line 36
         await testRunner.AndAsync("the grid should have a \"Model\" column", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 36
+#line 37
         await testRunner.AndAsync("the grid should have a \"Provider\" column", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 37
+#line 38
         await testRunner.AndAsync("the grid should have a \"Messages\" column", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 38
+#line 39
         await testRunner.AndAsync("the grid should have a \"Tokens\" column", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 39
+#line 40
         await testRunner.AndAsync("the grid should have a \"Status\" column", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 40
+#line 41
         await testRunner.AndAsync("the grid should have a \"Created\" column", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Session status chips display correctly")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Session status chips display correctly", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Sessions Page")]
         [global::Xunit.TraitAttribute("Description", "Session status chips display correctly")]
         [global::Xunit.TraitAttribute("Category", "requires-sessions")]
@@ -350,7 +351,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Session status chips display correctly", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 43
+#line 44
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -360,23 +361,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 44
+#line 45
         await testRunner.GivenAsync("there are sessions", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 45
+#line 46
         await testRunner.ThenAsync("active sessions should show \"Active\" chip in green", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 46
+#line 47
         await testRunner.AndAsync("closed sessions should show \"Closed\" chip in default color", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Data grid supports filtering")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Data grid supports filtering", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Sessions Page")]
         [global::Xunit.TraitAttribute("Description", "Data grid supports filtering")]
         [global::Xunit.TraitAttribute("Category", "requires-sessions")]
@@ -389,7 +390,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Data grid supports filtering", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 49
+#line 50
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -399,20 +400,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 50
+#line 51
         await testRunner.GivenAsync("there are sessions", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 51
+#line 52
         await testRunner.ThenAsync("the data grid should have filter controls", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Data grid supports sorting")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Data grid supports sorting", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Sessions Page")]
         [global::Xunit.TraitAttribute("Description", "Data grid supports sorting")]
         [global::Xunit.TraitAttribute("Category", "requires-sessions")]
@@ -425,7 +426,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Data grid supports sorting", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 54
+#line 55
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -435,23 +436,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 55
+#line 56
         await testRunner.GivenAsync("there are sessions", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 56
+#line 57
         await testRunner.WhenAsync("I click a column header", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 57
+#line 58
         await testRunner.ThenAsync("the grid should sort by that column", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Row action buttons are present")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Row action buttons are present", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Sessions Page")]
         [global::Xunit.TraitAttribute("Description", "Row action buttons are present")]
         [global::Xunit.TraitAttribute("Category", "requires-sessions")]
@@ -464,7 +465,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Row action buttons are present", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 61
+#line 62
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -474,23 +475,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 62
+#line 63
         await testRunner.GivenAsync("there are sessions", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 63
+#line 64
         await testRunner.ThenAsync("each session row should have a view button", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 64
+#line 65
         await testRunner.AndAsync("each session row should have an export button", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Active sessions have close button")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Active sessions have close button", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Sessions Page")]
         [global::Xunit.TraitAttribute("Description", "Active sessions have close button")]
         [global::Xunit.TraitAttribute("Category", "requires-sessions")]
@@ -503,7 +504,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Active sessions have close button", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 67
+#line 68
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -513,20 +514,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 68
+#line 69
         await testRunner.GivenAsync("there are active sessions", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 69
+#line 70
         await testRunner.ThenAsync("active session rows should have a close button in warning color", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Closed sessions do not have close button")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Closed sessions do not have close button", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Sessions Page")]
         [global::Xunit.TraitAttribute("Description", "Closed sessions do not have close button")]
         [global::Xunit.TraitAttribute("Category", "requires-sessions")]
@@ -539,7 +540,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Closed sessions do not have close button", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 72
+#line 73
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -549,20 +550,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 73
+#line 74
         await testRunner.GivenAsync("there are closed sessions", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 74
+#line 75
         await testRunner.ThenAsync("closed session rows should not have a close button", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="View session opens turn viewer")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="View session opens turn viewer", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Sessions Page")]
         [global::Xunit.TraitAttribute("Description", "View session opens turn viewer")]
         [global::Xunit.TraitAttribute("Category", "requires-sessions")]
@@ -575,7 +576,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("View session opens turn viewer", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 78
+#line 79
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -585,26 +586,26 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 79
+#line 80
         await testRunner.GivenAsync("there are sessions", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 80
+#line 81
         await testRunner.WhenAsync("I click the view button on a session", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 81
+#line 82
         await testRunner.ThenAsync("the turn viewer panel should appear below the grid", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 82
+#line 83
         await testRunner.AndAsync("the turn viewer should show \"Conversation:\" with the session ID", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Turn viewer displays conversation turns")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Turn viewer displays conversation turns", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Sessions Page")]
         [global::Xunit.TraitAttribute("Description", "Turn viewer displays conversation turns")]
         [global::Xunit.TraitAttribute("Category", "requires-sessions")]
@@ -617,7 +618,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Turn viewer displays conversation turns", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 85
+#line 86
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -627,35 +628,35 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 86
+#line 87
         await testRunner.GivenAsync("there are sessions with turns", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 87
+#line 88
         await testRunner.WhenAsync("I click the view button on a session", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 88
+#line 89
         await testRunner.ThenAsync("each turn should show a role chip", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 89
+#line 90
         await testRunner.AndAsync("each turn should show message content", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 90
+#line 91
         await testRunner.AndAsync("each turn should show token counts", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 91
+#line 92
         await testRunner.AndAsync("each turn should show response duration", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 92
+#line 93
         await testRunner.AndAsync("each turn should have a colored left border", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Turn viewer can be dismissed")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Turn viewer can be dismissed", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Sessions Page")]
         [global::Xunit.TraitAttribute("Description", "Turn viewer can be dismissed")]
         [global::Xunit.TraitAttribute("Category", "requires-sessions")]
@@ -668,7 +669,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Turn viewer can be dismissed", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 95
+#line 96
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -678,23 +679,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 96
+#line 97
         await testRunner.GivenAsync("I am viewing a session\'s turns", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 97
+#line 98
         await testRunner.WhenAsync("I click the close button on the turn viewer", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 98
+#line 99
         await testRunner.ThenAsync("the turn viewer should disappear", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Empty session shows no turns message")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Empty session shows no turns message", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Sessions Page")]
         [global::Xunit.TraitAttribute("Description", "Empty session shows no turns message")]
         [global::Xunit.TraitAttribute("Category", "requires-sessions")]
@@ -707,7 +708,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Empty session shows no turns message", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 101
+#line 102
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -717,23 +718,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 102
+#line 103
         await testRunner.GivenAsync("there is a session with no turns", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 103
+#line 104
         await testRunner.WhenAsync("I click the view button on that session", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 104
+#line 105
         await testRunner.ThenAsync("the turn viewer should show \"No turns in this session\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Export session shows success snackbar")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Export session shows success snackbar", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Sessions Page")]
         [global::Xunit.TraitAttribute("Description", "Export session shows success snackbar")]
         [global::Xunit.TraitAttribute("Category", "requires-sessions")]
@@ -746,7 +747,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Export session shows success snackbar", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 108
+#line 109
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -756,23 +757,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 109
+#line 110
         await testRunner.GivenAsync("there are sessions", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 110
+#line 111
         await testRunner.WhenAsync("I click the export button on a session", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 111
+#line 112
         await testRunner.ThenAsync("a success snackbar should appear with \"exported\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Close session shows success and refreshes")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Close session shows success and refreshes", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Sessions Page")]
         [global::Xunit.TraitAttribute("Description", "Close session shows success and refreshes")]
         [global::Xunit.TraitAttribute("Category", "requires-sessions")]
@@ -785,7 +786,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Close session shows success and refreshes", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 115
+#line 116
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -795,26 +796,26 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 116
+#line 117
         await testRunner.GivenAsync("there are active sessions", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 117
+#line 118
         await testRunner.WhenAsync("I click the close button on an active session", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 118
+#line 119
         await testRunner.ThenAsync("a success snackbar should appear with \"closed\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 119
+#line 120
         await testRunner.AndAsync("the session list should refresh", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Page title is correct")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Page title is correct", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Sessions Page")]
         [global::Xunit.TraitAttribute("Description", "Page title is correct")]
         public async global::System.Threading.Tasks.Task PageTitleIsCorrect()
@@ -825,7 +826,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Page title is correct", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 122
+#line 123
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -835,17 +836,17 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 123
+#line 124
         await testRunner.ThenAsync("the browser page title should be \"Sessions — JD.AI\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Filter sessions by agent, channel, and date range")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Filter sessions by agent, channel, and date range", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Sessions Page")]
         [global::Xunit.TraitAttribute("Description", "Filter sessions by agent, channel, and date range")]
         [global::Xunit.TraitAttribute("Category", "planned")]
@@ -858,7 +859,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Filter sessions by agent, channel, and date range", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 127
+#line 128
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -868,19 +869,19 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 128
+#line 129
         await testRunner.GivenAsync("there are sessions", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 129
+#line 130
         await testRunner.ThenAsync("I should see filter controls for agent, channel, and date range", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 130
+#line 131
         await testRunner.WhenAsync("I apply a filter", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 131
+#line 132
         await testRunner.ThenAsync("only matching sessions should be displayed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -894,12 +895,10 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             
             async global::System.Threading.Tasks.Task global::Xunit.IAsyncLifetime.InitializeAsync()
             {
-                await SessionsPageFeature.FeatureSetupAsync();
             }
             
             async global::System.Threading.Tasks.Task global::Xunit.IAsyncLifetime.DisposeAsync()
             {
-                await SessionsPageFeature.FeatureTearDownAsync();
             }
         }
     }

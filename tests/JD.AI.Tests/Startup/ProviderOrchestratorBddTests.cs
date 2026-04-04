@@ -18,7 +18,7 @@ public sealed class ProviderOrchestratorBddTests : TinyBddXunitBase
 {
     public ProviderOrchestratorBddTests(ITestOutputHelper output) : base(output) { }
 
-    [Scenario("Startup uses saved defaults without probing providers"), Fact]
+    [Scenario("Startup validates saved defaults and still keeps the full model catalog"), Fact]
     public async Task DetectAndSelectAsync_UsesSavedDefaultFastPath()
     {
         ProviderSetup? setup = null;
@@ -59,14 +59,13 @@ public sealed class ProviderOrchestratorBddTests : TinyBddXunitBase
                 {
                     setup = await ProviderOrchestrator.DetectAndSelectAsync(opts, configStore).ConfigureAwait(false);
                 })
-                .Then("the saved provider/model are reused without probing providers", _ =>
+                .Then("the saved provider/model are reused while still keeping the full catalog", _ =>
                 {
                     setup.Should().NotBeNull();
                     setup!.SelectedModel.ProviderName.Should().Be("Preferred");
                     setup.SelectedModel.Id.Should().Be("preferred-model");
-
-                    preferredDetector!.DetectCount.Should().Be(0);
-                    secondaryDetector!.DetectCount.Should().Be(0);
+                    setup.AllModels.Should().Contain(model => model.Id == "preferred-fallback");
+                    setup.AllModels.Should().Contain(model => model.Id == "secondary-model");
                     return true;
                 })
                 .AssertPassed();

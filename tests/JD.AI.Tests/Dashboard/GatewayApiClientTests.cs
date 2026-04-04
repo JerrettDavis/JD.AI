@@ -28,16 +28,19 @@ public sealed class GatewayApiClientTests
         using var handler = new StubHandler(req =>
         {
             Assert.Equal(HttpMethod.Post, req.Method);
-            Assert.Equal("http://localhost/api/agents", req.RequestUri!.ToString());
-            return JsonResponse("""{"id":"worker","provider":"ollama","model":"qwen","turnCount":0,"createdAt":"2026-03-20T00:00:00Z"}""");
+            Assert.Equal("http://localhost/api/v1/agents", req.RequestUri!.ToString());
+            var body = req.Content!.ReadAsStringAsync().Result;
+            Assert.DoesNotContain("\"id\":", body, StringComparison.Ordinal);
+            Assert.Contains("\"provider\":\"ollama\"", body, StringComparison.Ordinal);
+            Assert.Contains("\"model\":\"qwen\"", body, StringComparison.Ordinal);
+            return JsonResponse("""{"id":"worker"}""");
         });
         using var http = CreateHttp(handler);
         var client = new GatewayApiClient(http);
 
         var created = await client.SpawnAgentAsync(new AgentDefinition { Id = "worker", Provider = "ollama", Model = "qwen" });
 
-        Assert.NotNull(created);
-        Assert.Equal("worker", created!.Id);
+        Assert.Equal("worker", created);
     }
 
     [Fact]
@@ -46,13 +49,23 @@ public sealed class GatewayApiClientTests
         using var handler = new StubHandler(req =>
         {
             Assert.Equal(HttpMethod.Delete, req.Method);
-            Assert.Equal("http://localhost/api/agents/abc", req.RequestUri!.ToString());
+            Assert.Equal("http://localhost/api/v1/agents/abc", req.RequestUri!.ToString());
             return new HttpResponseMessage(HttpStatusCode.OK);
         });
         using var http = CreateHttp(handler);
         var client = new GatewayApiClient(http);
 
         await client.DeleteAgentAsync("abc");
+    }
+
+    [Fact]
+    public async Task DeleteAgentAsync_WhenDeleteFails_Throws()
+    {
+        using var handler = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
+        using var http = CreateHttp(handler);
+        var client = new GatewayApiClient(http);
+
+        await Assert.ThrowsAsync<HttpRequestException>(() => client.DeleteAgentAsync("abc"));
     }
 
     [Fact]
@@ -97,6 +110,16 @@ public sealed class GatewayApiClientTests
         var client = new GatewayApiClient(http);
 
         await client.DisconnectChannelAsync("discord");
+    }
+
+    [Fact]
+    public async Task ConnectChannelAsync_WhenPostFails_Throws()
+    {
+        using var handler = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
+        using var http = CreateHttp(handler);
+        var client = new GatewayApiClient(http);
+
+        await Assert.ThrowsAsync<HttpRequestException>(() => client.ConnectChannelAsync("discord"));
     }
 
     [Fact]
@@ -161,6 +184,16 @@ public sealed class GatewayApiClientTests
         var client = new GatewayApiClient(http);
 
         await client.ExportSessionAsync("a/b c");
+    }
+
+    [Fact]
+    public async Task CloseSessionAsync_WhenPostFails_Throws()
+    {
+        using var handler = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
+        using var http = CreateHttp(handler);
+        var client = new GatewayApiClient(http);
+
+        await Assert.ThrowsAsync<HttpRequestException>(() => client.CloseSessionAsync("session-1"));
     }
 
     [Fact]
@@ -388,6 +421,101 @@ public sealed class GatewayApiClientTests
         var client = new GatewayApiClient(http);
 
         await client.SyncOpenClawAsync();
+    }
+
+    [Fact]
+    public async Task GetAuditEventsAsync_UsesAuditEventsEndpointAndMapsNumericSeverityPayload()
+    {
+        using var handler = new StubHandler(req =>
+        {
+            Assert.Equal("http://localhost/api/v1/audit/events?limit=2", req.RequestUri!.ToString());
+            return JsonResponse(
+                """
+                {
+                  "totalCount": 1,
+                  "count": 1,
+                  "events": [
+                    {
+                      "eventId": "evt-1",
+                      "timestamp": "2026-04-04T12:00:00Z",
+                      "sessionId": "sess-123",
+                      "action": "tool.invoke",
+                      "resource": "read_file",
+                      "detail": "status=ok; args=path=README.md",
+                      "severity": 2,
+                      "toolName": "read_file",
+                      "toolArguments": "path=README.md"
+                    }
+                  ]
+                }
+                """);
+        });
+        using var http = CreateHttp(handler);
+        var client = new GatewayApiClient(http);
+
+        var events = await client.GetAuditEventsAsync(2);
+
+        Assert.Single(events);
+        Assert.Equal("evt-1", events[0].Id);
+        Assert.Equal("warning", events[0].Level);
+        Assert.Equal("read_file", events[0].Source);
+        Assert.Equal("tool.invoke", events[0].EventType);
+        Assert.Equal("status=ok; args=path=README.md", events[0].Message);
+        Assert.Contains("\"EventId\": \"evt-1\"", events[0].Payload, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GetAuditEventsAsync_MapsStringSeverityPayload()
+    {
+        using var handler = new StubHandler(_ =>
+            JsonResponse(
+                """
+                {
+                  "totalCount": 1,
+                  "count": 1,
+                  "events": [
+                    {
+                      "eventId": "evt-2",
+                      "timestamp": "2026-04-04T12:05:00Z",
+                      "userId": "operator",
+                      "action": "session.create",
+                      "detail": "Session created",
+                      "severity": "Info"
+                    }
+                  ]
+                }
+                """));
+        using var http = CreateHttp(handler);
+        var client = new GatewayApiClient(http);
+
+        var events = await client.GetAuditEventsAsync();
+
+        Assert.Single(events);
+        Assert.Equal("info", events[0].Level);
+        Assert.Equal("operator", events[0].Source);
+        Assert.Equal("session.create", events[0].EventType);
+    }
+
+    [Fact]
+    public async Task GetAuditEventsAsync_AppendsFilterQueryParameters()
+    {
+        using var handler = new StubHandler(req =>
+        {
+            Assert.Equal(
+                "http://localhost/api/v1/audit/events?limit=50&action=tool.invoke&severity=warning&resource=read_file",
+                req.RequestUri!.ToString());
+            return JsonResponse("""{"totalCount":0,"count":0,"events":[]}""");
+        });
+        using var http = CreateHttp(handler);
+        var client = new GatewayApiClient(http);
+
+        var events = await client.GetAuditEventsAsync(
+            limit: 50,
+            action: "tool.invoke",
+            severity: "warning",
+            resource: "read_file");
+
+        Assert.Empty(events);
     }
 
     private static HttpClient CreateHttp(HttpMessageHandler handler) =>

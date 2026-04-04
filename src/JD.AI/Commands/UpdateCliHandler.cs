@@ -35,6 +35,14 @@ internal static class UpdateCliHandler
     internal static Func<string, CancellationToken, Task<string?>> GetInstalledToolVersionAsync { get; set; } =
         GetInstalledToolVersionCoreAsync;
 
+    /// <summary>Factory for applying a named tool update. Override in tests.</summary>
+    internal static Func<string, string?, CancellationToken, Task<InstallResult>> ApplyToolUpdateAsync { get; set; } =
+        JDAIToolkit.ApplyAsync;
+
+    /// <summary>Factory for applying a multi-tool update plan. Override in tests.</summary>
+    internal static Func<UpdatePlan, bool, Action<InstalledTool, InstallResult>?, CancellationToken, Task>
+        ApplyAllToolUpdatesAsync { get; set; } = JDAIToolkit.ApplyAllAsync;
+
     public static async Task<int> RunAsync(string subcommand, string[] args)
     {
         using var cts = new CancellationTokenSource();
@@ -256,10 +264,10 @@ internal static class UpdateCliHandler
         AnsiConsole.MarkupLine($"[dim]Applying [bold]{plan.UpdateCount}[/] update(s)...[/]");
 
         var success = true;
-        await JDAIToolkit.ApplyAllAsync(
+        await ApplyAllToolUpdatesAsync(
             plan,
-            continueOnError: true,
-            onToolUpdated: (tool, result) =>
+            true,
+            (tool, result) =>
             {
                 if (result.Success)
                 {
@@ -345,7 +353,7 @@ internal static class UpdateCliHandler
             .Spinner(Spinner.Known.Dots)
             .SpinnerStyle(Style.Parse("green"))
             .StartAsync($"Updating {packageId}...", async _ =>
-                await JDAIToolkit.ApplyAsync(packageId, latest, ct).ConfigureAwait(false))
+                await ApplyToolUpdateAsync(packageId, latest, ct).ConfigureAwait(false))
             .ConfigureAwait(false);
 
         if (result.Success)

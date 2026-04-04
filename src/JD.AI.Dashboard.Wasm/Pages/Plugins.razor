@@ -9,7 +9,7 @@
 
 <div class="jd-page-header">
     <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-        <MudText Typo="Typo.h4">Plugins</MudText>
+        <MudText data-testid="page-title" Typo="Typo.h4">Plugins</MudText>
         <MudStack Row="true" Spacing="2">
             <MudButton OnClick="OpenInstallDialogAsync" Variant="Variant.Filled" Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.Add" data-testid="install-plugin-button">
@@ -37,6 +37,12 @@
             </div>
         }
     </MudPaper>
+}
+else if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true" data-testid="plugins-load-error">
+        Failed to load plugins: @_loadError
+    </MudAlert>
 }
 else if (_plugins is null || _plugins.Length == 0)
 {
@@ -68,7 +74,7 @@ else
                     <CellTemplate>
                         <MudStack Row="true" Spacing="1">
                             <MudSwitch T="bool" Value="@context.Item.Enabled"
-                                       ValueChanged="@(v => TogglePluginAsync(context.Item))"
+                                       ValueChanged="@(v => TogglePluginAsync(context.Item, v))"
                                        Color="Color.Success" Size="Size.Small"
                                        data-testid="plugin-toggle" />
                             <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
@@ -85,6 +91,7 @@ else
 @code {
     private PluginInfo[]? _plugins;
     private bool _loading = true;
+    private string? _loadError;
     private EventHandler<ActivityEventArgs>? _activityHandler;
 
     protected override async Task OnInitializedAsync()
@@ -108,21 +115,30 @@ else
     private async Task LoadAsync()
     {
         _loading = true;
-        try { _plugins = await Api.GetPluginsAsync(); }
-        catch { _plugins = null; Snackbar.Add("Failed to load plugins", Severity.Error); }
+        _loadError = null;
+        try
+        {
+            _plugins = await Api.GetPluginsAsync();
+        }
+        catch (Exception ex)
+        {
+            _plugins = [];
+            _loadError = ex.Message;
+            Snackbar.Add($"Failed to load plugins: {ex.Message}", Severity.Error);
+        }
         _loading = false;
     }
 
-    private async Task TogglePluginAsync(PluginInfo plugin)
+    private async Task TogglePluginAsync(PluginInfo plugin, bool enabled)
     {
         try
         {
-            if (plugin.Enabled)
-                await Api.DisablePluginAsync(plugin.Id);
-            else
+            if (enabled)
                 await Api.EnablePluginAsync(plugin.Id);
+            else
+                await Api.DisablePluginAsync(plugin.Id);
 
-            Snackbar.Add($"Plugin {plugin.Name} {(plugin.Enabled ? "disabled" : "enabled")}", Severity.Success);
+            Snackbar.Add($"Plugin {plugin.Name} {(enabled ? "enabled" : "disabled")}", Severity.Success);
             await LoadAsync();
         }
         catch (Exception ex) { Snackbar.Add($"Failed: {ex.Message}", Severity.Error); }

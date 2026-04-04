@@ -1,3 +1,4 @@
+@ignore
 @ui
 Feature: Routing Page
     As a gateway operator

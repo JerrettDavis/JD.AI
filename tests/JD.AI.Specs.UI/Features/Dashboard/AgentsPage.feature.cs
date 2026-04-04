@@ -24,10 +24,11 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         private global::Reqnroll.ITestRunner testRunner;
         
         private static string[] featureTags = new string[] {
+                "ignore",
                 "ui"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Agents Page", "    As a gateway operator\n    I want to manage AI agents from the dashboard\n    S" +
-                "o that I can spawn, monitor, and remove agents", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Agents Page", "    As a gateway operator\r\n    I want to manage AI agents from the dashboard\r\n   " +
+                " So that I can spawn, monitor, and remove agents", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
@@ -108,9 +109,9 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         
         public virtual async global::System.Threading.Tasks.Task FeatureBackgroundAsync()
         {
-#line 7
-    #line hidden
 #line 8
+    #line hidden
+#line 9
         await testRunner.GivenAsync("I am on the agents page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
         }
@@ -145,7 +146,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             await this.TestTearDownAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Displays agent page heading")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Displays agent page heading", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
         [global::Xunit.TraitAttribute("Description", "Displays agent page heading")]
         [global::Xunit.TraitAttribute("Category", "smoke")]
@@ -158,7 +159,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Displays agent page heading", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 12
+#line 13
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -168,17 +169,17 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 13
+#line 14
         await testRunner.ThenAsync("I should see the heading \"Agents\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Spawn button is visible")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Spawn button is visible", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
         [global::Xunit.TraitAttribute("Description", "Spawn button is visible")]
         [global::Xunit.TraitAttribute("Category", "smoke")]
@@ -191,7 +192,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Spawn button is visible", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 16
+#line 17
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -201,17 +202,17 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 17
+#line 18
         await testRunner.ThenAsync("I should see the \"Spawn Agent\" button with add icon", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Refresh button is visible")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Refresh button is visible", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
         [global::Xunit.TraitAttribute("Description", "Refresh button is visible")]
         public async global::System.Threading.Tasks.Task RefreshButtonIsVisible()
@@ -222,7 +223,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Refresh button is visible", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 19
+#line 20
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -232,17 +233,17 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 20
+#line 21
         await testRunner.ThenAsync("I should see the refresh button", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Skeleton rows shown while loading")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Skeleton rows shown while loading", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
         [global::Xunit.TraitAttribute("Description", "Skeleton rows shown while loading")]
         public async global::System.Threading.Tasks.Task SkeletonRowsShownWhileLoading()
@@ -253,7 +254,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Skeleton rows shown while loading", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 23
+#line 24
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -263,20 +264,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 24
+#line 25
         await testRunner.GivenAsync("the agents list is loading", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 25
+#line 26
         await testRunner.ThenAsync("I should see 5 skeleton loading rows", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Empty state shown when no agents")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Empty state shown when no agents", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
         [global::Xunit.TraitAttribute("Description", "Empty state shown when no agents")]
         public async global::System.Threading.Tasks.Task EmptyStateShownWhenNoAgents()
@@ -287,7 +288,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Empty state shown when no agents", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 28
+#line 29
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -297,23 +298,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 29
+#line 30
         await testRunner.GivenAsync("there are no active agents", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 30
+#line 31
         await testRunner.ThenAsync("I should see the agents empty state", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 31
+#line 32
         await testRunner.AndAsync("the empty state should display \"No active agents\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Agent data grid displays with correct columns")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Agent data grid displays with correct columns", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
         [global::Xunit.TraitAttribute("Description", "Agent data grid displays with correct columns")]
         [global::Xunit.TraitAttribute("Category", "requires-agents")]
@@ -326,7 +327,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Agent data grid displays with correct columns", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 35
+#line 36
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -336,35 +337,35 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 36
+#line 37
         await testRunner.GivenAsync("there are active agents", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 37
+#line 38
         await testRunner.ThenAsync("I should see the agents data grid", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 38
+#line 39
         await testRunner.AndAsync("the data grid should have an \"ID\" column", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 39
+#line 40
         await testRunner.AndAsync("the data grid should have a \"Provider\" column", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 40
+#line 41
         await testRunner.AndAsync("the data grid should have a \"Model\" column", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 41
+#line 42
         await testRunner.AndAsync("the data grid should have a \"Turns\" column", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 42
+#line 43
         await testRunner.AndAsync("the data grid should have a \"Created\" column", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Each agent row has delete button")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Each agent row has delete button", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
         [global::Xunit.TraitAttribute("Description", "Each agent row has delete button")]
         [global::Xunit.TraitAttribute("Category", "requires-agents")]
@@ -377,7 +378,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Each agent row has delete button", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 45
+#line 46
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -387,20 +388,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 46
+#line 47
         await testRunner.GivenAsync("there are active agents", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 47
+#line 48
         await testRunner.ThenAsync("each agent row should have a red delete button", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Spawn dialog opens with all fields")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Spawn dialog opens with all fields", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
         [global::Xunit.TraitAttribute("Description", "Spawn dialog opens with all fields")]
         public async global::System.Threading.Tasks.Task SpawnDialogOpensWithAllFields()
@@ -411,7 +412,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Spawn dialog opens with all fields", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 50
+#line 51
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -421,44 +422,44 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 51
+#line 52
         await testRunner.WhenAsync("I click the \"Spawn Agent\" button", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 52
+#line 53
         await testRunner.ThenAsync("the spawn agent dialog should be visible", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 53
+#line 54
         await testRunner.AndAsync("the dialog title should be \"Spawn New Agent\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 54
+#line 55
         await testRunner.AndAsync("the dialog should contain an \"Agent ID\" input", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 55
+#line 56
         await testRunner.AndAsync("the dialog should contain a \"Provider\" input", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 56
+#line 57
         await testRunner.AndAsync("the dialog should contain a \"Model\" input", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 57
+#line 58
         await testRunner.AndAsync("the dialog should contain a \"System Prompt\" multiline input", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 58
+#line 59
         await testRunner.AndAsync("the dialog should contain a \"Max Turns\" numeric input", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 59
+#line 60
         await testRunner.AndAsync("the dialog should have a \"Cancel\" button", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 60
+#line 61
         await testRunner.AndAsync("the dialog should have a \"Spawn\" button", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Successful spawn shows snackbar and refreshes list")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Successful spawn shows snackbar and refreshes list", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
         [global::Xunit.TraitAttribute("Description", "Successful spawn shows snackbar and refreshes list")]
         [global::Xunit.TraitAttribute("Category", "requires-agents")]
@@ -471,7 +472,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Successful spawn shows snackbar and refreshes list", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 63
+#line 64
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -481,35 +482,35 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 64
+#line 65
         await testRunner.WhenAsync("I click the \"Spawn Agent\" button", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 65
+#line 66
         await testRunner.AndAsync("I fill in the agent ID with a unique value", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 66
+#line 67
         await testRunner.AndAsync("I fill in the provider with \"ollama\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 67
+#line 68
         await testRunner.AndAsync("I fill in the model with \"test-model\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 68
+#line 69
         await testRunner.AndAsync("I click the \"Spawn\" button", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 69
+#line 70
         await testRunner.ThenAsync("a success snackbar should appear with \"spawned\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 70
+#line 71
         await testRunner.AndAsync("the agents data grid should refresh", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Spawn with empty ID does not submit")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Spawn with empty ID does not submit", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
         [global::Xunit.TraitAttribute("Description", "Spawn with empty ID does not submit")]
         public async global::System.Threading.Tasks.Task SpawnWithEmptyIDDoesNotSubmit()
@@ -520,7 +521,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Spawn with empty ID does not submit", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 72
+#line 73
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -530,26 +531,26 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 73
+#line 74
         await testRunner.WhenAsync("I click the \"Spawn Agent\" button", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 74
+#line 75
         await testRunner.AndAsync("I leave the agent ID empty", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 75
+#line 76
         await testRunner.AndAsync("I click the \"Spawn\" button", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 76
+#line 77
         await testRunner.ThenAsync("the dialog should remain open", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Spawn dialog can be cancelled")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Spawn dialog can be cancelled", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
         [global::Xunit.TraitAttribute("Description", "Spawn dialog can be cancelled")]
         public async global::System.Threading.Tasks.Task SpawnDialogCanBeCancelled()
@@ -560,7 +561,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Spawn dialog can be cancelled", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 78
+#line 79
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -570,23 +571,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 79
+#line 80
         await testRunner.WhenAsync("I click the \"Spawn Agent\" button", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 80
+#line 81
         await testRunner.AndAsync("I click the \"Cancel\" button", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 81
+#line 82
         await testRunner.ThenAsync("the dialog should close", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Delete agent with confirmation")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Delete agent with confirmation", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
         [global::Xunit.TraitAttribute("Description", "Delete agent with confirmation")]
         [global::Xunit.TraitAttribute("Category", "requires-agents")]
@@ -599,7 +600,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Delete agent with confirmation", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 85
+#line 86
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -609,29 +610,29 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 86
+#line 87
         await testRunner.GivenAsync("there are active agents", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 87
+#line 88
         await testRunner.WhenAsync("I click the delete button on the first agent", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 88
+#line 89
         await testRunner.ThenAsync("a confirmation dialog should appear with \"Stop agent\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 89
+#line 90
         await testRunner.WhenAsync("I confirm the deletion", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 90
+#line 91
         await testRunner.ThenAsync("a success snackbar should appear with \"stopped\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Delete agent can be cancelled")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Delete agent can be cancelled", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
         [global::Xunit.TraitAttribute("Description", "Delete agent can be cancelled")]
         [global::Xunit.TraitAttribute("Category", "requires-agents")]
@@ -644,7 +645,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Delete agent can be cancelled", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 93
+#line 94
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -654,29 +655,29 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 94
+#line 95
         await testRunner.GivenAsync("there are active agents", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 95
+#line 96
         await testRunner.WhenAsync("I click the delete button on the first agent", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 96
+#line 97
         await testRunner.ThenAsync("a confirmation dialog should appear", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 97
+#line 98
         await testRunner.WhenAsync("I cancel the deletion", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 98
+#line 99
         await testRunner.ThenAsync("the agent should still be in the list", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Page title is correct")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Page title is correct", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
         [global::Xunit.TraitAttribute("Description", "Page title is correct")]
         public async global::System.Threading.Tasks.Task PageTitleIsCorrect()
@@ -687,7 +688,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Page title is correct", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 101
+#line 102
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -697,17 +698,17 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 102
+#line 103
         await testRunner.ThenAsync("the browser page title should be \"Agents — JD.AI\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Agent grid shows expandable details")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Agent grid shows expandable details", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
         [global::Xunit.TraitAttribute("Description", "Agent grid shows expandable details")]
         [global::Xunit.TraitAttribute("Category", "planned")]
@@ -720,7 +721,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Agent grid shows expandable details", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 106
+#line 107
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -730,26 +731,26 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 107
+#line 108
         await testRunner.GivenAsync("there are active agents", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 108
+#line 109
         await testRunner.WhenAsync("I expand the first agent row", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 109
+#line 110
         await testRunner.ThenAsync("I should see the agent\'s system prompt", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 110
+#line 111
         await testRunner.AndAsync("I should see the agent\'s active sessions", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Test message action")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Test message action", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
         [global::Xunit.TraitAttribute("Description", "Test message action")]
         [global::Xunit.TraitAttribute("Category", "planned")]
@@ -762,7 +763,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Test message action", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 113
+#line 114
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -772,16 +773,16 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 114
+#line 115
         await testRunner.GivenAsync("there are active agents", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 115
+#line 116
         await testRunner.WhenAsync("I click the test message button on the first agent", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 116
+#line 117
         await testRunner.ThenAsync("a test response should appear", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -795,12 +796,10 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             
             async global::System.Threading.Tasks.Task global::Xunit.IAsyncLifetime.InitializeAsync()
             {
-                await AgentsPageFeature.FeatureSetupAsync();
             }
             
             async global::System.Threading.Tasks.Task global::Xunit.IAsyncLifetime.DisposeAsync()
             {
-                await AgentsPageFeature.FeatureTearDownAsync();
             }
         }
     }

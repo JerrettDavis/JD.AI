@@ -24,10 +24,11 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         private global::Reqnroll.ITestRunner testRunner;
         
         private static string[] featureTags = new string[] {
+                "ignore",
                 "ui"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Channels Page", "    As a gateway operator\n    I want to view and manage messaging channel connect" +
-                "ions\n    So that I can control which platforms my agents communicate through", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Channels Page", "    As a gateway operator\r\n    I want to view and manage messaging channel connec" +
+                "tions\r\n    So that I can control which platforms my agents communicate through", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
@@ -108,9 +109,9 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         
         public virtual async global::System.Threading.Tasks.Task FeatureBackgroundAsync()
         {
-#line 7
-    #line hidden
 #line 8
+    #line hidden
+#line 9
         await testRunner.GivenAsync("I am on the channels page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
         }
@@ -145,7 +146,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             await this.TestTearDownAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Displays channels page heading")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Displays channels page heading", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Channels Page")]
         [global::Xunit.TraitAttribute("Description", "Displays channels page heading")]
         [global::Xunit.TraitAttribute("Category", "smoke")]
@@ -158,7 +159,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Displays channels page heading", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 12
+#line 13
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -168,17 +169,17 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 13
+#line 14
         await testRunner.ThenAsync("I should see the heading \"Channels\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Sync OpenClaw button is visible")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Sync OpenClaw button is visible", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Channels Page")]
         [global::Xunit.TraitAttribute("Description", "Sync OpenClaw button is visible")]
         [global::Xunit.TraitAttribute("Category", "smoke")]
@@ -191,7 +192,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sync OpenClaw button is visible", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 16
+#line 17
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -201,17 +202,17 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 17
+#line 18
         await testRunner.ThenAsync("I should see the \"Sync OpenClaw\" button with sync icon", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Refresh button is visible")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Refresh button is visible", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Channels Page")]
         [global::Xunit.TraitAttribute("Description", "Refresh button is visible")]
         public async global::System.Threading.Tasks.Task RefreshButtonIsVisible()
@@ -222,7 +223,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Refresh button is visible", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 19
+#line 20
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -232,17 +233,17 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 20
+#line 21
         await testRunner.ThenAsync("I should see the refresh button", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Skeleton cards shown while loading")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Skeleton cards shown while loading", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Channels Page")]
         [global::Xunit.TraitAttribute("Description", "Skeleton cards shown while loading")]
         public async global::System.Threading.Tasks.Task SkeletonCardsShownWhileLoading()
@@ -253,7 +254,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Skeleton cards shown while loading", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 23
+#line 24
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -263,20 +264,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 24
+#line 25
         await testRunner.GivenAsync("the channels are loading", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 25
+#line 26
         await testRunner.ThenAsync("I should see 3 skeleton channel cards", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Empty state when no channels configured")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Empty state when no channels configured", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Channels Page")]
         [global::Xunit.TraitAttribute("Description", "Empty state when no channels configured")]
         public async global::System.Threading.Tasks.Task EmptyStateWhenNoChannelsConfigured()
@@ -287,7 +288,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Empty state when no channels configured", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 28
+#line 29
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -297,23 +298,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 29
+#line 30
         await testRunner.GivenAsync("there are no configured channels", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 30
+#line 31
         await testRunner.ThenAsync("I should see the channels empty state", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 31
+#line 32
         await testRunner.AndAsync("the empty state should display \"No channels configured\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Channel cards display with name and type")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Channel cards display with name and type", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Channels Page")]
         [global::Xunit.TraitAttribute("Description", "Channel cards display with name and type")]
         [global::Xunit.TraitAttribute("Category", "requires-channels")]
@@ -326,7 +327,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Channel cards display with name and type", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 35
+#line 36
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -336,26 +337,26 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 36
+#line 37
         await testRunner.GivenAsync("there are configured channels", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 37
+#line 38
         await testRunner.ThenAsync("I should see channel cards", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 38
+#line 39
         await testRunner.AndAsync("each channel card should display a display name", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 39
+#line 40
         await testRunner.AndAsync("each channel card should display the channel type", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Channel status badges show Online or Offline")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Channel status badges show Online or Offline", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Channels Page")]
         [global::Xunit.TraitAttribute("Description", "Channel status badges show Online or Offline")]
         [global::Xunit.TraitAttribute("Category", "requires-channels")]
@@ -368,7 +369,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Channel status badges show Online or Offline", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 42
+#line 43
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -378,23 +379,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 43
+#line 44
         await testRunner.GivenAsync("there are configured channels", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 44
+#line 45
         await testRunner.ThenAsync("each channel card should show a status badge", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 45
+#line 46
         await testRunner.AndAsync("status badges should display \"Online\" or \"Offline\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Channel avatar reflects connection status")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Channel avatar reflects connection status", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Channels Page")]
         [global::Xunit.TraitAttribute("Description", "Channel avatar reflects connection status")]
         [global::Xunit.TraitAttribute("Category", "requires-channels")]
@@ -407,7 +408,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Channel avatar reflects connection status", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 48
+#line 49
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -417,23 +418,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 49
+#line 50
         await testRunner.GivenAsync("there are configured channels", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 50
+#line 51
         await testRunner.ThenAsync("connected channel avatars should be green", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 51
+#line 52
         await testRunner.AndAsync("disconnected channel avatars should be default color", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Connect and disconnect buttons shown by status")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Connect and disconnect buttons shown by status", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Channels Page")]
         [global::Xunit.TraitAttribute("Description", "Connect and disconnect buttons shown by status")]
         [global::Xunit.TraitAttribute("Category", "requires-channels")]
@@ -446,7 +447,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Connect and disconnect buttons shown by status", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 55
+#line 56
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -456,23 +457,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 56
+#line 57
         await testRunner.GivenAsync("there are configured channels", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 57
+#line 58
         await testRunner.ThenAsync("connected channels should show a \"Disconnect\" button", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 58
+#line 59
         await testRunner.AndAsync("disconnected channels should show a \"Connect\" button", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Connect channel triggers API and shows snackbar")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Connect channel triggers API and shows snackbar", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Channels Page")]
         [global::Xunit.TraitAttribute("Description", "Connect channel triggers API and shows snackbar")]
         [global::Xunit.TraitAttribute("Category", "requires-channels")]
@@ -485,7 +486,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Connect channel triggers API and shows snackbar", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 61
+#line 62
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -495,23 +496,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 62
+#line 63
         await testRunner.GivenAsync("there is a disconnected channel", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 63
+#line 64
         await testRunner.WhenAsync("I click the \"Connect\" button on the channel", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 64
+#line 65
         await testRunner.ThenAsync("a success snackbar should appear with \"connected\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Disconnect channel triggers API and shows snackbar")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Disconnect channel triggers API and shows snackbar", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Channels Page")]
         [global::Xunit.TraitAttribute("Description", "Disconnect channel triggers API and shows snackbar")]
         [global::Xunit.TraitAttribute("Category", "requires-channels")]
@@ -524,7 +525,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Disconnect channel triggers API and shows snackbar", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 67
+#line 68
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -534,23 +535,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 68
+#line 69
         await testRunner.GivenAsync("there is a connected channel", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 69
+#line 70
         await testRunner.WhenAsync("I click the \"Disconnect\" button on the channel", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 70
+#line 71
         await testRunner.ThenAsync("a warning snackbar should appear with \"disconnected\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Override button available on each channel")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Override button available on each channel", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Channels Page")]
         [global::Xunit.TraitAttribute("Description", "Override button available on each channel")]
         [global::Xunit.TraitAttribute("Category", "requires-channels")]
@@ -563,7 +564,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Override button available on each channel", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 74
+#line 75
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -573,20 +574,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 75
+#line 76
         await testRunner.GivenAsync("there are configured channels", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 76
+#line 77
         await testRunner.ThenAsync("each channel card should have an \"Override\" button with edit icon", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Override dialog opens with channel name")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Override dialog opens with channel name", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Channels Page")]
         [global::Xunit.TraitAttribute("Description", "Override dialog opens with channel name")]
         [global::Xunit.TraitAttribute("Category", "requires-channels")]
@@ -599,7 +600,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Override dialog opens with channel name", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 79
+#line 80
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -609,26 +610,26 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 80
+#line 81
         await testRunner.GivenAsync("there are configured channels", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 81
+#line 82
         await testRunner.WhenAsync("I click the \"Override\" button on a channel", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 82
+#line 83
         await testRunner.ThenAsync("the override dialog should be visible", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 83
+#line 84
         await testRunner.AndAsync("the dialog title should contain the channel name", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Override dialog contains all configuration fields")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Override dialog contains all configuration fields", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Channels Page")]
         [global::Xunit.TraitAttribute("Description", "Override dialog contains all configuration fields")]
         [global::Xunit.TraitAttribute("Category", "requires-channels")]
@@ -641,7 +642,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Override dialog contains all configuration fields", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 86
+#line 87
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -651,39 +652,39 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 87
+#line 88
         await testRunner.GivenAsync("there are configured channels", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 88
+#line 89
         await testRunner.WhenAsync("I click the \"Override\" button on a channel", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 89
+#line 90
         await testRunner.ThenAsync("the dialog should contain an \"Agent ID\" field", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 90
+#line 91
         await testRunner.AndAsync("the dialog should contain a \"Model\" field", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 91
+#line 92
         await testRunner.AndAsync("the dialog should contain a \"Routing Mode\" dropdown", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 92
+#line 93
         await testRunner.AndAsync("the \"Routing Mode\" dropdown should have options \"Passthrough\", \"Sidecar\", \"Interc" +
                         "ept\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 93
+#line 94
         await testRunner.AndAsync("the dialog should contain an \"Override Enabled\" switch", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 94
+#line 95
         await testRunner.AndAsync("the dialog should have \"Cancel\" and \"Save\" buttons", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Override dialog can be cancelled")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Override dialog can be cancelled", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Channels Page")]
         [global::Xunit.TraitAttribute("Description", "Override dialog can be cancelled")]
         [global::Xunit.TraitAttribute("Category", "requires-channels")]
@@ -696,7 +697,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Override dialog can be cancelled", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 97
+#line 98
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -706,26 +707,26 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 98
+#line 99
         await testRunner.GivenAsync("there are configured channels", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 99
+#line 100
         await testRunner.WhenAsync("I click the \"Override\" button on a channel", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 100
+#line 101
         await testRunner.AndAsync("I click \"Cancel\" in the override dialog", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 101
+#line 102
         await testRunner.ThenAsync("the override dialog should close", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Override save shows success snackbar")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Override save shows success snackbar", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Channels Page")]
         [global::Xunit.TraitAttribute("Description", "Override save shows success snackbar")]
         [global::Xunit.TraitAttribute("Category", "requires-channels")]
@@ -738,7 +739,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Override save shows success snackbar", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 104
+#line 105
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -748,29 +749,29 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 105
+#line 106
         await testRunner.GivenAsync("there are configured channels", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 106
+#line 107
         await testRunner.WhenAsync("I click the \"Override\" button on a channel", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 107
+#line 108
         await testRunner.AndAsync("I fill in the agent ID", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 108
+#line 109
         await testRunner.AndAsync("I click \"Save\" in the override dialog", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 109
+#line 110
         await testRunner.ThenAsync("a success snackbar should appear with \"Override saved\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Sync OpenClaw triggers sync and shows snackbar")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Sync OpenClaw triggers sync and shows snackbar", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Channels Page")]
         [global::Xunit.TraitAttribute("Description", "Sync OpenClaw triggers sync and shows snackbar")]
         public async global::System.Threading.Tasks.Task SyncOpenClawTriggersSyncAndShowsSnackbar()
@@ -781,7 +782,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sync OpenClaw triggers sync and shows snackbar", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 112
+#line 113
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -791,20 +792,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 113
+#line 114
         await testRunner.WhenAsync("I click the \"Sync OpenClaw\" button", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 114
+#line 115
         await testRunner.ThenAsync("a success snackbar should appear with \"sync complete\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Channel icons match channel type")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Channel icons match channel type", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Channels Page")]
         [global::Xunit.TraitAttribute("Description", "Channel icons match channel type")]
         [global::Xunit.TraitAttribute("Category", "requires-channels")]
@@ -817,7 +818,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Channel icons match channel type", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 118
+#line 119
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -827,20 +828,20 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 119
+#line 120
         await testRunner.GivenAsync("there are configured channels", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 120
+#line 121
         await testRunner.ThenAsync("each channel card should display an icon matching its type", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Page title is correct")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Page title is correct", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Channels Page")]
         [global::Xunit.TraitAttribute("Description", "Page title is correct")]
         public async global::System.Threading.Tasks.Task PageTitleIsCorrect()
@@ -851,7 +852,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Page title is correct", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 123
+#line 124
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -861,17 +862,17 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 124
+#line 125
         await testRunner.ThenAsync("the browser page title should be \"Channels — JD.AI\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Real-time channel status updates")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Real-time channel status updates", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Channels Page")]
         [global::Xunit.TraitAttribute("Description", "Real-time channel status updates")]
         [global::Xunit.TraitAttribute("Category", "planned")]
@@ -884,7 +885,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Real-time channel status updates", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 128
+#line 129
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -894,23 +895,23 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 129
+#line 130
         await testRunner.GivenAsync("there are configured channels", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 130
+#line 131
         await testRunner.WhenAsync("a channel status changes via SignalR", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 131
+#line 132
         await testRunner.ThenAsync("the status badge should update without page refresh", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Test channel connectivity")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Test channel connectivity", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Channels Page")]
         [global::Xunit.TraitAttribute("Description", "Test channel connectivity")]
         [global::Xunit.TraitAttribute("Category", "planned")]
@@ -923,7 +924,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Test channel connectivity", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 134
+#line 135
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -933,16 +934,16 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 135
+#line 136
         await testRunner.GivenAsync("there are configured channels", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 136
+#line 137
         await testRunner.WhenAsync("I click the \"Test\" button on a channel", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 137
+#line 138
         await testRunner.ThenAsync("a connectivity test result should appear", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -956,12 +957,10 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             
             async global::System.Threading.Tasks.Task global::Xunit.IAsyncLifetime.InitializeAsync()
             {
-                await ChannelsPageFeature.FeatureSetupAsync();
             }
             
             async global::System.Threading.Tasks.Task global::Xunit.IAsyncLifetime.DisposeAsync()
             {
-                await ChannelsPageFeature.FeatureTearDownAsync();
             }
         }
     }

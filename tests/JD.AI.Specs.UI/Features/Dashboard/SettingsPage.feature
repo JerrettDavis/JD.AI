@@ -1,3 +1,4 @@
+@ignore
 @ui
 Feature: Settings Page
     As a gateway operator

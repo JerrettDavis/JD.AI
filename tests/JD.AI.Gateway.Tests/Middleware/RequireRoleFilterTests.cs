@@ -1,8 +1,11 @@
 using FluentAssertions;
 using JD.AI.Core.Security;
 using JD.AI.Gateway.Middleware;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Http.Json;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace JD.AI.Gateway.Tests.Middleware;
 
@@ -108,5 +111,119 @@ public sealed class RequireRoleFilterTests
 
         result.Allowed.Should().BeFalse();
         result.Remaining.Should().Be(0);
+    }
+
+    [Theory]
+    [InlineData(GatewayRole.Guest, GatewayRole.Guest)]
+    [InlineData(GatewayRole.User, GatewayRole.Guest)]
+    [InlineData(GatewayRole.Operator, GatewayRole.User)]
+    [InlineData(GatewayRole.Admin, GatewayRole.Operator)]
+    public async Task RequireRoleFilter_AllowsIdentityMeetingMinimumRole(
+        GatewayRole actualRole,
+        GatewayRole minimumRole)
+    {
+        var context = CreateInvocationContext();
+        context.HttpContext.Items["Identity"] = new GatewayIdentity("user-1", "User", actualRole, DateTimeOffset.UtcNow);
+
+        var nextCalled = false;
+        var expected = TypedResults.Ok();
+
+        var result = await new RequireRoleFilter(minimumRole).InvokeAsync(
+            context,
+            _ =>
+            {
+                nextCalled = true;
+                return ValueTask.FromResult<object?>(expected);
+            });
+
+        nextCalled.Should().BeTrue();
+        result.Should().BeSameAs(expected);
+    }
+
+    [Fact]
+    public async Task RequireRoleFilter_DeniesIdentityBelowMinimumRole()
+    {
+        var context = CreateInvocationContext();
+        context.HttpContext.Items["Identity"] = new GatewayIdentity("user-1", "User", GatewayRole.User, DateTimeOffset.UtcNow);
+
+        var result = await new RequireRoleFilter(GatewayRole.Operator).InvokeAsync(
+            context,
+            _ => ValueTask.FromResult<object?>(TypedResults.Ok()));
+
+        await AssertForbiddenAsync(result, context.HttpContext);
+    }
+
+    [Fact]
+    public async Task RequireRoleFilter_DeniesWhenIdentityMissing()
+    {
+        var context = CreateInvocationContext();
+
+        var result = await new RequireRoleFilter(GatewayRole.Guest).InvokeAsync(
+            context,
+            _ => ValueTask.FromResult<object?>(TypedResults.Ok()));
+
+        await AssertForbiddenAsync(result, context.HttpContext);
+    }
+
+    [Fact]
+    public async Task RequireRoleFilter_DeniesWhenIdentityHasWrongType()
+    {
+        var context = CreateInvocationContext();
+        context.HttpContext.Items["Identity"] = "not-an-identity";
+
+        var result = await new RequireRoleFilter(GatewayRole.Guest).InvokeAsync(
+            context,
+            _ => ValueTask.FromResult<object?>(TypedResults.Ok()));
+
+        await AssertForbiddenAsync(result, context.HttpContext);
+    }
+
+    [Theory]
+    [InlineData(GatewayRole.Guest)]
+    [InlineData(GatewayRole.User)]
+    [InlineData(GatewayRole.Operator)]
+    [InlineData(GatewayRole.Admin)]
+    public void RequireRole_AddsConventionAndReturnsBuilder(GatewayRole minimumRole)
+    {
+        var builder = new TestEndpointConventionBuilder();
+
+        var returned = builder.RequireRole(minimumRole);
+
+        returned.Should().BeSameAs(builder);
+        builder.Conventions.Should().HaveCount(1);
+    }
+
+    private static TestEndpointFilterInvocationContext CreateInvocationContext()
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.Configure<JsonOptions>(_ => { });
+        httpContext.RequestServices = services.BuildServiceProvider();
+        return new TestEndpointFilterInvocationContext(httpContext);
+    }
+
+    private static async Task AssertForbiddenAsync(object? result, HttpContext httpContext)
+    {
+        var typedResult = result.Should().BeAssignableTo<IResult>().Subject;
+        await typedResult.ExecuteAsync(httpContext);
+        httpContext.Response.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+    }
+
+    private sealed class TestEndpointFilterInvocationContext(HttpContext httpContext) : EndpointFilterInvocationContext
+    {
+        public override HttpContext HttpContext { get; } = httpContext;
+
+        public override IList<object?> Arguments { get; } = [];
+
+        public override T GetArgument<T>(int index) => (T)Arguments[index]!;
+    }
+
+    private sealed class TestEndpointConventionBuilder : IEndpointConventionBuilder
+    {
+        public List<Action<EndpointBuilder>> Conventions { get; } = [];
+
+        public void Add(Action<EndpointBuilder> convention) => Conventions.Add(convention);
     }
 }

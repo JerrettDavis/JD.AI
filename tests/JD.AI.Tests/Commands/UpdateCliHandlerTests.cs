@@ -27,6 +27,12 @@ public sealed class UpdateCliHandlerTests : IDisposable
     private readonly Func<string, CancellationToken, Task<string?>> _originalGetInstalledToolVersionAsync =
         UpdateCliHandler.GetInstalledToolVersionAsync;
 
+    private readonly Func<string, string?, CancellationToken, Task<InstallResult>> _originalApplyToolUpdateAsync =
+        UpdateCliHandler.ApplyToolUpdateAsync;
+
+    private readonly Func<UpdatePlan, bool, Action<InstalledTool, InstallResult>?, CancellationToken, Task>
+        _originalApplyAllToolUpdatesAsync = UpdateCliHandler.ApplyAllToolUpdatesAsync;
+
     public void Dispose()
     {
         UpdateCliHandler.DetectInstallationAsync = _originalDetect;
@@ -36,6 +42,8 @@ public sealed class UpdateCliHandlerTests : IDisposable
         UpdateCliHandler.CheckAllAsync = _originalCheckAllAsync;
         UpdateCliHandler.GetLatestVersionAsync = _originalGetLatestVersionAsync;
         UpdateCliHandler.GetInstalledToolVersionAsync = _originalGetInstalledToolVersionAsync;
+        UpdateCliHandler.ApplyToolUpdateAsync = _originalApplyToolUpdateAsync;
+        UpdateCliHandler.ApplyAllToolUpdatesAsync = _originalApplyAllToolUpdatesAsync;
     }
 
     [Fact]
@@ -220,6 +228,64 @@ public sealed class UpdateCliHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task Update_All_WhenNoUpdatesAreAvailable_ReturnsZero()
+    {
+        var tool = new InstalledTool("JD.AI", "jdai", "1.0.0", InstallKind.Unknown);
+        var plan = new UpdatePlan([tool], [], HasUpdates: false)
+        {
+            Results = [new ToolUpdate(tool, "1.0.0", IsNewer: false)],
+        };
+
+        ConfigureHandlers("1.0.0", fakeTools: [tool], fakeUpdatePlan: plan);
+
+        var code = await UpdateCliHandler.RunAsync("update", ["--all"]);
+
+        Assert.Equal(0, code);
+    }
+
+    [Fact]
+    public async Task Update_All_WhenApplyAllSucceeds_ReturnsZero()
+    {
+        var tool = new InstalledTool("JD.AI.Daemon", "jdai-daemon", "1.0.0", InstallKind.Unknown);
+        var plan = new UpdatePlan([tool], [new ToolUpdate(tool, "1.1.0", IsNewer: true)], HasUpdates: true);
+        var updatedTool = string.Empty;
+
+        ConfigureHandlers("1.0.0", fakeTools: [tool], fakeUpdatePlan: plan);
+        UpdateCliHandler.ApplyAllToolUpdatesAsync = (updatePlan, continueOnError, onToolUpdated, _) =>
+        {
+            Assert.True(continueOnError);
+            Assert.Same(plan, updatePlan);
+            var result = new InstallResult(true, "updated", RequiresRestart: true);
+            onToolUpdated?.Invoke(tool, result);
+            updatedTool = tool.PackageId;
+            return Task.CompletedTask;
+        };
+
+        var code = await UpdateCliHandler.RunAsync("update", ["--all"]);
+
+        Assert.Equal(0, code);
+        Assert.Equal("JD.AI.Daemon", updatedTool);
+    }
+
+    [Fact]
+    public async Task Update_All_WhenApplyAllReportsFailure_ReturnsOne()
+    {
+        var tool = new InstalledTool("JD.AI.Daemon", "jdai-daemon", "1.0.0", InstallKind.Unknown);
+        var plan = new UpdatePlan([tool], [new ToolUpdate(tool, "1.1.0", IsNewer: true)], HasUpdates: true);
+
+        ConfigureHandlers("1.0.0", fakeTools: [tool], fakeUpdatePlan: plan);
+        UpdateCliHandler.ApplyAllToolUpdatesAsync = (_, _, onToolUpdated, _) =>
+        {
+            onToolUpdated?.Invoke(tool, new InstallResult(false, "boom"));
+            return Task.CompletedTask;
+        };
+
+        var code = await UpdateCliHandler.RunAsync("update", ["--all"]);
+
+        Assert.Equal(1, code);
+    }
+
+    [Fact]
     public async Task Update_CheckOnly_WhenToolVersionLookupFails_ReturnsOne()
     {
         var tool = new InstalledTool("JD.AI.Daemon", "jdai-daemon", "1.0.0", InstallKind.Unknown);
@@ -279,6 +345,108 @@ public sealed class UpdateCliHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task Update_SelfApply_WhenDetachedUpdaterLaunches_ReturnsZero()
+    {
+        var strategy = new FakeInstallStrategy(
+            "fake",
+            "1.2.0",
+            new InstallResult(true, "launched", RequiresRestart: true, LaunchedDetached: true));
+        ConfigureHandlers("1.0.0", strategy);
+
+        var code = await UpdateCliHandler.RunAsync("update", ["--self"]);
+
+        Assert.Equal(0, code);
+        Assert.Equal(1, strategy.ApplyCalls);
+        Assert.Equal("1.2.0", strategy.LastTargetVersion);
+    }
+
+    [Fact]
+    public async Task Update_NamedToolCheck_WhenUpdateExists_ReturnsZeroWithoutApplying()
+    {
+        var tool = new InstalledTool("JD.AI.Gateway", "jdai-gateway", "1.0.0", InstallKind.Unknown);
+        ConfigureHandlers("1.0.0", fakeTools: [tool]);
+        UpdateCliHandler.GetLatestVersionAsync = (packageId, _) =>
+        {
+            Assert.Equal("JD.AI.Gateway", packageId);
+            return Task.FromResult<string?>("1.1.0");
+        };
+
+        var code = await UpdateCliHandler.RunAsync("update", ["jdai-gateway", "--check"]);
+
+        Assert.Equal(0, code);
+    }
+
+    [Fact]
+    public async Task Update_NamedTool_WhenLatestVersionUnknown_ReturnsOne()
+    {
+        var tool = new InstalledTool("Custom.Package", "custom-tool", "1.0.0", InstallKind.Unknown);
+        ConfigureHandlers("1.0.0", fakeTools: [tool]);
+        UpdateCliHandler.GetLatestVersionAsync = (packageId, _) =>
+        {
+            Assert.Equal("Custom.Package", packageId);
+            return Task.FromResult<string?>(null);
+        };
+
+        var code = await UpdateCliHandler.RunAsync("update", ["Custom.Package"]);
+
+        Assert.Equal(1, code);
+    }
+
+    [Fact]
+    public async Task Update_NamedTool_WhenAlreadyLatestAndNotForced_ReturnsZero()
+    {
+        var tool = new InstalledTool("JD.AI.TUI", "jdai-tui", "1.0.0", InstallKind.Unknown);
+        ConfigureHandlers("1.0.0", fakeTools: [tool]);
+        UpdateCliHandler.GetLatestVersionAsync = (packageId, _) =>
+        {
+            Assert.Equal("JD.AI.TUI", packageId);
+            return Task.FromResult<string?>("1.0.0");
+        };
+
+        var code = await UpdateCliHandler.RunAsync("update", ["jdai-tui"]);
+
+        Assert.Equal(0, code);
+    }
+
+    [Fact]
+    public async Task Update_NamedTool_WhenApplySucceeds_ReturnsZero()
+    {
+        var tool = new InstalledTool("JD.AI.Daemon", "jdai-daemon", "1.0.0", InstallKind.Unknown);
+        string? appliedPackage = null;
+        string? appliedVersion = null;
+
+        ConfigureHandlers("1.0.0", fakeTools: [tool]);
+        UpdateCliHandler.GetLatestVersionAsync = (_, _) => Task.FromResult<string?>("1.1.0");
+        UpdateCliHandler.ApplyToolUpdateAsync = (packageId, targetVersion, _) =>
+        {
+            appliedPackage = packageId;
+            appliedVersion = targetVersion;
+            return Task.FromResult(new InstallResult(true, "ok", RequiresRestart: true));
+        };
+
+        var code = await UpdateCliHandler.RunAsync("update", ["jdai-daemon"]);
+
+        Assert.Equal(0, code);
+        Assert.Equal("JD.AI.Daemon", appliedPackage);
+        Assert.Equal("1.1.0", appliedVersion);
+    }
+
+    [Fact]
+    public async Task Update_NamedTool_WhenApplyFails_ReturnsOne()
+    {
+        var tool = new InstalledTool("JD.AI.Daemon", "jdai-daemon", "1.0.0", InstallKind.Unknown);
+
+        ConfigureHandlers("1.0.0", fakeTools: [tool]);
+        UpdateCliHandler.GetLatestVersionAsync = (_, _) => Task.FromResult<string?>("1.1.0");
+        UpdateCliHandler.ApplyToolUpdateAsync = (_, _, _) =>
+            Task.FromResult(new InstallResult(false, "fail"));
+
+        var code = await UpdateCliHandler.RunAsync("update", ["jdai-daemon"]);
+
+        Assert.Equal(1, code);
+    }
+
+    [Fact]
     public async Task Install_WhenLatestCannotBeResolved_ReturnsOne()
     {
         ConfigureHandlers(
@@ -317,6 +485,19 @@ public sealed class UpdateCliHandlerTests : IDisposable
         Assert.Equal(1, failureCode);
         Assert.Equal("2.0.0", success.LastTargetVersion);
         Assert.Equal("2.0.0", failure.LastTargetVersion);
+    }
+
+    [Fact]
+    public async Task Install_ForceWithoutVersion_AppliesLatestTargetPlaceholder()
+    {
+        var strategy = CreateStrategy("9.9.9", true);
+        ConfigureHandlers("1.0.0", installStrategy: strategy);
+
+        var code = await UpdateCliHandler.RunAsync("install", ["--force"]);
+
+        Assert.Equal(0, code);
+        Assert.Null(strategy.LastTargetVersion);
+        Assert.Equal(1, strategy.ApplyCalls);
     }
 
     [Fact]

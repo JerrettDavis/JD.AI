@@ -17,15 +17,16 @@ public sealed class ChatPage : BasePage
 
     // ── Chat header ──
     public ILocator ChatHeader => Page.Locator("[data-testid='chat-header']");
-    public ILocator WebChatTitle => Page.Locator("[data-testid='chat-header'] >> text=Web Chat");
+    public ILocator WebChatTitle => Page.Locator("[data-testid='chat-header'] >> text=Chat");
 
     // ── Agent selector ──
     public ILocator AgentSelector => Page.Locator("[data-testid='agent-selector']");
+    public ILocator AgentSelectorField => Page.Locator("[data-testid='agent-selector']").Locator("xpath=ancestor::*[contains(@class,'mud-input-control')][1]").First;
     public ILocator NoAgentsWarning => Page.Locator("[data-testid='no-agents-warning']");
 
     // ── Message input ──
-    public ILocator MessageInput => Page.Locator(".jd-chat-input input, .jd-chat-input textarea");
-    public ILocator SendButton => Page.Locator("[data-testid='send-button']");
+    public ILocator MessageInput => Page.Locator("[data-testid='message-input']");
+    public ILocator SendButton => Page.Locator(".jd-chat-input .mud-input-adornment-end");
     public ILocator ClearChatButton => Page.Locator("[data-testid='clear-chat-button']");
 
     // ── Messages area ──
@@ -62,6 +63,6 @@ public sealed class ChatPage : BasePage
     public async Task SendMessageAsync(string text)
     {
         await MessageInput.FillAsync(text);
-        await SendButton.ClickAsync();
+        await MessageInput.PressAsync("Enter");
     }
 }

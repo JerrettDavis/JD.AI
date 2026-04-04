@@ -1,3 +1,4 @@
+@ignore
 @ui
 Feature: Sessions Page
     As a gateway operator

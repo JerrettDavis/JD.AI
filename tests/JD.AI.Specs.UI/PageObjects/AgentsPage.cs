@@ -31,12 +31,10 @@ public sealed class AgentsPage : BasePage
     // ── Spawn Agent Dialog ──
     public ILocator SpawnDialog => Page.Locator("[data-testid='spawn-agent-dialog']");
     public ILocator SpawnDialogTitle => Page.Locator(".mud-dialog >> text=Spawn New Agent");
-    public ILocator AgentIdInput => Page.Locator("[data-testid='agent-id-input'] input");
     public ILocator ProviderInput => Page.Locator("[data-testid='agent-provider-input'] input");
     public ILocator ModelInput => Page.Locator("[data-testid='agent-model-input'] input");
     public ILocator SystemPromptInput => Page.Locator("[data-testid='agent-systemprompt-input'] textarea");
-    public ILocator MaxTurnsInput => Page.Locator("[data-testid='agent-maxturns-input'] input");
-    public ILocator SpawnSubmitButton => Page.Locator(".mud-dialog >> button:has-text('Spawn')");
+    public ILocator SpawnSubmitButton => Page.Locator("[data-testid='confirm-spawn-button']");
     public ILocator CancelButton => Page.Locator(".mud-dialog >> button:has-text('Cancel')");
 
     // ── Confirmation dialog ──
