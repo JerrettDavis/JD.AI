@@ -209,15 +209,15 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Channels page renders with either data or empty state")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Channels page renders with data, empty state, or load error")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Dashboard Smoke")]
-        [global::Xunit.TraitAttribute("Description", "Channels page renders with either data or empty state")]
-        public async global::System.Threading.Tasks.Task ChannelsPageRendersWithEitherDataOrEmptyState()
+        [global::Xunit.TraitAttribute("Description", "Channels page renders with data, empty state, or load error")]
+        public async global::System.Threading.Tasks.Task ChannelsPageRendersWithDataEmptyStateOrLoadError()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "2";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Channels page renders with either data or empty state", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Channels page renders with data, empty state, or load error", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 19
@@ -240,21 +240,22 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         await testRunner.AndAsync("I should see the sync OpenClaw button", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 23
-        await testRunner.AndAsync("I should see either channel cards or the channels empty state", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+        await testRunner.AndAsync("I should see either channel cards, the channels empty state, or the channels load" +
+                        " error", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Providers page renders with either data or empty state")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Providers page renders with data, empty state, or load error")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Dashboard Smoke")]
-        [global::Xunit.TraitAttribute("Description", "Providers page renders with either data or empty state")]
-        public async global::System.Threading.Tasks.Task ProvidersPageRendersWithEitherDataOrEmptyState()
+        [global::Xunit.TraitAttribute("Description", "Providers page renders with data, empty state, or load error")]
+        public async global::System.Threading.Tasks.Task ProvidersPageRendersWithDataEmptyStateOrLoadError()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "3";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Providers page renders with either data or empty state", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Providers page renders with data, empty state, or load error", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 25
@@ -274,21 +275,22 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         await testRunner.ThenAsync("I should see the page heading \"Model Providers\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 28
-        await testRunner.AndAsync("I should see either provider cards or the providers empty state", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+        await testRunner.AndAsync("I should see either provider cards, the providers empty state, or the providers l" +
+                        "oad error", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Routing page renders baseline sections")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Routing page renders baseline sections or load error")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Dashboard Smoke")]
-        [global::Xunit.TraitAttribute("Description", "Routing page renders baseline sections")]
-        public async global::System.Threading.Tasks.Task RoutingPageRendersBaselineSections()
+        [global::Xunit.TraitAttribute("Description", "Routing page renders baseline sections or load error")]
+        public async global::System.Threading.Tasks.Task RoutingPageRendersBaselineSectionsOrLoadError()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "4";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Routing page renders baseline sections", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Routing page renders baseline sections or load error", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 30
@@ -308,10 +310,10 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         await testRunner.ThenAsync("I should see the page heading \"Agent Routing\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 33
-        await testRunner.AndAsync("I should see the routing data grid shell", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+        await testRunner.AndAsync("I should see either the routing data grid shell or the routing load error state", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 34
-        await testRunner.AndAsync("I should see the routing diagram section", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+        await testRunner.AndAsync("I should see either the routing diagram section or the routing load error state", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
