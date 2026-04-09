@@ -1,3 +1,5 @@
+using JD.AI.Workflows.History;
+
 namespace JD.AI.Workflows;
 
 /// <summary>
@@ -29,6 +31,7 @@ public sealed class WorkflowOrchestratorResult
     public WorkflowMatchResult? Match { get; init; }
     public WorkflowBridgeResult? ExecutionResult { get; init; }
     public string? PlanningPrompt { get; init; }
+    public HistoryAdvisory? Advisory { get; init; }
 
     /// <summary>Not a workflow — pass through to normal agent handling.</summary>
     public static WorkflowOrchestratorResult PassThrough(IntentClassification intent) =>
@@ -40,37 +43,44 @@ public sealed class WorkflowOrchestratorResult
 
     /// <summary>Workflow detected but no catalog match — needs planning.</summary>
     public static WorkflowOrchestratorResult PlanningNeeded(
-        IntentClassification intent, string prompt) =>
+        IntentClassification intent,
+        string prompt,
+        HistoryAdvisory? advisory = null) =>
         new()
         {
             Outcome = WorkflowOutcome.PlanningNeeded,
             Intent = intent,
             PlanningPrompt = prompt,
+            Advisory = advisory,
         };
 
     /// <summary>Workflow matched and executed successfully.</summary>
     public static WorkflowOrchestratorResult Executed(
         IntentClassification intent,
         WorkflowMatchResult match,
-        WorkflowBridgeResult result) =>
+        WorkflowBridgeResult result,
+        HistoryAdvisory? advisory = null) =>
         new()
         {
             Outcome = WorkflowOutcome.Executed,
             Intent = intent,
             Match = match,
             ExecutionResult = result,
+            Advisory = advisory,
         };
 
     /// <summary>Workflow matched but execution failed.</summary>
     public static WorkflowOrchestratorResult Failed(
         IntentClassification intent,
         WorkflowMatchResult match,
-        WorkflowBridgeResult result) =>
+        WorkflowBridgeResult result,
+        HistoryAdvisory? advisory = null) =>
         new()
         {
             Outcome = WorkflowOutcome.ExecutionFailed,
             Intent = intent,
             Match = match,
             ExecutionResult = result,
+            Advisory = advisory,
         };
 }
