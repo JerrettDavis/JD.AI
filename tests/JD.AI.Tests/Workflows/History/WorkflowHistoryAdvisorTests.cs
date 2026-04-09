@@ -91,10 +91,10 @@ public sealed class WorkflowHistoryAdvisorTests
         advisory.FamiliarityScore.Should().Be(0.5);
         advisory.StepAdvisories.Should().HaveCount(2);
 
-        var seenAdvisory = advisory.StepAdvisories.First(sa => sa.StepName == "Step1");
+        var seenAdvisory = advisory.StepAdvisories.First(sa => string.Equals(sa.StepName, "Step1"));
         seenAdvisory.PreviouslySeen.Should().BeTrue();
 
-        var unseenAdvisory = advisory.StepAdvisories.First(sa => sa.StepName == "Step2");
+        var unseenAdvisory = advisory.StepAdvisories.First(sa => string.Equals(sa.StepName, "Step2"));
         unseenAdvisory.PreviouslySeen.Should().BeFalse();
         unseenAdvisory.HistoricalSuccessRate.Should().Be(0.0);
     }

@@ -98,7 +98,7 @@ public sealed class StepFingerprintTests
         };
 
         // All fingerprints should be unique
-        fps.Distinct().Should().HaveCount(6);
+        fps.Distinct(StringComparer.Ordinal).Should().HaveCount(6);
     }
 
     [Fact]

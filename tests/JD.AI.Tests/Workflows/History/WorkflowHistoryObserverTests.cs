@@ -327,7 +327,7 @@ public sealed class WorkflowHistoryObserverTests
         var definition = new AgentWorkflowDefinition
         {
             Name = "EmptyWorkflow",
-            Steps = new AgentStepDefinition[0],
+            Steps = [],
         };
 
         var result = new WorkflowBridgeResult { Success = true };
