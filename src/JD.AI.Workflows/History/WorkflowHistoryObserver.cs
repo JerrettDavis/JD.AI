@@ -9,8 +9,11 @@ public sealed class WorkflowHistoryObserver : IWorkflowHistoryObserver
 {
     private readonly IWorkflowHistoryGraphStore _store;
 
-    public WorkflowHistoryObserver(IWorkflowHistoryGraphStore store) =>
-        _store = store ?? throw new ArgumentNullException(nameof(store));
+    public WorkflowHistoryObserver(IWorkflowHistoryGraphStore store)
+    {
+        ArgumentNullException.ThrowIfNull(store);
+        _store = store;
+    }
 
     /// <inheritdoc/>
     public async Task IngestRunAsync(
@@ -18,10 +21,8 @@ public sealed class WorkflowHistoryObserver : IWorkflowHistoryObserver
         WorkflowBridgeResult result,
         CancellationToken ct = default)
     {
-        if (definition is null)
-            throw new ArgumentNullException(nameof(definition));
-        if (result is null)
-            throw new ArgumentNullException(nameof(result));
+        ArgumentNullException.ThrowIfNull(definition);
+        ArgumentNullException.ThrowIfNull(result);
 
         var graph = await _store.LoadAsync(ct);
         var flatSteps = FlattenSteps(definition.Steps);

@@ -56,10 +56,10 @@ public sealed class WorkflowHistoryGraph
     }
 
     public IReadOnlyList<WorkflowHistoryEdge> GetOutgoingEdges(string fingerprint) =>
-        _edges.Values.Where(e => e.SourceFingerprint == fingerprint).ToList();
+        _edges.Values.Where(e => string.Equals(e.SourceFingerprint, fingerprint)).ToList();
 
     public IReadOnlyList<WorkflowHistoryEdge> GetIncomingEdges(string fingerprint) =>
-        _edges.Values.Where(e => e.TargetFingerprint == fingerprint).ToList();
+        _edges.Values.Where(e => string.Equals(e.TargetFingerprint, fingerprint)).ToList();
 
     public IReadOnlyList<WorkflowHistoryNode> GetReachable(string fingerprint)
     {
@@ -71,7 +71,7 @@ public sealed class WorkflowHistoryGraph
         while (queue.Count > 0)
         {
             var current = queue.Dequeue();
-            if (_nodes.TryGetValue(current, out var node) && current != fingerprint)
+            if (_nodes.TryGetValue(current, out var node) && !string.Equals(current, fingerprint))
                 result.Add(node);
             foreach (var e in GetOutgoingEdges(current))
                 if (visited.Add(e.TargetFingerprint))
