@@ -1710,6 +1710,184 @@ public sealed class OpenClawRoutingServiceTests
 
         method.Should().NotBeNull("StripOpenClawMetadata is an internal static method");
     }
+
+    [Fact]
+    public void StripOpenClawMetadata_WithNullInput_ReturnsNull()
+    {
+        var method = typeof(OpenClawRoutingService).GetMethod(
+            "StripOpenClawMetadata",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+
+        method.Should().NotBeNull();
+
+        var result = (string?)method!.Invoke(null, new object?[] { null });
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public void StripOpenClawMetadata_WithEmptyString_ReturnsEmpty()
+    {
+        var method = typeof(OpenClawRoutingService).GetMethod(
+            "StripOpenClawMetadata",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+
+        var result = (string?)method!.Invoke(null, new object?[] { "" });
+
+        result.Should().Be("");
+    }
+
+    [Fact]
+    public void StripOpenClawMetadata_NoMetadataMarker_ReturnsInputUnchanged()
+    {
+        var input = "This is just a regular user message with no metadata";
+        var method = typeof(OpenClawRoutingService).GetMethod(
+            "StripOpenClawMetadata",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+
+        var result = (string?)method!.Invoke(null, new object?[] { input });
+
+        result.Should().Be(input);
+    }
+
+    [Fact]
+    public void StripOpenClawMetadata_WithMetadataBlock_ReturnsTextAfterFence()
+    {
+        var input = @"Conversation info (untrusted metadata):
+```json
+{ ""conversation_label"": ""discord"", ""sender_name"": ""Alice"" }
+```
+Hello, this is my actual message";
+
+        var method = typeof(OpenClawRoutingService).GetMethod(
+            "StripOpenClawMetadata",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+
+        var result = (string?)method!.Invoke(null, new object?[] { input });
+
+        result.Should().Be("Hello, this is my actual message");
+    }
+
+    [Fact]
+    public void StripOpenClawMetadata_WithRealDiscordWrappedMessage_ExtractsUserText()
+    {
+        var input = @"Conversation info (untrusted metadata):
+```json
+{""conversation_label"": ""Discord: #general"", ""sender_name"": ""Bob""}
+```
+What's the weather like?";
+
+        var method = typeof(OpenClawRoutingService).GetMethod(
+            "StripOpenClawMetadata",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+
+        var result = (string?)method!.Invoke(null, new object?[] { input });
+
+        result.Should().Be("What's the weather like?");
+    }
+
+    [Fact]
+    public void StripOpenClawMetadata_MetadataMarkerPresentButNoCodeFence_ReturnsLastParagraph()
+    {
+        var input = @"Some text with (untrusted metadata) mentioned
+
+But not in a code fence
+
+Here is the actual message";
+
+        var method = typeof(OpenClawRoutingService).GetMethod(
+            "StripOpenClawMetadata",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+
+        var result = (string?)method!.Invoke(null, new object?[] { input });
+
+        // Since no code fence is found but marker exists, it should return the last paragraph
+        result.Should().Be("Here is the actual message");
+    }
+
+    [Fact]
+    public void StripOpenClawMetadata_WithMultipleFences_UsesLastOne()
+    {
+        var input = @"Conversation info (untrusted metadata):
+```json
+{ ""first"": ""fence"" }
+```
+Some intermediate text
+
+```json
+{ ""second"": ""fence"" }
+```
+Final user message";
+
+        var method = typeof(OpenClawRoutingService).GetMethod(
+            "StripOpenClawMetadata",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+
+        var result = (string?)method!.Invoke(null, new object?[] { input });
+
+        result.Should().Be("Final user message");
+    }
+
+    [Fact]
+    public void StripOpenClawMetadata_WithCodeFenceButNoTextAfter_FallsBackToLastParagraph()
+    {
+        var input = @"Conversation info (untrusted metadata):
+```json
+{ ""conversation_label"": ""discord"" }
+```
+
+Actually the real message is here";
+
+        var method = typeof(OpenClawRoutingService).GetMethod(
+            "StripOpenClawMetadata",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+
+        var result = (string?)method!.Invoke(null, new object?[] { input });
+
+        result.Should().NotBeNull();
+        result.Should().Contain("real message");
+    }
+
+    [Fact]
+    public void StripOpenClawMetadata_CaseInsensitiveMatcher_RecognizesLowercaseMetadata()
+    {
+        var input = @"Some text here with (UNTRUSTED METADATA) in uppercase
+
+```json
+{}
+```
+This is the actual user text";
+
+        var method = typeof(OpenClawRoutingService).GetMethod(
+            "StripOpenClawMetadata",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+
+        var result = (string?)method!.Invoke(null, new object?[] { input });
+
+        result.Should().Be("This is the actual user text");
+    }
+
+    [Fact]
+    public void StripOpenClawMetadata_WithLeadingAndTrailingWhitespace_TrimsResult()
+    {
+        var input = @"Conversation info (untrusted metadata):
+```json
+{}
+```
+
+
+  Extracted message with whitespace
+   ";
+
+        var method = typeof(OpenClawRoutingService).GetMethod(
+            "StripOpenClawMetadata",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+
+        var result = (string?)method!.Invoke(null, new object?[] { input });
+
+        result.Should().NotBeNull();
+        result.Should().Be("Extracted message with whitespace");
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
