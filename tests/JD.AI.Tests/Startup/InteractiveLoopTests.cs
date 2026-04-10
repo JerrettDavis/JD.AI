@@ -139,6 +139,136 @@ public sealed class InteractiveLoopTests
         session.ReasoningEffortOverride.Should().Be(ReasoningEffort.Medium);
     }
 
+    [Fact]
+    public void UseGateway_GivenNullGateway_WhenQueried_ThenReturnsFalse()
+    {
+        // Arrange
+        using var fixture = new TempDirectoryFixture();
+        DataDirectories.SetRoot(fixture.GetPath("jdai-root"));
+
+        var model = new ProviderModelInfo("model", "Model", "TestProvider");
+        var (loop, _, _) = CreateLoopContext(fixture, model, "system prompt");
+
+        // Act
+        var useGateway = loop.UseGateway;
+
+        // Assert
+        useGateway.Should().BeFalse("gateway parameter was null in constructor");
+    }
+
+    [Fact]
+    public async Task CheckSystemPromptBudgetAsync_AutoMode_WhenPromptWithinBudget_ThenDoesNotCompact()
+    {
+        // Arrange
+        using var fixture = new TempDirectoryFixture();
+        DataDirectories.SetRoot(fixture.GetPath("jdai-root"));
+
+        var systemPrompt = "short prompt";
+        var model = new ProviderModelInfo("model", "Model", "TestProvider", ContextWindowTokens: 1000);
+        var (loop, session, chatService) = CreateLoopContext(fixture, model, systemPrompt);
+
+        // Act
+        await InvokeCheckSystemPromptBudgetAsync(loop, new TuiSettings
+        {
+            SystemPromptBudgetPercent = 50,
+            SystemPromptCompaction = SystemPromptCompaction.Auto,
+        });
+
+        // Assert
+        session.History[0].Content.Should().Be(systemPrompt,
+            "prompt should not be compacted when within budget");
+    }
+
+    [Fact]
+    public async Task CheckSystemPromptBudgetAsync_AlwaysMode_WhenPromptWithinBudget_ThenStillCompacts()
+    {
+        // Arrange
+        using var fixture = new TempDirectoryFixture();
+        DataDirectories.SetRoot(fixture.GetPath("jdai-root"));
+
+        var systemPrompt = string.Join(' ', Enumerable.Repeat("instruction", 50));
+        var model = new ProviderModelInfo("model", "Model", "TestProvider", ContextWindowTokens: 2000);
+        var (loop, session, chatService) = CreateLoopContext(fixture, model, systemPrompt);
+
+        chatService
+            .GetChatMessageContentsAsync(
+                Arg.Any<ChatHistory>(),
+                Arg.Any<PromptExecutionSettings?>(),
+                Arg.Any<Kernel?>(),
+                Arg.Any<CancellationToken>())
+            .Returns([new ChatMessageContent(AuthorRole.Assistant, "compacted always")]);
+
+        // Act
+        await InvokeCheckSystemPromptBudgetAsync(loop, new TuiSettings
+        {
+            SystemPromptBudgetPercent = 50,
+            SystemPromptCompaction = SystemPromptCompaction.Always,
+        });
+
+        // Assert
+        session.History[0].Content.Should().Be("compacted always",
+            "prompt should be compacted in Always mode regardless of budget");
+    }
+
+    [Fact]
+    public void WireEventHooks_TogglePlanMode_StartsAtNormal()
+    {
+        // Arrange
+        var session = CreateSession(new ProviderModelInfo("model", "Model", "TestProvider"), "system prompt");
+        session.PermissionMode = PermissionMode.Normal;
+        var interactiveInput = new InteractiveInput(new CompletionProvider());
+
+        // Act
+        InvokeWireEventHooks(interactiveInput, session, "system prompt");
+
+        // Assert
+        session.PermissionMode.Should().Be(PermissionMode.Normal,
+            "initial permission mode should be Normal");
+    }
+
+    [Fact]
+    public void WireEventHooks_ToggleExtendedThinking_FullCycle_ReturnsToNull()
+    {
+        // Arrange
+        var session = CreateSession(new ProviderModelInfo("model", "Model", "TestProvider"), "system prompt");
+        session.ReasoningEffortOverride = null;
+        var interactiveInput = new InteractiveInput(new CompletionProvider());
+
+        InvokeWireEventHooks(interactiveInput, session, "system prompt");
+
+        // Act - cycle through all states
+        RaiseInteractiveEvent(interactiveInput, "OnToggleExtendedThinking"); // Low
+        RaiseInteractiveEvent(interactiveInput, "OnToggleExtendedThinking"); // Medium
+        RaiseInteractiveEvent(interactiveInput, "OnToggleExtendedThinking"); // High
+        RaiseInteractiveEvent(interactiveInput, "OnToggleExtendedThinking"); // back to null
+
+        // Assert
+        session.ReasoningEffortOverride.Should().BeNull("cycle should return to null after High");
+    }
+
+    [Fact]
+    public void RenderFooter_GivenNoFooterBarInitialized_WhenCalled_ThenDoesNotThrow()
+    {
+        // Arrange
+        using var fixture = new TempDirectoryFixture();
+        DataDirectories.SetRoot(fixture.GetPath("jdai-root"));
+
+        var (loop, _, _) = CreateLoopContext(fixture,
+            new ProviderModelInfo("model", "Model", "TestProvider"),
+            "system prompt");
+
+        // Get the private RenderFooter method via reflection
+        var method = typeof(InteractiveLoop).GetMethod(
+            "RenderFooter",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
+        method.Should().NotBeNull("RenderFooter method should exist");
+
+        // Act & Assert - should not throw
+        var ex = Record.Exception(() => method!.Invoke(loop, null));
+        ex.Should().BeNull("RenderFooter should not throw even if footer bar is not initialized");
+    }
+
     private static (InteractiveLoop Loop, AgentSession Session, IChatCompletionService ChatService) CreateLoopContext(
         TempDirectoryFixture fixture,
         ProviderModelInfo model,
