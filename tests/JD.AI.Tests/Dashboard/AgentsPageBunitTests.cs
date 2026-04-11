@@ -200,6 +200,60 @@ public sealed class AgentsPageBunitTests : DashboardBunitTestContext
     }
 
     [Fact]
+    public void Agents_WhenAgentSelected_ShowsDetailDrawer()
+    {
+        var api = CreateApiClient(request =>
+        {
+            if (request.RequestUri!.ToString().Contains("/api/v1/agents/agent-1") && request.Method == HttpMethod.Get)
+                return JsonResponse("""
+                    {"id":"agent-1","provider":"openai","model":"gpt-5",
+                     "systemPrompt":"Be helpful","isDefault":false,
+                     "tools":[],"assignedSkills":[]}
+                    """);
+            return JsonResponse("""
+                [{"id":"agent-1","provider":"openai","model":"gpt-5","turnCount":4,"createdAt":"2026-04-04T12:00:00Z"}]
+                """);
+        });
+        Services.AddSingleton(api);
+        Services.AddSingleton(new SignalRService("http://localhost"));
+
+        var cut = RenderWithMudProviders<AgentsPageComponent>();
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Find("[data-testid='agent-row-agent-1']").Click();
+        });
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.NotNull(cut.Find("[data-testid='agent-detail-panel']"));
+            Assert.Contains("agent-1", cut.Find("[data-testid='agent-detail-panel']").TextContent);
+        });
+    }
+
+    [Fact]
+    public void Agents_Toolbar_CopyIdButtonPresent()
+    {
+        var api = CreateApiClient(_ => JsonResponse("[]"));
+        Services.AddSingleton(api);
+        Services.AddSingleton(new SignalRService("http://localhost"));
+
+        var cut = RenderWithMudProviders<AgentsPageComponent>();
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find("[data-testid='copy-id-button']")));
+    }
+
+    [Fact]
+    public void Agents_Toolbar_SetDefaultButtonPresent()
+    {
+        var api = CreateApiClient(_ => JsonResponse("[]"));
+        Services.AddSingleton(api);
+        Services.AddSingleton(new SignalRService("http://localhost"));
+
+        var cut = RenderWithMudProviders<AgentsPageComponent>();
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find("[data-testid='set-default-button']")));
+    }
+
+    [Fact]
     public void Agents_WhenDeleteFails_ShowsErrorAndKeepsGrid()
     {
         var listCalls = 0;
