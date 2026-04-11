@@ -1,10 +1,47 @@
 # Settings > Config
 
-> **Verified:** Gateway authentication required. Session params do not bypass WebSocket auth for admin panel. Real content access requires OpenClaw dashboard URL or valid WebSocket token.
+> **Verified:** Live UI [2026-04-11] via gateway token
 
 **Route:** `/settings/config`  
 **Nav Path:** Settings > Config  
 **Description:** Centralized configuration management interface displaying all system settings organized by category with form and raw JSON editing modes.
+
+## Live UI Content
+
+**Main Controls:**
+- **Form** / **Raw** tabs — Switch between visual form and raw text modes
+- **Status:** "No changes" indicator when pristine
+- **Open** button — Import configuration file
+- **Reload** button — Revert to last saved
+- **Save** button — Persist changes
+- **Apply** button — Activate immediately
+- **Update** button — Sync schema
+
+**Configuration Sections Visible:**
+- Settings
+- Environment
+- Authentication
+- Updates
+- Meta
+- Logging
+- Diagnostics
+- CLI
+- Secrets
+- Updates
+
+**Sample Setting Group: Auto-update**
+- **Auto Update Beta Check Interval (hours)** — How often beta-channel checks run (default: 1)
+  - Input: number field with +/- controls
+  - Category: "performance"
+- **Auto Update Enabled** — Enable background auto-update (default: false)
+  - Input: toggle/checkbox
+  - Category: basic
+- **Auto Update Stable Delay (hours)** — Minimum delay before stable-channel auto-apply (default: 6)
+  - Input: number field with +/- controls
+  - Category: "advanced"
+- **Auto Update Stable Jitter (hours)** — Extra rollout spread window (default: 12)
+  - Input: number field with +/- controls
+  - Category: "advanced"
 
 ## Layout
 
@@ -14,8 +51,8 @@ The Config page uses a two-panel layout:
 - **Main Content Area:** Configuration form/raw editor with top action bar and status indicators
 
 The interface supports two view modes toggled via buttons:
-- **Form Mode:** Organized form fields grouped by section
-- **Raw Mode:** JSON/JSON5 editor for direct configuration editing
+- **Form Mode:** Organized form fields grouped by section with category badges
+- **Raw Mode:** Raw text editor (snapshot mode: read-only with "cannot safely round-trip" warning)
 
 ## Components
 

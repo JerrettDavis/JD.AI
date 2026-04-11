@@ -1,6 +1,6 @@
 # OpenClaw UI — Complete Dashboard Specification
 
-> **Verified:** Real UI via authenticated playwright [2026-04-11] — 13 pages confirmed with live content
+> **Verified:** Live UI [2026-04-11] via gateway token — 13 pages confirmed with live content
 
 ## Overview
 

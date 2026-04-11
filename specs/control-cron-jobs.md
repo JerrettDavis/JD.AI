@@ -1,5 +1,5 @@
 # Control: Cron Jobs
-n> **Verified:** Real UI via authenticated playwright [2026-04-11]
+n> **Verified:** Live UI [2026-04-11] via gateway token
 
 
 **Route:** `/cron` (alt: `/control/cron-jobs`)  

@@ -1,6 +1,6 @@
 # Agent > Agents
 
-> **Verified:** Real UI via authenticated playwright [2026-04-11]
+> **Verified:** Live UI [2026-04-11] via gateway token
 
 **Route:** `/agent/agents`  
 **Nav Path:** Agent > Agents  

@@ -4,76 +4,81 @@
 **Nav Path:** Control > Overview  
 **Description:** System-wide status dashboard providing high-level system health, gateway connection status, and operational snapshots.
 
+**Verified:** Live UI [2026-04-11] via session-persistent auth
+
 ## Status
 
-**⚠️ Authentication Required** — This page requires gateway authentication via WebSocket connection before the UI content is accessible. A login gate similar to other Settings pages presents the authentication interface.
+**✅ Authenticated Content Available** — Page is protected by authentication and displays full dashboard when authenticated via token.
 
-## Authentication Gate (Current State)
+## Authenticated Content (Live Observed)
 
-The Overview page is protected by a login gate with the following fields:
+The page displays a comprehensive dashboard with gateway connection info, system status snapshots, recent sessions, skills inventory, and operational logs.
 
-### Layout
-- Centered card-based form on a full-screen background
-- Header with OpenClaw logo and "Gateway Dashboard" subtitle
+### Main Sections
 
-### Components
+#### 1. Gateway Access Configuration
 
-- **WebSocket URL input** — Text field with placeholder `ws://127.0.0.1:18789`, stores the gateway connection endpoint
-- **Gateway Token input** — Password field with placeholder `OPENCLAW_GATEWAY_TOKEN (optional)`, allows optional token authentication
-- **Password input** — Password field labeled "Password (not stored)", secondary auth mechanism
-- **Token visibility toggle button** — Icon button to show/hide Gateway Token field
-- **Password visibility toggle button** — Icon button to show/hide Password field
-- **Connect button** — Submit button to establish WebSocket connection and proceed to authenticated content
+- **WebSocket URL input** — Gateway connection endpoint (displayed, not editable in this view)
+- **Gateway Token input** — Authentication token field (password-masked)
+- **Password field** — Optional secondary auth mechanism, labeled "Password (not stored)"
+- **Default Session Key dropdown** — Language selection (currently: English, with support for 简体中文, 繁體中文, Português, Deutsch, Español, 日本語, 한국어, Français, Türkçe, Українська, Bahasa Indonesia, Polski)
+- **Connect button** — Re-establish connection with current settings
+- **Refresh button** — Manually refresh all dashboard data
 
-## Expected Content (Post-Authentication)
+#### 2. Snapshot Section
 
-Once authenticated, the Overview page should present the following major sections:
+System operational metrics (read-only display):
 
-### Gateway Access Section
+- **STATUS** — Current state indicator (value: "OK")
+- **UPTIME** — Time since last start (value: "19h")
+- **TICK INTERVAL** — Heartbeat/polling interval (value: "30s")
+- **LAST CHANNELS REFRESH** — Last successful channel config reload (value: "just now")
+- **COST** — Current operational cost summary (value: "$0.00", "0 tokens · 28 msgs")
 
-Configuration and connection details for the OpenClaw gateway:
+#### 3. Operational Counters
 
-- **WebSocket URL display** — Current connected gateway endpoint (read-only or editable)
-- **Gateway Token display** — Masked display of active token (for reference, not editable)
-- **Password field** — Optional password field for session authentication
-- **Default Session Key input** — Text field specifying the default session context (e.g., "agent:jdai-default:discord:channel:...")
-- **Language selector** — Dropdown menu for UI localization language selection
-- **Connect button** — Re-establish or update gateway connection
-- **Refresh button** — Manually refresh connection status and reload dashboard data
+Quick-view cards showing current system state:
 
-### Snapshots Section
+- **SESSIONS** — Active session count (value: "10", "Recent session keys tracked by the gateway")
+- **SKILLS** — Active skills vs total (value: "46/71", "46 active")
+- **CRON** — Scheduled jobs status (value: "12 jobs", "2 failed")
 
-Real-time operational metrics and system health indicators:
+#### 4. Recent Sessions List
 
-- **Status indicator** — Current gateway connection status (Connected/Disconnected/Connecting/Failed)
-- **Uptime counter** — Duration since last restart or connection establishment (e.g., "5d 12h 34m")
-- **Tick Interval display** — Polling/heartbeat interval for status updates (e.g., "500ms")
-- **Last Channels Refresh timestamp** — Last successful channel configuration reload
-- **Last Sessions Refresh timestamp** — Last successful session data synchronization
-- **Gateway Health indicator** — Overall system health status (Healthy/Degraded/Critical)
-- **Message Queue Status** — Current message queue depth and processing rate
-- **Active Sessions count** — Number of currently active sessions across all agents
-- **Active Agents count** — Number of running agent instances
-- **Connected Channels count** — Number of integrated communication channels
-- **Memory Usage gauge** — Current memory consumption (absolute and percentage)
-- **CPU Usage gauge** — Current CPU utilization (percentage)
+Chronological listing of active/recent sessions with details:
 
-### System Events / Recent Activity (Optional)
+- Session key identifier
+- Associated model name
+- Time elapsed since last activity (e.g., "58m ago", "17h ago", "18h ago")
 
-If included, this section displays recent operational events:
+Example entries observed:
+- `heartbeat` (qwen3.5b:9b, 58m ago)
+- `discord:679904321848344624#jarvis` (gpt-5.3-codex, 17h ago)
+- `discord:g-1466622912307007690-heartbeat` (qwen3.5b:9b, 18h ago)
+- `webchat:679904321848344624#jarvis` (MiniMax-M2.7, 18h ago)
+- `webchat:679904321848344624#jarvis` (gpt-5.4, 18h ago)
 
-- **Event timeline** — Chronological list of recent system events (connection changes, errors, configuration updates)
-- **Event details** — Expandable entries showing timestamp, severity (Info/Warning/Error), and message
-- **Clear log button** — Option to clear event history
+#### 5. Skills Dependencies Alert
 
-### Quick Actions (Optional)
+Attention banner showing skills with missing dependencies:
+- "Skills with missing dependencies: camsnap, discord, model-usage +8 more"
 
-If included, shortcuts for common administrative tasks:
+#### 6. Cron Jobs Failed Alert
 
-- **Restart Gateway button** — Trigger gateway restart
-- **View Logs button** — Navigate to Settings > Logs
-- **Configuration button** — Navigate to Settings > Config
-- **Channel Management button** — Navigate to Control > Channels
+Alert indicating failed scheduled jobs:
+- "2 cron jobs failed: todoist-check, ralph loop nudge"
+
+#### 7. Event Log (Recent Activity)
+
+Chronological event timeline with JSON data:
+- **Example entry:** Health check event at 2:50:29 PM with status info, channel configurations, and health data
+
+#### 8. Gateway Logs
+
+Raw log entries in JSON format showing system activity:
+- Log entries with module names, channel IDs, filtering reasons, runtime info
+- Full structured metadata including timestamps, log levels, file paths, and methods
+- Example: Discord auto-reply logs showing message filtering decisions
 
 ## Layout
 

@@ -1,47 +1,59 @@
 # Control > Instances
 
-> **Verified:** Real UI via authenticated playwright [2026-04-11]
+> **Verified:** Live UI [2026-04-11] via gateway token
 
 **Route:** `/control/instances`  
 **Nav Path:** Control > Instances  
-**Description:** Monitor and manage system instances (agent containers, services, or processing nodes), including their status, configuration, and resource usage.
+**Description:** Monitor and manage connected system instances (clients, gateways, and presence beacons) with real-time connection status and metadata.
 
-## Layout
-The Instances page displays a list/table view of running or available system instances with real-time status monitoring. Likely includes:
-- Header with page title and optional "Deploy Instance" or "Scale" button
-- Quick stats panel showing total instances, running count, and resource utilization
-- Search/filter bar for instance lookup by name, type, or status
-- Main table showing instance details with live status indicators
-- Optional detail view or right sidebar for instance configuration
+## Live UI Observations
+
+**Page Title:** "Instances"  
+**Subtitle:** "Connected clients and nodes."
+
+### Main Section: "Connected Instances"
+- **Description:** "Presence beacons from the gateway and clients."
+- **Refresh Button:** Manual sync trigger
+- **Data Table Columns:**
+  - Instance name (e.g., "JDH-PRO-05", "openclaw-control-ui")
+  - IP address (e.g., "169.254.83.107")
+  - Role (e.g., "gateway", "control-ui")
+  - Windows version (e.g., "windows 10.0.26200")
+  - Platform type (e.g., "Windows", "x64")
+  - Version (e.g., "2026.4.8")
+  - Last activity (e.g., "just now")
+  - Last input (e.g., "n/a", actual time)
+  - Connection reason (e.g., "self", "connect", "disconnect")
+  - Client info (e.g., "openclaw-control-ui", "webchat control-ui")
+  - Scopes (e.g., "5 scopes")
+  - Platform (e.g., "Win32")
+
+### Live Data Example
+Currently connected:
+- **JDH-PRO-05** (169.254.83.107) — gateway@2026.4.8 — just now
+- Multiple **openclaw-control-ui** (webchat/control-ui operator) entries showing connection history with timestamps
+
+### Real-Time Behavior
+- Timestamp shows "just now" for recent activity
+- Multiple connection/disconnection events logged with reasons
+- List updates with each new beacon from gateway
 
 ## Components
 
-- **Page Header** — Title "Instances" with KPI summary (Total, Running, Failed)
-- **Deploy/Add Instance Button** — Primary action to create or deploy new instance
-- **Status Overview Cards** — Quick stats showing:
-  - Total Instances count
-  - Running/Active count
-  - Failed/Error count
-  - Resource usage (CPU, Memory %)
-- **Search Bar** — Text input to filter instances by name, ID, or hostname
-- **Filter/Sort Controls** — Dropdowns for:
-  - Status filter (Running, Stopped, Failed, Pending)
-  - Instance type (Agent, Service, Worker, etc.)
-  - Region or environment (if applicable)
-  - Sort by (Name, Status, CPU usage, Memory usage, Last Updated)
-- **Instances Table** — Columnar view showing:
-  - **Name/ID** — Instance identifier with icon indicating type
-  - **Type** — Instance category (Agent, Service, Worker, etc.)
-  - **Status** — Live status badge (Running, Stopped, Error) with color indicator
-  - **CPU Usage** — Percentage or visual bar chart
-  - **Memory Usage** — Percentage or visual bar chart
-  - **Uptime** — Duration since instance started
-  - **Last Updated** — Timestamp of most recent activity
-  - **IP Address or Endpoint** — Network location (if public-facing)
-  - **Actions** — Button group: View Logs, SSH/Connect, Restart, Stop, Configure, Delete
-- **Pagination or Infinite Scroll** — If many instances exist
-- **Empty State** — "No instances running" message with deploy button
-- **Real-Time Indicators** — Status badges update live without page refresh
+- **Page Header** — Title "Instances" with subtitle
+- **Refresh Button** — Manual update trigger
+- **Connected Instances Section** — Live beacon table
+  - Shows all active and recently-active instances
+  - Real-time connection status
+  - IP address tracking
+  - Version and platform metadata
+  - Connection event logging (connect/disconnect/self reasons)
+
+## Interactions
+
+- **Refresh** — Force sync of instance list from gateway
+- **Row Selection** — May reveal details or connection logs
+- **Real-Time Updates** — Beacons update without full page refresh
 
 ## Interactions
 
