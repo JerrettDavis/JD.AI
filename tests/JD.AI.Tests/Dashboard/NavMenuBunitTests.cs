@@ -40,7 +40,7 @@ public sealed class NavMenuBunitTests : BunitContext
     public void NavMenu_ControlGroupContainsOverviewLink()
     {
         var cut = Render<NavMenu>();
-        Assert.NotNull(cut.Find("[data-testid='nav-overview']"));
+        Assert.NotNull(cut.Find("[data-testid='nav-control-overview']"));
     }
 
     [Fact]

@@ -1,0 +1,325 @@
+@page "/control/overview"
+@page "/"
+@inject GatewayApiClient Api
+@inject SignalRService SignalR
+@inject LocalStorageService Storage
+@inject ISnackbar Snackbar
+@implements IAsyncDisposable
+
+<PageTitle>Overview — JD.AI</PageTitle>
+
+<div class="jd-page-header">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudStack Spacing="0">
+            <MudText Typo="Typo.h4" data-testid="page-title">Overview</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" data-testid="page-subtitle">Status, entry points, health.</MudText>
+        </MudStack>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                       OnClick="RefreshAsync"
+                       Size="Size.Small"
+                       data-testid="btn-refresh" />
+    </MudStack>
+</div>
+
+@* ── Gateway Access Card ─────────────────────────────────────── *@
+<MudPaper Class="pa-4 mb-4" Elevation="0" data-testid="gateway-access-card">
+    <MudText Typo="Typo.h6" Class="mb-3">Gateway Access</MudText>
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudTextField @bind-Value="_settings.WebSocketUrl"
+                          Label="WebSocket URL"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Link"
+                          data-testid="input-websocket-url" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField @bind-Value="_settings.GatewayToken"
+                          Label="Gateway Token"
+                          InputType="@(_showToken ? InputType.Text : InputType.Password)"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@(_showToken ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                          OnAdornmentClick="@(() => _showToken = !_showToken)"
+                          data-testid="input-gateway-token" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField @bind-Value="_settings.DefaultSessionKey"
+                          Label="Default Session Key"
+                          Variant="Variant.Outlined"
+                          data-testid="input-session-key" />
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudTextField Label="Password (not stored)"
+                          InputType="InputType.Password"
+                          Variant="Variant.Outlined"
+                          @bind-Value="_password"
+                          data-testid="input-password" />
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudSelect T="string"
+                       @bind-Value="_settings.Language"
+                       Label="Language"
+                       Variant="Variant.Outlined"
+                       data-testid="select-language">
+                @for (var i = 0; i < GatewayAccessSettings.SupportedLanguages.Length; i++)
+                {
+                    var langCode = GatewayAccessSettings.SupportedLanguages[i];
+                    var langName = GatewayAccessSettings.LanguageDisplayNames[i];
+                    <MudSelectItem T="string" Value="@langCode">@langName</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12">
+            <MudStack Row="true" Spacing="2">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="ConnectAsync"
+                           data-testid="btn-connect">Connect</MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           OnClick="SaveSettingsAsync"
+                           data-testid="btn-save-settings">Save</MudButton>
+            </MudStack>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@* ── Snapshot Cards ──────────────────────────────────────────── *@
+@if (!_loaded)
+{
+    <MudGrid Class="mb-4">
+        @for (var i = 0; i < 4; i++)
+        {
+            <MudItem xs="6" sm="3">
+                <MudPaper Class="pa-3" Elevation="0" data-testid="skeleton-snapshot">
+                    <MudSkeleton Width="60px" Height="12px" Class="mb-1" />
+                    <MudSkeleton Width="40px" Height="24px" />
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+}
+else
+{
+    <MudGrid Class="mb-4">
+        <MudItem xs="6" sm="3">
+            <MudPaper Class="pa-3" Elevation="0" data-testid="snapshot-card-status">
+                <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">STATUS</MudText>
+                <MudText Typo="Typo.h5" Style="font-weight:700;" Color="@SnapshotStatusColor" data-testid="snapshot-status">@_snapshot.StatusText</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <MudPaper Class="pa-3" Elevation="0" data-testid="snapshot-card-uptime">
+                <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">UPTIME</MudText>
+                <MudText Typo="Typo.h5" Style="font-weight:700;" data-testid="snapshot-uptime">@_snapshot.UptimeDisplay</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <MudPaper Class="pa-3" Elevation="0" data-testid="snapshot-card-tick">
+                <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">TICK INTERVAL</MudText>
+                <MudText Typo="Typo.h5" Style="font-weight:700;" data-testid="snapshot-tick">@_snapshot.TickInterval</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <MudPaper Class="pa-3" Elevation="0" data-testid="snapshot-card-refresh">
+                <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">LAST CHANNELS REFRESH</MudText>
+                <MudText Typo="Typo.h5" Style="font-weight:700;" data-testid="snapshot-last-refresh">@_snapshot.LastChannelsRefresh</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    @* ── Operational Counters ──────────────────────────────────── *@
+    <MudGrid Class="mb-4">
+        <MudItem xs="6" sm="4">
+            <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="counter-card-sessions">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudAvatar Color="Color.Tertiary" Variant="Variant.Outlined" Size="Size.Medium">
+                        <MudIcon Icon="@Icons.Material.Filled.Forum" />
+                    </MudAvatar>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">SESSIONS</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700;" data-testid="counter-sessions">@_snapshot.SessionCount</MudText>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="4">
+            <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="counter-card-agents">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudAvatar Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Medium">
+                        <MudIcon Icon="@Icons.Material.Filled.SmartToy" />
+                    </MudAvatar>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">AGENTS</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700;" data-testid="counter-agents">@_snapshot.ActiveAgents</MudText>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="4">
+            <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="counter-card-channels">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudAvatar Color="Color.Secondary" Variant="Variant.Outlined" Size="Size.Medium">
+                        <MudIcon Icon="@Icons.Material.Filled.Cable" />
+                    </MudAvatar>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">CHANNELS</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700;" data-testid="counter-channels">@_snapshot.ActiveChannels</MudText>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    @* ── Alerts ────────────────────────────────────────────────── *@
+    @if (_alerts.Count > 0)
+    {
+        <div class="mb-4" data-testid="alerts-section">
+            @foreach (var alert in _alerts)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-2" data-testid="alert-item">@alert</MudAlert>
+            }
+        </div>
+    }
+
+    @* ── Recent Sessions ───────────────────────────────────────── *@
+    <MudPaper Class="pa-4" Elevation="0" data-testid="recent-sessions-card">
+        <MudText Typo="Typo.h6" Class="mb-3">Recent Sessions</MudText>
+        @if (_recentSessions.Count == 0)
+        {
+            <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="pa-4" data-testid="sessions-empty">
+                <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Large" Color="Color.Default" Style="opacity:0.3" />
+                <MudText Color="Color.Secondary" Typo="Typo.body2">No recent sessions.</MudText>
+            </MudStack>
+        }
+        else
+        {
+            <MudSimpleTable Dense="true" Hover="true" data-testid="sessions-table">
+                <thead>
+                    <tr>
+                        <th>Session Key</th>
+                        <th>Model</th>
+                        <th>Last Active</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _recentSessions)
+                    {
+                        <tr data-testid="session-row">
+                            <td data-testid="session-key"><MudText Typo="Typo.body2">@row.SessionKey</MudText></td>
+                            <td data-testid="session-model"><MudText Typo="Typo.body2">@row.Model</MudText></td>
+                            <td data-testid="session-time-ago"><MudText Typo="Typo.body2" Color="Color.Secondary">@row.TimeAgo</MudText></td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+    </MudPaper>
+}
+
+@code {
+    private GatewayAccessSettings _settings = new();
+    private string _password = "";
+    private bool _showToken;
+    private bool _loaded;
+    private ControlOverviewSnapshotModel _snapshot = new();
+    private List<RecentSessionRow> _recentSessions = [];
+    private List<string> _alerts = [];
+
+    private CancellationTokenSource? _timerCts;
+    private EventHandler<ActivityEventArgs>? _activityHandler;
+
+    private Color SnapshotStatusColor => _snapshot.StatusColor switch
+    {
+        "success" => Color.Success,
+        "warning" => Color.Warning,
+        _ => Color.Error,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettingsAsync();
+
+        _activityHandler = (_, _) => InvokeAsync(StateHasChanged);
+        SignalR.OnActivityEvent += _activityHandler;
+
+        await RefreshAsync();
+        StartAutoRefresh();
+    }
+
+    private void StartAutoRefresh()
+    {
+        _timerCts = new CancellationTokenSource();
+        var token = _timerCts.Token;
+        _ = Task.Run(async () =>
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
+            while (!token.IsCancellationRequested && await timer.WaitForNextTickAsync(token).ConfigureAwait(false))
+            {
+                await InvokeAsync(RefreshAsync).ConfigureAwait(false);
+            }
+        }, token);
+    }
+
+    private async Task RefreshAsync()
+    {
+        GatewayStatus? status = null;
+        SessionInfo[] sessions = [];
+
+        try { status = await Api.GetStatusAsync(); }
+        catch { /* gateway unreachable — snapshot shows Disconnected */ }
+
+        try { sessions = await Api.GetSessionsAsync(limit: 10); }
+        catch { /* non-fatal */ }
+
+        _snapshot = ControlOverviewSnapshotModel.From(status, sessions);
+        _recentSessions = sessions.Select(RecentSessionRow.From).ToList();
+        _alerts = BuildAlerts(status);
+        _loaded = true;
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private static List<string> BuildAlerts(GatewayStatus? status)
+    {
+        var alerts = new List<string>();
+        if (status is null)
+            alerts.Add("Gateway is unreachable. Check connection settings.");
+        return alerts;
+    }
+
+    private async Task ConnectAsync()
+    {
+        await SaveSettingsAsync();
+        Snackbar.Add("Reconnecting…", Severity.Info);
+        await RefreshAsync();
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        await Storage.SetAsync("openclaw.control.gateway.url", _settings.WebSocketUrl);
+        await Storage.SetAsync("openclaw.control.gateway.token", _settings.GatewayToken);
+        await Storage.SetAsync("openclaw.control.gateway.sessionKey", _settings.DefaultSessionKey);
+        await Storage.SetAsync("openclaw.control.gateway.language", _settings.Language);
+    }
+
+    private async Task LoadSettingsAsync()
+    {
+        _settings.WebSocketUrl = await Storage.GetAsync("openclaw.control.gateway.url") ?? "";
+        _settings.GatewayToken = await Storage.GetAsync("openclaw.control.gateway.token") ?? "";
+        _settings.DefaultSessionKey = await Storage.GetAsync("openclaw.control.gateway.sessionKey") ?? "";
+        _settings.Language = await Storage.GetAsync("openclaw.control.gateway.language") ?? "en";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_activityHandler is not null)
+            SignalR.OnActivityEvent -= _activityHandler;
+
+        if (_timerCts is not null)
+        {
+            await _timerCts.CancelAsync();
+            _timerCts.Dispose();
+        }
+    }
+}

@@ -28,5 +28,6 @@ builder.Services.AddMudServices(config =>
 });
 builder.Services.AddScoped<NavState>();
 builder.Services.AddScoped<ThemeService>();
+builder.Services.AddScoped<LocalStorageService>();
 
 await builder.Build().RunAsync();
