@@ -1,10 +1,10 @@
-using JD.AI.Commands;
-using JD.AI.Core.Infrastructure;
-using JD.AI.Utilities;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
+using JD.AI.Commands;
+using JD.AI.Core.Infrastructure;
+using JD.AI.Utilities;
 
 namespace JD.AI.Tests.Commands;
 

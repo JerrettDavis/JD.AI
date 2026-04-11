@@ -33,7 +33,7 @@
         <MudItem xs="12" sm="2">
             <MudSelect T="string" @bind-Value="_eventTypeFilter" Label="Event Type" Variant="Variant.Outlined" Dense="true"
                        Clearable="true" data-testid="event-type-filter">
-                <MudSelectItem Value="@("tool.invoke")">tool.invoke</MudSelectItem>
+                <MudSelectItem Value="@("tool.audit")">tool.audit</MudSelectItem>
                 <MudSelectItem Value="@("session.create")">session.create</MudSelectItem>
                 <MudSelectItem Value="@("session.close")">session.close</MudSelectItem>
                 <MudSelectItem Value="@("policy.deny")">policy.deny</MudSelectItem>
@@ -97,7 +97,14 @@ else
                 </TemplateColumn>
                 <PropertyColumn Property="x => x.Source" Title="Source" />
                 <PropertyColumn Property="x => x.EventType" Title="Event" />
-                <PropertyColumn Property="x => x.Message" Title="Message" />
+                <TemplateColumn Title="Details">
+                    <CellTemplate>
+                        @{
+                            var details = GetEventDetails(context.Item);
+                        }
+                        <MudText Typo="Typo.body2">@details</MudText>
+                    </CellTemplate>
+                </TemplateColumn>
                 <TemplateColumn Title="" CellClass="d-flex justify-end">
                     <CellTemplate>
                         @if (!string.IsNullOrEmpty(context.Item.Payload))
@@ -209,6 +216,30 @@ else
         "info" => Color.Info,
         _ => Color.Default
     };
+
+    private string GetEventDetails(AuditEvent evt)
+    {
+        if (evt.EventType == "tool.audit" && !string.IsNullOrEmpty(evt.Payload))
+        {
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(evt.Payload);
+                var root = doc.RootElement;
+                
+                var toolName = root.TryGetProperty("toolName", out var tn) ? tn.GetString() : "unknown";
+                var decision = root.TryGetProperty("decision", out var d) ? d.GetString() : "unknown";
+                var durationMs = root.TryGetProperty("durationMs", out var dm) ? dm.GetInt64() : 0;
+                
+                return $"{toolName} - {decision} ({durationMs}ms)";
+            }
+            catch
+            {
+                return evt.Message;
+            }
+        }
+        
+        return evt.Message;
+    }
 
     public void Dispose()
     {

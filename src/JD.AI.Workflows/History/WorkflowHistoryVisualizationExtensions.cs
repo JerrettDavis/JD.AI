@@ -35,9 +35,9 @@ public static class WorkflowHistoryVisualizationExtensions
             var shape = node.Kind switch
             {
                 AgentStepKind.Conditional => $"{nodeId}{{{{{label}}}}}",
-                AgentStepKind.Loop       => $"{nodeId}[/{label}\\]",
-                AgentStepKind.Nested     => $"{nodeId}[[{label}]]",
-                _                        => $"{nodeId}[\"{label}\"]",
+                AgentStepKind.Loop => $"{nodeId}[/{label}\\]",
+                AgentStepKind.Nested => $"{nodeId}[[{label}]]",
+                _ => $"{nodeId}[\"{label}\"]",
             };
             sb.AppendLine($"    {shape}");
         }
@@ -145,9 +145,9 @@ internal sealed class FilteredWorkflowHistoryGraph
             var shape = node.Kind switch
             {
                 AgentStepKind.Conditional => $"{nodeId}{{{{{label}}}}}",
-                AgentStepKind.Loop       => $"{nodeId}[/{label}\\]",
-                AgentStepKind.Nested     => $"{nodeId}[[{label}]]",
-                _                        => $"{nodeId}[\"{label}\"]",
+                AgentStepKind.Loop => $"{nodeId}[/{label}\\]",
+                AgentStepKind.Nested => $"{nodeId}[[{label}]]",
+                _ => $"{nodeId}[\"{label}\"]",
             };
             sb.AppendLine($"    {shape}");
         }
