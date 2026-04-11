@@ -118,7 +118,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/Dashboard/AgentsPage.feature.ndjson", 18);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/Dashboard/AgentsPage.feature.ndjson", 25);
         }
         
         async global::System.Threading.Tasks.Task global::Xunit.IAsyncLifetime.InitializeAsync()
@@ -708,17 +708,17 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             await this.ScenarioCleanupAsync();
         }
         
-        [global::Xunit.SkippableFactAttribute(DisplayName="Agent grid shows expandable details", Skip="Ignored")]
+        [global::Xunit.SkippableFactAttribute(DisplayName="Clicking agent row opens detail panel", Skip="Ignored")]
         [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
-        [global::Xunit.TraitAttribute("Description", "Agent grid shows expandable details")]
+        [global::Xunit.TraitAttribute("Description", "Clicking agent row opens detail panel")]
         [global::Xunit.TraitAttribute("Category", "planned")]
-        public async global::System.Threading.Tasks.Task AgentGridShowsExpandableDetails()
+        public async global::System.Threading.Tasks.Task ClickingAgentRowOpensDetailPanel()
         {
             string[] tagsOfScenario = new string[] {
                     "planned"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             string pickleIndex = "14";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Agent grid shows expandable details", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Clicking agent row opens detail panel", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 107
@@ -738,12 +738,294 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         await testRunner.GivenAsync("there are active agents", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 109
-        await testRunner.WhenAsync("I expand the first agent row", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+        await testRunner.WhenAsync("I click on the first agent row", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 110
+        await testRunner.ThenAsync("the agent detail panel should be visible", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Detail panel shows Overview tab by default", Skip="Ignored")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
+        [global::Xunit.TraitAttribute("Description", "Detail panel shows Overview tab by default")]
+        [global::Xunit.TraitAttribute("Category", "planned")]
+        public async global::System.Threading.Tasks.Task DetailPanelShowsOverviewTabByDefault()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "planned"};
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "15";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Detail panel shows Overview tab by default", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 113
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 114
+        await testRunner.GivenAsync("there are active agents", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 115
+        await testRunner.WhenAsync("I click on the first agent row", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 116
+        await testRunner.ThenAsync("I should see the overview tab content", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Detail panel Tools tab shows agent tools", Skip="Ignored")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
+        [global::Xunit.TraitAttribute("Description", "Detail panel Tools tab shows agent tools")]
+        [global::Xunit.TraitAttribute("Category", "planned")]
+        public async global::System.Threading.Tasks.Task DetailPanelToolsTabShowsAgentTools()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "planned"};
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "16";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Detail panel Tools tab shows agent tools", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 119
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 120
+        await testRunner.GivenAsync("there are active agents", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 121
+        await testRunner.WhenAsync("I click on the first agent row", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 122
+        await testRunner.AndAsync("I click the \"Tools\" tab in the detail panel", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 123
+        await testRunner.ThenAsync("I should see the tools list", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Detail panel Skills tab shows assigned skills", Skip="Ignored")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
+        [global::Xunit.TraitAttribute("Description", "Detail panel Skills tab shows assigned skills")]
+        [global::Xunit.TraitAttribute("Category", "planned")]
+        public async global::System.Threading.Tasks.Task DetailPanelSkillsTabShowsAssignedSkills()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "planned"};
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "17";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Detail panel Skills tab shows assigned skills", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 126
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 127
+        await testRunner.GivenAsync("there are active agents", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 128
+        await testRunner.WhenAsync("I click on the first agent row", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 129
+        await testRunner.AndAsync("I click the \"Skills\" tab in the detail panel", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 130
+        await testRunner.ThenAsync("I should see the assigned skills list", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Detail panel close button hides panel", Skip="Ignored")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
+        [global::Xunit.TraitAttribute("Description", "Detail panel close button hides panel")]
+        [global::Xunit.TraitAttribute("Category", "planned")]
+        public async global::System.Threading.Tasks.Task DetailPanelCloseButtonHidesPanel()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "planned"};
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "18";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Detail panel close button hides panel", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 133
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 134
+        await testRunner.GivenAsync("there are active agents", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 135
+        await testRunner.WhenAsync("I click on the first agent row", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 136
+        await testRunner.AndAsync("I click the detail panel close button", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 137
+        await testRunner.ThenAsync("the agent detail panel should not be visible", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Toolbar Copy ID button is present when agent selected", Skip="Ignored")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
+        [global::Xunit.TraitAttribute("Description", "Toolbar Copy ID button is present when agent selected")]
+        [global::Xunit.TraitAttribute("Category", "planned")]
+        public async global::System.Threading.Tasks.Task ToolbarCopyIDButtonIsPresentWhenAgentSelected()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "planned"};
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "19";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Toolbar Copy ID button is present when agent selected", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 140
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 141
+        await testRunner.GivenAsync("there are active agents", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 142
+        await testRunner.WhenAsync("I click on the first agent row", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 143
+        await testRunner.ThenAsync("the \"Copy ID\" toolbar button should be enabled", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Toolbar Set Default button is present when agent selected", Skip="Ignored")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
+        [global::Xunit.TraitAttribute("Description", "Toolbar Set Default button is present when agent selected")]
+        [global::Xunit.TraitAttribute("Category", "planned")]
+        public async global::System.Threading.Tasks.Task ToolbarSetDefaultButtonIsPresentWhenAgentSelected()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "planned"};
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "20";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Toolbar Set Default button is present when agent selected", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 146
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 147
+        await testRunner.GivenAsync("there are active agents", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 148
+        await testRunner.WhenAsync("I click on the first agent row", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 149
+        await testRunner.ThenAsync("the \"Set Default\" toolbar button should be enabled", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Agent grid shows expandable details", Skip="Ignored")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Agents Page")]
+        [global::Xunit.TraitAttribute("Description", "Agent grid shows expandable details")]
+        [global::Xunit.TraitAttribute("Category", "planned")]
+        public async global::System.Threading.Tasks.Task AgentGridShowsExpandableDetails()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "planned"};
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "21";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Agent grid shows expandable details", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 153
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 154
+        await testRunner.GivenAsync("there are active agents", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 155
+        await testRunner.WhenAsync("I expand the first agent row", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 156
         await testRunner.ThenAsync("I should see the agent\'s system prompt", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 111
+#line 157
         await testRunner.AndAsync("I should see the agent\'s active sessions", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -759,11 +1041,11 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             string[] tagsOfScenario = new string[] {
                     "planned"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "15";
+            string pickleIndex = "22";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Test message action", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 114
+#line 160
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -776,13 +1058,13 @@ namespace JD.AI.Specs.UI.Features.Dashboard
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 115
+#line 161
         await testRunner.GivenAsync("there are active agents", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 116
+#line 162
         await testRunner.WhenAsync("I click the test message button on the first agent", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 117
+#line 163
         await testRunner.ThenAsync("a test response should appear", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
