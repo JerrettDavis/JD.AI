@@ -1,0 +1,259 @@
+@using JD.AI.Dashboard.Wasm.Models
+@using JD.AI.Dashboard.Wasm.Services
+@using System.Text.Json
+@using MudBlazor
+@inject ISnackbar Snackbar
+
+<MudStack>
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+            <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+                <MudButton data-testid="mode-toggle-form"
+                           Color="@(_rawMode ? Color.Default : Color.Primary)"
+                           OnClick="@(() => _rawMode = false)">Form</MudButton>
+                <MudButton data-testid="mode-toggle-raw"
+                           Color="@(_rawMode ? Color.Primary : Color.Default)"
+                           OnClick="@(() => { _rawMode = true; _rawJson = GetCurrentConfigJson(); })">Raw JSON</MudButton>
+            </MudButtonGroup>
+            <MudStack Row="true" Spacing="1">
+                @if (_changes.Count > 0)
+                {
+                    <MudChip T="string" data-testid="changes-badge" Color="Color.Warning" Size="Size.Small" Text="@($"{_changes.Count} changes")" />
+                }
+                <MudIconButton data-testid="reset-button" Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" OnClick="ResetAsync" />
+                <MudIconButton data-testid="reload-button" Icon="@Icons.Material.Filled.Sync" Size="Size.Small" OnClick="LoadAsync" />
+                <MudButton data-testid="apply-button" Variant="Variant.Outlined" Size="Size.Small" OnClick="ApplyAsync">Apply</MudButton>
+                <MudButton data-testid="save-button" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="SaveAsync">Save</MudButton>
+            </MudStack>
+        </MudStack>
+
+        @if (_rawMode)
+        {
+            <textarea data-testid="raw-json-editor" @bind="_rawJson" rows="20" style="width:100%; font-family: monospace;"></textarea>
+        }
+        else
+        {
+            <MudStack Row="true">
+                <MudPaper Width="220px" Elevation="0">
+                    <MudTextField data-testid="config-search" @bind-Value="_sectionSearch" Placeholder="Search..."
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Immediate="true" />
+                    <MudList data-testid="config-sidebar" T="ConfigSection">
+                        @foreach (var configSection in FilteredSections)
+                        {
+                            var sectionKey = configSection.Key;
+                            var sectionTestId = $"config-sidebar-item-{sectionKey}";
+                            var isSelected = _activeSection?.Key == configSection.Key;
+                            <MudListItem data-testid="@sectionTestId"
+                                         OnClick="() => SelectSection(configSection)"
+                                         Class="@(isSelected ? "mud-selected" : "")">
+                                @configSection.Label
+                            </MudListItem>
+                        }
+                    </MudList>
+                </MudPaper>
+
+                <MudStack Style="flex:1">
+                    @if (_activeSection != null)
+                    {
+                        @foreach (var field in _activeSection.Fields)
+                        {
+                            var fieldKey = field.Key;
+                            var fieldTestId = $"config-field-{fieldKey}";
+                            <div data-testid="@fieldTestId">
+                                @RenderField(field)
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Select a section from the sidebar.</MudText>
+                    }
+                </MudStack>
+            </MudStack>
+        }
+    }
+</MudStack>
+
+@code {
+    [Parameter] public GatewayApiClient Api { get; set; } = default!;
+
+    private ConfigSchema? _schema;
+    private JsonDocument? _currentConfig;
+    private Dictionary<string, object?> _changes = new();
+    private ConfigSection? _activeSection;
+    private bool _rawMode;
+    private bool _loading = true;
+    private string? _sectionSearch;
+    private string _rawJson = "";
+
+    private IEnumerable<ConfigSection> FilteredSections =>
+        string.IsNullOrWhiteSpace(_sectionSearch)
+            ? (_schema?.Sections ?? [])
+            : (_schema?.Sections ?? []).Where(s =>
+                s.Label.Contains(_sectionSearch, StringComparison.OrdinalIgnoreCase) ||
+                s.Key.Contains(_sectionSearch, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+        try
+        {
+            _schema = await Api.GetConfigSchemaAsync();
+            _currentConfig = await Api.GetCurrentConfigAsync();
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void SelectSection(ConfigSection section)
+    {
+        _activeSection = section;
+        StateHasChanged();
+    }
+
+    private void SetChange(string key, object? value)
+    {
+        _changes[key] = value;
+        StateHasChanged();
+    }
+
+    private object? GetCurrentValue(ConfigSection section, ConfigField field)
+    {
+        if (_changes.TryGetValue(field.Key, out var changed))
+            return changed;
+
+        if (_currentConfig == null) return null;
+
+        try
+        {
+            if (_currentConfig.RootElement.TryGetProperty(section.Key, out var sectionEl) &&
+                sectionEl.TryGetProperty(field.Key, out var fieldEl))
+            {
+                return field.Type switch
+                {
+                    "boolean" => fieldEl.GetBoolean(),
+                    "integer" => (double)fieldEl.GetInt32(),
+                    "number" => fieldEl.GetDouble(),
+                    _ => fieldEl.GetString()
+                };
+            }
+        }
+        catch { }
+
+        return null;
+    }
+
+    private string GetCurrentConfigJson()
+    {
+        if (_currentConfig == null) return "{}";
+        return JsonSerializer.Serialize(_currentConfig, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    private async Task ResetAsync()
+    {
+        _changes.Clear();
+        await LoadAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        try
+        {
+            await Api.SaveConfigAsync(_changes);
+            _changes.Clear();
+            Snackbar.Add("Configuration saved.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task ApplyAsync()
+    {
+        try
+        {
+            await Api.ApplyConfigAsync(_changes);
+            Snackbar.Add("Configuration applied.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Apply failed: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private RenderFragment RenderField(ConfigField field) => builder =>
+    {
+        var section = _activeSection!;
+        var currentVal = GetCurrentValue(section, field);
+
+        if (field.Type == "boolean")
+        {
+            var boolVal = currentVal is bool b ? b : false;
+            builder.OpenComponent<MudSwitch<bool>>(0);
+            builder.AddAttribute(1, "Label", field.Label);
+            builder.AddAttribute(2, "Value", boolVal);
+            builder.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<bool>(this, v => SetChange(field.Key, v)));
+            builder.CloseComponent();
+        }
+        else if (field.Type == "enum" && field.EnumValues != null)
+        {
+            var strVal = currentVal?.ToString() ?? "";
+            builder.OpenComponent<MudSelect<string>>(0);
+            builder.AddAttribute(1, "Label", field.Label);
+            builder.AddAttribute(2, "Value", strVal);
+            builder.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<string>(this, v => SetChange(field.Key, v)));
+            builder.AddAttribute(4, "ChildContent", (RenderFragment)(innerBuilder =>
+            {
+                var enumIndex = 0;
+                foreach (var ev in field.EnumValues!)
+                {
+                    var currentEnum = ev;
+                    innerBuilder.OpenComponent<MudSelectItem<string>>(enumIndex * 3);
+                    innerBuilder.AddAttribute(enumIndex * 3 + 1, "Value", currentEnum);
+                    innerBuilder.AddContent(enumIndex * 3 + 2, currentEnum);
+                    innerBuilder.CloseComponent();
+                    enumIndex++;
+                }
+            }));
+            builder.CloseComponent();
+        }
+        else if (field.Type is "integer" or "number")
+        {
+            var numVal = currentVal is double d ? d : 0.0;
+            builder.OpenComponent<MudNumericField<double>>(0);
+            builder.AddAttribute(1, "Label", field.Label);
+            builder.AddAttribute(2, "Value", numVal);
+            builder.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<double>(this, v => SetChange(field.Key, v)));
+            builder.CloseComponent();
+        }
+        else
+        {
+            var strVal = currentVal?.ToString() ?? "";
+            builder.OpenComponent<MudTextField<string>>(0);
+            builder.AddAttribute(1, "Label", field.Label);
+            builder.AddAttribute(2, "Value", strVal);
+            builder.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<string>(this, v => SetChange(field.Key, v)));
+            builder.CloseComponent();
+        }
+    };
+}
