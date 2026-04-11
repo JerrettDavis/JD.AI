@@ -43,7 +43,7 @@
   <!-- Distributed infrastructure -->
   <ItemGroup>
     <PackageVersion Include="AWSSDK.SecretsManager" Version="4.0.4.15" />
-    <PackageVersion Include="Azure.Identity" Version="1.20.0" />
+    <PackageVersion Include="Azure.Identity" Version="1.21.0" />
     <PackageVersion Include="Azure.Security.KeyVault.Secrets" Version="4.9.0" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.5" />
     <PackageVersion Include="StackExchange.Redis" Version="2.8.41" />
