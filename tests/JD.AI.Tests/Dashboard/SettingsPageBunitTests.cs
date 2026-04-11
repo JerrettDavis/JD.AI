@@ -1,11 +1,49 @@
 using Bunit;
 using JD.AI.Dashboard.Wasm.Pages;
 using Microsoft.Extensions.DependencyInjection;
+using JD.AI.Dashboard.Wasm.Services;
 
 namespace JD.AI.Tests.Dashboard;
 
 public sealed class SettingsPageBunitTests : DashboardBunitTestContext
 {
+    private GatewayApiClient BuildFullConfigApiClient() =>
+        CreateApiClient(request =>
+        {
+            var url = request.RequestUri!.ToString();
+            if (url.Contains("api/gateway/config/raw"))
+                return JsonResponse(
+                    """
+                    {
+                      "server": { "host": "127.0.0.1", "port": 15790, "verbose": true },
+                      "auth": { "enabled": true, "apiKeys": [] },
+                      "rateLimit": { "enabled": true, "maxRequestsPerMinute": 120 },
+                      "providers": [
+                        { "name": "openai", "enabled": true, "settings": {} }
+                      ],
+                      "agents": [
+                        { "id": "jdai-default", "provider": "openai", "model": "gpt-5",
+                          "autoSpawn": true, "maxTurns": 0, "tools": [],
+                          "parameters": { "stopSequences": [] } }
+                      ],
+                      "channels": [
+                        { "type": "discord", "name": "Discord", "enabled": true,
+                          "autoConnect": true, "settings": {} }
+                      ],
+                      "routing": { "defaultAgentId": "jdai-default", "rules": [] },
+                      "openClaw": { "enabled": false, "webSocketUrl": "", "autoConnect": false,
+                                    "defaultMode": "Sidecar", "channels": {}, "registerAgents": [] }
+                    }
+                    """);
+            if (url.Contains("api/providers/openai/models"))
+                return JsonResponse("[{\"id\":\"gpt-5\",\"displayName\":\"GPT-5\",\"provider\":\"openai\"}]");
+            if (url.Contains("api/config/schema"))
+                return JsonResponse("{\"sections\":[]}");
+            if (url.Contains("api/config/current"))
+                return JsonResponse("{}");
+            return JsonResponse("[]");
+        });
+
     [Fact]
     public void Settings_WhenConfigLoadFails_ShowsErrorState()
     {
@@ -21,49 +59,70 @@ public sealed class SettingsPageBunitTests : DashboardBunitTestContext
     [Fact]
     public void Settings_WhenConfigLoads_RendersSettingsTabs()
     {
-        var api = CreateApiClient(request =>
-        {
-            if (string.Equals(request.RequestUri!.ToString(), "http://localhost/api/gateway/config/raw", StringComparison.Ordinal))
-            {
-                return JsonResponse(
-                    """
-                    {
-                      "server": { "host": "127.0.0.1", "port": 15790, "verbose": true },
-                      "auth": { "enabled": true, "apiKeys": [] },
-                      "rateLimit": { "enabled": true, "maxRequestsPerMinute": 120 },
-                      "providers": [
-                        { "name": "openai", "enabled": true, "settings": {} }
-                      ],
-                      "agents": [
-                        { "id": "jdai-default", "provider": "openai", "model": "gpt-5", "autoSpawn": true, "maxTurns": 0, "tools": [], "parameters": { "stopSequences": [] } }
-                      ],
-                      "channels": [
-                        { "type": "discord", "name": "Discord", "enabled": true, "autoConnect": true, "settings": {} }
-                      ],
-                      "routing": { "defaultAgentId": "jdai-default", "rules": [] },
-                      "openClaw": { "enabled": true, "webSocketUrl": "ws://127.0.0.1/ws", "autoConnect": true, "defaultMode": "Sidecar", "channels": {}, "registerAgents": [] }
-                    }
-                    """);
-            }
-
-            if (string.Equals(request.RequestUri!.ToString(), "http://localhost/api/providers/openai/models", StringComparison.Ordinal))
-            {
-                return JsonResponse("[{\"id\":\"gpt-5\",\"displayName\":\"GPT-5\",\"provider\":\"openai\"}]");
-            }
-
-            throw new Xunit.Sdk.XunitException($"Unexpected request: {request.RequestUri}");
-        });
-
+        var api = BuildFullConfigApiClient();
         Services.AddSingleton(api);
 
         var cut = RenderWithMudProviders<Settings>();
 
         var tabs = cut.Find("[data-testid='settings-tabs']");
-        Assert.Contains("Server", tabs.TextContent);
-        Assert.Contains("Providers", tabs.TextContent);
-        Assert.Contains("Agents", tabs.TextContent);
-        Assert.Contains("Channels", tabs.TextContent);
-        Assert.Contains("Routing", tabs.TextContent);
-        Assert.Contains("OpenClaw", tabs.TextContent);
+        Assert.Contains("AI & Agents", tabs.TextContent);
+        Assert.Contains("Communication", tabs.TextContent);
+        Assert.Contains("Config", tabs.TextContent);
+        Assert.Contains("Logs", tabs.TextContent);
+    }
+
+    [Fact]
+    public void Settings_WhenConfigLoads_ShowsAiAgentsTab()
+    {
+        var api = BuildFullConfigApiClient();
+        Services.AddSingleton(api);
+        var cut = RenderWithMudProviders<Settings>();
+        cut.WaitForAssertion(() =>
+            Assert.Contains("AI & Agents", cut.Find("[data-testid='settings-tabs']").TextContent));
+    }
+
+    [Fact]
+    public void Settings_WhenConfigLoads_ShowsCommunicationTab()
+    {
+        var api = BuildFullConfigApiClient();
+        Services.AddSingleton(api);
+        var cut = RenderWithMudProviders<Settings>();
+        cut.WaitForAssertion(() =>
+            Assert.Contains("Communication", cut.Find("[data-testid='settings-tabs']").TextContent));
+    }
+
+    [Fact]
+    public void Settings_WhenConfigLoads_ShowsConfigTab()
+    {
+        var api = BuildFullConfigApiClient();
+        Services.AddSingleton(api);
+        var cut = RenderWithMudProviders<Settings>();
+        cut.WaitForAssertion(() =>
+            Assert.Contains("Config", cut.Find("[data-testid='settings-tabs']").TextContent));
+    }
+
+    [Fact]
+    public void Settings_WhenConfigLoads_ShowsLogsTab()
+    {
+        var api = BuildFullConfigApiClient();
+        Services.AddSingleton(api);
+        var cut = RenderWithMudProviders<Settings>();
+        cut.WaitForAssertion(() =>
+            Assert.Contains("Logs", cut.Find("[data-testid='settings-tabs']").TextContent));
+    }
+
+    [Fact]
+    public void Settings_AiAgentsTab_ContainsProviderSubTab()
+    {
+        // AI & Agents is the first tab — active by default, no click needed
+        var api = BuildFullConfigApiClient();
+        Services.AddSingleton(api);
+        var cut = RenderWithMudProviders<Settings>();
+        cut.WaitForAssertion(() =>
+        {
+            var subTabs = cut.Find("[data-testid='ai-agents-subtabs']");
+            Assert.Contains("Providers", subTabs.TextContent);
+            Assert.Contains("Agents", subTabs.TextContent);
+        });
     }
 }

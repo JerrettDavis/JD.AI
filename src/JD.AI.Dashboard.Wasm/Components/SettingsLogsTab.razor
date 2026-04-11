@@ -1,0 +1,134 @@
+@inject ISnackbar Snackbar
+@using JD.AI.Dashboard.Wasm.Models
+
+<MudStack Spacing="3">
+    <MudPaper Class="pa-4" Elevation="0" data-testid="log-filters">
+        <MudGrid>
+            <MudItem xs="12" sm="3">
+                <MudSelect T="string?" @bind-Value="_severityFilter" Label="Severity" Variant="Variant.Outlined" Dense="true"
+                           Clearable="true" data-testid="severity-filter">
+                    <MudSelectItem Value="@("debug")">Debug</MudSelectItem>
+                    <MudSelectItem Value="@("info")">Info</MudSelectItem>
+                    <MudSelectItem Value="@("warning")">Warning</MudSelectItem>
+                    <MudSelectItem Value="@("error")">Error</MudSelectItem>
+                    <MudSelectItem Value="@("critical")">Critical</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="5">
+                <MudTextField T="string?" @bind-Value="_searchText" Label="Search" Variant="Variant.Outlined" Margin="Margin.Dense"
+                              Clearable="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                              data-testid="search-filter" />
+            </MudItem>
+            <MudItem xs="12" sm="4" Class="d-flex align-end">
+                <MudButton OnClick="LoadAsync" Variant="Variant.Outlined" Size="Size.Small" Disabled="_loading"
+                           data-testid="apply-filters">
+                    @if (_loading)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    Apply
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (_loading)
+    {
+        <MudPaper Elevation="0">
+            @for (var i = 0; i < 3; i++)
+            {
+                <div class="jd-skeleton-row">
+                    <MudSkeleton Width="120px" Height="14px" />
+                    <MudSkeleton Width="72px" Height="24px" />
+                    <MudSkeleton Width="100px" Height="14px" />
+                    <MudSkeleton Width="300px" Height="14px" />
+                </div>
+            }
+        </MudPaper>
+    }
+    else if (_events.Length == 0)
+    {
+        <MudPaper Class="pa-6" Elevation="0" data-testid="logs-empty">
+            <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.EventNote" Size="Size.Large" Color="Color.Default" Style="opacity:0.3" />
+                <MudText Color="Color.Secondary">No log events found.</MudText>
+            </MudStack>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Elevation="0">
+            <MudDataGrid Items="@_events" Dense="true" Hover="true" SortMode="SortMode.Multiple"
+                         data-testid="logs-grid">
+                <Columns>
+                    <PropertyColumn Property="x => x.Timestamp" Title="Timestamp" Format="g" />
+                    <TemplateColumn Title="Level">
+                        <CellTemplate>
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
+                                     Color="@GetLevelColor(context.Item.Level)"
+                                     data-testid="@($"log-level-chip-{context.Item.Id}")">
+                                @context.Item.Level
+                            </MudChip>
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <PropertyColumn Property="x => x.Source" Title="Source" />
+                    <PropertyColumn Property="x => x.EventType" Title="Event" />
+                    <PropertyColumn Property="x => x.Message" Title="Message" />
+                </Columns>
+            </MudDataGrid>
+        </MudPaper>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public GatewayApiClient Api { get; set; } = null!;
+
+    private AuditEvent[] _events = [];
+    private bool _loading = true;
+    private string? _severityFilter;
+    private string? _searchText;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _events = await Api.GetAuditEventsAsync(
+                limit: 100,
+                severity: _severityFilter);
+
+            // Apply search filter
+            if (!string.IsNullOrWhiteSpace(_searchText))
+            {
+                _events = _events
+                    .Where(e => e.Message.Contains(_searchText, StringComparison.OrdinalIgnoreCase)
+                        || e.EventType.Contains(_searchText, StringComparison.OrdinalIgnoreCase)
+                        || e.Source.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+                    .ToArray();
+            }
+        }
+        catch (Exception ex)
+        {
+            _events = [];
+            Snackbar.Add($"Failed to load audit events: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static Color GetLevelColor(string level) => level.ToLowerInvariant() switch
+    {
+        "critical" => Color.Error,
+        "error" => Color.Error,
+        "warn" or "warning" => Color.Warning,
+        "info" => Color.Info,
+        _ => Color.Default
+    };
+}
