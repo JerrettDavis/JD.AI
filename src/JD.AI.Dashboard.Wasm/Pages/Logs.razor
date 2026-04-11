@@ -90,7 +90,7 @@ else
                     <CellTemplate>
                         <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
                                  Color="@GetLevelColor(context.Item.Level)"
-                                 data-testid="log-level">
+                                 data-testid="@($"log-level-chip-{context.Item.Id}")">
                             @context.Item.Level
                         </MudChip>
                     </CellTemplate>
@@ -109,9 +109,13 @@ else
                     <CellTemplate>
                         @if (!string.IsNullOrEmpty(context.Item.Payload))
                         {
-                            <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
-                                           OnClick="@(() => ToggleDetail(context.Item.Id))"
-                                           data-testid="log-detail-button" />
+                            <MudIconButton
+                                Icon="@(_expandedRowId == context.Item.Id
+                                    ? Icons.Material.Filled.ExpandLess
+                                    : Icons.Material.Filled.ExpandMore)"
+                                Size="Size.Small"
+                                OnClick="@(() => ToggleExpand(context.Item.Id))"
+                                data-testid="@($"log-row-expand-{context.Item.Id}")" />
                         }
                     </CellTemplate>
                 </TemplateColumn>
@@ -120,14 +124,19 @@ else
     </MudPaper>
 }
 
-@if (_selectedEventId is not null && _allEvents.FirstOrDefault(e => e.Id == _selectedEventId) is { } selected)
+@if (_expandedRowId is not null &&
+     _filteredEvents.FirstOrDefault(e => e.Id == _expandedRowId) is { } expanded)
 {
-    <MudPaper Class="pa-4 mt-4" Elevation="2" data-testid="log-detail">
-        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
-            <MudText Typo="Typo.h6">Event Detail</MudText>
-            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="@(() => _selectedEventId = null)" />
+    <MudPaper Class="pa-4 mt-2" Elevation="1" data-testid="@($"log-row-detail-{expanded.Id}")">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+            <MudText Typo="Typo.subtitle2">Event Detail — @expanded.EventType</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                           Size="Size.Small"
+                           OnClick="@(() => _expandedRowId = null)" />
         </MudStack>
-        <MudText Style="white-space: pre-wrap; font-family: monospace; font-size: 0.85rem;">@selected.Payload</MudText>
+        <MudText Style="white-space:pre-wrap;font-family:monospace;font-size:0.82rem;">
+            @expanded.Payload
+        </MudText>
     </MudPaper>
 }
 
@@ -139,7 +148,7 @@ else
     private string? _eventTypeFilter;
     private string? _sourceFilter;
     private string? _searchText;
-    private string? _selectedEventId;
+    private string? _expandedRowId;
     private bool _autoRefresh;
     private Timer? _timer;
     private EventHandler<ActivityEventArgs>? _activityHandler;
@@ -206,11 +215,12 @@ else
         _filteredEvents = events.ToArray();
     }
 
-    private void ToggleDetail(string id) =>
-        _selectedEventId = _selectedEventId == id ? null : id;
+    private void ToggleExpand(string id) =>
+        _expandedRowId = _expandedRowId == id ? null : id;
 
     private static Color GetLevelColor(string level) => level.ToLowerInvariant() switch
     {
+        "critical" => Color.Error,
         "error" => Color.Error,
         "warn" or "warning" => Color.Warning,
         "info" => Color.Info,
