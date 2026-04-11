@@ -1,0 +1,92 @@
+@inject ISignalRService SignalR
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+@if (!SignalR.IsConnected)
+{
+    <div class="jd-auth-gate-overlay" data-testid="auth-gate">
+        <MudPaper Elevation="4" Class="jd-auth-gate-card pa-8">
+            <MudStack Spacing="4" AlignItems="AlignItems.Center">
+
+                <MudIcon Icon="@Icons.Material.Filled.CloudOff" Color="Color.Error" Size="Size.Large" />
+                <MudText Typo="Typo.h5" Align="Align.Center">Connect to Gateway</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                    Enter your JD.AI Gateway URL and token to continue.
+                </MudText>
+
+                <MudTextField @bind-Value="_gatewayUrl"
+                              Label="Gateway WebSocket URL"
+                              Placeholder="ws://127.0.0.1:18789"
+                              Variant="Variant.Outlined"
+                              data-testid="gateway-url-input"
+                              FullWidth="true"
+                              Class="mt-2" />
+
+                <MudTextField @bind-Value="_token"
+                              Label="Auth Token (optional)"
+                              Placeholder="Leave blank if not required"
+                              InputType="InputType.Password"
+                              Variant="Variant.Outlined"
+                              data-testid="gateway-token-input"
+                              FullWidth="true" />
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Size="Size.Large"
+                           FullWidth="true"
+                           Disabled="_connecting"
+                           OnClick="ConnectAsync"
+                           data-testid="connect-button">
+                    @(_connecting ? "Connecting\u2026" : "Connect")
+                </MudButton>
+
+                @if (!string.IsNullOrEmpty(SignalR.ConnectionError))
+                {
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Text" data-testid="auth-gate-error">
+                        @SignalR.ConnectionError
+                    </MudAlert>
+                }
+
+            </MudStack>
+        </MudPaper>
+    </div>
+}
+
+@code {
+    private string _gatewayUrl = "ws://127.0.0.1:18789";
+    private string? _token;
+    private bool _connecting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        SignalR.OnStateChanged += OnStateChanged;
+        var saved = await JS.InvokeAsync<string?>("localStorage.getItem", "jd-gateway-url");
+        if (!string.IsNullOrEmpty(saved))
+            _gatewayUrl = saved;
+    }
+
+    private async Task ConnectAsync()
+    {
+        _connecting = true;
+        StateHasChanged();
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", "jd-gateway-url", _gatewayUrl);
+            await SignalR.ConnectAsync(_gatewayUrl, string.IsNullOrWhiteSpace(_token) ? null : _token);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Connection failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _connecting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnStateChanged(object? sender, EventArgs e) => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => SignalR.OnStateChanged -= OnStateChanged;
+}

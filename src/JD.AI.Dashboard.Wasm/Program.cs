@@ -15,7 +15,8 @@ if (string.IsNullOrEmpty(gatewayUrl))
 
 builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(gatewayUrl) });
 builder.Services.AddScoped<GatewayApiClient>();
-builder.Services.AddSingleton(new SignalRService(gatewayUrl));
+builder.Services.AddSingleton<SignalRService>(sp => new SignalRService(gatewayUrl));
+builder.Services.AddSingleton<ISignalRService>(sp => sp.GetRequiredService<SignalRService>());
 builder.Services.AddMudServices(config =>
 {
     config.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight;
