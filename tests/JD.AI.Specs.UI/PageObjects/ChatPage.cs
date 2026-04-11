@@ -47,6 +47,9 @@ public sealed class ChatPage : BasePage
     // ── Streaming indicator ──
     public ILocator StreamingCursor => Page.Locator(".jd-cursor");
 
+    // ── Streaming cancel ──
+    public ILocator StreamingCancelButton => Page.Locator("[data-testid='cancel-stream-button']");
+
     // ── Disabled state detection ──
     public ILocator MessageInputDisabled => Page.Locator(".jd-chat-input input[disabled], .jd-chat-input textarea[disabled], .jd-chat-input .mud-disabled input");
 

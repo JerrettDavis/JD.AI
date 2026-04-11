@@ -7,85 +7,12 @@
 <PageTitle>Chat — JD.AI</PageTitle>
 
 <div class="jd-chat-container">
-    @* ── Top bar: channel selector + session controls ── *@
+    @* ── Top bar: agent selector + controls ── *@
     <MudPaper data-testid="chat-header" Class="jd-chat-header" Elevation="0">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.NoWrap">
 
             <MudIcon Icon="@Icons.Material.Filled.Chat" Size="Size.Small" Color="Color.Primary" />
             <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="jd-chat-header-label">Chat</MudText>
-
-            @* Channel filter *@
-            <MudSelect data-testid="channel-selector"
-                       @bind-Value="_selectedChannel"
-                       Label="Channel"
-                       Variant="Variant.Outlined"
-                       Margin="Margin.Dense"
-                       Dense="true"
-                       Style="min-width:160px;flex:0 0 160px;">
-                <MudSelectItem T="string" Value="@("all")">
-                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
-                        <MudIcon Icon="@Icons.Material.Filled.SelectAll" Size="Size.Small" />
-                        <span>All channels</span>
-                    </MudStack>
-                </MudSelectItem>
-                <MudSelectItem T="string" Value="@("discord")">
-                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
-                        <MudIcon Icon="@GetChannelIcon("discord")" Size="Size.Small" />
-                        <span>Discord</span>
-                    </MudStack>
-                </MudSelectItem>
-                <MudSelectItem T="string" Value="@("web")">
-                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
-                        <MudIcon Icon="@GetChannelIcon("web")" Size="Size.Small" />
-                        <span>Web</span>
-                    </MudStack>
-                </MudSelectItem>
-                <MudSelectItem T="string" Value="@("signal")">
-                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
-                        <MudIcon Icon="@GetChannelIcon("signal")" Size="Size.Small" />
-                        <span>Signal</span>
-                    </MudStack>
-                </MudSelectItem>
-                <MudSelectItem T="string" Value="@("telegram")">
-                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
-                        <MudIcon Icon="@GetChannelIcon("telegram")" Size="Size.Small" />
-                        <span>Telegram</span>
-                    </MudStack>
-                </MudSelectItem>
-                <MudSelectItem T="string" Value="@("slack")">
-                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
-                        <MudIcon Icon="@GetChannelIcon("slack")" Size="Size.Small" />
-                        <span>Slack</span>
-                    </MudStack>
-                </MudSelectItem>
-            </MudSelect>
-
-            @* Session selector — fills available space *@
-            @if (_allSessions.Length > 0)
-            {
-                <MudSelect data-testid="session-selector"
-                           @bind-Value="_activeSessionId"
-                           Label="Session"
-                           Variant="Variant.Outlined"
-                           Margin="Margin.Dense"
-                           Style="flex:1;min-width:160px;"
-                           Adornment="Adornment.Start"
-                           AdornmentIcon="@Icons.Material.Filled.History"
-                           TextChanged="@OnSessionSelected">
-                    @foreach (var s in _filteredSessions)
-                    {
-                        <MudSelectItem T="string" Value="@s.Id">
-                            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Wrap="Wrap.NoWrap">
-                                <MudIcon Icon="@GetChannelIcon(s.ChannelType)" Size="Size.Small"
-                                         Color="@GetChannelColor(s.ChannelType)" Style="flex-shrink:0;" />
-                                <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                                    @GetSessionLabel(s)
-                                </span>
-                            </MudStack>
-                        </MudSelectItem>
-                    }
-                </MudSelect>
-            }
 
             @* Agent selector — fills available space *@
             @if (_agents.Length > 0)
@@ -114,33 +41,12 @@
                 </MudChip>
             }
 
-            <MudTooltip Text="New conversation">
-                <MudIconButton data-testid="new-chat-button" Icon="@Icons.Material.Filled.AddComment" Color="Color.Primary" Size="Size.Small"
-                               OnClick="NewConversation" />
-            </MudTooltip>
-            <MudTooltip Text="Export conversation">
-                <MudIconButton data-testid="export-chat-button" Icon="@Icons.Material.Filled.Download" Color="Color.Default" Size="Size.Small"
-                               OnClick="ExportConversation" Disabled="@(string.IsNullOrEmpty(_activeSessionId))" />
-            </MudTooltip>
             <MudTooltip Text="Clear chat">
                 <MudIconButton data-testid="clear-chat-button" Icon="@Icons.Material.Filled.DeleteSweep" Color="Color.Error" Size="Size.Small"
                                OnClick="ClearChat" Disabled="@(_messages.Count == 0)" />
             </MudTooltip>
         </MudStack>
     </MudPaper>
-
-    @* ── Active channel badge ── *@
-    @if (!string.IsNullOrEmpty(_activeSessionId) && _activeSessionId != _lastLoadedSessionId)
-    {
-        var active = _allSessions.FirstOrDefault(s => s.Id == _activeSessionId);
-        if (active is not null)
-        {
-            <div class="jd-chat-channel-badge">
-                <MudIcon Icon="@GetChannelIcon(active.ChannelType)" Size="Size.Small" />
-                <span>Viewing <strong>@active.ChannelDisplay</strong> session</span>
-            </div>
-        }
-    }
 
     @* ── Messages area ── *@
     <div class="jd-chat-messages" @ref="_messagesContainer">
@@ -153,7 +59,7 @@
                     Start a conversation
                 </MudText>
                 <MudText Typo="Typo.body2" Color="Color.Secondary" Style="opacity:.3;">
-                    Select a channel and session above, or start a new conversation.
+                    Type a message below to chat with the selected agent.
                 </MudText>
             </div>
         }
@@ -209,23 +115,6 @@
         }
     </div>
 
-    @* ── Token counter bar ── *@
-    @if (_totalTokensIn > 0 || _totalTokensOut > 0)
-    {
-        <div class="jd-chat-token-bar">
-            <MudIcon Icon="@Icons.Material.Filled.Token" Size="Size.Small" Style="opacity:0.5;" />
-            <MudText Typo="Typo.caption" Color="Color.Secondary">
-                Tokens: <strong>@_totalTokensIn.ToString("N0")</strong> in / <strong>@_totalTokensOut.ToString("N0")</strong> out
-            </MudText>
-            @if (_activeSession is not null)
-            {
-                <MudText Typo="Typo.caption" Color="Color.Default" Class="ml-auto" style="opacity:.5;">
-                    @_activeSession.ChannelDisplay · @_activeSession.MessageCount messages
-                </MudText>
-            }
-        </div>
-    }
-
     @* ── Input bar ── *@
     <MudPaper Class="jd-chat-input" Elevation="0">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
@@ -238,6 +127,16 @@
                           OnKeyDown="OnKeyDown"
                           Disabled="@(_streaming || string.IsNullOrEmpty(_selectedAgentId))"
                           Immediate="true" />
+            @if (_streaming)
+            {
+                <MudTooltip Text="Cancel streaming">
+                    <MudIconButton data-testid="cancel-stream-button"
+                                   Icon="@Icons.Material.Filled.StopCircle"
+                                   Color="Color.Error"
+                                   Size="Size.Small"
+                                   OnClick="CancelStreaming" />
+                </MudTooltip>
+            }
         </MudStack>
     </MudPaper>
 </div>
@@ -263,18 +162,6 @@
         font-weight: 600;
         letter-spacing: 0.02em;
         white-space: nowrap;
-        flex-shrink: 0;
-    }
-
-    .jd-chat-channel-badge {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 20px;
-        background: rgba(99,102,241,0.08);
-        border-bottom: 1px solid rgba(99,102,241,0.15);
-        font-size: 0.72rem;
-        color: var(--mud-palette-primary);
         flex-shrink: 0;
     }
 
@@ -338,16 +225,6 @@
         justify-content: flex-end;
     }
 
-    .jd-chat-token-bar {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 20px;
-        border-top: 1px solid rgba(136,146,168,0.08);
-        background: rgba(20,20,36,0.3);
-        flex-shrink: 0;
-    }
-
     .jd-chat-input {
         padding: 12px 20px;
         border-top: 1px solid rgba(136,146,168,0.12);
@@ -383,60 +260,20 @@
 </style>
 
 @code {
-    private const string LocalStorageKey = "jdai_active_session";
-
-    private static readonly Dictionary<string, string> ChannelIcons = new()
-    {
-        ["discord"]  = "🟪",  // using text emoji as icon placeholder — MudIcon fallback
-        ["signal"]    = "⚡",
-        ["telegram"]  = "✈",
-        ["slack"]     = "💬",
-        ["web"]       = "🌐",
-        ["openclaw"]  = "🦞",
-        ["all"]       = "⊞",
-    };
-
     private AgentInfo[] _agents = [];
-    private SessionInfo[] _allSessions = [];
     private string _selectedAgentId = "";
-    private string _activeSessionId = "";
-    private string _lastLoadedSessionId = "";
     private string _userInput = "";
     private bool _loading = true;
     private bool _streaming;
     private string _streamBuffer = "";
-    private int _totalTokensIn;
-    private int _totalTokensOut;
     private ElementReference _messagesContainer;
     private readonly List<ChatMessage> _messages = [];
     private CancellationTokenSource? _streamCts;
-    private string _selectedChannel = "all";
-    private SessionInfo? _activeSession;
-
-    /// <summary>Returns sessions filtered by the currently selected channel.</summary>
-    private IEnumerable<SessionInfo> _filteredSessions =>
-        _selectedChannel == "all"
-            ? _allSessions
-            : _allSessions.Where(s => string.Equals(s.ChannelType, _selectedChannel, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync()
     {
         await LoadAgents();
-        await LoadSessions();
-        // Restore saved session once, after sessions are loaded.
-        // NOT in OnParametersSetAsync — that fires on every re-render and
-        // causes a cascade that reloads the session before SaveActiveSessionId
-        // has written the new ID to localStorage.
-        await RestoreActiveSession();
         _loading = false;
-    }
-
-    protected override async Task OnParametersSetAsync()
-    {
-        // Intentionally empty — session restore is only in OnInitializedAsync.
-        // OnSessionSelected (MudSelect TextChanged) handles user-initiated
-        // session changes by directly calling LoadSession.
-        await Task.CompletedTask;
     }
 
     private async Task LoadAgents()
@@ -445,90 +282,6 @@
         catch (Exception ex) { Snackbar.Add($"Unable to load agents: {ex.Message}", Severity.Error); }
         if (_agents.Length > 0 && string.IsNullOrEmpty(_selectedAgentId))
             _selectedAgentId = _agents[0].Id;
-    }
-
-    private async Task LoadSessions()
-    {
-        try { _allSessions = await Api.GetSessionsAsync(50); }
-        catch { /* Gateway may be down */ }
-    }
-
-    private async Task RestoreActiveSession()
-    {
-        try
-        {
-            var savedId = await JS.InvokeAsync<string>("localStorage.getItem", LocalStorageKey);
-            if (!string.IsNullOrEmpty(savedId))
-                await LoadSession(savedId);
-        }
-        catch { /* localStorage may not be available during prerender */ }
-    }
-
-    private async Task LoadSession(string sessionId)
-    {
-        // Set _lastLoadedSessionId immediately — even if the API call fails,
-        // we don't want OnSessionSelected to re-fire and reload the same broken session.
-        _lastLoadedSessionId = sessionId;
-        try
-        {
-            var session = await Api.GetSessionAsync(sessionId);
-            if (session is null) return;
-
-            _activeSessionId = session.Id;
-            _activeSession = session;
-            _messages.Clear();
-            _totalTokensIn = 0;
-            _totalTokensOut = 0;
-
-            foreach (var turn in session.Turns.OrderBy(t => t.TurnIndex))
-            {
-                var isUser = string.Equals(turn.Role, "user", StringComparison.OrdinalIgnoreCase);
-                _messages.Add(new ChatMessage(
-                    isUser,
-                    isUser ? (_selectedAgentId ?? "agent") : (turn.ModelId ?? session.ModelId ?? "agent"),
-                    turn.Content,
-                    turn.CreatedAt.LocalDateTime,
-                    turn.TokensIn,
-                    turn.TokensOut));
-                _totalTokensIn += turn.TokensIn;
-                _totalTokensOut += turn.TokensOut;
-            }
-
-            await SaveActiveSessionId(sessionId);
-            await JS.InvokeVoidAsync("jdChat.scrollToBottom", _messagesContainer);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Failed to load session: {ex.Message}", Severity.Warning);
-        }
-    }
-
-    private async Task OnSessionSelected(string _)
-    {
-        if (string.IsNullOrEmpty(_activeSessionId) || _activeSessionId == _lastLoadedSessionId)
-            return;
-        await LoadSession(_activeSessionId);
-        StateHasChanged();
-    }
-
-    private async Task NewConversation()
-    {
-        _messages.Clear();
-        _activeSessionId = "";
-        _lastLoadedSessionId = "";
-        _activeSession = null;
-        _totalTokensIn = 0;
-        _totalTokensOut = 0;
-        try { await JS.InvokeVoidAsync("localStorage.removeItem", LocalStorageKey); }
-        catch { /* ignore */ }
-        StateHasChanged();
-    }
-
-    private async Task ExportConversation()
-    {
-        if (string.IsNullOrEmpty(_activeSessionId)) return;
-        try { await Api.ExportSessionAsync(_activeSessionId); Snackbar.Add("Session exported", Severity.Success); }
-        catch (Exception ex) { Snackbar.Add($"Export failed: {ex.Message}", Severity.Error); }
     }
 
     private async Task OnKeyDown(KeyboardEventArgs e)
@@ -574,8 +327,6 @@
 
             if (hasContent)
                 _messages.Add(new ChatMessage(false, _selectedAgentId, _streamBuffer, DateTime.Now, 0, 0));
-
-            await RefreshSessionsAfterMessage();
         }
         catch (OperationCanceledException) { /* user cancelled */ }
         catch (Exception ex) { Snackbar.Add($"Chat error: {ex.Message}", Severity.Error); }
@@ -589,106 +340,18 @@
         }
     }
 
-    private async Task RefreshSessionsAfterMessage()
+    private void CancelStreaming()
     {
-        try
-        {
-            _allSessions = await Api.GetSessionsAsync(50);
-
-            if (string.IsNullOrEmpty(_activeSessionId) && _allSessions.Length > 0)
-            {
-                var newest = _allSessions.OrderByDescending(s => s.UpdatedAt).FirstOrDefault();
-                if (newest is not null)
-                {
-                    _activeSessionId = newest.Id;
-                    _activeSession = newest;
-                    await SaveActiveSessionId(newest.Id);
-                    UpdateTokenCountsFromSession(newest);
-                }
-            }
-            else if (!string.IsNullOrEmpty(_activeSessionId))
-            {
-                _activeSession = _allSessions.FirstOrDefault(s => s.Id == _activeSessionId);
-                if (_activeSession is not null)
-                    UpdateTokenCountsFromSession(_activeSession);
-            }
-        }
-        catch { /* non-critical */ }
+        _streamCts?.Cancel();
     }
 
-    private void UpdateTokenCountsFromSession(SessionInfo session)
-    {
-        _totalTokensIn = 0;
-        _totalTokensOut = 0;
-        foreach (var turn in session.Turns)
-        {
-            _totalTokensIn += turn.TokensIn;
-            _totalTokensOut += turn.TokensOut;
-        }
-
-        var turnsByIndex = session.Turns.OrderBy(t => t.TurnIndex).ToList();
-        for (var i = 0; i < Math.Min(_messages.Count, turnsByIndex.Count); i++)
-        {
-            var msg = _messages[i];
-            var turn = turnsByIndex[i];
-            if (msg.TokensIn == 0 && msg.TokensOut == 0 && (turn.TokensIn > 0 || turn.TokensOut > 0))
-                _messages[i] = msg with { TokensIn = turn.TokensIn, TokensOut = turn.TokensOut };
-        }
-    }
-
-    private async Task SaveActiveSessionId(string sessionId)
-    {
-        try { await JS.InvokeVoidAsync("localStorage.setItem", LocalStorageKey, sessionId); }
-        catch { /* ignore */ }
-    }
-
-    private void ClearChat() { _messages.Clear(); _totalTokensIn = 0; _totalTokensOut = 0; StateHasChanged(); }
+    private void ClearChat() { _messages.Clear(); StateHasChanged(); }
 
     private async Task ScrollToBottom()
     {
         try { await Task.Delay(30); await JS.InvokeVoidAsync("jdChat.scrollToBottom", _messagesContainer); }
         catch { /* ignore during prerender */ }
     }
-
-    private static string GetSessionLabel(SessionInfo session)
-    {
-        var label = session.Name;
-        if (string.IsNullOrEmpty(label))
-        {
-            var firstTurn = session.Turns.OrderBy(t => t.TurnIndex).FirstOrDefault();
-            label = firstTurn?.Content;
-        }
-        if (string.IsNullOrEmpty(label))
-            label = session.Id;
-
-        if (label.Length > 45)
-            label = string.Concat(label.AsSpan(0, 42), "...");
-
-        return $"{label} ({session.UpdatedAt.LocalDateTime:MM/dd HH:mm})";
-    }
-
-    private static string GetChannelIcon(string? channelType) => channelType switch
-    {
-        "discord"  => Icons.Material.Filled.Forum,
-        "signal"   => Icons.Material.Filled.Notifications,
-        "telegram" => Icons.Material.Filled.Send,
-        "slack"    => Icons.Material.Filled.Chat,
-        "web"      => Icons.Material.Filled.Language,
-        "openclaw" => Icons.Material.Filled.Pets,
-        "all"      => Icons.Material.Filled.SelectAll,
-        _          => Icons.Material.Filled.QuestionMark
-    };
-
-    private static Color GetChannelColor(string? channelType) => channelType switch
-    {
-        "discord"  => Color.Primary,
-        "signal"   => Color.Info,
-        "telegram" => Color.Info,
-        "slack"    => Color.Warning,
-        "web"      => Color.Success,
-        "openclaw" => Color.Secondary,
-        _          => Color.Default
-    };
 
     private record ChatMessage(bool IsUser, string AgentId, string Content, DateTime Timestamp, int TokensIn, int TokensOut);
 }
