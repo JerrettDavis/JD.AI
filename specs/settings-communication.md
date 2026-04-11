@@ -1,4 +1,5 @@
 # Settings > Communication
+>**Verified:** Gateway authentication required. Session params do not bypass WebSocket auth for admin panel.
 
 **Route:** `/settings/communication`  
 **Nav Path:** Settings > Communication  

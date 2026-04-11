@@ -1,4 +1,5 @@
 # Settings > Debug
+>**Verified:** Gateway authentication required. Session params do not bypass WebSocket auth for admin panel.
 
 **Route:** `/settings/debug`  
 **Nav Path:** Sidebar > Settings > Debug (future tab)  

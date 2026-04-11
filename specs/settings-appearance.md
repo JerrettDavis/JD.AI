@@ -1,4 +1,5 @@
 # Settings > Appearance
+>**Verified:** Gateway authentication required. Session params do not bypass WebSocket auth for admin panel.
 
 **Route:** `/settings/appearance`  
 **Nav Path:** Settings > Appearance  

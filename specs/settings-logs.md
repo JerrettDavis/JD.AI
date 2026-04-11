@@ -1,4 +1,5 @@
 # Settings > Logs
+>**Verified:** Gateway authentication required. Session params do not bypass WebSocket auth for admin panel.
 
 **Route:** `/logs`  
 **Nav Path:** Sidebar > Settings > Logs  

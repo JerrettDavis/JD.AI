@@ -1,4 +1,5 @@
 # Settings > Automation
+>**Verified:** Gateway authentication required. Session params do not bypass WebSocket auth for admin panel.
 
 **Route:** `/settings/automation`  
 **Nav Path:** Settings > Automation  

@@ -1,4 +1,5 @@
 # Settings > Infrastructure
+>**Verified:** Gateway authentication required. Session params do not bypass WebSocket auth for admin panel.
 
 **Route:** `/settings/infrastructure`  
 **Nav Path:** Settings > Infrastructure  

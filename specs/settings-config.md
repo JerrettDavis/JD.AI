@@ -1,5 +1,7 @@
 # Settings > Config
 
+> **Verified:** Gateway authentication required. Session params do not bypass WebSocket auth for admin panel. Real content access requires OpenClaw dashboard URL or valid WebSocket token.
+
 **Route:** `/settings/config`  
 **Nav Path:** Settings > Config  
 **Description:** Centralized configuration management interface displaying all system settings organized by category with form and raw JSON editing modes.

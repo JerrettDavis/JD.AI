@@ -1,4 +1,5 @@
 # Settings > Providers & Agents
+>**Verified:** Gateway authentication required. Session params do not bypass WebSocket auth for admin panel.
 
 **Route:** `/settings`  
 **Nav Path:** Sidebar > Settings > (Providers tab / Agents tab)  
