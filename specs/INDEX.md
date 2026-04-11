@@ -29,5 +29,5 @@
 | File | Description | Status |
 |------|-------------|--------|
 | SITEMAP.md | Full hierarchical route map | complete |
-| FEATURE-MATRIX.md | Feature × page matrix | pending |
-| DASHBOARD-SPEC.md | Master recreatable spec | pending |
+| FEATURE-MATRIX.md | Feature × page matrix | complete |
+| DASHBOARD-SPEC.md | Master recreatable spec | complete |

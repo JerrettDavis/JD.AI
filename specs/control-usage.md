@@ -1,4 +1,6 @@
 # Control: Usage
+n> **Verified:** Real UI via authenticated playwright [2026-04-11]
+
 
 **Route:** `/control/usage`  
 **Nav Path:** Sidebar > Control > Usage  

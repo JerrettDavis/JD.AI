@@ -115,7 +115,16 @@ Example: `agent:jdai-default:discord:channel:1466622912307007690`
 
 ## Authentication Model
 
-- **Open pages:** Chat, Settings > Config, Settings > Communication, Settings > AI & Agents, Settings > Logs
-- **Auth-gated pages:** Control > Overview, Settings > Appearance, Settings > Automation, Settings > Infrastructure (require WebSocket gateway auth)
-- **Auth mechanism:** WebSocket URL + optional gateway token + optional password
-- **Auth gate UI:** Centered card with OpenClaw logo, "Gateway Dashboard" subtitle, connect button
+### Two-Tier Authentication
+
+| Tier | Scope | Mechanism |
+|------|-------|-----------|
+| **Session key** | `/chat` only | URL parameter `?session=<key>` |
+| **Gateway WebSocket auth** | All admin routes | Token from `openclaw dashboard` CLI command |
+
+- **Chat access:** `?session=agent:<name>:<provider>:<type>:<id>` authenticates the chat route
+- **Admin access:** All `/control/*`, `/agent/*`, `/settings/*` routes require gateway WebSocket authentication
+- **Token delivery:** `openclaw dashboard` CLI generates a tokenized URL (`#token=<TOKEN>` or query param)
+- **Auth gate UI:** Centered card with OpenClaw logo, "Gateway Dashboard" subtitle, WebSocket URL input, token input, password input, connect button
+- **Explicit auth gate pages:** Overview, Appearance, Automation, Infrastructure show visible login gate
+- **Implicit auth pages:** Other admin routes require gateway connection but may not show separate login gate

@@ -1,4 +1,6 @@
 # Control > Sessions
+n> **Verified:** Real UI via authenticated playwright [2026-04-11]
+
 
 **Route:** `/control/sessions`  
 **Nav Path:** Control > Sessions  

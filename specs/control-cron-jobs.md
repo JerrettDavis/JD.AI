@@ -1,4 +1,6 @@
 # Control: Cron Jobs
+n> **Verified:** Real UI via authenticated playwright [2026-04-11]
+
 
 **Route:** `/cron` (alt: `/control/cron-jobs`)  
 **Nav Path:** Sidebar > Control > Cron Jobs  

@@ -1,5 +1,7 @@
 # Control > Instances
 
+> **Verified:** Real UI via authenticated playwright [2026-04-11]
+
 **Route:** `/control/instances`  
 **Nav Path:** Control > Instances  
 **Description:** Monitor and manage system instances (agent containers, services, or processing nodes), including their status, configuration, and resource usage.

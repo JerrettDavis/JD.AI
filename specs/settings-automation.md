@@ -1,4 +1,6 @@
 # Settings > Automation
+n> **Verified:** Real UI via authenticated playwright [2026-04-11]
+
 >**Verified:** Gateway authentication required. Session params do not bypass WebSocket auth for admin panel.
 
 **Route:** `/settings/automation`  
