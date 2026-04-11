@@ -1,0 +1,158 @@
+@inject ISnackbar Snackbar
+
+<MudGrid Spacing="3" Style="height:100%;">
+    <!-- Left Panel: Provider List -->
+    <MudItem xs="12" md="4" Class="overflow-auto" Style="max-height:600px;">
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+                Messaging platforms and their configuration.
+            </MudText>
+            <div data-testid="provider-list" Class="pa-0">
+                @foreach (var channel in Channels)
+                {
+                    var isSelected = _selected?.Type == channel.Type;
+                    var selectedStyle = isSelected ? "background-color:rgba(33,150,243,0.12);" : "";
+                    <div data-testid="@($"provider-item-{channel.Type}")"
+                         @onclick="@(() => SelectChannel(channel))"
+                         Class="@(isSelected ? "mud-primary mud-primary-text" : "")"
+                         Style="@($"cursor:pointer; padding:8px; border-radius:4px; margin-bottom:4px; {selectedStyle}")">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.Circle" Size="Size.Small"
+                                     data-testid="@($"provider-status-{channel.Type}")"
+                                     Color="@(channel.Enabled ? Color.Success : Color.Default)" />
+                            <MudText Typo="Typo.subtitle2" Style="flex:1;">@channel.Name</MudText>
+                            <MudSwitch @bind-Value="channel.Enabled" Color="Color.Primary" UncheckedColor="Color.Default"
+                                       data-testid="@($"provider-enable-{channel.Type}")" />
+                        </MudStack>
+                    </div>
+                }
+            </div>
+        </MudStack>
+    </MudItem>
+
+    <!-- Right Panel: Configuration Form -->
+    <MudItem xs="12" md="8">
+        @if (_selected != null)
+        {
+            <MudStack Spacing="3" data-testid="channel-config-form">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+                    <MudText Typo="Typo.h5">@_selected.Name</MudText>
+                    <MudSwitch @bind-Value="_selected.Enabled" Color="Color.Primary" UncheckedColor="Color.Default"
+                               data-testid="@($"provider-enable-{_selected.Type}")" />
+                </MudStack>
+
+                @if (_selected.Enabled)
+                {
+                    <MudDivider />
+
+                    <MudStack Spacing="2">
+                        <MudSwitch @bind-Value="_selected.AutoConnect" Color="Color.Primary" UncheckedColor="Color.Default">
+                            <ChildContent>
+                                <MudStack Spacing="0">
+                                    <MudText>Auto-Connect</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Connect automatically on gateway start</MudText>
+                                </MudStack>
+                            </ChildContent>
+                        </MudSwitch>
+                    </MudStack>
+
+                    @if (_selected.Settings.Count > 0)
+                    {
+                        <MudDivider />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">
+                            Settings
+                        </MudText>
+
+                        @foreach (var kvp in _selected.Settings)
+                        {
+                            var key = kvp.Key;
+                            var isSensitive = IsSensitiveKey(key);
+                            var isRevealed = _revealedFields.Contains(key);
+
+                            <MudStack Spacing="1" data-testid="@($"field-{key}")" Class="mb-2">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudTextField @bind-Value="_selected.Settings[key]" Label="@key" Variant="Variant.Outlined"
+                                                  InputType="@(isSensitive && !isRevealed ? InputType.Password : InputType.Text)"
+                                                  Style="flex:1;" />
+                                    @if (isSensitive)
+                                    {
+                                        <MudIconButton Icon="@(isRevealed ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                                       Size="Size.Small"
+                                                       data-testid="@($"toggle-visibility-{key}")"
+                                                       OnClick="@(() => ToggleReveal(key))"
+                                                       Color="Color.Default" />
+                                    }
+                                </MudStack>
+                            </MudStack>
+                        }
+                    }
+                }
+
+                <MudStack Row="true" Justify="Justify.FlexEnd">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save"
+                               data-testid="save-communication-button"
+                               OnClick="SaveAsync" Disabled="_saving">
+                        @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+                        Save Configuration
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+        }
+        else
+        {
+            <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="height:100%; min-height:300px;">
+                <MudText Typo="Typo.body1" Color="Color.Secondary">Select a provider to configure</MudText>
+            </MudStack>
+        }
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public IList<ChannelConfigModel> Channels { get; set; } = new List<ChannelConfigModel>();
+    [Parameter] public GatewayApiClient Api { get; set; } = null!;
+
+    private ChannelConfigModel? _selected;
+    private readonly HashSet<string> _revealedFields = [];
+    private bool _saving;
+
+    private void SelectChannel(ChannelConfigModel channel)
+    {
+        _selected = channel;
+        _revealedFields.Clear();
+    }
+
+    private void ToggleReveal(string key)
+    {
+        if (_revealedFields.Contains(key))
+            _revealedFields.Remove(key);
+        else
+            _revealedFields.Add(key);
+    }
+
+    private static bool IsSensitiveKey(string key) =>
+        key.Contains("botToken", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("token", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("apiKey", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("secret", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("password", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("apiHash", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("apiId", StringComparison.OrdinalIgnoreCase);
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            await Api.UpdateChannelsConfigAsync(Channels);
+            Snackbar.Add("Channel configuration saved", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}
