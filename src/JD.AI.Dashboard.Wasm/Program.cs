@@ -17,5 +17,6 @@ builder.Services.AddScoped<GatewayApiClient>();
 builder.Services.AddSingleton(new SignalRService(gatewayUrl));
 builder.Services.AddMudServices();
 builder.Services.AddScoped<NavState>();
+builder.Services.AddScoped<ThemeService>();
 
 await builder.Build().RunAsync();

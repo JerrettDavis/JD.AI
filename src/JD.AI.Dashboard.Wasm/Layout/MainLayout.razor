@@ -1,7 +1,8 @@
 @inherits LayoutComponentBase
 @inject SignalRService SignalR
+@inject ThemeService ThemeService
 
-<MudThemeProvider Theme="_theme" IsDarkMode="true" />
+<MudThemeProvider Theme="_theme" IsDarkMode="@ThemeService.IsDarkMode" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -15,6 +16,12 @@
             <MudText Typo="Typo.caption" Color="Color.Inherit" Class="jd-logo-sub">Gateway</MudText>
         </MudStack>
         <MudSpacer />
+        <MudIconButton Icon="@ThemeToggleIcon"
+                       Color="Color.Inherit"
+                       Size="Size.Small"
+                       OnClick="@CycleTheme"
+                       data-testid="theme-toggle"
+                       aria-label="Toggle theme" />
         <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
                  Color="@(SignalR.IsConnected ? Color.Success : Color.Error)"
                  Icon="@(SignalR.IsConnected ? Icons.Material.Filled.FiberManualRecord : Icons.Material.Filled.CloudOff)"
@@ -75,9 +82,29 @@
         }
     };
 
+    private string ThemeToggleIcon => ThemeService.Mode switch
+    {
+        ThemeMode.Light  => Icons.Material.Filled.LightMode,
+        ThemeMode.Dark   => Icons.Material.Filled.DarkMode,
+        _                => Icons.Material.Filled.BrightnessAuto,
+    };
+
+    private async Task CycleTheme()
+    {
+        var next = ThemeService.Mode switch
+        {
+            ThemeMode.System => ThemeMode.Light,
+            ThemeMode.Light  => ThemeMode.Dark,
+            _                => ThemeMode.System,
+        };
+        await ThemeService.SetModeAsync(next);
+    }
+
     protected override async Task OnInitializedAsync()
     {
         SignalR.OnStateChanged += (_, _) => InvokeAsync(StateHasChanged);
+        ThemeService.OnChanged += (_, _) => InvokeAsync(StateHasChanged);
+        await ThemeService.InitAsync();
         await SignalR.ConnectAsync();
     }
 }

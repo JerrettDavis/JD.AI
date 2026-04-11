@@ -151,3 +151,11 @@ html, body, * {
 .blazor-error-boundary::after {
     content: "An error has occurred.";
 }
+/* ── Theme: pre-load dark to prevent flash ── */
+html[data-theme="light"] {
+    color-scheme: light;
+}
+html[data-theme="dark"],
+html:not([data-theme]) {
+    color-scheme: dark;
+}

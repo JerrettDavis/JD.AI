@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>JD.AI — Gateway Dashboard</title>
     <base href="/" />
+    <script>
+      (function() {
+        var t = localStorage.getItem('jd-theme');
+        if (t === 'light') document.documentElement.setAttribute('data-theme','light');
+        else document.documentElement.setAttribute('data-theme','dark');
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..800;1,9..40,300..800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -33,5 +40,8 @@
     <script src="_framework/blazor.webassembly.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script src="js/chat-interop.js"></script>
+    <script>
+      window.jdMatchesDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
+    </script>
 </body>
 </html>
