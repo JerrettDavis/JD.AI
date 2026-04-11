@@ -1,0 +1,30 @@
+@* Reusable error boundary for gateway connection failures.
+   Shows a MudAlert with retry button when HasError is true.
+   Renders ChildContent passthrough when HasError is false. *@
+
+@if (HasError)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined"
+              data-testid="gateway-error-alert" Class="mt-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+            <MudText data-testid="gateway-error-message">@Message</MudText>
+            <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       OnClick="OnRetry"
+                       data-testid="gateway-retry-button">
+                Retry
+            </MudButton>
+        </MudStack>
+    </MudAlert>
+}
+else
+{
+    @ChildContent
+}
+
+@code {
+    [Parameter] public bool HasError { get; set; }
+    [Parameter] public string Message { get; set; } = "Gateway unreachable. Is the JD.AI Gateway running?";
+    [Parameter] public EventCallback OnRetry { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}
