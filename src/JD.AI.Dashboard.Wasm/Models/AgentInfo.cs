@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace JD.AI.Dashboard.Wasm.Models;
 
 public record AgentInfo(string Id, string Provider, string Model, int TurnCount, DateTimeOffset CreatedAt);
@@ -28,3 +30,37 @@ public record ModelParameters
     public int? Seed { get; set; }
     public string[] StopSequences { get; set; } = [];
 }
+
+public record AgentDetailInfo
+{
+    public string Id { get; init; } = "";
+    public string Provider { get; init; } = "";
+    public string Model { get; init; } = "";
+    public string SystemPrompt { get; init; } = "";
+    public bool IsDefault { get; init; }
+    public ToolInfo[] Tools { get; init; } = [];
+    public SkillInfo[] AssignedSkills { get; init; } = [];
+}
+
+public record ToolInfo
+{
+    public string Name { get; init; } = "";
+    public string Description { get; init; } = "";
+    public bool IsAllowed { get; init; } = true;
+}
+
+public record SkillInfo
+{
+    public string Id { get; init; } = "";
+    public string Name { get; init; } = "";
+    public string Emoji { get; init; } = "";
+    public string Description { get; init; } = "";
+    public string Category { get; init; } = "";
+    public SkillStatus Status { get; init; } = SkillStatus.Ready;
+    public bool Enabled { get; init; }
+    public string? StatusReason { get; init; }
+    public Dictionary<string, string> Config { get; init; } = [];
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum SkillStatus { Ready, NeedsSetup, Disabled }

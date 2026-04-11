@@ -150,6 +150,35 @@ public sealed class GatewayApiClient(HttpClient http)
     public Task SyncOpenClawAsync() =>
         SendWithoutContentAsync(HttpMethod.Post, "api/gateway/openclaw/agents/sync");
 
+    public async Task<AgentDetailInfo?> GetAgentDetailAsync(string id)
+        => await http.GetFromJsonAsync<AgentDetailInfo>($"api/v1/agents/{Uri.EscapeDataString(id)}");
+
+    public async Task SetDefaultAgentAsync(string id)
+    {
+        var response = await http.PostAsync(
+            new Uri($"api/v1/agents/{Uri.EscapeDataString(id)}/default", UriKind.Relative), null);
+        response.EnsureSuccessStatusCode();
+    }
+
+    // Skills
+    public async Task<SkillInfo[]> GetSkillsAsync()
+        => await http.GetFromJsonAsync<SkillInfo[]>("api/v1/skills") ?? [];
+
+    public async Task ToggleSkillAsync(string id, bool enabled)
+    {
+        var action = enabled ? "enable" : "disable";
+        var response = await http.PostAsync(
+            new Uri($"api/v1/skills/{Uri.EscapeDataString(id)}/{action}", UriKind.Relative), null);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task UpdateSkillConfigAsync(string id, Dictionary<string, string> config)
+    {
+        var response = await http.PutAsJsonAsync(
+            new Uri($"api/v1/skills/{Uri.EscapeDataString(id)}/config", UriKind.Relative), config);
+        response.EnsureSuccessStatusCode();
+    }
+
     // Plugins
     public async Task<PluginInfo[]> GetPluginsAsync()
         => await http.GetFromJsonAsync<PluginInfo[]>("api/plugins") ?? [];
