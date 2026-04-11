@@ -442,7 +442,7 @@
     private async Task LoadAgents()
     {
         try { _agents = await Api.GetAgentsAsync(); }
-        catch { /* Gateway may be down */ }
+        catch (Exception ex) { Snackbar.Add($"Unable to load agents: {ex.Message}", Severity.Error); }
         if (_agents.Length > 0 && string.IsNullOrEmpty(_selectedAgentId))
             _selectedAgentId = _agents[0].Id;
     }
