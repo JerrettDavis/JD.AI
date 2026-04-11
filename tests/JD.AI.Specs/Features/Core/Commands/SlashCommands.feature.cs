@@ -26,8 +26,8 @@ namespace JD.AI.Specs.Features.Core.Commands
         private static string[] featureTags = new string[] {
                 "commands"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Commands", "Slash Commands", "  As a platform\n  I need command routing\n  So that users can invoke commands from" +
-                " any channel", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Commands", "Slash Commands", "  As a platform\r\n  I need command routing\r\n  So that users can invoke commands fr" +
+                "om any channel", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

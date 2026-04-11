@@ -1789,11 +1789,8 @@ What's the weather like?";
     [Fact]
     public void StripOpenClawMetadata_MetadataMarkerPresentButNoCodeFence_ReturnsLastParagraph()
     {
-        var input = @"Some text with (untrusted metadata) mentioned
-
-But not in a code fence
-
-Here is the actual message";
+        // Use explicit \n\n (not \r\n\r\n) so the fallback paragraph split works on Windows
+        var input = "Some text with (untrusted metadata) mentioned\n\nBut not in a code fence\n\nHere is the actual message";
 
         var method = typeof(OpenClawRoutingService).GetMethod(
             "StripOpenClawMetadata",

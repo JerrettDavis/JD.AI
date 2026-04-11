@@ -28,8 +28,8 @@ namespace JD.AI.Specs.Features.Gateway
                 "gateway",
                 "ratelimit"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Gateway", "Rate Limit Middleware", "    As a gateway administrator\n    I want rate limiting on API endpoints\n    So t" +
-                "hat the gateway is protected from abuse", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Gateway", "Rate Limit Middleware", "    As a gateway administrator\r\n    I want rate limiting on API endpoints\r\n    So" +
+                " that the gateway is protected from abuse", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

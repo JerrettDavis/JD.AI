@@ -30,8 +30,8 @@ namespace JD.AI.Specs.Features.Gateway
                 "api",
                 "channels"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Gateway", "Channel Endpoints", "    As a gateway consumer\n    I want to manage messaging channels via the REST AP" +
-                "I\n    So that I can list, connect, and disconnect channel adapters", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Gateway", "Channel Endpoints", "    As a gateway consumer\r\n    I want to manage messaging channels via the REST A" +
+                "PI\r\n    So that I can list, connect, and disconnect channel adapters", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

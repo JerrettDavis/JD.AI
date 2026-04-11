@@ -28,8 +28,8 @@ namespace JD.AI.Specs.Features.Gateway
                 "gateway",
                 "auth"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Gateway", "API Key Auth Middleware", "    As a gateway administrator\n    I want API key authentication on protected end" +
-                "points\n    So that only authorized clients can access the gateway API", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Gateway", "API Key Auth Middleware", "    As a gateway administrator\r\n    I want API key authentication on protected en" +
+                "dpoints\r\n    So that only authorized clients can access the gateway API", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

@@ -21,7 +21,7 @@ The page displays a comprehensive dashboard with gateway connection info, system
 - **WebSocket URL input** — Gateway connection endpoint (displayed, not editable in this view)
 - **Gateway Token input** — Authentication token field (password-masked)
 - **Password field** — Optional secondary auth mechanism, labeled "Password (not stored)"
-- **Default Session Key dropdown** — Language selection (currently: English, with support for 简体中文, 繁體中文, Português, Deutsch, Español, 日本語, 한국어, Français, Türkçe, Українська, Bahasa Indonesia, Polski)
+- **Language selector dropdown** — 12 language options: English, Chinese simplified (简体中文), Chinese traditional (繁體中文), Portuguese (Português), German (Deutsch), Spanish (Español), Japanese (日本語), Korean (한국어), French (Français), Turkish (Türkçe), Ukrainian (Українська), Indonesian (Bahasa Indonesia), Polish (Polski)
 - **Connect button** — Re-establish connection with current settings
 - **Refresh button** — Manually refresh all dashboard data
 
@@ -33,7 +33,7 @@ System operational metrics (read-only display):
 - **UPTIME** — Time since last start (value: "19h")
 - **TICK INTERVAL** — Heartbeat/polling interval (value: "30s")
 - **LAST CHANNELS REFRESH** — Last successful channel config reload (value: "just now")
-- **COST** — Current operational cost summary (value: "$0.00", "0 tokens · 28 msgs")
+- **COST** — Current operational cost summary (value: "$0.00", "0 tokens", "30 msgs")
 
 #### 3. Operational Counters
 
@@ -52,11 +52,10 @@ Chronological listing of active/recent sessions with details:
 - Time elapsed since last activity (e.g., "58m ago", "17h ago", "18h ago")
 
 Example entries observed:
-- `heartbeat` (qwen3.5b:9b, 58m ago)
-- `discord:679904321848344624#jarvis` (gpt-5.3-codex, 17h ago)
-- `discord:g-1466622912307007690-heartbeat` (qwen3.5b:9b, 18h ago)
-- `webchat:679904321848344624#jarvis` (MiniMax-M2.7, 18h ago)
-- `webchat:679904321848344624#jarvis` (gpt-5.4, 18h ago)
+- `heartbeat` (qwen3.5b:9b)
+- `discord:679904321848344624#jarvis` (gpt-5.3-codex)
+- `webchat` (MiniMax-M2.7)
+- `webchat` (gpt-5.4)
 
 #### 5. Skills Dependencies Alert
 
@@ -174,5 +173,7 @@ The page likely follows a **dashboard grid layout**:
 - **Responsiveness:** The dashboard should adapt to mobile/tablet screens; metrics grid may collapse to single column on smaller viewports.
 - **Error Handling:** Connection failures, timeouts, or gateway unreachability should display user-friendly error messages with reconnect options.
 - **Empty States:** If no agents/sessions/channels are active, display helpful prompts to guide users to setup pages (Control > Channels, Agent > Agents).
-- **Locale Support:** Language selector should support at least English, Spanish, French, German, Japanese; backend must respond with translations for all UI strings.
+- **Locale Support:** Language selector supports 12 locales (en, zh-CN, zh-TW, pt-PT, de-DE, es-ES, ja-JP, ko-KR, fr-FR, tr-TR, uk-UA, id-ID, pl-PL); backend must respond with translations for all UI strings.
 - **Accessibility:** All interactive elements should be keyboard-navigable; status indicators should include aria-labels for screen readers.
+
+> **Enriched:** Real field names/values from live UI [2026-04-11]

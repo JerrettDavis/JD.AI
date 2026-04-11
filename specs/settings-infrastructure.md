@@ -1,122 +1,150 @@
 # Settings > Infrastructure
->**Verified:** Gateway authentication required. Session params do not bypass WebSocket auth for admin panel.
 
 **Route:** `/settings/infrastructure`  
 **Nav Path:** Settings > Infrastructure  
-**Description:** Configure server infrastructure, connection settings, resource limits, and deployment/scaling parameters.
+**Description:** Configure gateway, web, browser, and media infrastructure settings with fine-grained network, access, and reliability controls.
 
-## Status
-**⚠️ Authentication Required** — This page requires gateway authentication via WebSocket connection before the UI content is accessible.
+**Verified:** Live UI [2026-04-11] via session-persistent auth
 
-## Authentication Gate (Current State)
+## Overview
 
-The Infrastructure settings page is protected by a login gate with the following fields:
+The Infrastructure settings page is a comprehensive configuration interface for gateway networking, web hosting, browser automation, media handling, and external service integrations. It features a **tabbed interface** (Form/Raw views) with extensive field controls organized by subsection.
 
-### Layout
-- Centered card-based form on a full-screen background
-- Header with OpenClaw logo and "Gateway Dashboard" subtitle
+## Main Tabs
 
-### Components
+- **Form** — Visual form editor (currently active)
+- **Raw** — Raw JSON/text editor (available but raw mode disabled for safe round-tripping)
 
-- **WebSocket URL input** — Text field with placeholder `ws://127.0.0.1:18789`, stores the gateway connection endpoint
-- **Gateway Token input** — Password field with placeholder `OPENCLAW_GATEWAY_TOKEN (optional)`, allows optional token authentication
-- **Password input** — Password field labeled "Password (not stored)", secondary auth mechanism
-- **Token visibility toggle button** — Icon button to show/hide Gateway Token field
-- **Password visibility toggle button** — Icon button to show/hide Password field
-- **Connect button** — Submit button to establish WebSocket connection and proceed to authenticated content
+## Page Controls
 
-## Expected Content (Awaiting Auth)
+- **"No changes"** — Status indicator showing unsaved state
+- **"Raw mode disabled (snapshot cannot safely round-trip raw text)"** — Notice about raw editing limitations
+- **Open** — Button to expand/view something
+- **Reload** — Button to discard unsaved changes
+- **Save** — Button to persist configuration
+- **Apply** — Button to apply changes
+- **Update** — Button for immediate update
 
-Based on the task requirements, once authenticated, this page should contain:
+## Main Configuration Sections
 
-- **Server configuration fields** — Server address, port, hostname, protocol settings
-- **Connection settings** — Connection timeout, retry policies, pooling configuration
-- **Resource limits** — Memory limits, CPU allocation, concurrent connection limits, request timeouts
-- **Environment configuration** — Environment variables, runtime configuration, feature flags
-- **Deployment/scale settings** — Number of instances, load balancer configuration, scaling policies, health check configuration
+### 1. Infrastructure (Main Header)
 
-## Likely Sections
+Subsections:
+- Gateway
+- Web
+- Browser
+- NodeHost
+- CanvasHost
+- Discovery
+- Media
+- Acp
+- Mcp
 
-### Server Configuration
-- Server address/hostname input
-- Port configuration
-- Protocol selection (HTTP/HTTPS)
-- SSL/TLS certificate settings
+### 2. Gateway Configuration
 
-### Connection & Network
-- Connection timeout (seconds)
-- Read/write timeout
-- Max retries
-- Retry backoff strategy
-- Connection pool size
+**Description:** "Gateway server settings (port, auth, binding)"
 
-### Resource Limits
-- Memory allocation (MB/GB)
-- CPU cores
-- Max concurrent connections
-- Request queue size
-- Session timeout
+**Fields:**
 
-### Environment
-- Environment variable input (key=value pairs)
-- Runtime mode selection (development/staging/production)
-- Debug logging toggle
-- Custom configuration fields
+1. **Gateway Allow x-real-ip Fallback** — Toggle
+   - Description: "Enables x-real-ip fallback when x-forwarded-for is missing in proxy scenarios. Keep disabled unless your ingress stack requires this compatibility behavior."
+   - Tags: access, network, reliability
 
-### Deployment & Scaling
-- Number of worker instances
-- Load balancer configuration
-- Auto-scaling policy (min/max instances)
-- Health check endpoint
-- Graceful shutdown timeout
-- Blue-green deployment toggle
+2. **Gateway Auth Mode** — Dropdown
+   - Description: "Gateway auth mode: none, token, password, or trusted-proxy depending on your edge architecture."
+   - Options: none, token, password, trusted-proxy
+   - Tags: network
 
-## Interactions (Estimated)
+3. **Gateway Auth Allow Tailscale Identity** — Toggle
+   - Description: "Allows trusted Tailscale identity paths to satisfy gateway auth checks when configured."
+   - Tags: access, network
 
-- Click WebSocket URL field → Enter/modify gateway connection string
-- Click Gateway Token field → Enter optional token credential
-- Click token visibility toggle → Reveal/mask token input
-- Click password visibility toggle → Reveal/mask password input
-- Click Connect button → Validate credentials and establish WebSocket connection
-- (After auth) Modify server address → Validate hostname/IP format
-- (After auth) Adjust resource limits → Show impact estimate or warning if approaching limits
-- (After auth) Add environment variable → Open input for key and value
-- (After auth) Toggle auto-scaling → Show/hide min/max instance controls
-- (After auth) Click "Save" or "Apply Changes" → POST configuration to gateway
-- (After auth) Click "Restart Services" → Trigger service restart with changes
-- (After auth) Click "Test Connection" → Verify connection with new settings
+4. **Gateway Password** — Text input
+   - Description: "Required for Tailscale funnel."
+   - Tags: security, auth, access, network
+
+5. **Gateway Auth Rate Limit** — Numeric field
+   - Tags: network, performance
+
+6. **Gateway Token** — Text input (password-masked)
+   - Description: "Required by default for gateway access (unless using Tailscale Serve identity); required for non-loopback binds."
+   - Tags: security, auth, access, network
+
+7. **Gateway Trusted Proxy Auth** — Configuration field
+   - Tags: network
+
+8. **Gateway Bind Mode** — Dropdown
+   - Description: "Network bind profile: auto, lan, loopback, custom, or tailnet to control interface exposure."
+   - Options: auto, lan, loopback, custom, tailnet
+   - Tags: network
+
+10. **Gateway Channel Health Check Interval (min)** — Numeric spinner
+    - Description: "Interval in minutes for automatic channel health probing and status updates. Use lower intervals for faster detection, or higher intervals to reduce periodic probe noise."
+    - Tags: network, reliability
+    - Controls: +/- buttons
+
+11. **Gateway Channel Max Restarts Per Hour** — Numeric spinner
+    - Description: "Maximum number of health-monitor-initiated channel restarts allowed within a rolling one-hour window. Once hit, further restarts are skipped until the window expires. Default: 10."
+    - Tags: network, performance
+    - Controls: +/- buttons
+
+12. **Gateway Channel Stale Event Threshold (min)** — Numeric spinner
+    - Description: "How many minutes a connected channel can go without receiving any event before the health monitor treats it as a stale socket and triggers a restart. Default: 30."
+    - Tags: network
+    - Controls: +/- buttons
+
+### 3. Control UI Configuration
+
+**Description:** "Control UI hosting settings including enablement, pathing, and browser-origin/auth hardening behavior. Keep UI exposure minimal and pair with strong auth controls before internet-facing deployments."
+
+**Fields:**
+
+1. **Control UI Allowed Origins** — List input
+   - Description: "Allowed browser origins for Control UI/WebChat websocket connections (full origins only, e.g. https://control.example.com). Required for non-loopback Control UI deployments unless dangerous Host-header fallback is explicitly enabled. Setting ["*"] means allow any browser origin and should be avoided outside tightly controlled local testing."
+   - Current value: 1 item (shown with "Add" button)
+   - Tags: access, network
+
+2. **Insecure Control UI Auth Toggle** — Toggle
+   - Description: "Loosens strict browser auth checks for Control UI when you must run a non-standard setup. Keep this off unless you trust your network and proxy path, because impersonation r…" (truncated in UI)
+
+## Additional Sections (Observed but Truncated)
+
+The page continues with more subsections including:
+- **Web** — Additional web hosting configuration
+- **Browser** — Browser-related settings
+- **NodeHost**, **CanvasHost**, **Discovery** — Host/discovery configuration
+- **Media** — Media processing settings
+- **Acp**, **Mcp** — Additional service configurations
+
+## Layout
+
+- **Top Controls** — Status + Open, Reload, Save, Apply, Update buttons
+- **Tabbed Interface** — Form tab (active) and Raw tab
+- **Collapsible Sections** — Each major configuration area (Gateway, Web, etc.) can be expanded/collapsed
+- **Field Grouping** — Related fields grouped under subsection headers
+- **Descriptive Labels** — Extensive help text and warnings for each field
+- **Metadata Tags** — Tags indicating field impact (network, security, access, performance, reliability, observability, etc.)
+- **Type-specific Controls** — Toggles, dropdowns, text inputs, numeric spinners with +/- buttons
+
+## Interactions
+
+- **Click section header** → Expand/collapse that section
+- **Toggle switches** → Enable/disable features
+- **Dropdown fields** → Select from predefined options
+- **Text input** → Enter custom values (IPs, URLs, passwords)
+- **Numeric spinners** → Adjust numbers via +/- buttons or direct input
+- **"Add" button in lists** → Add new item to list (e.g., allowed origins)
+- **Click "Save"** → Persist changes to backend
+- **Click "Apply"** → Apply changes immediately
+- **Click "Reload"** → Discard unsaved changes and reload from server
+- **Click "Open"** → Open/expand additional details
 
 ## State / Data
 
-- **Connection state:** Not connected (login gate showing) | Connected (authenticated content visible)
-- **Infrastructure configuration:** Current server settings including:
-  - Server endpoint
-  - Connection parameters
-  - Resource allocations
-  - Environment variables
-  - Deployment strategy
-- **Server status:** Running/Stopped, current resource usage, uptime
-- **Deployment state:** Current number of active instances, version running
-- **Health status:** Last health check result, percentage healthy instances
+- **Unsaved Changes** — "No changes" indicator visible when pristine
+- **Form Validation** — Fields validate on blur or on save attempt
+- **Raw Mode** — Disabled to prevent unsafe round-trip of configuration
+- **Metadata Filtering** — Users can filter fields by tag (network, security, access, performance, reliability, observability, etc.)
+- **Tabbed Interface** — Form tab (default, visual editor) and Raw tab (JSON editor, currently disabled)
 
-## API / WebSocket Calls
-
-- **WebSocket connection:** Initiated on Connect button submit to the URL specified in WebSocket URL input
-- **Authentication payload:** Gateway token and password (if provided) transmitted on initial connection
-- **Fetch infrastructure config:** GET or WS subscribe to current infrastructure settings after auth
-- **Update server config:** POST/PUT to update server connection settings
-- **Update resource limits:** POST/PUT to modify resource constraints
-- **Update environment variables:** POST/PUT to set environment configuration
-- **Restart services:** POST to trigger service restart with new configuration
-- **Get server status:** GET or WS stream of current server health and resource metrics
-- **Test connection:** POST to verify connectivity with proposed settings before applying
-
-## Notes
-
-- Infrastructure changes may require service restart (shown as confirmation dialog)
-- Some settings may be read-only if managed by orchestration layer (Kubernetes, Docker Swarm)
-- Resource limits are typically enforced at the OS/container level
-- Changes to server endpoint may affect WebSocket connection itself — client may need to reconnect
-- Environment variables should be validated before saving (no empty keys, special characters)
-- Infrastructure page may show real-time metrics (memory, CPU, connections) via WebSocket stream
-- Deployment configuration might support multiple strategies (rolling update, blue-green, canary)
+> **Enriched:** Real field names/values from live UI [2026-04-11]

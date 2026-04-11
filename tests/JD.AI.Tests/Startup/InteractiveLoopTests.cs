@@ -180,14 +180,15 @@ public sealed class InteractiveLoopTests
     }
 
     [Fact]
-    public async Task CheckSystemPromptBudgetAsync_AlwaysMode_WhenPromptWithinBudget_ThenStillCompacts()
+    public async Task CheckSystemPromptBudgetAsync_AlwaysMode_WhenPromptExceedsBudget_ThenCompacts()
     {
         // Arrange
         using var fixture = new TempDirectoryFixture();
         DataDirectories.SetRoot(fixture.GetPath("jdai-root"));
 
-        var systemPrompt = string.Join(' ', Enumerable.Repeat("instruction", 50));
-        var model = new ProviderModelInfo("model", "Model", "TestProvider", ContextWindowTokens: 2000);
+        // Create a large prompt that exceeds the budget (50% of 100 = 50 tokens, ~500+ char prompt)
+        var systemPrompt = string.Join(' ', Enumerable.Repeat("instruction", 200));
+        var model = new ProviderModelInfo("model", "Model", "TestProvider", ContextWindowTokens: 100);
         var (loop, session, chatService) = CreateLoopContext(fixture, model, systemPrompt);
 
         chatService
@@ -205,9 +206,10 @@ public sealed class InteractiveLoopTests
             SystemPromptCompaction = SystemPromptCompaction.Always,
         });
 
-        // Assert
+        // Assert: CompactSystemPromptAsync only compacts when currentTokens > targetTokens.
+        // With 200 "instruction" words (~200+ tokens) and budget of 50 tokens, compaction fires.
         session.History[0].Content.Should().Be("compacted always",
-            "prompt should be compacted in Always mode regardless of budget");
+            "prompt should be compacted in Always mode when it exceeds the budget threshold");
     }
 
     [Fact]
@@ -236,14 +238,15 @@ public sealed class InteractiveLoopTests
 
         InvokeWireEventHooks(interactiveInput, session, "system prompt");
 
-        // Act - cycle through all states
+        // Act - cycle through all states: null → Low → Medium → High → Max → null
         RaiseInteractiveEvent(interactiveInput, "OnToggleExtendedThinking"); // Low
         RaiseInteractiveEvent(interactiveInput, "OnToggleExtendedThinking"); // Medium
         RaiseInteractiveEvent(interactiveInput, "OnToggleExtendedThinking"); // High
+        RaiseInteractiveEvent(interactiveInput, "OnToggleExtendedThinking"); // Max
         RaiseInteractiveEvent(interactiveInput, "OnToggleExtendedThinking"); // back to null
 
         // Assert
-        session.ReasoningEffortOverride.Should().BeNull("cycle should return to null after High");
+        session.ReasoningEffortOverride.Should().BeNull("cycle should return to null after Max");
     }
 
     [Fact]

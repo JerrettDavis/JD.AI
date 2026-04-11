@@ -26,8 +26,8 @@ namespace JD.AI.Specs.Features.Core.Mcp
         private static string[] featureTags = new string[] {
                 "mcp"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Mcp", "MCP Integration", "  As a platform\n  I need MCP server management\n  So that I can discover and manag" +
-                "e Model Context Protocol servers", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Mcp", "MCP Integration", "  As a platform\r\n  I need MCP server management\r\n  So that I can discover and man" +
+                "age Model Context Protocol servers", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

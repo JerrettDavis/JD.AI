@@ -26,8 +26,8 @@ namespace JD.AI.Specs.Features.Core.Tool
         private static string[] featureTags = new string[] {
                 "tools"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Tool", "Task Tools", "  As an AI agent\n  I need task management\n  So that I can track work items within" +
-                " a session", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Tool", "Task Tools", "  As an AI agent\r\n  I need task management\r\n  So that I can track work items with" +
+                "in a session", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

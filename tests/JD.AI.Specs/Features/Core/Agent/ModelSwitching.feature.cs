@@ -30,8 +30,8 @@ namespace JD.AI.Specs.Features.Core.Agent
                 "agent",
                 "model-switching"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Agent", "Model Switching", "    As a user of the AI agent\n    I want to switch between AI models during a ses" +
-                "sion\n    So that I can use the best model for each task", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Agent", "Model Switching", "    As a user of the AI agent\r\n    I want to switch between AI models during a se" +
+                "ssion\r\n    So that I can use the best model for each task", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

@@ -1,0 +1,12 @@
+=== USAGE PAGE (SESSION AUTH) ===
+node:internal/process/promises:394
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+page.evaluate: SyntaxError: Failed to execute 'querySelector' on 'Document': 'button:has-text("Export")' is not a valid selector.
+    at eval (eval at evaluate (:302:30), <anonymous>:12:35)
+    at UtilityScript.evaluate (<anonymous>:304:16)
+    at UtilityScript.<anonymous> (<anonymous>:1:44)
+    at C:\git\JD.AI\render_with_session.js:14:35
+
+Node.js v22.22.0

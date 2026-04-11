@@ -1,21 +1,21 @@
 # Settings > Config
 
-> **Verified:** Live UI [2026-04-11] via gateway token
-
 **Route:** `/settings/config`  
 **Nav Path:** Settings > Config  
 **Description:** Centralized configuration management interface displaying all system settings organized by category with form and raw JSON editing modes.
 
+**Verified:** Live UI [2026-04-11] via session-persistent auth
+
 ## Live UI Content
 
 **Main Controls:**
-- **Form** / **Raw** tabs — Switch between visual form and raw text modes
+- **Form** / **Raw** tabs — Switch between visual form (active) and raw JSON/text modes
 - **Status:** "No changes" indicator when pristine
-- **Open** button — Import configuration file
-- **Reload** button — Revert to last saved
-- **Save** button — Persist changes
-- **Apply** button — Activate immediately
-- **Update** button — Sync schema
+- **Open** button — Open config file in external editor
+- **Reload** button — Revert unsaved changes and reload from server
+- **Save** button — Persist configuration changes to disk
+- **Apply** button — Apply changes immediately (live reload) without saving to disk
+- **Update** button — Check for schema/version updates
 
 **Configuration Sections Visible:**
 - Settings
@@ -30,18 +30,35 @@
 - Updates
 
 **Sample Setting Group: Auto-update**
-- **Auto Update Beta Check Interval (hours)** — How often beta-channel checks run (default: 1)
+- **Auto Update Beta Check Interval (hours)** — "How often beta-channel checks run in hours (default: 1)"
   - Input: number field with +/- controls
-  - Category: "performance"
-- **Auto Update Enabled** — Enable background auto-update (default: false)
+  - Category: performance
+- **Auto Update Enabled** — "Enable background auto-update for package installs (default: false)"
   - Input: toggle/checkbox
-  - Category: basic
-- **Auto Update Stable Delay (hours)** — Minimum delay before stable-channel auto-apply (default: 6)
+  - Category: advanced
+- **Auto Update Stable Delay (hours)** — "Minimum delay before stable-channel auto-apply starts (default: 6)"
   - Input: number field with +/- controls
-  - Category: "advanced"
-- **Auto Update Stable Jitter (hours)** — Extra rollout spread window (default: 12)
+  - Category: advanced
+- **Auto Update Stable Jitter (hours)** — "Extra stable-channel rollout spread window in hours (default: 12)"
   - Input: number field with +/- controls
-  - Category: "advanced"
+  - Category: advanced
+- **Update Channel** — Dropdown selector
+  - Options: stable, beta, dev
+  - Category: advanced
+- **Update Check on Start** — "Check for npm updates when the gateway starts (default: true)"
+  - Input: toggle/checkbox
+  - Category: automation
+
+**Sample CLI Settings:**
+- **CLI Banner** — Toggle setting
+  - Category: advanced
+- **CLI Banner Tagline Mode** — Dropdown selector
+  - Options: random, default, off
+  - Category: advanced
+
+**Sample Diagnostics:**
+- **Cache Trace** — Toggle setting
+  - Category: observability/storage
 
 ## Layout
 
@@ -358,7 +375,7 @@ The interface supports two view modes toggled via buttons:
 - Color customization
 
 #### UI
-- Border radius preference (None/Slight/Default/Round/Full)
+- Border radius preference (None, Slight, Default, Round, Full)
 - Font size scaling
 - Compact/spacious mode
 - Animation preferences
@@ -368,6 +385,8 @@ The interface supports two view modes toggled via buttons:
 - First-run wizard enabled/disabled
 - Wizard step completion tracking
 - Onboarding checklist state
+
+> **Enriched:** Real field names/values from live UI [2026-04-11]
 
 ## Interactions
 

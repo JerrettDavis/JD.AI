@@ -26,8 +26,8 @@ namespace JD.AI.Specs.Features.Core.Governance
         private static string[] featureTags = new string[] {
                 "governance"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Governance", "Data Redaction", "  As a governance system\n  I need to redact sensitive data\n  So that PII and secr" +
-                "ets are not sent to AI providers", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Governance", "Data Redaction", "  As a governance system\r\n  I need to redact sensitive data\r\n  So that PII and se" +
+                "crets are not sent to AI providers", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

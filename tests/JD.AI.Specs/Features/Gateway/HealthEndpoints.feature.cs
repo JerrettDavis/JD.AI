@@ -28,8 +28,8 @@ namespace JD.AI.Specs.Features.Gateway
                 "gateway",
                 "health"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Gateway", "Health Endpoints", "    As a gateway operator\n    I want health, ready, and liveness endpoints\n    So" +
-                " that I can monitor the gateway and integrate with orchestrators", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Gateway", "Health Endpoints", "    As a gateway operator\r\n    I want health, ready, and liveness endpoints\r\n    " +
+                "So that I can monitor the gateway and integrate with orchestrators", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

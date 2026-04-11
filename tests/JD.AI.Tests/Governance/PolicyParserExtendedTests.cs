@@ -110,4 +110,62 @@ public sealed class PolicyParserExtendedTests
         doc.Spec.Sessions!.RetentionDays.Should().Be(90);
         doc.Spec.Audit!.Sink.Should().Be("webhook");
     }
+
+    [Fact]
+    public void ParseFile_NonExistentPath_ThrowsException()
+    {
+        var nonExistentPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid():N}.yaml");
+
+        var act = () => PolicyParser.ParseFile(nonExistentPath);
+
+        act.Should().Throw<FileNotFoundException>();
+    }
+
+    [Fact]
+    public void ParseDirectory_NonExistentDir_ReturnsEmpty()
+    {
+        var nonExistent = Path.Combine(Path.GetTempPath(), $"nonexistent-dir-{Guid.NewGuid():N}");
+
+        var docs = PolicyParser.ParseDirectory(nonExistent).ToList();
+
+        docs.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ParseDirectory_MixedFiles_SkipsMalformed()
+    {
+        // Create temporary directory with mixed valid and invalid files
+        var tempDir = Path.Combine(Path.GetTempPath(), $"test-policies-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var validYaml = """
+                apiVersion: jdai/v1
+                kind: Policy
+                metadata:
+                  name: valid-policy
+                  scope: User
+                  priority: 10
+                spec: {}
+                """;
+
+            var invalidYaml = "bad:\n  yaml:\n    indentation:\n  is wrong";
+
+            File.WriteAllText(Path.Combine(tempDir, "valid.yaml"), validYaml);
+            File.WriteAllText(Path.Combine(tempDir, "invalid.yaml"), invalidYaml);
+            File.WriteAllText(Path.Combine(tempDir, "readme.txt"), "not a yaml file");
+
+            // Act
+            var docs = PolicyParser.ParseDirectory(tempDir).ToList();
+
+            // Assert
+            docs.Should().HaveCount(1);
+            docs[0].Metadata.Name.Should().Be("valid-policy");
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
 }

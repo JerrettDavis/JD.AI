@@ -26,8 +26,8 @@ namespace JD.AI.Specs.Features.Core.Governance
         private static string[] featureTags = new string[] {
                 "governance"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Governance", "Audit Sinks", "  As a governance system\n  I need audit events written to various destinations\n  " +
-                "So that audit data is persisted and accessible", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Governance", "Audit Sinks", "  As a governance system\r\n  I need audit events written to various destinations\r\n" +
+                "  So that audit data is persisted and accessible", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

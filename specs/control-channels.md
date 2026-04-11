@@ -27,37 +27,32 @@ The Channels page is a **tabbed interface** with per-channel-provider configurat
 
 1. **Accounts** — Empty list (0 items), with "Add" button
 2. **Ack Reaction** — Dropdown selector
-3. **Actions** — Collapsible section with "Allow From" list (0 items) and "Add" button
+3. **Allow From** — List (0 items) with "Add" button under Actions section
 4. **Block Streaming** — Toggle/checkbox
 5. **Block Streaming Coalesce** — Toggle/checkbox
 6. **Capabilities** — Empty list (0 items) with "Add" button
 7. **Chunk Mode** — Radio buttons: "length", "newline"
-8. **WhatsApp Config Writes** — Checkbox, "Allow WhatsApp to write config in response to channel events/commands (default: true)"
-9. **Context Visibility** — Dropdown: "all", "allowlist", "allowlist_quote"
-10. **WhatsApp Message Debounce (ms)** — Numeric input with +/- buttons (with metadata tags: "network", "performance", "channels")
-11. **Default Account** — Dropdown selector
-12. **Default To** — Input field
-13. **Dm History Limit** — Numeric spinner (+/-)
-14. **WhatsApp DM Policy** — Dropdown with access control options:
-    - "pairing" (recommended)
-    - "allowlist"
-    - "open"
-    - "disabled"
-15. **Dms Enabled** — Toggle
-16. **Group Allow From** — List (0 items) with "Add" button
-17. **Group Policy** — Dropdown: "open", "disabled", "allowlist"
-18. **Groups** — Section header
-19. **Health Monitor** — Section
-20. **Heartbeat** — Configuration option
-21. **History Limit** — Numeric spinner
-22. **Markdown** — Toggle
-23. **Media Max Mb** — Numeric spinner
-24. **Message Prefix** — Text input
-25. **Reaction Level** — Radio buttons: "off", "ack", "minimal", "extensive"
-26. **Response Prefix** — Text input
-27. **WhatsApp Self-Phone Mode** — Toggle with description: "Same-phone setup (bot uses your personal WhatsApp number)"
-28. **Send Read Receipts** — Toggle
-29. **Text Chunk Limit** — Numeric spinner
+8. **WhatsApp Config Writes** — Checkbox, default true (allows WhatsApp to write config in response to channel events/commands)
+9. **WhatsApp Message Debounce (ms)** — Numeric input with +/- buttons (tags: network, performance, channels)
+10. **Default Account** — Dropdown selector
+11. **Default To** — Input field
+12. **Dm History Limit** — Numeric spinner with +/- buttons
+13. **WhatsApp DM Policy** — Dropdown: "pairing", "allowlist", "open", "disabled"
+14. **Dms Enabled** — Toggle
+15. **Group Allow From** — List (0 items) with "Add" button
+16. **Group Policy** — Dropdown: "open", "disabled", "allowlist"
+17. **Groups** — Section header
+18. **Health Monitor** — Section
+19. **Heartbeat** — Configuration option
+20. **History Limit** — Numeric spinner
+21. **Markdown** — Toggle
+22. **Media Max Mb** — Numeric spinner
+23. **Message Prefix** — Text input
+24. **Reaction Level** — Radio buttons: "off", "ack", "minimal", "extensive"
+25. **Response Prefix** — Text input
+26. **WhatsApp Self-Phone Mode** — Toggle with description: "Same-phone setup (bot uses your personal WhatsApp number)"
+27. **Send Read Receipts** — Toggle
+28. **Text Chunk Limit** — Numeric spinner
 
 **Action Buttons:**
 - **Save** — Persist configuration changes
@@ -128,10 +123,10 @@ Configuration continues with metadata tags indicating scope (network, access, pe
 
 - **Tabbed/Collapsible Interface** — Each provider (WhatsApp, Telegram, Discord, etc.) is a separate expandable section
 - **Form-heavy Design** — Majority of page is configuration input fields
-- **Metadata Badges** — Tags shown next to fields indicating impact area (network, security, performance, etc.)
+- **Metadata Badges** — Tags shown next to fields indicating impact area (network, security, performance, reliability, access, etc.)
 - **No main table view** — Unlike other pages, Channels is purely configuration-focused
-- **Status cards at top of each provider** — Quick reference for current state
-- **Action buttons at section end** — Save, Reload, Connect/Disconnect actions per provider
+- **Status cards at top of each provider** — Quick reference for current state (Configured, Linked, Running, Connected, Last connect, Last message, Auth age)
+- **Action buttons at section end** — Save, Reload, Show QR, Relink, Logout, Refresh actions per provider
 
 ## Interactions
 
@@ -147,7 +142,9 @@ Configuration continues with metadata tags indicating scope (network, access, pe
 
 ## State / Data
 
-- **Unsaved Changes** — Page likely shows "No changes" indicator or requires explicit save
+- **Unsaved Changes** — Page shows "No changes" indicator when pristine
 - **Configuration Persistence** — Settings saved per provider
-- **Raw Mode Toggle** (observed in UI) — "Raw mode disabled (snapshot cannot safely round-trip raw text)"
-- **Form/Raw Tabs** — "Form" tab (shown) and "Raw" tab available for JSON editing
+- **Raw Mode Toggle** — "Raw mode disabled (snapshot cannot safely round-trip raw text)"
+- **Form/Raw Tabs** — "Form" tab (default view) and "Raw" tab available for JSON editing
+
+> **Enriched:** Real field names/values from live UI [2026-04-11]
