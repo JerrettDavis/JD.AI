@@ -1,3 +1,4 @@
+using System.Reflection;
 using FluentAssertions;
 using JD.AI.Core.Channels;
 using JD.AI.Core.Commands;
@@ -8,7 +9,6 @@ using JD.AI.Gateway.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.SemanticKernel;
 using NSubstitute;
-using System.Reflection;
 
 namespace JD.AI.Gateway.Tests.Commands;
 

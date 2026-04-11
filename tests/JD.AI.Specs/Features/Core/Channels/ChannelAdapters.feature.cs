@@ -26,9 +26,9 @@ namespace JD.AI.Specs.Features.Core.Channels
         private static string[] featureTags = new string[] {
                 "channels"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Channels", "Channel Adapters", "  As the platform\n  I need messaging channel adapters for multiple platforms\n  So" +
-                " that I can receive and send messages across Discord, Slack, Telegram, Signal, a" +
-                "nd Web", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Channels", "Channel Adapters", "  As the platform\r\n  I need messaging channel adapters for multiple platforms\r\n  " +
+                "So that I can receive and send messages across Discord, Slack, Telegram, Signal," +
+                " and Web", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

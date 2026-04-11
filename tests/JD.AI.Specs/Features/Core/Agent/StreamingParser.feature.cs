@@ -30,8 +30,8 @@ namespace JD.AI.Specs.Features.Core.Agent
                 "agent",
                 "streaming-parser"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Agent", "Streaming Content Parser", "    As the agent streaming pipeline\n    I want to correctly parse think tags from" +
-                " streaming content\n    So that thinking and response content are separated", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Agent", "Streaming Content Parser", "    As the agent streaming pipeline\r\n    I want to correctly parse think tags fro" +
+                "m streaming content\r\n    So that thinking and response content are separated", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

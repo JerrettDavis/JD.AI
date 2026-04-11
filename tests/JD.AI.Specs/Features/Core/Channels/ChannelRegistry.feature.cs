@@ -26,8 +26,8 @@ namespace JD.AI.Specs.Features.Core.Channels
         private static string[] featureTags = new string[] {
                 "channels"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Channels", "Channel Registry", "  As a platform\n  I need to manage messaging channel adapters\n  So that I can rou" +
-                "te messages across platforms", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Channels", "Channel Registry", "  As a platform\r\n  I need to manage messaging channel adapters\r\n  So that I can r" +
+                "oute messages across platforms", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

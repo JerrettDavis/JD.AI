@@ -28,8 +28,8 @@ namespace JD.AI.Specs.Features.Core.Provider
                 "core",
                 "provider"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Provider", "Provider Detection", "    As the provider system\n    I want to detect available AI providers automatica" +
-                "lly\n    So that users can discover and use available models", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Provider", "Provider Detection", "    As the provider system\r\n    I want to detect available AI providers automatic" +
+                "ally\r\n    So that users can discover and use available models", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

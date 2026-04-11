@@ -28,8 +28,8 @@ namespace JD.AI.Specs.Features.Core.PromptCaching
                 "core",
                 "prompt-caching"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/PromptCaching", "Prompt Caching", "    As the prompt caching system\n    I want to apply cache headers for supported " +
-                "providers\n    So that repeated prompts are served faster and cheaper", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/PromptCaching", "Prompt Caching", "    As the prompt caching system\r\n    I want to apply cache headers for supported" +
+                " providers\r\n    So that repeated prompts are served faster and cheaper", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

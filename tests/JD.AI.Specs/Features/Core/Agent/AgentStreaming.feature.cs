@@ -30,9 +30,9 @@ namespace JD.AI.Specs.Features.Core.Agent
                 "agent",
                 "streaming"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Agent", "Agent Streaming", "    As a user of the AI agent\n    I want to receive streaming responses with thin" +
-                "king and content\n    So that I see tokens as they arrive and can observe reasoni" +
-                "ng", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Agent", "Agent Streaming", "    As a user of the AI agent\r\n    I want to receive streaming responses with thi" +
+                "nking and content\r\n    So that I see tokens as they arrive and can observe reaso" +
+                "ning", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

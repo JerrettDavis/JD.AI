@@ -28,8 +28,8 @@ namespace JD.AI.Specs.Features.Gateway
                 "gateway",
                 "signalr"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Gateway", "SignalR Streaming", "    As a gateway consumer\n    I want to connect to the agent hub via SignalR\n    " +
-                "So that I can receive streamed agent responses in real time", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Gateway", "SignalR Streaming", "    As a gateway consumer\r\n    I want to connect to the agent hub via SignalR\r\n  " +
+                "  So that I can receive streamed agent responses in real time", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
