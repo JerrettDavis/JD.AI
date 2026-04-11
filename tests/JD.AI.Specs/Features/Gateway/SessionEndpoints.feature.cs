@@ -30,8 +30,8 @@ namespace JD.AI.Specs.Features.Gateway
                 "api",
                 "sessions"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Gateway", "Session Endpoints", "    As a gateway consumer\n    I want to manage chat sessions via the REST API\n   " +
-                " So that I can list, retrieve, and close sessions", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Gateway", "Session Endpoints", "    As a gateway consumer\r\n    I want to manage chat sessions via the REST API\r\n " +
+                "   So that I can list, retrieve, and close sessions", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

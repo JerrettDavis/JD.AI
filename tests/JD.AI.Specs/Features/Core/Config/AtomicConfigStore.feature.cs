@@ -28,8 +28,8 @@ namespace JD.AI.Specs.Features.Core.Config
                 "core",
                 "config"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Config", "Atomic Config Store", "    As the configuration system\n    I want to read and write configuration safely" +
-                "\n    So that settings persist correctly even under concurrent access", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Config", "Atomic Config Store", "    As the configuration system\r\n    I want to read and write configuration safel" +
+                "y\r\n    So that settings persist correctly even under concurrent access", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

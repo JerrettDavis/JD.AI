@@ -1,3 +1,4 @@
+using System.Reflection;
 using FluentAssertions;
 using JD.AI.Core.Channels;
 using JD.AI.Core.Commands;
@@ -9,7 +10,6 @@ using JD.AI.Gateway.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.SemanticKernel;
 using NSubstitute;
-using System.Reflection;
 
 namespace JD.AI.Gateway.Tests.Commands;
 
@@ -176,7 +176,8 @@ public class GatewayCommandTests
             MakeContext("route", new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["agent"] = "ollama"
-            }) with { ChannelId = "" });
+            }) with
+            { ChannelId = "" });
 
         result.Success.Should().BeTrue();
         _router.GetAgentForChannel("discord").Should().Be(agentId);
@@ -423,7 +424,8 @@ public class GatewayCommandTests
             MakeContext("provider", new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["name"] = "copilot"
-            }) with { ChannelId = "" });
+            }) with
+            { ChannelId = "" });
 
         result.Success.Should().BeTrue();
         _router.GetAgentForChannel("discord").Should().NotBe(agentId);

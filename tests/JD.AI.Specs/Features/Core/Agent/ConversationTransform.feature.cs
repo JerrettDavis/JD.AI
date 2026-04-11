@@ -30,8 +30,8 @@ namespace JD.AI.Specs.Features.Core.Agent
                 "agent",
                 "conversation-transform"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Agent", "Conversation Transformation", "    As a user switching AI models\n    I want conversation history to be transform" +
-                "ed appropriately\n    So that the new model has proper context", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Agent", "Conversation Transformation", "    As a user switching AI models\r\n    I want conversation history to be transfor" +
+                "med appropriately\r\n    So that the new model has proper context", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

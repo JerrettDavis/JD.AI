@@ -28,9 +28,9 @@ namespace JD.AI.Specs.Features.Gateway
                 "gateway",
                 "orchestrator"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Gateway", "Gateway Orchestrator", "    As a gateway operator\n    I want the gateway to start successfully and initia" +
-                "lize subsystems\n    So that all configured channels, agents, and routes are oper" +
-                "ational", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Gateway", "Gateway Orchestrator", "    As a gateway operator\r\n    I want the gateway to start successfully and initi" +
+                "alize subsystems\r\n    So that all configured channels, agents, and routes are op" +
+                "erational", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

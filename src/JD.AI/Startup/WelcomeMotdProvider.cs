@@ -1,5 +1,5 @@
-using JD.AI.Core.Config;
 using System.Text;
+using JD.AI.Core.Config;
 
 namespace JD.AI.Startup;
 

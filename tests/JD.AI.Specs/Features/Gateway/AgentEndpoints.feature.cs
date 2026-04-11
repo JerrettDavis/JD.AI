@@ -30,8 +30,8 @@ namespace JD.AI.Specs.Features.Gateway
                 "api",
                 "agents"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Gateway", "Agent Endpoints", "    As a gateway consumer\n    I want to manage AI agent instances via the REST AP" +
-                "I\n    So that I can spawn, query, message, and stop agents", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Gateway", "Agent Endpoints", "    As a gateway consumer\r\n    I want to manage AI agent instances via the REST A" +
+                "PI\r\n    So that I can spawn, query, message, and stop agents", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

@@ -26,8 +26,8 @@ namespace JD.AI.Specs.Features.Core.Tool
         private static string[] featureTags = new string[] {
                 "tools"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Tool", "Clipboard Tools", "  As an AI agent\n  I need clipboard access\n  So that I can read and write system " +
-                "clipboard content", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Tool", "Clipboard Tools", "  As an AI agent\r\n  I need clipboard access\r\n  So that I can read and write syste" +
+                "m clipboard content", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

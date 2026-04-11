@@ -26,8 +26,8 @@ namespace JD.AI.Specs.Features.Core.Tool
         private static string[] featureTags = new string[] {
                 "tools"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Tool", "Think Tools", "  As an AI agent\n  I need a scratchpad for reasoning\n  So that I can organize tho" +
-                "ughts without side effects", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Tool", "Think Tools", "  As an AI agent\r\n  I need a scratchpad for reasoning\r\n  So that I can organize t" +
+                "houghts without side effects", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
@@ -223,7 +223,7 @@ namespace JD.AI.Specs.Features.Core.Tool
             {
                 await this.ScenarioStartAsync();
 #line 17
-    await testRunner.WhenAsync("I think:", "Step 1: Read the file\nStep 2: Parse the JSON\nStep 3: Update the field", ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("I think:", "Step 1: Read the file\r\nStep 2: Parse the JSON\r\nStep 3: Update the field", ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 23
     await testRunner.ThenAsync("the think result should contain \"Step 1: Read the file\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");

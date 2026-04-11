@@ -41,7 +41,8 @@ internal static class UpdateCliHandler
 
     /// <summary>Factory for applying a multi-tool update plan. Override in tests.</summary>
     internal static Func<UpdatePlan, bool, Action<InstalledTool, InstallResult>?, CancellationToken, Task>
-        ApplyAllToolUpdatesAsync { get; set; } = JDAIToolkit.ApplyAllAsync;
+        ApplyAllToolUpdatesAsync
+    { get; set; } = JDAIToolkit.ApplyAllAsync;
 
     public static async Task<int> RunAsync(string subcommand, string[] args)
     {

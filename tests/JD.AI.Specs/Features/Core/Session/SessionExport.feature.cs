@@ -30,8 +30,8 @@ namespace JD.AI.Specs.Features.Core.Session
                 "session",
                 "export"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Session", "Session Export", "    As a user of the AI agent\n    I want to export sessions to JSON and markdown\n" +
-                "    So that I can archive or share conversations", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Session", "Session Export", "    As a user of the AI agent\r\n    I want to export sessions to JSON and markdown" +
+                "\r\n    So that I can archive or share conversations", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

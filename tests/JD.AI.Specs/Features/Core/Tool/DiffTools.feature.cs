@@ -26,8 +26,8 @@ namespace JD.AI.Specs.Features.Core.Tool
         private static string[] featureTags = new string[] {
                 "tools"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Tool", "Diff Tools", "  As an AI agent\n  I need to create and apply patches\n  So that I can make struct" +
-                "ured multi-location file edits", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Tool", "Diff Tools", "  As an AI agent\r\n  I need to create and apply patches\r\n  So that I can make stru" +
+                "ctured multi-location file edits", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

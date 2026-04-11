@@ -30,8 +30,8 @@ namespace JD.AI.Specs.Features.Core.Agent
                 "agent",
                 "orchestration"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Agent", "Agent Orchestration", "    As the orchestration system\n    I want to coordinate multiple subagents using" +
-                " different strategies\n    So that complex tasks are completed effectively", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Agent", "Agent Orchestration", "    As the orchestration system\r\n    I want to coordinate multiple subagents usin" +
+                "g different strategies\r\n    So that complex tasks are completed effectively", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

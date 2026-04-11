@@ -30,8 +30,8 @@ namespace JD.AI.Specs.Features.Gateway
                 "api",
                 "config"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Gateway", "Gateway Config Endpoints", "    As a gateway administrator\n    I want to view and update gateway configuratio" +
-                "n via the REST API\n    So that I can manage the gateway at runtime", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Gateway", "Gateway Config Endpoints", "    As a gateway administrator\r\n    I want to view and update gateway configurati" +
+                "on via the REST API\r\n    So that I can manage the gateway at runtime", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
