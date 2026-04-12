@@ -1,0 +1,60 @@
+@* Reusable loading skeleton for MVP pages.
+   SkeletonType: "rows" | "cards" | "panel"
+   Rows: number of skeleton rows/cards to render (ignored for "panel") *@
+
+@if (SkeletonType == "rows")
+{
+    <MudPaper Elevation="0" data-testid="skeleton-rows-container">
+        @for (var i = 0; i < Rows; i++)
+        {
+            <div class="jd-skeleton-row" data-testid="skeleton-row">
+                <MudSkeleton Width="140px" Height="14px" />
+                <MudSkeleton Width="100px" Height="14px" />
+                <MudSkeleton Width="200px" Height="14px" />
+                <MudSpacer />
+                <MudSkeleton SkeletonType="MudBlazor.SkeletonType.Circle" Width="28px" Height="28px" />
+            </div>
+        }
+    </MudPaper>
+}
+else if (SkeletonType == "cards")
+{
+    <MudGrid>
+        @for (var i = 0; i < Rows; i++)
+        {
+            <MudItem xs="12" md="6" data-testid="skeleton-card">
+                <MudPaper Class="pa-4 jd-skeleton-card" Elevation="0">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-4">
+                        <MudSkeleton SkeletonType="MudBlazor.SkeletonType.Circle" Width="36px" Height="36px" />
+                        <MudStack Spacing="1">
+                            <MudSkeleton Width="120px" Height="18px" />
+                            <MudSkeleton Width="80px" Height="12px" />
+                        </MudStack>
+                        <MudSpacer />
+                        <MudSkeleton Width="64px" Height="24px" />
+                    </MudStack>
+                    @for (var j = 0; j < 3; j++)
+                    {
+                        <div class="jd-skeleton-row">
+                            <MudSkeleton Width="180px" Height="14px" />
+                            <MudSkeleton Width="120px" Height="14px" />
+                        </div>
+                    }
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+}
+else if (SkeletonType == "panel")
+{
+    <MudPaper Elevation="0" Class="pa-4" data-testid="skeleton-panel">
+        <MudSkeleton Width="400px" Height="40px" Class="mb-4" />
+        <MudSkeleton Width="100%" Height="200px" Class="mb-3" />
+        <MudSkeleton Width="100%" Height="200px" />
+    </MudPaper>
+}
+
+@code {
+    [Parameter] public string SkeletonType { get; set; } = "rows";
+    [Parameter] public int Rows { get; set; } = 5;
+}

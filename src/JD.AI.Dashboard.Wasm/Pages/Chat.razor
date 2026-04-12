@@ -15,7 +15,17 @@
             <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="jd-chat-header-label">Chat</MudText>
 
             @* Agent selector — fills available space *@
-            @if (_agents.Length > 0)
+            @if (_loading)
+            {
+                <MudPaper Class="pa-1" Elevation="0" Style="min-width:160px;flex:1;" data-testid="agent-selector-skeleton">
+                    <MudSkeleton Width="140px" Height="32px" />
+                </MudPaper>
+            }
+            else if (_loadError)
+            {
+                <GatewayErrorBoundary HasError="true" OnRetry="LoadAgents" />
+            }
+            else if (_agents.Length > 0)
             {
                 <MudSelect data-testid="agent-selector"
                            @bind-Value="_selectedAgentId"
@@ -264,6 +274,7 @@
     private string _selectedAgentId = "";
     private string _userInput = "";
     private bool _loading = true;
+    private bool _loadError;
     private bool _streaming;
     private string _streamBuffer = "";
     private ElementReference _messagesContainer;
@@ -278,8 +289,14 @@
 
     private async Task LoadAgents()
     {
+        _loading = true;
+        _loadError = false;
         try { _agents = await Api.GetAgentsAsync(); }
-        catch (Exception ex) { Snackbar.Add($"Unable to load agents: {ex.Message}", Severity.Error); }
+        catch
+        {
+            _loadError = true;
+        }
+        _loading = false;
         if (_agents.Length > 0 && string.IsNullOrEmpty(_selectedAgentId))
             _selectedAgentId = _agents[0].Id;
     }
