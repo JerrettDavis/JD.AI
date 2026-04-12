@@ -251,10 +251,10 @@ else
         return evt.Message;
     }
 
-    private string FormatJsonPayload(string payload)
+    private string FormatJsonPayload(string? payload)
     {
         if (string.IsNullOrEmpty(payload))
-            return payload;
+            return payload ?? string.Empty;
 
         try
         {

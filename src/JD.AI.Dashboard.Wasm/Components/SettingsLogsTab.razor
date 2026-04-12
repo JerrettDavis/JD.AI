@@ -5,7 +5,7 @@
     <MudPaper Class="pa-4" Elevation="0" data-testid="log-filters">
         <MudGrid>
             <MudItem xs="12" sm="3">
-                <MudSelect T="string?" @bind-Value="_severityFilter" Label="Severity" Variant="Variant.Outlined" Dense="true"
+                <MudSelect T="string" @bind-Value="_severityFilter" Label="Severity" Variant="Variant.Outlined" Dense="true"
                            Clearable="true" data-testid="severity-filter">
                     <MudSelectItem Value="@("debug")">Debug</MudSelectItem>
                     <MudSelectItem Value="@("info")">Info</MudSelectItem>
@@ -15,7 +15,7 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" sm="5">
-                <MudTextField T="string?" @bind-Value="_searchText" Label="Search" Variant="Variant.Outlined" Margin="Margin.Dense"
+                <MudTextField T="string" @bind-Value="_searchText" Label="Search" Variant="Variant.Outlined" Margin="Margin.Dense"
                               Clearable="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
                               data-testid="search-filter" />
             </MudItem>
