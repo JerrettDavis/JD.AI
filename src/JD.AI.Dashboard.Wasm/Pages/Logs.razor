@@ -57,18 +57,11 @@
 
 @if (_loading)
 {
-    <MudPaper Elevation="0">
-        @for (var i = 0; i < 5; i++)
-        {
-            <div class="jd-skeleton-row">
-                <MudSkeleton Width="120px" Height="14px" />
-                <MudSkeleton Width="72px" Height="24px" />
-                <MudSkeleton Width="100px" Height="14px" />
-                <MudSkeleton Width="100px" Height="14px" />
-                <MudSkeleton Width="300px" Height="14px" />
-            </div>
-        }
-    </MudPaper>
+    <LoadingSkeleton SkeletonType="rows" Rows="5" />
+}
+else if (_loadError)
+{
+    <GatewayErrorBoundary HasError="true" OnRetry="LoadAsync" />
 }
 else if (_filteredEvents.Length == 0)
 {
@@ -144,6 +137,7 @@ else
     private AuditEvent[] _allEvents = [];
     private AuditEvent[] _filteredEvents = [];
     private bool _loading = true;
+    private bool _loadError;
     private string? _severityFilter;
     private string? _eventTypeFilter;
     private string? _sourceFilter;
@@ -182,6 +176,7 @@ else
     private async Task LoadAsync()
     {
         _loading = true;
+        _loadError = false;
         try
         {
             _allEvents = await Api.GetAuditEventsAsync(
@@ -189,7 +184,11 @@ else
                 action: _eventTypeFilter,
                 severity: _severityFilter);
         }
-        catch { _allEvents = []; Snackbar.Add("Failed to load audit events", Severity.Error); }
+        catch
+        {
+            _allEvents = [];
+            _loadError = true;
+        }
         ApplyFilters();
         _loading = false;
     }

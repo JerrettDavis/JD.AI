@@ -60,7 +60,7 @@ public sealed class LogsPageBunitTests : DashboardBunitTestContext
     }
 
     [Fact]
-    public void Logs_WhenAuditLoadFails_ShowsEmptyStateAndSnackbar()
+    public void Logs_WhenAuditLoadFails_ShowsErrorBoundaryWithRetry()
     {
         var api = CreateApiClient(_ => throw new HttpRequestException("gateway offline"));
 
@@ -71,8 +71,8 @@ public sealed class LogsPageBunitTests : DashboardBunitTestContext
 
         cut.WaitForAssertion(() =>
         {
-            Assert.NotNull(cut.Find("[data-testid='logs-empty']"));
-            Assert.Contains("Failed to load audit events", cut.Markup);
+            Assert.NotNull(cut.Find("[data-testid='gateway-error-alert']"));
+            Assert.NotNull(cut.Find("[data-testid='gateway-retry-button']"));
         });
     }
 

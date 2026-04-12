@@ -46,14 +46,11 @@
 
 @if (_loading)
 {
-    <MudGrid>
-        @for (var i = 0; i < 6; i++)
-        {
-            <MudItem xs="12" sm="6" md="4">
-                <MudSkeleton Height="100px" />
-            </MudItem>
-        }
-    </MudGrid>
+    <LoadingSkeleton SkeletonType="cards" Rows="6" />
+}
+else if (_loadError)
+{
+    <GatewayErrorBoundary HasError="true" OnRetry="LoadAsync" />
 }
 else if (FilteredSkills.Length == 0)
 {
@@ -115,6 +112,7 @@ else
 @code {
     private SkillInfo[]? _skills;
     private bool _loading = true;
+    private bool _loadError;
     private string _activeFilter = "All";
     private string _search = "";
     private EventHandler<ActivityEventArgs>? _activityHandler;
@@ -166,8 +164,13 @@ else
     private async Task LoadAsync()
     {
         _loading = true;
+        _loadError = false;
         try { _skills = await Api.GetSkillsAsync(); }
-        catch { _skills = []; }
+        catch
+        {
+            _skills = [];
+            _loadError = true;
+        }
         _loading = false;
     }
 

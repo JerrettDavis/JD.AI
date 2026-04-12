@@ -254,6 +254,22 @@ public sealed class AgentsPageBunitTests : DashboardBunitTestContext
     }
 
     [Fact]
+    public void Agents_WhenLoadFails_ShowsErrorBoundaryWithRetry()
+    {
+        var api = CreateApiClient(_ => throw new HttpRequestException("gateway offline"));
+        Services.AddSingleton(api);
+        Services.AddSingleton(new SignalRService("http://localhost"));
+
+        var cut = RenderWithMudProviders<AgentsPageComponent>();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.NotNull(cut.Find("[data-testid='gateway-error-alert']"));
+            Assert.NotNull(cut.Find("[data-testid='gateway-retry-button']"));
+        });
+    }
+
+    [Fact]
     public void Agents_WhenDeleteFails_ShowsErrorAndKeepsGrid()
     {
         var listCalls = 0;

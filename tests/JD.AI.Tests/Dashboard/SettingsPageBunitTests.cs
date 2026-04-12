@@ -112,6 +112,31 @@ public sealed class SettingsPageBunitTests : DashboardBunitTestContext
     }
 
     [Fact]
+    public void Settings_WhenConfigLoads_ShowsSkeletonPanel()
+    {
+        // Api that never completes
+        var tcs = new TaskCompletionSource<HttpResponseMessage>();
+        var api = CreateApiClient(_ => tcs.Task.GetAwaiter().GetResult());
+        Services.AddSingleton(api);
+
+        // Render without awaiting load completion
+        var cut = RenderWithMudProviders<Settings>();
+
+        Assert.NotNull(cut.Find("[data-testid='skeleton-panel']"));
+    }
+
+    [Fact]
+    public void Settings_WhenConfigLoadFails_ShowsRetryButton()
+    {
+        var api = CreateApiClient(_ => throw new HttpRequestException("gateway offline"));
+        Services.AddSingleton(api);
+
+        var cut = RenderWithMudProviders<Settings>();
+
+        Assert.NotNull(cut.Find("[data-testid='gateway-retry-button']"));
+    }
+
+    [Fact]
     public void Settings_AiAgentsTab_ContainsProviderSubTab()
     {
         // AI & Agents is the first tab — active by default, no click needed

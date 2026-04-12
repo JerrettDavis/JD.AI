@@ -13,17 +13,15 @@
 
 @if (_loading)
 {
-    <MudPaper Elevation="0" Class="pa-4">
-        <MudSkeleton Width="400px" Height="40px" Class="mb-4" />
-        <MudSkeleton Width="100%" Height="200px" Class="mb-3" />
-        <MudSkeleton Width="100%" Height="200px" />
-    </MudPaper>
+    <LoadingSkeleton SkeletonType="panel" />
 }
 else if (_config is null)
 {
-    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" data-testid="settings-error">
-        Unable to load gateway configuration. Is the gateway running?
-    </MudAlert>
+    <div data-testid="settings-error">
+        <GatewayErrorBoundary HasError="true"
+                              Message="Unable to load gateway configuration. Is the gateway running?"
+                              OnRetry="LoadAsync" />
+    </div>
 }
 else
 {

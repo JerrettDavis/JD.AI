@@ -130,4 +130,20 @@ public sealed class SkillsPageBunitTests : DashboardBunitTestContext
         cut.WaitForAssertion(() =>
             Assert.Equal(2, cut.FindAll("[data-testid='skill-configure']").Count));
     }
+
+    [Fact]
+    public void Skills_WhenLoadFails_ShowsErrorBoundaryWithRetry()
+    {
+        var api = CreateApiClient(_ => throw new HttpRequestException("gateway offline"));
+        Services.AddSingleton(api);
+        Services.AddSingleton(new SignalRService("http://localhost"));
+
+        var cut = RenderWithMudProviders<SkillsPageComponent>();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.NotNull(cut.Find("[data-testid='gateway-error-alert']"));
+            Assert.NotNull(cut.Find("[data-testid='gateway-retry-button']"));
+        });
+    }
 }

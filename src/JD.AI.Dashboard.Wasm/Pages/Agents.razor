@@ -37,20 +37,11 @@
     <div style="flex:1;min-width:0">
         @if (_loading)
         {
-            <MudPaper Elevation="0">
-                @for (var i = 0; i < 5; i++)
-                {
-                    <div class="jd-skeleton-row">
-                        <MudSkeleton Width="140px" Height="14px" />
-                        <MudSkeleton Width="80px" Height="14px" />
-                        <MudSkeleton Width="180px" Height="14px" />
-                        <MudSkeleton Width="40px" Height="14px" />
-                        <MudSkeleton Width="120px" Height="14px" />
-                        <MudSpacer />
-                        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="28px" Height="28px" />
-                    </div>
-                }
-            </MudPaper>
+            <LoadingSkeleton SkeletonType="rows" Rows="5" />
+        }
+        else if (_loadError)
+        {
+            <GatewayErrorBoundary HasError="true" OnRetry="LoadAsync" />
         }
         else if (_agents is null || _agents.Length == 0)
         {
@@ -108,6 +99,7 @@
 @code {
     private AgentInfo[]? _agents;
     private bool _loading = true;
+    private bool _loadError;
     private string? _selectedId;
     private EventHandler<ActivityEventArgs>? _activityHandler;
 
@@ -134,8 +126,13 @@
     private async Task LoadAsync()
     {
         _loading = true;
+        _loadError = false;
         try { _agents = await Api.GetAgentsAsync(); }
-        catch { _agents = null; }
+        catch
+        {
+            _agents = null;
+            _loadError = true;
+        }
         _loading = false;
     }
 
