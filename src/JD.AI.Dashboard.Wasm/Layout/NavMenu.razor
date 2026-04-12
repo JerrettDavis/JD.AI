@@ -98,6 +98,15 @@
         _controlExpanded = await NavStateService.IsExpandedAsync("control");
         _agentsExpanded  = await NavStateService.IsExpandedAsync("agents");
         _settingsExpanded = await NavStateService.IsExpandedAsync("settings");
+
+        // Auto-expand the group that owns the active page
+        var path = new Uri(Nav.Uri).AbsolutePath;
+        if (path.StartsWith("/control", StringComparison.OrdinalIgnoreCase))
+            _controlExpanded = true;
+        else if (path.StartsWith("/agents", StringComparison.OrdinalIgnoreCase))
+            _agentsExpanded = true;
+        else if (path.StartsWith("/settings", StringComparison.OrdinalIgnoreCase))
+            _settingsExpanded = true;
     }
 
     private async Task OnGroupToggle(string group, bool expanded)

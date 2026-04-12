@@ -7,7 +7,11 @@
 <MudStack>
     @if (_loading)
     {
-        <MudProgressCircular Indeterminate="true" />
+        <LoadingSkeleton SkeletonType="panel" />
+    }
+    else if (_loadError)
+    {
+        <GatewayErrorBoundary HasError="true" OnRetry="LoadAsync" />
     }
     else
     {
@@ -18,15 +22,19 @@
                            OnClick="@(() => _rawMode = false)">Form</MudButton>
                 <MudButton data-testid="mode-toggle-raw"
                            Color="@(_rawMode ? Color.Primary : Color.Default)"
-                           OnClick="@(() => { _rawMode = true; _rawJson = GetCurrentConfigJson(); })">Raw JSON</MudButton>
+                           OnClick="@(() => { _rawMode = true; _rawJson = GetCurrentConfigJson(); _rawJsonError = null; })">Raw JSON</MudButton>
             </MudButtonGroup>
-            <MudStack Row="true" Spacing="1">
+            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
                 @if (_changes.Count > 0)
                 {
                     <MudChip T="string" data-testid="changes-badge" Color="Color.Warning" Size="Size.Small" Text="@($"{_changes.Count} changes")" />
                 }
-                <MudIconButton data-testid="reset-button" Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" OnClick="ResetAsync" />
-                <MudIconButton data-testid="reload-button" Icon="@Icons.Material.Filled.Sync" Size="Size.Small" OnClick="LoadAsync" />
+                <MudTooltip Text="Reset — discard changes">
+                    <MudIconButton data-testid="reset-button" Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" OnClick="ResetAsync" />
+                </MudTooltip>
+                <MudTooltip Text="Reload — re-fetch from server">
+                    <MudIconButton data-testid="reload-button" Icon="@Icons.Material.Filled.Sync" Size="Size.Small" OnClick="LoadAsync" />
+                </MudTooltip>
                 <MudButton data-testid="apply-button" Variant="Variant.Outlined" Size="Size.Small" OnClick="ApplyAsync">Apply</MudButton>
                 <MudButton data-testid="save-button" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="SaveAsync">Save</MudButton>
             </MudStack>
@@ -34,12 +42,26 @@
 
         @if (_rawMode)
         {
-            <textarea data-testid="raw-json-editor" @bind="_rawJson" rows="20" style="width:100%; font-family: monospace;"></textarea>
+            <MudStack Spacing="1">
+                <textarea data-testid="raw-json-editor"
+                          @bind="_rawJson"
+                          @oninput="OnRawJsonInput"
+                          rows="24"
+                          style="width:100%; font-family: monospace; font-size: 13px; border: 1px solid @(_rawJsonError != null ? "var(--mud-palette-error)" : "var(--mud-palette-lines-default)"); border-radius: 4px; padding: 8px; background: var(--mud-palette-background-grey);" />
+                @if (_rawJsonError != null)
+                {
+                    <MudText data-testid="raw-json-error" Typo="Typo.caption" Color="Color.Error">@_rawJsonError</MudText>
+                }
+                else
+                {
+                    <MudText data-testid="raw-json-valid" Typo="Typo.caption" Color="Color.Success">Valid JSON</MudText>
+                }
+            </MudStack>
         }
         else
         {
-            <MudStack Row="true">
-                <MudPaper Width="220px" Elevation="0">
+            <MudStack Row="true" Style="min-height: 400px;">
+                <MudPaper Width="220px" Elevation="0" Style="flex-shrink: 0;">
                     <MudTextField data-testid="config-search" @bind-Value="_sectionSearch" Placeholder="Search..."
                                   Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
                                   Immediate="true" />
@@ -58,15 +80,19 @@
                     </MudList>
                 </MudPaper>
 
-                <MudStack Style="flex:1">
+                <MudStack Style="flex:1; overflow-y: auto;">
                     @if (_activeSection != null)
                     {
-                        @foreach (var field in _activeSection.Fields)
+                        @foreach (var field in FilteredFields(_activeSection))
                         {
                             var fieldKey = field.Key;
                             var fieldTestId = $"config-field-{fieldKey}";
-                            <div data-testid="@fieldTestId">
+                            <div data-testid="@fieldTestId" style="margin-bottom: 8px;">
                                 @RenderField(field)
+                                @if (!string.IsNullOrEmpty(field.Description))
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin-top: 2px;">@field.Description</MudText>
+                                }
                             </div>
                         }
                     }
@@ -89,15 +115,30 @@
     private ConfigSection? _activeSection;
     private bool _rawMode;
     private bool _loading = true;
+    private bool _loadError;
     private string? _sectionSearch;
     private string _rawJson = "";
+    private string? _rawJsonError;
+
+    // Tracks which sensitive fields are currently revealed (key -> visible)
+    private HashSet<string> _revealedFields = new();
 
     private IEnumerable<ConfigSection> FilteredSections =>
         string.IsNullOrWhiteSpace(_sectionSearch)
             ? (_schema?.Sections ?? [])
             : (_schema?.Sections ?? []).Where(s =>
                 s.Label.Contains(_sectionSearch, StringComparison.OrdinalIgnoreCase) ||
-                s.Key.Contains(_sectionSearch, StringComparison.OrdinalIgnoreCase));
+                s.Key.Contains(_sectionSearch, StringComparison.OrdinalIgnoreCase) ||
+                s.Fields.Any(f => f.Label.Contains(_sectionSearch, StringComparison.OrdinalIgnoreCase) ||
+                                  f.Description.Contains(_sectionSearch, StringComparison.OrdinalIgnoreCase)));
+
+    private IEnumerable<ConfigField> FilteredFields(ConfigSection section) =>
+        string.IsNullOrWhiteSpace(_sectionSearch)
+            ? section.Fields
+            : section.Fields.Where(f =>
+                f.Label.Contains(_sectionSearch, StringComparison.OrdinalIgnoreCase) ||
+                f.Description.Contains(_sectionSearch, StringComparison.OrdinalIgnoreCase) ||
+                f.Key.Contains(_sectionSearch, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync()
     {
@@ -107,11 +148,16 @@
     private async Task LoadAsync()
     {
         _loading = true;
+        _loadError = false;
         StateHasChanged();
         try
         {
             _schema = await Api.GetConfigSchemaAsync();
             _currentConfig = await Api.GetCurrentConfigAsync();
+        }
+        catch
+        {
+            _loadError = true;
         }
         finally
         {
@@ -164,14 +210,55 @@
         return JsonSerializer.Serialize(_currentConfig, new JsonSerializerOptions { WriteIndented = true });
     }
 
+    private void OnRawJsonInput(ChangeEventArgs e)
+    {
+        _rawJson = e.Value?.ToString() ?? "";
+        try
+        {
+            JsonDocument.Parse(_rawJson);
+            _rawJsonError = null;
+        }
+        catch (JsonException ex)
+        {
+            _rawJsonError = $"Invalid JSON: {ex.Message}";
+        }
+        StateHasChanged();
+    }
+
     private async Task ResetAsync()
     {
         _changes.Clear();
+        _revealedFields.Clear();
         await LoadAsync();
     }
 
     private async Task SaveAsync()
     {
+        if (_rawMode)
+        {
+            if (_rawJsonError != null)
+            {
+                Snackbar.Add("Cannot save: JSON is invalid.", Severity.Warning);
+                return;
+            }
+            try
+            {
+                var doc = JsonDocument.Parse(_rawJson);
+                await Api.SaveConfigAsync(doc);
+                _changes.Clear();
+                Snackbar.Add("Configuration saved.", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+            }
+            finally
+            {
+                StateHasChanged();
+            }
+            return;
+        }
+
         try
         {
             await Api.SaveConfigAsync(_changes);
@@ -201,10 +288,18 @@
         }
     }
 
+    private void ToggleFieldVisibility(string fieldKey)
+    {
+        if (!_revealedFields.Add(fieldKey))
+            _revealedFields.Remove(fieldKey);
+        StateHasChanged();
+    }
+
     private RenderFragment RenderField(ConfigField field) => builder =>
     {
         var section = _activeSection!;
         var currentVal = GetCurrentValue(section, field);
+        var isRevealed = _revealedFields.Contains(field.Key);
 
         if (field.Type == "boolean")
         {
@@ -244,6 +339,34 @@
             builder.AddAttribute(1, "Label", field.Label);
             builder.AddAttribute(2, "Value", numVal);
             builder.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<double>(this, v => SetChange(field.Key, v)));
+            builder.CloseComponent();
+        }
+        else if (field.Type == "textarea")
+        {
+            var strVal = currentVal?.ToString() ?? "";
+            builder.OpenComponent<MudTextField<string>>(0);
+            builder.AddAttribute(1, "Label", field.Label);
+            builder.AddAttribute(2, "Value", strVal);
+            builder.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<string>(this, v => SetChange(field.Key, v)));
+            builder.AddAttribute(4, "Lines", 4);
+            builder.CloseComponent();
+        }
+        else if (field.Sensitive)
+        {
+            // Sensitive text field: mask unless revealed
+            var strVal = currentVal?.ToString() ?? "";
+            var inputType = isRevealed ? InputType.Text : InputType.Password;
+            var eyeIcon = isRevealed ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility;
+            var capturedFieldKey = field.Key;
+            builder.OpenComponent<MudTextField<string>>(0);
+            builder.AddAttribute(1, "Label", field.Label);
+            builder.AddAttribute(2, "Value", strVal);
+            builder.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<string>(this, v => SetChange(capturedFieldKey, v)));
+            builder.AddAttribute(4, "InputType", inputType);
+            builder.AddAttribute(5, "Adornment", Adornment.End);
+            builder.AddAttribute(6, "AdornmentIcon", eyeIcon);
+            builder.AddAttribute(7, "OnAdornmentClick", EventCallback.Factory.Create(this, () => ToggleFieldVisibility(capturedFieldKey)));
+            builder.AddAttribute(8, "data-testid", $"sensitive-field-toggle-{capturedFieldKey}");
             builder.CloseComponent();
         }
         else

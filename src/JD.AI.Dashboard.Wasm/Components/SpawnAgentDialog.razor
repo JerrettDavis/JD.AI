@@ -9,12 +9,16 @@
     </TitleContent>
     <DialogContent>
         <MudStack Spacing="3">
+            <MudTextField data-testid="agent-id-input" @bind-Value="_definition.Id" Label="Agent ID" Variant="Variant.Outlined"
+                          HelperText="Optional — leave blank to auto-generate" />
             <MudTextField data-testid="agent-provider-input" @bind-Value="_definition.Provider" Label="Provider" Variant="Variant.Outlined"
                           HelperText="e.g. ollama, claude-code, copilot" />
             <MudTextField data-testid="agent-model-input" @bind-Value="_definition.Model" Label="Model" Variant="Variant.Outlined"
                            HelperText="e.g. ollama/qwen3:30b-instruct" />
             <MudTextField data-testid="agent-systemprompt-input" @bind-Value="_definition.SystemPrompt" Label="System Prompt" Variant="Variant.Outlined"
                            Lines="4" />
+            <MudNumericField data-testid="agent-maxturns-input" @bind-Value="_definition.MaxTurns" Label="Max Turns" Variant="Variant.Outlined"
+                             HelperText="0 = unlimited" Min="0" />
         </MudStack>
     </DialogContent>
     <DialogActions>

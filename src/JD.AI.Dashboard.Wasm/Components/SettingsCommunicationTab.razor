@@ -12,6 +12,8 @@
                 {
                     var isSelected = _selected?.Type == channel.Type;
                     var selectedStyle = isSelected ? "background-color:rgba(33,150,243,0.12);" : "";
+                    var statusColor = GetStatusColor(channel);
+                    var statusLabel = GetStatusLabel(channel);
                     <div data-testid="@($"provider-item-{channel.Type}")"
                          @onclick="@(() => SelectChannel(channel))"
                          Class="@(isSelected ? "mud-primary mud-primary-text" : "")"
@@ -19,8 +21,11 @@
                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                             <MudIcon Icon="@Icons.Material.Filled.Circle" Size="Size.Small"
                                      data-testid="@($"provider-status-{channel.Type}")"
-                                     Color="@(channel.Enabled ? Color.Success : Color.Default)" />
-                            <MudText Typo="Typo.subtitle2" Style="flex:1;">@channel.Name</MudText>
+                                     Color="@statusColor" />
+                            <MudStack Spacing="0" Style="flex:1;">
+                                <MudText Typo="Typo.subtitle2">@channel.Name</MudText>
+                                <MudText Typo="Typo.caption" Color="@statusColor">@statusLabel</MudText>
+                            </MudStack>
                             <MudSwitch @bind-Value="channel.Enabled" Color="Color.Primary" UncheckedColor="Color.Default"
                                        data-testid="@($"provider-enable-{channel.Type}")" />
                         </MudStack>
@@ -37,38 +42,164 @@
             <MudStack Spacing="3" data-testid="channel-config-form">
                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
                     <MudText Typo="Typo.h5">@_selected.Name</MudText>
-                    <MudSwitch @bind-Value="_selected.Enabled" Color="Color.Primary" UncheckedColor="Color.Default"
-                               data-testid="@($"provider-enable-{_selected.Type}")" />
+                    <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(_selected)" Variant="Variant.Outlined"
+                             data-testid="@($"provider-status-badge-{_selected.Type}")">
+                        @GetStatusLabel(_selected)
+                    </MudChip>
+                    <MudSwitch @bind-Value="_selected.Enabled" Color="Color.Primary" UncheckedColor="Color.Default" />
                 </MudStack>
 
                 @if (_selected.Enabled)
                 {
                     <MudDivider />
 
-                    <MudStack Spacing="2">
-                        <MudSwitch @bind-Value="_selected.AutoConnect" Color="Color.Primary" UncheckedColor="Color.Default">
-                            <ChildContent>
-                                <MudStack Spacing="0">
-                                    <MudText>Auto-Connect</MudText>
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Connect automatically on gateway start</MudText>
-                                </MudStack>
-                            </ChildContent>
-                        </MudSwitch>
-                    </MudStack>
+                    <MudSwitch @bind-Value="_selected.AutoConnect" Color="Color.Primary" UncheckedColor="Color.Default">
+                        <ChildContent>
+                            <MudStack Spacing="0">
+                                <MudText>Auto-Connect</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Connect automatically on gateway start</MudText>
+                            </MudStack>
+                        </ChildContent>
+                    </MudSwitch>
 
-                    @if (_selected.Settings.Count > 0)
+                    <MudDivider />
+
+                    @* Discord-specific structured form *@
+                    @if (_selected.Type == "discord")
                     {
-                        <MudDivider />
-                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">
-                            Settings
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1"
+                                 Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">
+                            Discord Settings
                         </MudText>
 
+                        @* Bot Token (sensitive) *@
+                        <MudStack Spacing="1" data-testid="field-botToken" Class="mb-2">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudTextField Value="@GetSettingValue("botToken")"
+                                              ValueChanged="@((string v) => SetSettingValue("botToken", v))"
+                                              Label="Bot Token" Variant="Variant.Outlined"
+                                              InputType="@(_revealedFields.Contains("botToken") ? InputType.Text : InputType.Password)"
+                                              HelperText="Discord bot token from the Developer Portal."
+                                              Style="flex:1;" />
+                                <MudIconButton Icon="@(_revealedFields.Contains("botToken") ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                               Size="Size.Small"
+                                               data-testid="toggle-visibility-botToken"
+                                               OnClick="@(() => ToggleReveal("botToken"))"
+                                               Color="Color.Default" />
+                            </MudStack>
+                        </MudStack>
+
+                        @* Guild ID *@
+                        <MudStack Spacing="1" data-testid="field-guildId" Class="mb-2">
+                            <MudTextField Value="@GetSettingValue("guildId")"
+                                          ValueChanged="@((string v) => SetSettingValue("guildId", v))"
+                                          Label="Guild ID (Server ID)" Variant="Variant.Outlined"
+                                          HelperText="The Discord server/guild identifier." />
+                        </MudStack>
+
+                        @* Channel ID *@
+                        <MudStack Spacing="1" data-testid="field-channelId" Class="mb-2">
+                            <MudTextField Value="@GetSettingValue("channelId")"
+                                          ValueChanged="@((string v) => SetSettingValue("channelId", v))"
+                                          Label="Default Channel ID" Variant="Variant.Outlined"
+                                          HelperText="Default channel for outbound replies." />
+                        </MudStack>
+
+                        @* Allowed From *@
+                        <MudStack Spacing="1" data-testid="field-allowedFrom" Class="mb-2">
+                            <MudTextField Value="@GetSettingValue("allowedFrom")"
+                                          ValueChanged="@((string v) => SetSettingValue("allowedFrom", v))"
+                                          Label="Allowed From (comma-separated user IDs)" Variant="Variant.Outlined"
+                                          HelperText="List of Discord user IDs permitted to interact. Leave empty to allow all." />
+                        </MudStack>
+
+                        @* DM Policy *@
+                        <MudStack Spacing="1" data-testid="field-dmPolicy" Class="mb-2">
+                            <MudSelect T="string" Value="@GetSettingValue("dmPolicy")"
+                                       ValueChanged="@((string v) => SetSettingValue("dmPolicy", v))"
+                                       Label="DM Policy" Variant="Variant.Outlined"
+                                       HelperText="How to handle direct messages.">
+                                <MudSelectItem Value="@("")">Inherit Default</MudSelectItem>
+                                <MudSelectItem Value="@("always")">Always Allow</MudSelectItem>
+                                <MudSelectItem Value="@("blocked")">Block DMs</MudSelectItem>
+                                <MudSelectItem Value="@("specific")">Specific Users Only</MudSelectItem>
+                            </MudSelect>
+                        </MudStack>
+                    }
+                    else if (_selected.Type == "slack")
+                    {
+                        @* Slack structured form *@
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1"
+                                 Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">
+                            Slack Settings
+                        </MudText>
+
+                        <MudStack Spacing="1" data-testid="field-botToken" Class="mb-2">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudTextField Value="@GetSettingValue("botToken")"
+                                              ValueChanged="@((string v) => SetSettingValue("botToken", v))"
+                                              Label="Bot Token" Variant="Variant.Outlined"
+                                              InputType="@(_revealedFields.Contains("botToken") ? InputType.Text : InputType.Password)"
+                                              HelperText="Slack bot/app token (xoxb-...)."
+                                              Style="flex:1;" />
+                                <MudIconButton Icon="@(_revealedFields.Contains("botToken") ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                               Size="Size.Small"
+                                               data-testid="toggle-visibility-botToken"
+                                               OnClick="@(() => ToggleReveal("botToken"))"
+                                               Color="Color.Default" />
+                            </MudStack>
+                        </MudStack>
+
+                        <MudStack Spacing="1" data-testid="field-workspaceId" Class="mb-2">
+                            <MudTextField Value="@GetSettingValue("workspaceId")"
+                                          ValueChanged="@((string v) => SetSettingValue("workspaceId", v))"
+                                          Label="Workspace ID" Variant="Variant.Outlined"
+                                          HelperText="The Slack workspace/team identifier." />
+                        </MudStack>
+                    }
+                    else if (_selected.Type == "telegram")
+                    {
+                        @* Telegram structured form *@
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1"
+                                 Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">
+                            Telegram Settings
+                        </MudText>
+
+                        <MudStack Spacing="1" data-testid="field-botToken" Class="mb-2">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudTextField Value="@GetSettingValue("botToken")"
+                                              ValueChanged="@((string v) => SetSettingValue("botToken", v))"
+                                              Label="Bot Token" Variant="Variant.Outlined"
+                                              InputType="@(_revealedFields.Contains("botToken") ? InputType.Text : InputType.Password)"
+                                              HelperText="Telegram bot token from BotFather."
+                                              Style="flex:1;" />
+                                <MudIconButton Icon="@(_revealedFields.Contains("botToken") ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                               Size="Size.Small"
+                                               data-testid="toggle-visibility-botToken"
+                                               OnClick="@(() => ToggleReveal("botToken"))"
+                                               Color="Color.Default" />
+                            </MudStack>
+                        </MudStack>
+
+                        <MudStack Spacing="1" data-testid="field-allowedUsers" Class="mb-2">
+                            <MudTextField Value="@GetSettingValue("allowedUsers")"
+                                          ValueChanged="@((string v) => SetSettingValue("allowedUsers", v))"
+                                          Label="Allowed Users (comma-separated)" Variant="Variant.Outlined"
+                                          HelperText="Telegram user IDs or usernames permitted to interact." />
+                        </MudStack>
+                    }
+                    else if (_selected.Settings.Count > 0)
+                    {
+                        @* Generic key/value fallback for other providers *@
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1"
+                                 Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">
+                            Settings
+                        </MudText>
                         @foreach (var kvp in _selected.Settings)
                         {
                             var key = kvp.Key;
                             var isSensitive = IsSensitiveKey(key);
                             var isRevealed = _revealedFields.Contains(key);
-
                             <MudStack Spacing="1" data-testid="@($"field-{key}")" Class="mb-2">
                                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                                     <MudTextField @bind-Value="_selected.Settings[key]" Label="@key" Variant="Variant.Outlined"
@@ -86,16 +217,45 @@
                             </MudStack>
                         }
                     }
-                }
 
-                <MudStack Row="true" Justify="Justify.FlexEnd">
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save"
-                               data-testid="save-communication-button"
-                               OnClick="SaveAsync" Disabled="_saving">
-                        @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
-                        Save Configuration
-                    </MudButton>
-                </MudStack>
+                    <MudDivider />
+
+                    <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
+                                   StartIcon="@Icons.Material.Filled.NetworkCheck"
+                                   data-testid="@($"test-connection-{_selected.Type}")"
+                                   OnClick="TestConnectionAsync" Disabled="_testing || _saving">
+                            @if (_testing)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Test Connection
+                        </MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save"
+                                   data-testid="save-communication-button"
+                                   OnClick="SaveAsync" Disabled="_saving || _testing">
+                            @if (_saving)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Save Configuration
+                        </MudButton>
+                    </MudStack>
+                }
+                else
+                {
+                    <MudStack Row="true" Justify="Justify.FlexEnd">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save"
+                                   data-testid="save-communication-button"
+                                   OnClick="SaveAsync" Disabled="_saving">
+                            @if (_saving)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Save Configuration
+                        </MudButton>
+                    </MudStack>
+                }
             </MudStack>
         }
         else
@@ -107,6 +267,62 @@
     </MudItem>
 </MudGrid>
 
+@* Global Message Settings *@
+<MudDivider Class="my-4" />
+<MudStack Spacing="3" data-testid="global-message-settings">
+    <MudText Typo="Typo.h6">Global Message Settings</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary">Applied across all enabled channels.</MudText>
+
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="6">
+            <MudTextField @bind-Value="_messageSettings.MessagePrefix"
+                          Label="Message Prefix"
+                          HelperText="Prefix added to all outbound replies. Supports {model}, {provider}, {identity.name}."
+                          Variant="Variant.Outlined"
+                          data-testid="field-messagePrefix" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField @bind-Value="_messageSettings.AckReaction"
+                          Label="Acknowledgment Reaction"
+                          HelperText="Emoji reacted to inbound messages. Leave empty to disable."
+                          Variant="Variant.Outlined"
+                          data-testid="field-ackReaction" />
+        </MudItem>
+    </MudGrid>
+
+    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2"
+             Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">
+        Status Reactions
+    </MudText>
+    <MudGrid Spacing="2">
+        <MudItem xs="6" md="4">
+            <MudTextField @bind-Value="_messageSettings.ThinkingReaction"
+                          Label="Thinking" Variant="Variant.Outlined"
+                          data-testid="field-thinkingReaction" />
+        </MudItem>
+        <MudItem xs="6" md="4">
+            <MudTextField @bind-Value="_messageSettings.ToolReaction"
+                          Label="Tool Use" Variant="Variant.Outlined"
+                          data-testid="field-toolReaction" />
+        </MudItem>
+        <MudItem xs="6" md="4">
+            <MudTextField @bind-Value="_messageSettings.CodingReaction"
+                          Label="Coding" Variant="Variant.Outlined"
+                          data-testid="field-codingReaction" />
+        </MudItem>
+        <MudItem xs="6" md="4">
+            <MudTextField @bind-Value="_messageSettings.DoneReaction"
+                          Label="Done" Variant="Variant.Outlined"
+                          data-testid="field-doneReaction" />
+        </MudItem>
+        <MudItem xs="6" md="4">
+            <MudTextField @bind-Value="_messageSettings.ErrorReaction"
+                          Label="Error" Variant="Variant.Outlined"
+                          data-testid="field-errorReaction" />
+        </MudItem>
+    </MudGrid>
+</MudStack>
+
 @code {
     [Parameter] public IList<ChannelConfigModel> Channels { get; set; } = new List<ChannelConfigModel>();
     [Parameter] public GatewayApiClient Api { get; set; } = null!;
@@ -114,6 +330,8 @@
     private ChannelConfigModel? _selected;
     private readonly HashSet<string> _revealedFields = [];
     private bool _saving;
+    private bool _testing;
+    private GlobalMessageSettingsModel _messageSettings = new();
 
     private void SelectChannel(ChannelConfigModel channel)
     {
@@ -137,6 +355,51 @@
         key.Contains("password", StringComparison.OrdinalIgnoreCase) ||
         key.Contains("apiHash", StringComparison.OrdinalIgnoreCase) ||
         key.Contains("apiId", StringComparison.OrdinalIgnoreCase);
+
+    private static Color GetStatusColor(ChannelConfigModel channel)
+    {
+        if (!channel.Enabled) return Color.Default;
+        var hasToken = channel.Settings.TryGetValue("botToken", out var tok) && !string.IsNullOrWhiteSpace(tok);
+        return hasToken ? Color.Success : Color.Warning;
+    }
+
+    private static string GetStatusLabel(ChannelConfigModel channel)
+    {
+        if (!channel.Enabled) return "Disabled";
+        var hasToken = channel.Settings.TryGetValue("botToken", out var tok) && !string.IsNullOrWhiteSpace(tok);
+        return hasToken ? "Connected" : "Unconfigured";
+    }
+
+    private string GetSettingValue(string key) =>
+        _selected?.Settings.TryGetValue(key, out var v) == true ? v : "";
+
+    private void SetSettingValue(string key, string value)
+    {
+        if (_selected is null) return;
+        _selected.Settings[key] = value;
+    }
+
+    private async Task TestConnectionAsync()
+    {
+        if (_selected is null) return;
+        _testing = true;
+        try
+        {
+            var (success, message) = await Api.TestChannelAsync(_selected.Type);
+            if (success)
+                Snackbar.Add($"Connection successful: {message}", Severity.Success);
+            else
+                Snackbar.Add($"Connection failed: {message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Test error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _testing = false;
+        }
+    }
 
     private async Task SaveAsync()
     {

@@ -83,11 +83,22 @@ else
                                     @skill.Description
                                 </MudText>
                             </MudStack>
-                            <MudChip T="string" Size="Size.Small"
-                                     Color="@SkillStatusColor(skill.Status)"
-                                     Variant="Variant.Text">
-                                @StatusLabel(skill.Status)
-                            </MudChip>
+                            <MudStack Spacing="0" AlignItems="AlignItems.End">
+                                <MudChip T="string" Size="Size.Small"
+                                         data-testid="@($"skill-status-{skill.Id}")"
+                                         Color="@SkillStatusColor(skill.Status)"
+                                         Variant="Variant.Text">
+                                    @StatusLabel(skill.Status)
+                                </MudChip>
+                                @if (!string.IsNullOrWhiteSpace(skill.StatusReason))
+                                {
+                                    <MudText data-testid="@($"skill-reason-{skill.Id}")"
+                                             Typo="Typo.caption" Color="Color.Secondary"
+                                             Style="font-size:0.65rem;max-width:120px;text-align:right;white-space:normal">
+                                        @skill.StatusReason
+                                    </MudText>
+                                }
+                            </MudStack>
                         </MudStack>
                         <MudStack Row="true" Justify="Justify.SpaceBetween"
                                   AlignItems="AlignItems.Center" Class="mt-2">

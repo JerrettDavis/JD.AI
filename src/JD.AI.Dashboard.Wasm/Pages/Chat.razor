@@ -137,16 +137,6 @@
                           OnKeyDown="OnKeyDown"
                           Disabled="@(_streaming || string.IsNullOrEmpty(_selectedAgentId))"
                           Immediate="true" />
-            @if (_streaming)
-            {
-                <MudTooltip Text="Cancel streaming">
-                    <MudIconButton data-testid="cancel-stream-button"
-                                   Icon="@Icons.Material.Filled.StopCircle"
-                                   Color="Color.Error"
-                                   Size="Size.Small"
-                                   OnClick="CancelStreaming" />
-                </MudTooltip>
-            }
         </MudStack>
     </MudPaper>
 </div>
@@ -355,11 +345,6 @@
             _streamCts = null;
             StateHasChanged();
         }
-    }
-
-    private void CancelStreaming()
-    {
-        _streamCts?.Cancel();
     }
 
     private void ClearChat() { _messages.Clear(); StateHasChanged(); }

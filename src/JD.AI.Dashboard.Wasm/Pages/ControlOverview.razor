@@ -11,15 +11,28 @@
 <div class="jd-page-header">
     <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
         <MudStack Spacing="0">
+            <MudBreadcrumbs Items="_breadcrumbs" Class="pa-0 jd-breadcrumb" />
             <MudText Typo="Typo.h4" data-testid="page-title">Overview</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary" data-testid="page-subtitle">Status, entry points, health.</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" data-testid="page-subtitle">System health, gateway status, and live counters.</MudText>
         </MudStack>
         <MudIconButton Icon="@Icons.Material.Filled.Refresh"
                        OnClick="RefreshAsync"
                        Size="Size.Small"
-                       data-testid="btn-refresh" />
+                       data-testid="btn-refresh"
+                       aria-label="Refresh" />
     </MudStack>
 </div>
+
+@* ── Gateway Connection Status Card ─────────────────────────── *@
+<MudPaper Class="pa-4 mb-4" Elevation="0" data-testid="gateway-status-card">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+        <MudIcon Icon="@GatewayStatusIcon" Color="@GatewayStatusColor" Size="Size.Large" data-testid="gateway-status-icon" />
+        <MudStack Spacing="0">
+            <MudText Typo="Typo.h6" data-testid="gateway-status-label">Gateway — <span data-testid="gateway-status-text">@GatewayStatusText</span></MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" data-testid="gateway-status-detail">@GatewayStatusDetail</MudText>
+        </MudStack>
+    </MudStack>
+</MudPaper>
 
 @* ── Gateway Access Card ─────────────────────────────────────── *@
 <MudPaper Class="pa-4 mb-4" Elevation="0" data-testid="gateway-access-card">
@@ -99,6 +112,10 @@
         }
     </MudGrid>
 }
+else if (_gatewayReachable == false)
+{
+    <GatewayErrorBoundary HasError="true" OnRetry="RefreshAsync" />
+}
 else
 {
     <MudGrid Class="mb-4">
@@ -128,43 +145,56 @@ else
         </MudItem>
     </MudGrid>
 
-    @* ── Operational Counters ──────────────────────────────────── *@
+    @* ── Stat Cards ────────────────────────────────────────────── *@
     <MudGrid Class="mb-4">
-        <MudItem xs="6" sm="4">
-            <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="counter-card-sessions">
-                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
-                    <MudAvatar Color="Color.Tertiary" Variant="Variant.Outlined" Size="Size.Medium">
-                        <MudIcon Icon="@Icons.Material.Filled.Forum" />
-                    </MudAvatar>
-                    <MudStack Spacing="0">
-                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">SESSIONS</MudText>
-                        <MudText Typo="Typo.h4" Style="font-weight:700;" data-testid="counter-sessions">@_snapshot.SessionCount</MudText>
-                    </MudStack>
-                </MudStack>
-            </MudPaper>
-        </MudItem>
-        <MudItem xs="6" sm="4">
-            <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="counter-card-agents">
+        <MudItem xs="6" sm="3">
+            <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="stat-card-agents">
                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
                     <MudAvatar Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Medium">
                         <MudIcon Icon="@Icons.Material.Filled.SmartToy" />
                     </MudAvatar>
                     <MudStack Spacing="0">
-                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">AGENTS</MudText>
-                        <MudText Typo="Typo.h4" Style="font-weight:700;" data-testid="counter-agents">@_snapshot.ActiveAgents</MudText>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Active Agents</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700;" data-testid="stat-agents">@_snapshot.ActiveAgents</MudText>
                     </MudStack>
                 </MudStack>
             </MudPaper>
         </MudItem>
-        <MudItem xs="6" sm="4">
-            <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="counter-card-channels">
+        <MudItem xs="6" sm="3">
+            <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="stat-card-sessions">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudAvatar Color="Color.Tertiary" Variant="Variant.Outlined" Size="Size.Medium">
+                        <MudIcon Icon="@Icons.Material.Filled.Forum" />
+                    </MudAvatar>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Active Sessions</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700;" data-testid="stat-sessions">@_snapshot.SessionCount</MudText>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="stat-card-channels">
                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
                     <MudAvatar Color="Color.Secondary" Variant="Variant.Outlined" Size="Size.Medium">
                         <MudIcon Icon="@Icons.Material.Filled.Cable" />
                     </MudAvatar>
                     <MudStack Spacing="0">
-                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">CHANNELS</MudText>
-                        <MudText Typo="Typo.h4" Style="font-weight:700;" data-testid="counter-channels">@_snapshot.ActiveChannels</MudText>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Connected Channels</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700;" data-testid="stat-channels">@_snapshot.ActiveChannels</MudText>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="stat-card-uptime">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudAvatar Color="Color.Success" Variant="Variant.Outlined" Size="Size.Medium">
+                        <MudIcon Icon="@Icons.Material.Filled.Timer" />
+                    </MudAvatar>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Uptime</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700;" data-testid="stat-uptime">@_snapshot.UptimeDisplay</MudText>
                     </MudStack>
                 </MudStack>
             </MudPaper>
@@ -222,12 +252,48 @@ else
     private string _password = "";
     private bool _showToken;
     private bool _loaded;
+    private bool? _gatewayReachable;   // null = unknown/loading, true = connected, false = unreachable
     private ControlOverviewSnapshotModel _snapshot = new();
     private List<RecentSessionRow> _recentSessions = [];
     private List<string> _alerts = [];
 
     private CancellationTokenSource? _timerCts;
     private EventHandler<ActivityEventArgs>? _activityHandler;
+
+    private readonly List<BreadcrumbItem> _breadcrumbs =
+    [
+        new BreadcrumbItem("Control", href: null, disabled: true),
+        new BreadcrumbItem("Overview", href: "/control/overview", disabled: false),
+    ];
+
+    // ── Gateway connection status card ───────────────────────────
+    private string GatewayStatusText => _gatewayReachable switch
+    {
+        true  => "Connected",
+        false => "Disconnected",
+        _     => "Checking…",
+    };
+
+    private string GatewayStatusDetail => _gatewayReachable switch
+    {
+        true  => $"Gateway is reachable at {_settings.WebSocketUrl}",
+        false => "Gateway is unreachable. Check connection settings.",
+        _     => "Fetching gateway status…",
+    };
+
+    private Color GatewayStatusColor => _gatewayReachable switch
+    {
+        true  => Color.Success,
+        false => Color.Error,
+        _     => Color.Default,
+    };
+
+    private string GatewayStatusIcon => _gatewayReachable switch
+    {
+        true  => Icons.Material.Filled.CloudDone,
+        false => Icons.Material.Filled.CloudOff,
+        _     => Icons.Material.Filled.Cloud,
+    };
 
     private Color SnapshotStatusColor => _snapshot.StatusColor switch
     {
@@ -266,8 +332,16 @@ else
         GatewayStatus? status = null;
         SessionInfo[] sessions = [];
 
-        try { status = await Api.GetStatusAsync(); }
-        catch { /* gateway unreachable — snapshot shows Disconnected */ }
+        try
+        {
+            status = await Api.GetStatusAsync();
+            _gatewayReachable = true;
+        }
+        catch
+        {
+            _gatewayReachable = false;
+            /* gateway unreachable — snapshot shows Disconnected */
+        }
 
         try { sessions = await Api.GetSessionsAsync(limit: 10); }
         catch { /* non-fatal */ }

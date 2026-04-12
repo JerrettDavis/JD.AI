@@ -128,7 +128,7 @@ else
                            OnClick="@(() => _expandedRowId = null)" />
         </MudStack>
         <MudText Style="white-space:pre-wrap;font-family:monospace;font-size:0.82rem;">
-            @expanded.Payload
+            @FormatJsonPayload(expanded.Payload)
         </MudText>
     </MudPaper>
 }
@@ -219,10 +219,11 @@ else
 
     private static Color GetLevelColor(string level) => level.ToLowerInvariant() switch
     {
-        "critical" => Color.Error,
-        "error" => Color.Error,
-        "warn" or "warning" => Color.Warning,
-        "info" => Color.Info,
+        "critical" => Color.Dark,     // Dark red for critical
+        "error" => Color.Error,        // Red for error
+        "warn" or "warning" => Color.Warning, // Orange for warning
+        "info" => Color.Info,          // Blue for info
+        "debug" => Color.Default,      // Gray for debug
         _ => Color.Default
     };
 
@@ -234,11 +235,11 @@ else
             {
                 using var doc = System.Text.Json.JsonDocument.Parse(evt.Payload);
                 var root = doc.RootElement;
-                
+
                 var toolName = root.TryGetProperty("toolName", out var tn) ? tn.GetString() : "unknown";
                 var decision = root.TryGetProperty("decision", out var d) ? d.GetString() : "unknown";
                 var durationMs = root.TryGetProperty("durationMs", out var dm) ? dm.GetInt64() : 0;
-                
+
                 return $"{toolName} - {decision} ({durationMs}ms)";
             }
             catch
@@ -246,8 +247,26 @@ else
                 return evt.Message;
             }
         }
-        
+
         return evt.Message;
+    }
+
+    private string FormatJsonPayload(string payload)
+    {
+        if (string.IsNullOrEmpty(payload))
+            return payload;
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(payload);
+            var options = new System.Text.Json.JsonSerializerOptions { WriteIndented = true };
+            return System.Text.Json.JsonSerializer.Serialize(doc.RootElement, options);
+        }
+        catch
+        {
+            // If parsing fails, return the original payload
+            return payload;
+        }
     }
 
     public void Dispose()

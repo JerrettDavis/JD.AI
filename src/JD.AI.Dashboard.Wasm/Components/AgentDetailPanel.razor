@@ -108,6 +108,11 @@ else
                                                  Variant="Variant.Text">
                                             @skill.Status.ToString()
                                         </MudChip>
+                                        <MudSwitch data-testid="@($"skill-toggle-{skill.Id}")"
+                                                   Value="@skill.Enabled"
+                                                   ValueChanged="@((bool v) => ToggleSkillAsync(skill.Id, v))"
+                                                   Color="Color.Primary"
+                                                   Size="Size.Small" />
                                     </MudStack>
                                 </MudListItem>
                             }
@@ -133,6 +138,22 @@ else
         try { _detail = await Api.GetAgentDetailAsync(AgentId); }
         catch { _detail = null; }
         _loading = false;
+    }
+
+    private async Task ToggleSkillAsync(string skillId, bool enabled)
+    {
+        try
+        {
+            await Api.ToggleSkillAsync(skillId, enabled);
+            Snackbar.Add($"Skill '{skillId}' {(enabled ? "enabled" : "disabled")}", Severity.Success);
+            // Refresh detail to reflect new state
+            _loading = true;
+            try { _detail = await Api.GetAgentDetailAsync(AgentId); }
+            catch { /* keep existing detail */ }
+            _loading = false;
+            StateHasChanged();
+        }
+        catch (Exception ex) { Snackbar.Add($"Failed: {ex.Message}", Severity.Error); }
     }
 
     private static Color SkillStatusColor(SkillStatus status) => status switch

@@ -128,6 +128,24 @@ public sealed class GatewayApiClient(HttpClient http)
         response.EnsureSuccessStatusCode();
     }
 
+    public async Task<(bool Success, string Message)> TestChannelAsync(string channelType)
+    {
+        try
+        {
+            var response = await http.PostAsJsonAsync($"api/channels/{channelType}/test", new { });
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ChannelTestResult>();
+                return (result?.Success ?? true, result?.Message ?? "Connected");
+            }
+            return (false, $"HTTP {(int)response.StatusCode}");
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
     public async Task UpdateRoutingConfigAsync(RoutingConfigModel routing)
     {
         var response = await http.PutAsJsonAsync("api/gateway/config/routing", routing);

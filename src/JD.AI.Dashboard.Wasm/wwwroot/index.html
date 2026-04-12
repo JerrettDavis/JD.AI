@@ -8,8 +8,11 @@
     <script>
       (function() {
         var t = localStorage.getItem('jd-theme');
-        if (t === 'light') document.documentElement.setAttribute('data-theme','light');
-        else document.documentElement.setAttribute('data-theme','dark');
+        var dark;
+        if (t === 'light') dark = false;
+        else if (t === 'dark') dark = true;
+        else dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
       })();
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />

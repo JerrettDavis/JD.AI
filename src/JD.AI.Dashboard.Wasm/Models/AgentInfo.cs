@@ -2,7 +2,14 @@ using System.Text.Json.Serialization;
 
 namespace JD.AI.Dashboard.Wasm.Models;
 
-public record AgentInfo(string Id, string Provider, string Model, int TurnCount, DateTimeOffset CreatedAt);
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum AgentStatus { Active, Inactive, Error }
+
+public record AgentInfo(string Id, string Provider, string Model, int TurnCount, DateTimeOffset CreatedAt)
+{
+    [JsonPropertyName("status")]
+    public AgentStatus Status { get; init; } = AgentStatus.Active;
+};
 
 public record AgentDefinition
 {
