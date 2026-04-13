@@ -200,4 +200,107 @@ public sealed class ChatRendererTests : IDisposable
 
         label.Should().Be(expectedLabel);
     }
+
+    // ── RenderBanner edge cases ──────────────────────────────────────
+
+    [Fact]
+    public void RenderBanner_WithValidInput_DoesNotThrow()
+    {
+        var action = () => ChatRenderer.RenderBanner(
+            "gpt-4", "OpenAI", 10,
+            indicators: null,
+            details: null,
+            welcomeSettings: null);
+
+        action.Should().NotThrow();
+    }
+
+    [Fact]
+    public void RenderBanner_WithIndicators_DoesNotThrow()
+    {
+        var indicators = new List<WelcomeIndicator>
+        {
+            new("Gateway", "online", IndicatorState.Healthy),
+        };
+
+        var action = () => ChatRenderer.RenderBanner(
+            "gpt-4", "OpenAI", 10,
+            indicators: indicators,
+            details: null,
+            welcomeSettings: null);
+
+        action.Should().NotThrow();
+    }
+
+    [Fact]
+    public void RenderBanner_WithDetails_DoesNotThrow()
+    {
+        var details = new WelcomeBannerDetails(
+            WorkingDirectory: "/home/user",
+            Version: "1.0.0",
+            Motd: "Welcome!");
+
+        var action = () => ChatRenderer.RenderBanner(
+            "gpt-4", "OpenAI", 10,
+            indicators: null,
+            details: details,
+            welcomeSettings: null);
+
+        action.Should().NotThrow();
+    }
+
+    // ── RenderError edge cases ───────────────────────────────────────
+
+    [Fact]
+    public void RenderError_WithMessage_DoesNotThrow()
+    {
+        var action = () => ChatRenderer.RenderError("Something went wrong");
+        action.Should().NotThrow();
+    }
+
+    [Fact]
+    public void RenderError_WithEmptyMessage_DoesNotThrow()
+    {
+        var action = () => ChatRenderer.RenderError("");
+        action.Should().NotThrow();
+    }
+
+    // ── RenderAssistantMessage edge cases ────────────────────────────
+
+    [Fact]
+    public void RenderAssistantMessage_WithContent_DoesNotThrow()
+    {
+        var action = () => ChatRenderer.RenderAssistantMessage("This is the assistant response");
+        action.Should().NotThrow();
+    }
+
+    [Fact]
+    public void RenderAssistantMessage_WithEmptyContent_DoesNotThrow()
+    {
+        var action = () => ChatRenderer.RenderAssistantMessage("");
+        action.Should().NotThrow();
+    }
+
+    // ── BeginThinking / EndThinking edge cases ──────────────────────
+
+    [Fact]
+    public void BeginThinking_DoesNotThrow()
+    {
+        var action = () => ChatRenderer.BeginThinking();
+        action.Should().NotThrow();
+    }
+
+    [Fact]
+    public void EndThinking_DoesNotThrow()
+    {
+        var action = () => ChatRenderer.EndThinking();
+        action.Should().NotThrow();
+    }
+
+    [Fact]
+    public void ConfirmWorkflow_DoesNotThrow()
+    {
+        var action = () => ChatRenderer.ConfirmWorkflow("Test workflow");
+        action.Should().NotThrow();
+    }
 }

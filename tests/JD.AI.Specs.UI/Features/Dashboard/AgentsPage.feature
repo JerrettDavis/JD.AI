@@ -102,6 +102,52 @@ Feature: Agents Page
     Scenario: Page title is correct
         Then the browser page title should be "Agents — JD.AI"
 
+    # ── Detail panel (#473) ───────────────────────────────
+    @planned
+    Scenario: Clicking agent row opens detail panel
+        Given there are active agents
+        When I click on the first agent row
+        Then the agent detail panel should be visible
+
+    @planned
+    Scenario: Detail panel shows Overview tab by default
+        Given there are active agents
+        When I click on the first agent row
+        Then I should see the overview tab content
+
+    @planned
+    Scenario: Detail panel Tools tab shows agent tools
+        Given there are active agents
+        When I click on the first agent row
+        And I click the "Tools" tab in the detail panel
+        Then I should see the tools list
+
+    @planned
+    Scenario: Detail panel Skills tab shows assigned skills
+        Given there are active agents
+        When I click on the first agent row
+        And I click the "Skills" tab in the detail panel
+        Then I should see the assigned skills list
+
+    @planned
+    Scenario: Detail panel close button hides panel
+        Given there are active agents
+        When I click on the first agent row
+        And I click the detail panel close button
+        Then the agent detail panel should not be visible
+
+    @planned
+    Scenario: Toolbar Copy ID button is present when agent selected
+        Given there are active agents
+        When I click on the first agent row
+        Then the "Copy ID" toolbar button should be enabled
+
+    @planned
+    Scenario: Toolbar Set Default button is present when agent selected
+        Given there are active agents
+        When I click on the first agent row
+        Then the "Set Default" toolbar button should be enabled
+
     # ── Planned ───────────────────────────────────────────
     @planned
     Scenario: Agent grid shows expandable details

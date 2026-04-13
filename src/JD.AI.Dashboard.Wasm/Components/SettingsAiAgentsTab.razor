@@ -1,0 +1,17 @@
+@using JD.AI.Dashboard.Wasm.Models
+@using JD.AI.Dashboard.Wasm.Services
+
+<MudTabs Elevation="0" Rounded="false" PanelClass="pt-4" data-testid="ai-agents-subtabs">
+    <MudTabPanel Text="Providers" Icon="@Icons.Material.Filled.Hub" data-testid="subtab-providers">
+        <SettingsProvidersTab Providers="Providers" Api="Api" />
+    </MudTabPanel>
+    <MudTabPanel Text="Agents" Icon="@Icons.Material.Filled.SmartToy" data-testid="subtab-agents">
+        <SettingsAgentsTab Agents="Agents" AvailableProviders="Providers" Api="Api" />
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    [Parameter] public IList<ProviderConfigModel> Providers { get; set; } = [];
+    [Parameter] public IList<AgentDefinition> Agents { get; set; } = [];
+    [Parameter] public GatewayApiClient Api { get; set; } = null!;
+}

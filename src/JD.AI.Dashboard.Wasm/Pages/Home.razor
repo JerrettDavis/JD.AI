@@ -1,4 +1,3 @@
-@page "/"
 @inject GatewayApiClient Api
 @inject SignalRService SignalR
 @implements IDisposable
@@ -9,7 +8,7 @@
     <MudText Typo="Typo.h4" data-testid="page-title">Gateway Overview</MudText>
 </div>
 
-@if (_status is null && !_loaded)
+@if (_status is null && !_loaded && !_loadError)
 {
     @* Skeleton stat cards *@
     <MudGrid>
@@ -38,6 +37,10 @@
             </div>
         }
     </MudPaper>
+}
+else if (_loadError)
+{
+    <GatewayErrorBoundary HasError="true" OnRetry="LoadAsync" />
 }
 else
 {
@@ -88,38 +91,25 @@ else
             </MudPaper>
         </MudItem>
         <MudItem xs="12" sm="6" md="3">
-            <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="stat-card" data-name="openclaw">
-                <div data-testid="stat-card-openclaw">
+            <MudPaper Class="pa-4 jd-stat-card" Elevation="0" data-testid="stat-card" data-name="gateway">
+                <div data-testid="stat-card-gateway">
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
-                        <MudAvatar Color="@(_status?.OpenClaw?.Connected == true ? Color.Success : Color.Error)"
+                        <MudAvatar Color="@(_status?.Status == "running" ? Color.Success : Color.Error)"
                                    Variant="Variant.Outlined" Size="Size.Medium">
-                            <MudIcon Icon="@(_status?.OpenClaw?.Connected == true ? Icons.Material.Filled.Cloud : Icons.Material.Filled.CloudOff)" />
+                            <MudIcon Icon="@(_status?.Status == "running" ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error)" />
                         </MudAvatar>
                         <MudStack Spacing="0">
-                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">OpenClaw</MudText>
-                            <MudText Typo="Typo.h6" Style="font-weight:600;" data-testid="stat-value">@(_status?.OpenClaw?.Connected == true ? "Connected" : "Offline")</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary"
+                                     Style="text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Gateway</MudText>
+                            <MudText Typo="Typo.h6" Style="font-weight:600;" data-testid="stat-value">
+                                @(_status?.Status == "running" ? "Running" : "Stopped")
+                            </MudText>
                         </MudStack>
                     </MudStack>
                 </div>
             </MudPaper>
         </MudItem>
     </MudGrid>
-
-    @if (_status?.OpenClaw is not null)
-    {
-        <MudPaper Class="pa-4 mt-4" Elevation="0" data-testid="openclaw-bridge">
-            <MudText Typo="Typo.h6" Class="mb-3">OpenClaw Bridge</MudText>
-            <MudSimpleTable Dense="true" Hover="true">
-                <thead>
-                    <tr><th>Property</th><th>Value</th></tr>
-                </thead>
-                <tbody>
-                    <tr><td>Enabled</td><td><MudChip T="string" Size="Size.Small" Color="@(_status.OpenClaw.Enabled ? Color.Success : Color.Default)">@(_status.OpenClaw.Enabled ? "Yes" : "No")</MudChip></td></tr>
-                    <tr><td>Registered Agents</td><td>@string.Join(", ", _status.OpenClaw.RegisteredAgents)</td></tr>
-                </tbody>
-            </MudSimpleTable>
-        </MudPaper>
-    }
 
     <MudPaper Class="pa-4 mt-4" Elevation="0" data-testid="recent-activity">
         <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
@@ -155,6 +145,7 @@ else
 @code {
     private GatewayStatus? _status;
     private bool _loaded;
+    private bool _loadError;
     private readonly List<ActivityEvent> _events = [];
     private EventHandler<ActivityEventArgs>? _activityHandler;
 
@@ -172,8 +163,13 @@ else
 
     private async Task LoadAsync()
     {
+        _loadError = false;
         try { _status = await Api.GetStatusAsync(); }
-        catch { _status = null; }
+        catch
+        {
+            _status = null;
+            _loadError = true;
+        }
         _loaded = true;
     }
 

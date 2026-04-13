@@ -196,6 +196,79 @@ public class WorkflowBridgeTests
     }
 
     [Fact]
+    public void Build_LoopStep_CreatesValidWorkflow()
+    {
+        var definition = new AgentWorkflowDefinition
+        {
+            Name = "loop-workflow",
+            Steps =
+            [
+                new AgentStepDefinition
+                {
+                    Name = "loop-step",
+                    Kind = AgentStepKind.Loop,
+                    Condition = "counter < 3",
+                    SubSteps = [AgentStepDefinition.RunSkill("inner")],
+                },
+            ],
+        };
+
+        var workflow = _bridge.Build(definition);
+
+        workflow.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Build_LoopStepWithoutSubSteps_HandlesGracefully()
+    {
+        var definition = new AgentWorkflowDefinition
+        {
+            Name = "empty-loop",
+            Steps =
+            [
+                new AgentStepDefinition
+                {
+                    Name = "loop",
+                    Kind = AgentStepKind.Loop,
+                    Condition = "true",
+                    SubSteps = [],
+                },
+            ],
+        };
+
+        var workflow = _bridge.Build(definition);
+
+        workflow.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Build_LoopStepWithMultipleSubSteps_HandlesGracefully()
+    {
+        var definition = new AgentWorkflowDefinition
+        {
+            Name = "multi-step-loop",
+            Steps =
+            [
+                new AgentStepDefinition
+                {
+                    Name = "loop",
+                    Kind = AgentStepKind.Loop,
+                    Condition = "counter < 5",
+                    SubSteps =
+                    [
+                        AgentStepDefinition.RunSkill("step1"),
+                        AgentStepDefinition.RunSkill("step2"),
+                    ],
+                },
+            ],
+        };
+
+        var workflow = _bridge.Build(definition);
+
+        workflow.Should().NotBeNull();
+    }
+
+    [Fact]
     public async Task Execute_WithCancellation_RespectsCancellationToken()
     {
         var definition = new AgentWorkflowDefinition

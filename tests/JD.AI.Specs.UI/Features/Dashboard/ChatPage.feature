@@ -21,7 +21,7 @@ Feature: Chat Page
     Scenario: Empty state shown before any messages
         Then I should see the chat empty state
         And the empty state should display "Start a conversation"
-        And the empty state should display "Select a channel and session above, or start a new conversation."
+        And the empty state should display "Type a message below to chat with the selected agent."
 
     @requires-agents
     Scenario: User message bubble appears after sending
@@ -36,3 +36,13 @@ Feature: Chat Page
     @smoke
     Scenario: Page title is correct
         Then the browser page title should be "Chat — JD.AI"
+
+    @requires-agents
+    Scenario: Cancel button appears during streaming and stops response
+        Given an agent is selected
+        When I type "Tell me a long story" in the message input
+        And I send the message
+        Then a streaming cancel button should be visible
+        When I click the streaming cancel button
+        Then the streaming cancel button should disappear
+        And the message input should be enabled

@@ -57,18 +57,11 @@
 
 @if (_loading)
 {
-    <MudPaper Elevation="0">
-        @for (var i = 0; i < 5; i++)
-        {
-            <div class="jd-skeleton-row">
-                <MudSkeleton Width="120px" Height="14px" />
-                <MudSkeleton Width="72px" Height="24px" />
-                <MudSkeleton Width="100px" Height="14px" />
-                <MudSkeleton Width="100px" Height="14px" />
-                <MudSkeleton Width="300px" Height="14px" />
-            </div>
-        }
-    </MudPaper>
+    <LoadingSkeleton SkeletonType="rows" Rows="5" />
+}
+else if (_loadError)
+{
+    <GatewayErrorBoundary HasError="true" OnRetry="LoadAsync" />
 }
 else if (_filteredEvents.Length == 0)
 {
@@ -90,7 +83,7 @@ else
                     <CellTemplate>
                         <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
                                  Color="@GetLevelColor(context.Item.Level)"
-                                 data-testid="log-level">
+                                 data-testid="@($"log-level-chip-{context.Item.Id}")">
                             @context.Item.Level
                         </MudChip>
                     </CellTemplate>
@@ -109,9 +102,13 @@ else
                     <CellTemplate>
                         @if (!string.IsNullOrEmpty(context.Item.Payload))
                         {
-                            <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
-                                           OnClick="@(() => ToggleDetail(context.Item.Id))"
-                                           data-testid="log-detail-button" />
+                            <MudIconButton
+                                Icon="@(_expandedRowId == context.Item.Id
+                                    ? Icons.Material.Filled.ExpandLess
+                                    : Icons.Material.Filled.ExpandMore)"
+                                Size="Size.Small"
+                                OnClick="@(() => ToggleExpand(context.Item.Id))"
+                                data-testid="@($"log-row-expand-{context.Item.Id}")" />
                         }
                     </CellTemplate>
                 </TemplateColumn>
@@ -120,14 +117,19 @@ else
     </MudPaper>
 }
 
-@if (_selectedEventId is not null && _allEvents.FirstOrDefault(e => e.Id == _selectedEventId) is { } selected)
+@if (_expandedRowId is not null &&
+     _filteredEvents.FirstOrDefault(e => e.Id == _expandedRowId) is { } expanded)
 {
-    <MudPaper Class="pa-4 mt-4" Elevation="2" data-testid="log-detail">
-        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
-            <MudText Typo="Typo.h6">Event Detail</MudText>
-            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="@(() => _selectedEventId = null)" />
+    <MudPaper Class="pa-4 mt-2" Elevation="1" data-testid="@($"log-row-detail-{expanded.Id}")">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+            <MudText Typo="Typo.subtitle2">Event Detail — @expanded.EventType</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                           Size="Size.Small"
+                           OnClick="@(() => _expandedRowId = null)" />
         </MudStack>
-        <MudText Style="white-space: pre-wrap; font-family: monospace; font-size: 0.85rem;">@selected.Payload</MudText>
+        <MudText Style="white-space:pre-wrap;font-family:monospace;font-size:0.82rem;">
+            @FormatJsonPayload(expanded.Payload)
+        </MudText>
     </MudPaper>
 }
 
@@ -135,11 +137,12 @@ else
     private AuditEvent[] _allEvents = [];
     private AuditEvent[] _filteredEvents = [];
     private bool _loading = true;
+    private bool _loadError;
     private string? _severityFilter;
     private string? _eventTypeFilter;
     private string? _sourceFilter;
     private string? _searchText;
-    private string? _selectedEventId;
+    private string? _expandedRowId;
     private bool _autoRefresh;
     private Timer? _timer;
     private EventHandler<ActivityEventArgs>? _activityHandler;
@@ -173,6 +176,7 @@ else
     private async Task LoadAsync()
     {
         _loading = true;
+        _loadError = false;
         try
         {
             _allEvents = await Api.GetAuditEventsAsync(
@@ -180,7 +184,11 @@ else
                 action: _eventTypeFilter,
                 severity: _severityFilter);
         }
-        catch { _allEvents = []; Snackbar.Add("Failed to load audit events", Severity.Error); }
+        catch
+        {
+            _allEvents = [];
+            _loadError = true;
+        }
         ApplyFilters();
         _loading = false;
     }
@@ -206,14 +214,16 @@ else
         _filteredEvents = events.ToArray();
     }
 
-    private void ToggleDetail(string id) =>
-        _selectedEventId = _selectedEventId == id ? null : id;
+    private void ToggleExpand(string id) =>
+        _expandedRowId = _expandedRowId == id ? null : id;
 
     private static Color GetLevelColor(string level) => level.ToLowerInvariant() switch
     {
-        "error" => Color.Error,
-        "warn" or "warning" => Color.Warning,
-        "info" => Color.Info,
+        "critical" => Color.Dark,     // Dark red for critical
+        "error" => Color.Error,        // Red for error
+        "warn" or "warning" => Color.Warning, // Orange for warning
+        "info" => Color.Info,          // Blue for info
+        "debug" => Color.Default,      // Gray for debug
         _ => Color.Default
     };
 
@@ -225,11 +235,11 @@ else
             {
                 using var doc = System.Text.Json.JsonDocument.Parse(evt.Payload);
                 var root = doc.RootElement;
-                
+
                 var toolName = root.TryGetProperty("toolName", out var tn) ? tn.GetString() : "unknown";
                 var decision = root.TryGetProperty("decision", out var d) ? d.GetString() : "unknown";
                 var durationMs = root.TryGetProperty("durationMs", out var dm) ? dm.GetInt64() : 0;
-                
+
                 return $"{toolName} - {decision} ({durationMs}ms)";
             }
             catch
@@ -237,8 +247,26 @@ else
                 return evt.Message;
             }
         }
-        
+
         return evt.Message;
+    }
+
+    private string FormatJsonPayload(string? payload)
+    {
+        if (string.IsNullOrEmpty(payload))
+            return payload ?? string.Empty;
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(payload);
+            var options = new System.Text.Json.JsonSerializerOptions { WriteIndented = true };
+            return System.Text.Json.JsonSerializer.Serialize(doc.RootElement, options);
+        }
+        catch
+        {
+            // If parsing fails, return the original payload
+            return payload;
+        }
     }
 
     public void Dispose()

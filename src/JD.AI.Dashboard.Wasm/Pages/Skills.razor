@@ -1,0 +1,232 @@
+@page "/agents/skills"
+@inject GatewayApiClient Api
+@inject SignalRService SignalR
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+<PageTitle>Skills — JD.AI</PageTitle>
+
+<div class="jd-page-header">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudText data-testid="page-title" Typo="Typo.h4">Skills</MudText>
+        <MudIconButton data-testid="refresh-button"
+                       Icon="@Icons.Material.Filled.Refresh"
+                       OnClick="LoadAsync" Size="Size.Small" />
+    </MudStack>
+</div>
+
+@* Status filter tabs *@
+<MudStack Row="true" Spacing="1" Class="mb-3">
+    @foreach (var f in _filters)
+    {
+        var count = CountForFilter(f);
+        <MudChip T="string"
+                 data-testid="@($"filter-{f.ToLowerInvariant().Replace(" ", "-")}")"
+                 Color="@(_activeFilter == f ? Color.Primary : Color.Default)"
+                 Variant="@(_activeFilter == f ? Variant.Filled : Variant.Outlined)"
+                 Size="Size.Small"
+                 OnClick="@(() => _activeFilter = f)">
+            @f (@count)
+        </MudChip>
+    }
+</MudStack>
+
+@* Search *@
+<div data-testid="skill-search">
+<MudTextField Value="@_search"
+              ValueChanged="@((string v) => { _search = v; StateHasChanged(); })"
+              Placeholder="Search skills..."
+              Adornment="Adornment.Start"
+              AdornmentIcon="@Icons.Material.Filled.Search"
+              Variant="Variant.Outlined"
+              Margin="Margin.Dense"
+              Class="mb-3" />
+</div>
+
+@if (_loading)
+{
+    <LoadingSkeleton SkeletonType="cards" Rows="6" />
+}
+else if (_loadError)
+{
+    <GatewayErrorBoundary HasError="true" OnRetry="LoadAsync" />
+}
+else if (FilteredSkills.Length == 0)
+{
+    <MudPaper data-testid="skills-empty" Class="pa-6" Elevation="0">
+        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Extension" Size="Size.Large"
+                     Color="Color.Default" Style="opacity:0.3" />
+            <MudText Color="Color.Secondary">No skills match the current filter.</MudText>
+        </MudStack>
+    </MudPaper>
+}
+else
+{
+    @* Group by category *@
+    @foreach (var category in FilteredSkills.GroupBy(s => s.Category).OrderBy(g => g.Key))
+    {
+        <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mt-3 mb-1">@category.Key</MudText>
+        <MudGrid>
+            @foreach (var skill in category)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudPaper data-testid="@($"skill-card-{skill.Id}")"
+                              Elevation="1" Class="pa-3">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudText Style="font-size:1.5rem">@skill.Emoji</MudText>
+                            <MudStack Spacing="0" Style="flex:1;min-width:0">
+                                <MudText Typo="Typo.subtitle2" Style="font-weight:600">@skill.Name</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary"
+                                         Style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                                    @skill.Description
+                                </MudText>
+                            </MudStack>
+                            <MudStack Spacing="0" AlignItems="AlignItems.End">
+                                <MudChip T="string" Size="Size.Small"
+                                         data-testid="@($"skill-status-{skill.Id}")"
+                                         Color="@SkillStatusColor(skill.Status)"
+                                         Variant="Variant.Text">
+                                    @StatusLabel(skill.Status)
+                                </MudChip>
+                                @if (!string.IsNullOrWhiteSpace(skill.StatusReason))
+                                {
+                                    <MudText data-testid="@($"skill-reason-{skill.Id}")"
+                                             Typo="Typo.caption" Color="Color.Secondary"
+                                             Style="font-size:0.65rem;max-width:120px;text-align:right;white-space:normal">
+                                        @skill.StatusReason
+                                    </MudText>
+                                }
+                            </MudStack>
+                        </MudStack>
+                        <MudStack Row="true" Justify="Justify.SpaceBetween"
+                                  AlignItems="AlignItems.Center" Class="mt-2">
+                            <MudSwitch T="bool" data-testid="skill-toggle"
+                                       Value="@skill.Enabled"
+                                       ValueChanged="@(v => ToggleSkillAsync(skill, v))"
+                                       Color="Color.Success" Size="Size.Small" />
+                            <MudButton data-testid="skill-configure"
+                                       Size="Size.Small" Variant="Variant.Outlined"
+                                       StartIcon="@Icons.Material.Filled.Settings"
+                                       OnClick="@(() => OpenConfigureAsync(skill))">
+                                Configure
+                            </MudButton>
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+}
+
+@code {
+    private SkillInfo[]? _skills;
+    private bool _loading = true;
+    private bool _loadError;
+    private string _activeFilter = "All";
+    private string _search = "";
+    private EventHandler<ActivityEventArgs>? _activityHandler;
+
+    private static readonly string[] _filters = ["All", "Ready", "Needs Setup", "Disabled"];
+
+    private SkillInfo[] FilteredSkills
+    {
+        get
+        {
+            if (_skills is null) return [];
+            var filtered = _activeFilter switch
+            {
+                "Ready" => _skills.Where(s => s.Status == SkillStatus.Ready),
+                "Needs Setup" => _skills.Where(s => s.Status == SkillStatus.NeedsSetup),
+                "Disabled" => _skills.Where(s => s.Status == SkillStatus.Disabled),
+                _ => _skills.AsEnumerable(),
+            };
+            if (!string.IsNullOrWhiteSpace(_search))
+            {
+                filtered = filtered.Where(s =>
+                    s.Name.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                    s.Category.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                    s.Description.Contains(_search, StringComparison.OrdinalIgnoreCase));
+            }
+            return filtered.ToArray();
+        }
+    }
+
+    private int CountForFilter(string filter) => filter switch
+    {
+        "Ready" => _skills?.Count(s => s.Status == SkillStatus.Ready) ?? 0,
+        "Needs Setup" => _skills?.Count(s => s.Status == SkillStatus.NeedsSetup) ?? 0,
+        "Disabled" => _skills?.Count(s => s.Status == SkillStatus.Disabled) ?? 0,
+        _ => _skills?.Length ?? 0,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _activityHandler = (_, e) =>
+        {
+            if (e.Activity.EventType.Contains("skill", StringComparison.OrdinalIgnoreCase))
+                InvokeAsync(async () => { await LoadAsync(); StateHasChanged(); });
+        };
+        SignalR.OnActivityEvent += _activityHandler;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _loadError = false;
+        try { _skills = await Api.GetSkillsAsync(); }
+        catch
+        {
+            _skills = [];
+            _loadError = true;
+        }
+        _loading = false;
+    }
+
+    private async Task ToggleSkillAsync(SkillInfo skill, bool enabled)
+    {
+        try
+        {
+            await Api.ToggleSkillAsync(skill.Id, enabled);
+            Snackbar.Add($"Skill '{skill.Name}' {(enabled ? "enabled" : "disabled")}", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex) { Snackbar.Add($"Failed: {ex.Message}", Severity.Error); }
+    }
+
+    private async Task OpenConfigureAsync(SkillInfo skill)
+    {
+        var parameters = new DialogParameters<SkillConfigureDialog>
+        {
+            { x => x.Skill, skill },
+            { x => x.Api, Api },
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        await DialogService.ShowAsync<SkillConfigureDialog>($"Configure: {skill.Name}", parameters, options);
+        await LoadAsync();
+    }
+
+    private static Color SkillStatusColor(SkillStatus status) => status switch
+    {
+        SkillStatus.Ready => Color.Success,
+        SkillStatus.NeedsSetup => Color.Warning,
+        SkillStatus.Disabled => Color.Default,
+        _ => Color.Default,
+    };
+
+    private static string StatusLabel(SkillStatus status) => status switch
+    {
+        SkillStatus.Ready => "Ready",
+        SkillStatus.NeedsSetup => "Needs Setup",
+        SkillStatus.Disabled => "Disabled",
+        _ => status.ToString(),
+    };
+
+    public void Dispose()
+    {
+        if (_activityHandler is not null)
+            SignalR.OnActivityEvent -= _activityHandler;
+    }
+}

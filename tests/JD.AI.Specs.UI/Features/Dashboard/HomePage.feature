@@ -6,20 +6,12 @@ Feature: Home Page - Gateway Overview
     So that I can quickly assess the health of my AI gateway
 
     Background:
-        Given I am on the home page
+        Given I navigate to "/"
 
     # ── Rendering ──────────────────────────────────────────
     @smoke
     Scenario: Displays overview heading
-        Then I should see the heading "Gateway Overview"
-
-    @smoke
-    Scenario: Displays four stat cards
-        Then I should see 4 stat cards
-        And I should see a stat card labeled "Agents"
-        And I should see a stat card labeled "Channels"
-        And I should see a stat card labeled "Sessions"
-        And I should see a stat card labeled "OpenClaw"
+        Then I should see the heading "Overview"
 
     Scenario: App bar displays logo
         Then the app bar should display "JD.AI"
@@ -30,16 +22,6 @@ Feature: Home Page - Gateway Overview
         Then the "Agents" stat card should display a numeric value
         And the "Channels" stat card should display a numeric value
         And the "Sessions" stat card should display a numeric value
-
-    Scenario: OpenClaw card shows connection status
-        Then the "OpenClaw" stat card should display "Connected" or "Offline"
-
-    @requires-openclaw
-    Scenario: OpenClaw bridge table shown when bridge data exists
-        Given the OpenClaw bridge is configured
-        Then I should see the OpenClaw Bridge details table
-        And the table should show the "Enabled" property
-        And the table should show "Registered Agents"
 
     # ── Loading states ────────────────────────────────────
     Scenario: Skeleton cards shown while loading

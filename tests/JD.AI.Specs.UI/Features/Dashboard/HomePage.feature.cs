@@ -112,13 +112,13 @@ namespace JD.AI.Specs.UI.Features.Dashboard
 #line 8
     #line hidden
 #line 9
-        await testRunner.GivenAsync("I am on the home page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+        await testRunner.GivenAsync("I navigate to \"/\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
         }
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/Dashboard/HomePage.feature.ndjson", 24);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/Dashboard/HomePage.feature.ndjson", 21);
         }
         
         async global::System.Threading.Tasks.Task global::Xunit.IAsyncLifetime.InitializeAsync()
@@ -173,52 +173,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
     await this.FeatureBackgroundAsync();
 #line hidden
 #line 14
-        await testRunner.ThenAsync("I should see the heading \"Gateway Overview\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.SkippableFactAttribute(DisplayName="Displays four stat cards", Skip="Ignored")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
-        [global::Xunit.TraitAttribute("Description", "Displays four stat cards")]
-        [global::Xunit.TraitAttribute("Category", "smoke")]
-        public async global::System.Threading.Tasks.Task DisplaysFourStatCards()
-        {
-            string[] tagsOfScenario = new string[] {
-                    "smoke"};
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "1";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Displays four stat cards", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = null;
-#line 17
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 8
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 18
-        await testRunner.ThenAsync("I should see 4 stat cards", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-#line 19
-        await testRunner.AndAsync("I should see a stat card labeled \"Agents\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-#line 20
-        await testRunner.AndAsync("I should see a stat card labeled \"Channels\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-#line 21
-        await testRunner.AndAsync("I should see a stat card labeled \"Sessions\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-#line 22
-        await testRunner.AndAsync("I should see a stat card labeled \"OpenClaw\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+        await testRunner.ThenAsync("I should see the heading \"Overview\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -231,11 +186,11 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "2";
+            string pickleIndex = "1";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("App bar displays logo", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 24
+#line 16
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -248,10 +203,10 @@ namespace JD.AI.Specs.UI.Features.Dashboard
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 25
+#line 17
         await testRunner.ThenAsync("the app bar should display \"JD.AI\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 26
+#line 18
         await testRunner.AndAsync("the app bar should display \"Gateway\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -265,11 +220,11 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "3";
+            string pickleIndex = "2";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Stat cards show numeric counts from gateway status", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 29
+#line 21
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -282,87 +237,14 @@ namespace JD.AI.Specs.UI.Features.Dashboard
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 30
+#line 22
         await testRunner.ThenAsync("the \"Agents\" stat card should display a numeric value", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 31
+#line 23
         await testRunner.AndAsync("the \"Channels\" stat card should display a numeric value", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 32
+#line 24
         await testRunner.AndAsync("the \"Sessions\" stat card should display a numeric value", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.SkippableFactAttribute(DisplayName="OpenClaw card shows connection status", Skip="Ignored")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
-        [global::Xunit.TraitAttribute("Description", "OpenClaw card shows connection status")]
-        public async global::System.Threading.Tasks.Task OpenClawCardShowsConnectionStatus()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "4";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("OpenClaw card shows connection status", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = null;
-#line 34
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 8
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 35
-        await testRunner.ThenAsync("the \"OpenClaw\" stat card should display \"Connected\" or \"Offline\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.SkippableFactAttribute(DisplayName="OpenClaw bridge table shown when bridge data exists", Skip="Ignored")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
-        [global::Xunit.TraitAttribute("Description", "OpenClaw bridge table shown when bridge data exists")]
-        [global::Xunit.TraitAttribute("Category", "requires-openclaw")]
-        public async global::System.Threading.Tasks.Task OpenClawBridgeTableShownWhenBridgeDataExists()
-        {
-            string[] tagsOfScenario = new string[] {
-                    "requires-openclaw"};
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "5";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("OpenClaw bridge table shown when bridge data exists", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = null;
-#line 38
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 8
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 39
-        await testRunner.GivenAsync("the OpenClaw bridge is configured", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
-#line hidden
-#line 40
-        await testRunner.ThenAsync("I should see the OpenClaw Bridge details table", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-#line 41
-        await testRunner.AndAsync("the table should show the \"Enabled\" property", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-#line 42
-        await testRunner.AndAsync("the table should show \"Registered Agents\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -375,11 +257,11 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "6";
+            string pickleIndex = "3";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Skeleton cards shown while loading", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 45
+#line 27
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -392,13 +274,13 @@ namespace JD.AI.Specs.UI.Features.Dashboard
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 46
+#line 28
         await testRunner.GivenAsync("the gateway status is loading", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 47
+#line 29
         await testRunner.ThenAsync("I should see skeleton stat card placeholders", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 48
+#line 30
         await testRunner.AndAsync("I should see a skeleton activity section", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -412,11 +294,11 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "7";
+            string pickleIndex = "4";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Recent Activity section with heading and refresh", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 51
+#line 33
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -429,10 +311,10 @@ namespace JD.AI.Specs.UI.Features.Dashboard
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 52
+#line 34
         await testRunner.ThenAsync("I should see the \"Recent Activity\" section heading", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 53
+#line 35
         await testRunner.AndAsync("I should see a refresh button in the activity section", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -446,11 +328,11 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "8";
+            string pickleIndex = "5";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Activity feed empty state", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 55
+#line 37
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -463,10 +345,10 @@ namespace JD.AI.Specs.UI.Features.Dashboard
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 56
+#line 38
         await testRunner.GivenAsync("there are no recent activity events", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 57
+#line 39
         await testRunner.ThenAsync("I should see \"No recent activity\" in the activity feed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -482,11 +364,11 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             string[] tagsOfScenario = new string[] {
                     "requires-agents"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "9";
+            string pickleIndex = "6";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Activity events display event details", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 60
+#line 42
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -499,16 +381,16 @@ namespace JD.AI.Specs.UI.Features.Dashboard
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 61
+#line 43
         await testRunner.GivenAsync("there are recent activity events", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 62
+#line 44
         await testRunner.ThenAsync("each activity event should show an event type chip", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 63
+#line 45
         await testRunner.AndAsync("each activity event should show a message", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 64
+#line 46
         await testRunner.AndAsync("each activity event should show a timestamp", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -524,11 +406,11 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             string[] tagsOfScenario = new string[] {
                     "requires-agents"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "10";
+            string pickleIndex = "7";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Activity feed shows most recent events first", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 67
+#line 49
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -541,13 +423,13 @@ namespace JD.AI.Specs.UI.Features.Dashboard
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 68
+#line 50
         await testRunner.GivenAsync("there are multiple activity events", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 69
+#line 51
         await testRunner.ThenAsync("the activity feed should display events in reverse chronological order", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 70
+#line 52
         await testRunner.AndAsync("the feed should show at most 20 items", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -563,8 +445,120 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             string[] tagsOfScenario = new string[] {
                     "requires-agents"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "11";
+            string pickleIndex = "8";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("New activity events appear without page refresh", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 56
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 57
+        await testRunner.GivenAsync("I am observing the activity feed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 58
+        await testRunner.WhenAsync("a new gateway event occurs", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 59
+        await testRunner.ThenAsync("the event should appear in the activity feed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Graceful degradation when API is unreachable", Skip="Ignored")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
+        [global::Xunit.TraitAttribute("Description", "Graceful degradation when API is unreachable")]
+        public async global::System.Threading.Tasks.Task GracefulDegradationWhenAPIIsUnreachable()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "9";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Graceful degradation when API is unreachable", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 62
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 63
+        await testRunner.GivenAsync("the gateway API is unavailable", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 64
+        await testRunner.ThenAsync("the stat cards should display zero counts", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 65
+        await testRunner.AndAsync("no error dialog should block the page", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Sidebar navigates to agents page", Skip="Ignored")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
+        [global::Xunit.TraitAttribute("Description", "Sidebar navigates to agents page")]
+        [global::Xunit.TraitAttribute("Category", "smoke")]
+        public async global::System.Threading.Tasks.Task SidebarNavigatesToAgentsPage()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "smoke"};
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "10";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sidebar navigates to agents page", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 69
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 70
+        await testRunner.WhenAsync("I click the \"Agents\" navigation link", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 71
+        await testRunner.ThenAsync("I should be on the \"/agents\" page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Sidebar navigates to chat page", Skip="Ignored")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
+        [global::Xunit.TraitAttribute("Description", "Sidebar navigates to chat page")]
+        [global::Xunit.TraitAttribute("Category", "smoke")]
+        public async global::System.Threading.Tasks.Task SidebarNavigatesToChatPage()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "smoke"};
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "11";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sidebar navigates to chat page", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 74
@@ -581,121 +575,9 @@ namespace JD.AI.Specs.UI.Features.Dashboard
     await this.FeatureBackgroundAsync();
 #line hidden
 #line 75
-        await testRunner.GivenAsync("I am observing the activity feed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
-#line hidden
-#line 76
-        await testRunner.WhenAsync("a new gateway event occurs", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 77
-        await testRunner.ThenAsync("the event should appear in the activity feed", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.SkippableFactAttribute(DisplayName="Graceful degradation when API is unreachable", Skip="Ignored")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
-        [global::Xunit.TraitAttribute("Description", "Graceful degradation when API is unreachable")]
-        public async global::System.Threading.Tasks.Task GracefulDegradationWhenAPIIsUnreachable()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "12";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Graceful degradation when API is unreachable", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = null;
-#line 80
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 8
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 81
-        await testRunner.GivenAsync("the gateway API is unavailable", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
-#line hidden
-#line 82
-        await testRunner.ThenAsync("the stat cards should display zero counts", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-#line 83
-        await testRunner.AndAsync("no error dialog should block the page", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.SkippableFactAttribute(DisplayName="Sidebar navigates to agents page", Skip="Ignored")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
-        [global::Xunit.TraitAttribute("Description", "Sidebar navigates to agents page")]
-        [global::Xunit.TraitAttribute("Category", "smoke")]
-        public async global::System.Threading.Tasks.Task SidebarNavigatesToAgentsPage()
-        {
-            string[] tagsOfScenario = new string[] {
-                    "smoke"};
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "13";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sidebar navigates to agents page", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = null;
-#line 87
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 8
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 88
-        await testRunner.WhenAsync("I click the \"Agents\" navigation link", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 89
-        await testRunner.ThenAsync("I should be on the \"/agents\" page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.SkippableFactAttribute(DisplayName="Sidebar navigates to chat page", Skip="Ignored")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
-        [global::Xunit.TraitAttribute("Description", "Sidebar navigates to chat page")]
-        [global::Xunit.TraitAttribute("Category", "smoke")]
-        public async global::System.Threading.Tasks.Task SidebarNavigatesToChatPage()
-        {
-            string[] tagsOfScenario = new string[] {
-                    "smoke"};
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "14";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sidebar navigates to chat page", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = null;
-#line 92
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 8
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 93
         await testRunner.WhenAsync("I click the \"Chat\" navigation link", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 94
+#line 76
         await testRunner.ThenAsync("I should be on the \"/chat\" page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -709,11 +591,11 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "15";
+            string pickleIndex = "12";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sidebar navigates to channels page", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 96
+#line 78
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -726,10 +608,10 @@ namespace JD.AI.Specs.UI.Features.Dashboard
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 97
+#line 79
         await testRunner.WhenAsync("I click the \"Channels\" navigation link", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 98
+#line 80
         await testRunner.ThenAsync("I should be on the \"/channels\" page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -743,11 +625,11 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "16";
+            string pickleIndex = "13";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sidebar navigates to sessions page", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 100
+#line 82
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -760,10 +642,10 @@ namespace JD.AI.Specs.UI.Features.Dashboard
 #line 8
     await this.FeatureBackgroundAsync();
 #line hidden
-#line 101
+#line 83
         await testRunner.WhenAsync("I click the \"Sessions\" navigation link", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 102
+#line 84
         await testRunner.ThenAsync("I should be on the \"/sessions\" page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -777,8 +659,144 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "17";
+            string pickleIndex = "14";
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sidebar navigates to providers page", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 86
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 87
+        await testRunner.WhenAsync("I click the \"Providers\" navigation link", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 88
+        await testRunner.ThenAsync("I should be on the \"/providers\" page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Sidebar navigates to routing page", Skip="Ignored")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
+        [global::Xunit.TraitAttribute("Description", "Sidebar navigates to routing page")]
+        public async global::System.Threading.Tasks.Task SidebarNavigatesToRoutingPage()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "15";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sidebar navigates to routing page", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 90
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 91
+        await testRunner.WhenAsync("I click the \"Routing\" navigation link", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 92
+        await testRunner.ThenAsync("I should be on the \"/routing\" page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Sidebar navigates to settings page", Skip="Ignored")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
+        [global::Xunit.TraitAttribute("Description", "Sidebar navigates to settings page")]
+        public async global::System.Threading.Tasks.Task SidebarNavigatesToSettingsPage()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "16";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sidebar navigates to settings page", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 94
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 95
+        await testRunner.WhenAsync("I click the \"Settings\" navigation link", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 96
+        await testRunner.ThenAsync("I should be on the \"/settings\" page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="SignalR connection indicator shows status", Skip="Ignored")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
+        [global::Xunit.TraitAttribute("Description", "SignalR connection indicator shows status")]
+        public async global::System.Threading.Tasks.Task SignalRConnectionIndicatorShowsStatus()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "17";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("SignalR connection indicator shows status", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 99
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 8
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 100
+        await testRunner.ThenAsync("the app bar should show a connection status indicator", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 101
+        await testRunner.AndAsync("the indicator should display \"Live\" or \"Offline\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Page title is correct", Skip="Ignored")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
+        [global::Xunit.TraitAttribute("Description", "Page title is correct")]
+        public async global::System.Threading.Tasks.Task PageTitleIsCorrect()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "18";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Page title is correct", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
 #line 104
@@ -795,142 +813,6 @@ namespace JD.AI.Specs.UI.Features.Dashboard
     await this.FeatureBackgroundAsync();
 #line hidden
 #line 105
-        await testRunner.WhenAsync("I click the \"Providers\" navigation link", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 106
-        await testRunner.ThenAsync("I should be on the \"/providers\" page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.SkippableFactAttribute(DisplayName="Sidebar navigates to routing page", Skip="Ignored")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
-        [global::Xunit.TraitAttribute("Description", "Sidebar navigates to routing page")]
-        public async global::System.Threading.Tasks.Task SidebarNavigatesToRoutingPage()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "18";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sidebar navigates to routing page", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = null;
-#line 108
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 8
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 109
-        await testRunner.WhenAsync("I click the \"Routing\" navigation link", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 110
-        await testRunner.ThenAsync("I should be on the \"/routing\" page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.SkippableFactAttribute(DisplayName="Sidebar navigates to settings page", Skip="Ignored")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
-        [global::Xunit.TraitAttribute("Description", "Sidebar navigates to settings page")]
-        public async global::System.Threading.Tasks.Task SidebarNavigatesToSettingsPage()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "19";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sidebar navigates to settings page", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = null;
-#line 112
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 8
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 113
-        await testRunner.WhenAsync("I click the \"Settings\" navigation link", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 114
-        await testRunner.ThenAsync("I should be on the \"/settings\" page", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.SkippableFactAttribute(DisplayName="SignalR connection indicator shows status", Skip="Ignored")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
-        [global::Xunit.TraitAttribute("Description", "SignalR connection indicator shows status")]
-        public async global::System.Threading.Tasks.Task SignalRConnectionIndicatorShowsStatus()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "20";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("SignalR connection indicator shows status", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = null;
-#line 117
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 8
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 118
-        await testRunner.ThenAsync("the app bar should show a connection status indicator", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-#line 119
-        await testRunner.AndAsync("the indicator should display \"Live\" or \"Offline\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::Xunit.SkippableFactAttribute(DisplayName="Page title is correct", Skip="Ignored")]
-        [global::Xunit.TraitAttribute("FeatureTitle", "Home Page - Gateway Overview")]
-        [global::Xunit.TraitAttribute("Description", "Page title is correct")]
-        public async global::System.Threading.Tasks.Task PageTitleIsCorrect()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "21";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Page title is correct", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = null;
-#line 122
-    this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 8
-    await this.FeatureBackgroundAsync();
-#line hidden
-#line 123
         await testRunner.ThenAsync("the browser page title should be \"JD.AI — Gateway\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }

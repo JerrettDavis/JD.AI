@@ -420,4 +420,118 @@ public sealed class DiscordChannelTests
 
         ex.Should().BeNull();
     }
+
+    // ── Static helper method tests (Truncate) ────────────────────────────────────
+
+    [Fact]
+    public void Truncate_ValueShorterThanMax_ReturnsOriginal()
+    {
+        var value = "short";
+        var method = typeof(DiscordChannel).GetMethod("Truncate",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+
+        Assert.NotNull(method);
+
+        var result = (string?)method!.Invoke(null, new object[] { value, 50 });
+
+        result.Should().Be("short");
+    }
+
+    [Fact]
+    public void Truncate_ValueLongerThanMax_TruncatesWithEllipsis()
+    {
+        var value = "this is a very long string that exceeds the maximum length";
+        var method = typeof(DiscordChannel).GetMethod("Truncate",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+
+        Assert.NotNull(method);
+
+        var result = (string?)method!.Invoke(null, new object[] { value, 20 });
+
+        result.Should().NotBeNull();
+        result.Should().HaveLength(20);
+        result.Should().EndWith("…");
+        result.Should().NotContain("exceeds");
+    }
+
+    [Fact]
+    public void Truncate_ValueEqualToMax_ReturnsOriginal()
+    {
+        var value = "exact";
+        var method = typeof(DiscordChannel).GetMethod("Truncate",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+
+        Assert.NotNull(method);
+
+        var result = (string?)method!.Invoke(null, new object[] { value, 5 });
+
+        result.Should().Be("exact");
+    }
+
+    // ── ConfirmToolCallAsync additional paths ──────────────────────────────────
+
+    [Fact]
+    public async Task ConfirmToolCallAsync_WhenPrivilegedUsersEmpty_AutoApproves()
+    {
+        var ch = new DiscordChannel("token", privilegedUserIds: new List<ulong>());
+        var method = typeof(DiscordChannel).GetMethod("ConfirmToolCallAsync",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+        Assert.NotNull(method);
+
+        var task = (Task<bool>?)method!.Invoke(ch, new object?[] { "test-tool", null });
+
+        Assert.NotNull(task);
+        var result = await task!;
+        result.Should().BeTrue("should auto-approve when no privileged users configured");
+    }
+
+    [Fact]
+    public async Task ConfirmToolCallAsync_WithOnlyOneTool_AutoApproves()
+    {
+        // When _privilegedUserIds is empty, ConfirmToolCallAsync should auto-approve
+        var ch = new DiscordChannel("token");
+        var method = typeof(DiscordChannel).GetMethod("ConfirmToolCallAsync",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+        Assert.NotNull(method);
+
+        var task = (Task<bool>?)method!.Invoke(ch, new object?[] { "single-tool", "{\"param\": \"value\"}" });
+
+        Assert.NotNull(task);
+        var result = await task!;
+        result.Should().BeTrue();
+    }
+
+    // ── IAgentOutput no-op method tests ────────────────────────────────────────
+
+    [Fact]
+    public void IAgentOutput_RenderInfo_DoesNotThrow()
+    {
+        var ch = new DiscordChannel("token");
+
+        var ex = Record.Exception(() => ch.RenderInfo("test message"));
+
+        ex.Should().BeNull();
+    }
+
+    [Fact]
+    public void IAgentOutput_RenderWarning_DoesNotThrow()
+    {
+        var ch = new DiscordChannel("token");
+
+        var ex = Record.Exception(() => ch.RenderWarning("warning message"));
+
+        ex.Should().BeNull();
+    }
+
+    [Fact]
+    public void IAgentOutput_RenderError_DoesNotThrow()
+    {
+        var ch = new DiscordChannel("token");
+
+        var ex = Record.Exception(() => ch.RenderError("error message"));
+
+        ex.Should().BeNull();
+    }
 }

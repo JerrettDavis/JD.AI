@@ -151,3 +151,29 @@ html, body, * {
 .blazor-error-boundary::after {
     content: "An error has occurred.";
 }
+/* ── Theme: pre-load dark to prevent flash ── */
+html[data-theme="light"] {
+    color-scheme: light;
+}
+html[data-theme="dark"],
+html:not([data-theme]) {
+    color-scheme: dark;
+}
+
+/* ── Gateway Auth Gate ── */
+.jd-auth-gate-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 15, 26, 0.92);
+    backdrop-filter: blur(8px);
+}
+
+.jd-auth-gate-card {
+    width: 100%;
+    max-width: 440px;
+    border: 1px solid rgba(129, 140, 248, 0.2) !important;
+}

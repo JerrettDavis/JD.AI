@@ -1,0 +1,78 @@
+@* src/JD.AI.Dashboard.Wasm/Components/SkillConfigureDialog.razor *@
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="3" Class="pa-2">
+    @if (!string.IsNullOrWhiteSpace(Skill.Description))
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@Skill.Description</MudText>
+    }
+
+    @if (_config.Count == 0)
+    {
+        <MudText Color="Color.Secondary" Typo="Typo.body2">
+            No configuration fields for this skill.
+        </MudText>
+    }
+    else
+    {
+        @foreach (var key in _config.Keys.ToList())
+        {
+            <div data-testid="@($"config-field-{key}")">
+            <MudTextField Label="@key"
+                          Value="@_config[key]"
+                          ValueChanged="@((string v) => _config[key] = v)"
+                          Variant="Variant.Outlined"
+                          HelperText="@(IsSensitive(key) ? "Sensitive — stored encrypted" : null)"
+                          InputType="@(IsSensitive(key) ? InputType.Password : InputType.Text)" />
+            </div>
+        }
+    }
+
+    <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <span data-testid="skill-config-save">
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   OnClick="SaveAsync" Disabled="_saving">
+            @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+            Save
+        </MudButton>
+        </span>
+    </MudStack>
+</MudStack>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter, EditorRequired] public SkillInfo Skill { get; set; } = null!;
+    [Parameter, EditorRequired] public GatewayApiClient Api { get; set; } = null!;
+
+    private Dictionary<string, string> _config = [];
+    private bool _saving;
+
+    protected override void OnInitialized()
+    {
+        _config = new Dictionary<string, string>(Skill.Config);
+    }
+
+    private static bool IsSensitive(string key) =>
+        key.Contains("TOKEN", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("KEY", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("SECRET", StringComparison.OrdinalIgnoreCase);
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            await Api.UpdateSkillConfigAsync(Skill.Id, _config);
+            Snackbar.Add($"Skill '{Skill.Name}' configuration saved", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed: {ex.Message}", Severity.Error);
+        }
+        finally { _saving = false; }
+    }
+}

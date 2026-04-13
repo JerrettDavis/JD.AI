@@ -349,4 +349,31 @@ public sealed class ChatPageSteps
             await _page.WaitForTimeoutAsync(1000);
         }
     }
+
+    // ── Streaming cancel ──────────────────────────────────────
+
+    [Then(@"a streaming cancel button should be visible")]
+    public async Task ThenAStreamingCancelButtonShouldBeVisible()
+    {
+        await Expect(_chatPage.StreamingCancelButton).ToBeVisibleAsync(new() { Timeout = 5000 });
+    }
+
+    [When(@"I click the streaming cancel button")]
+    public async Task WhenIClickTheStreamingCancelButton()
+    {
+        await _chatPage.StreamingCancelButton.ClickAsync();
+        await _page.WaitForTimeoutAsync(300);
+    }
+
+    [Then(@"the streaming cancel button should disappear")]
+    public async Task ThenTheStreamingCancelButtonShouldDisappear()
+    {
+        await Expect(_chatPage.StreamingCancelButton).ToBeHiddenAsync(new() { Timeout = 3000 });
+    }
+
+    [Then(@"the message input should be enabled")]
+    public async Task ThenTheMessageInputShouldBeEnabled()
+    {
+        await Expect(_chatPage.MessageInput).ToBeEnabledAsync(new() { Timeout = 3000 });
+    }
 }

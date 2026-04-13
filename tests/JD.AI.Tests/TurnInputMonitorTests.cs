@@ -1,3 +1,4 @@
+using FluentAssertions;
 using JD.AI.Agent;
 using JD.AI.Core.Agents;
 
@@ -11,7 +12,7 @@ public sealed class TurnInputMonitorTests
         using var cts = new CancellationTokenSource();
         using var monitor = new TurnInputMonitor(cts.Token);
 
-        Assert.False(monitor.Token.IsCancellationRequested);
+        monitor.Token.IsCancellationRequested.Should().BeFalse();
     }
 
     [Fact]
@@ -22,7 +23,7 @@ public sealed class TurnInputMonitorTests
 
         cts.Cancel();
 
-        Assert.True(monitor.Token.IsCancellationRequested);
+        monitor.Token.IsCancellationRequested.Should().BeTrue();
     }
 
     [Fact]
@@ -32,7 +33,7 @@ public sealed class TurnInputMonitorTests
         using var monitor = new TurnInputMonitor(cts.Token);
 
         // Linked token should be distinct from the source
-        Assert.False(monitor.Token == cts.Token);
+        (monitor.Token == cts.Token).Should().BeFalse();
     }
 
     [Fact]
@@ -44,7 +45,7 @@ public sealed class TurnInputMonitorTests
 
         monitor.Dispose();
 
-        Assert.True(token.IsCancellationRequested);
+        token.IsCancellationRequested.Should().BeTrue();
     }
 
     [Fact]
@@ -55,7 +56,7 @@ public sealed class TurnInputMonitorTests
 
         var ex = Record.Exception(() => monitor.Dispose());
 
-        Assert.Null(ex);
+        ex.Should().BeNull();
     }
 
     [Fact]
@@ -76,7 +77,7 @@ public sealed class TurnInputMonitorTests
         using var cts = new CancellationTokenSource();
         using var monitor = new TurnInputMonitor(cts.Token);
 
-        Assert.Null(monitor.SteeringMessage);
+        monitor.SteeringMessage.Should().BeNull();
     }
 
     [Fact]
@@ -87,7 +88,7 @@ public sealed class TurnInputMonitorTests
 
         monitor.Dispose();
         var ex = Record.Exception(() => monitor.Dispose());
-        Assert.True(ex is null or ObjectDisposedException);
+        (ex is null or ObjectDisposedException).Should().BeTrue();
     }
 
     [Fact]
@@ -98,6 +99,101 @@ public sealed class TurnInputMonitorTests
             cts.Token,
             doubleTapWindow: TimeSpan.FromMilliseconds(500));
 
-        Assert.False(monitor.Token.IsCancellationRequested);
+        monitor.Token.IsCancellationRequested.Should().BeFalse();
+    }
+
+    // ── Extended Tests ─────────────────────────────────────────────────
+
+    [Fact]
+    public void CancelTurn_GivenActiveTurn_WhenCalled_ThenTokenBecomesCancelled()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        using var monitor = new TurnInputMonitor(cts.Token);
+
+        monitor.Token.IsCancellationRequested.Should().BeFalse();
+
+        // Act
+        monitor.CancelTurn();
+
+        // Assert
+        monitor.Token.IsCancellationRequested.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CancelTurn_GivenAlreadyCancelledToken_WhenCalledAgain_ThenDoesNotThrow()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        using var monitor = new TurnInputMonitor(cts.Token);
+
+        monitor.CancelTurn();
+        monitor.Token.IsCancellationRequested.Should().BeTrue();
+
+        // Act & Assert
+        var ex = Record.Exception(() => monitor.CancelTurn());
+        ex.Should().BeNull("CancelTurn should be idempotent");
+    }
+
+    [Fact]
+    public void CancelTurn_GivenDisposedMonitor_WhenCalled_ThenDoesNotThrow()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        var monitor = new TurnInputMonitor(cts.Token);
+        monitor.Dispose();
+
+        // Act & Assert
+        var ex = Record.Exception(() => monitor.CancelTurn());
+        ex.Should().BeNull("CancelTurn should handle disposed state gracefully");
+    }
+
+    [Fact]
+    public void Token_GivenAppTokenAlreadyCancelled_WhenConstructed_ThenTokenIsCancelledImmediately()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        // Act
+        using var monitor = new TurnInputMonitor(cts.Token);
+
+        // Assert
+        monitor.Token.IsCancellationRequested.Should().BeTrue(
+            "linked token should be cancelled immediately if app token is already cancelled");
+    }
+
+    [Fact]
+    public void Dispose_GivenMonitorLoopRunning_WhenDisposed_ThenCompletesWithinTimeout()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        var monitor = new TurnInputMonitor(cts.Token);
+
+        // Act
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        monitor.Dispose();
+        stopwatch.Stop();
+
+        // Assert
+        stopwatch.ElapsedMilliseconds.Should().BeLessThan(500,
+            "Dispose should complete within timeout (monitor uses 300ms wait)");
+    }
+
+    [Fact]
+    public void SteeringMessage_GivenNoInput_WhenDisposed_ThenRemainsNull()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        using var monitor = new TurnInputMonitor(cts.Token);
+
+        monitor.SteeringMessage.Should().BeNull();
+
+        // Act
+        monitor.Dispose();
+
+        // Assert
+        monitor.SteeringMessage.Should().BeNull(
+            "steering message should remain null if no input was received");
     }
 }

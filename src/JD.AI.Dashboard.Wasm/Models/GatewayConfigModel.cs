@@ -110,3 +110,21 @@ public sealed class OpenClawBindingModel
     public string? PeerId { get; set; }
     public string? GuildId { get; set; }
 }
+
+public sealed class ChannelTestResult
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = "";
+}
+
+/// <summary>Global messaging settings for all channels.</summary>
+public sealed class GlobalMessageSettingsModel
+{
+    public string MessagePrefix { get; set; } = "";
+    public string AckReaction { get; set; } = "";
+    public string ThinkingReaction { get; set; } = "🤔";
+    public string ToolReaction { get; set; } = "🔧";
+    public string CodingReaction { get; set; } = "💻";
+    public string DoneReaction { get; set; } = "✅";
+    public string ErrorReaction { get; set; } = "❌";
+}

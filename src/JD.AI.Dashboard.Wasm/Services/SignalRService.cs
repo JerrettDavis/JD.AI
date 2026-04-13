@@ -21,11 +21,20 @@ public sealed class AgentMessageEventArgs(string agentId, string message) : Even
     public string Message { get; } = message;
 }
 
-public sealed class SignalRService : IAsyncDisposable
+public interface ISignalRService
+{
+    bool IsConnected { get; }
+    string ConnectionError { get; }
+    event EventHandler? OnStateChanged;
+    Task ConnectAsync(string baseUrl, string? token = null);
+    Task ConnectAsync();
+}
+
+public sealed class SignalRService : ISignalRService, IAsyncDisposable
 {
     private HubConnection? _eventHub;
     private HubConnection? _agentHub;
-    private readonly string _baseUrl;
+    private string _baseUrl;
     private readonly Action<HttpConnectionOptions>? _configureConnection;
 
     public event EventHandler<ActivityEventArgs>? OnActivityEvent;
@@ -40,6 +49,12 @@ public sealed class SignalRService : IAsyncDisposable
     {
         _baseUrl = baseUrl.TrimEnd('/');
         _configureConnection = configureConnection;
+    }
+
+    public async Task ConnectAsync(string baseUrl, string? token = null)
+    {
+        _baseUrl = baseUrl.TrimEnd('/');
+        await ConnectAsync();
     }
 
     public async Task ConnectAsync()

@@ -126,12 +126,25 @@ public sealed class ApiKeyDetectorTests : IDisposable
     [Fact]
     public async Task AmazonBedrockDetector_NoCredentials_ReturnsUnavailable()
     {
-        var detector = new AmazonBedrockDetector(_config);
+        // Clear AWS credentials from environment so the detector sees no credentials
+        var savedAccess = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID");
+        var savedSecret = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY");
+        try
+        {
+            Environment.SetEnvironmentVariable("AWS_ACCESS_KEY_ID", null);
+            Environment.SetEnvironmentVariable("AWS_SECRET_ACCESS_KEY", null);
 
-        var result = await detector.DetectAsync();
+            var detector = new AmazonBedrockDetector(_config);
+            var result = await detector.DetectAsync();
 
-        result.IsAvailable.Should().BeFalse();
-        result.Models.Should().BeEmpty();
+            result.IsAvailable.Should().BeFalse();
+            result.Models.Should().BeEmpty();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("AWS_ACCESS_KEY_ID", savedAccess);
+            Environment.SetEnvironmentVariable("AWS_SECRET_ACCESS_KEY", savedSecret);
+        }
     }
 
     [Fact]

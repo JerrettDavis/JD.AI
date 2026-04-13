@@ -1,44 +1,122 @@
+@inject NavState NavStateService
+@inject NavigationManager Nav
+
 <MudNavMenu Dense="true" Class="pt-2" data-testid="nav-menu">
-    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard" data-testid="nav-overview">
-        Overview
-    </MudNavLink>
-    <MudNavLink Href="/chat" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Chat" data-testid="nav-chat">
-        Chat
-    </MudNavLink>
-    <MudNavLink Href="/channels" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Cable" data-testid="nav-channels">
-        Channels
-    </MudNavLink>
-    <MudNavLink Href="/agents" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.SmartToy" data-testid="nav-agents">
-        Agents
-    </MudNavLink>
-    <MudNavLink Href="/sessions" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Forum" data-testid="nav-sessions">
-        Sessions
-    </MudNavLink>
-    <MudNavLink Href="/providers" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Hub" data-testid="nav-providers">
-        Providers
-    </MudNavLink>
-    <MudNavLink Href="/routing" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AltRoute" data-testid="nav-routing">
-        Routing
-    </MudNavLink>
-    <MudNavLink Href="/plugins" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Extension" data-testid="nav-plugins">
-        Plugins
-    </MudNavLink>
-    <MudNavLink Href="/logs" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.EventNote" data-testid="nav-logs">
-        Logs
-    </MudNavLink>
-    <MudNavLink Href="/monitor" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.MonitorHeart" data-testid="nav-monitor">
-        Monitor
-    </MudNavLink>
-    <MudNavLink Href="/analytics" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.BarChart" data-testid="nav-analytics">
-        Analytics
-    </MudNavLink>
-    <MudNavLink Href="/knowledge" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Psychology" data-testid="nav-knowledge">
-        Knowledge
-    </MudNavLink>
-    <MudNavLink Href="/settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Settings" data-testid="nav-settings">
-        Settings
-    </MudNavLink>
-    <MudNavLink Href="/apikeys" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Key" data-testid="nav-apikeys">
-        API Keys
-    </MudNavLink>
+
+    @* ── Chat (top-level, no group) ── *@
+    <div data-testid="nav-section-chat">
+        <MudNavLink Href="/chat"
+                    Match="NavLinkMatch.Prefix"
+                    Icon="@Icons.Material.Filled.Chat"
+                    data-testid="nav-chat">
+            Chat
+        </MudNavLink>
+    </div>
+
+    @* ── Control ── *@
+    <div data-testid="nav-section-control">
+        <MudNavGroup Title="Control"
+                     Icon="@Icons.Material.Filled.Dashboard"
+                     Expanded="_controlExpanded"
+                     ExpandedChanged="@(v => OnGroupToggle("control", v))"
+                     data-testid="nav-group-control">
+            <MudNavLink Href="/control/overview"
+                        Match="NavLinkMatch.All"
+                        Icon="@Icons.Material.Filled.GridView"
+                        data-testid="nav-control-overview">
+                Overview
+            </MudNavLink>
+        </MudNavGroup>
+    </div>
+
+    @* ── Agents ── *@
+    <div data-testid="nav-section-agents">
+        <MudNavGroup Title="Agents"
+                     Icon="@Icons.Material.Filled.SmartToy"
+                     Expanded="_agentsExpanded"
+                     ExpandedChanged="@(v => OnGroupToggle("agents", v))"
+                     data-testid="nav-group-agents">
+            <MudNavLink Href="/agents"
+                        Match="NavLinkMatch.Prefix"
+                        Icon="@Icons.Material.Filled.PrecisionManufacturing"
+                        data-testid="nav-agents">
+                Agents
+            </MudNavLink>
+            <MudNavLink Href="/agents/skills"
+                        Match="NavLinkMatch.Prefix"
+                        Icon="@Icons.Material.Filled.Extension"
+                        data-testid="nav-skills">
+                Skills
+            </MudNavLink>
+        </MudNavGroup>
+    </div>
+
+    @* ── Settings ── *@
+    <div data-testid="nav-section-settings">
+        <MudNavGroup Title="Settings"
+                     Icon="@Icons.Material.Filled.Settings"
+                     Expanded="_settingsExpanded"
+                     ExpandedChanged="@(v => OnGroupToggle("settings", v))"
+                     data-testid="nav-group-settings">
+            <MudNavLink Href="/settings/ai"
+                        Match="NavLinkMatch.Prefix"
+                        Icon="@Icons.Material.Filled.Psychology"
+                        data-testid="nav-settings-ai">
+                AI &amp; Agents
+            </MudNavLink>
+            <MudNavLink Href="/settings/comms"
+                        Match="NavLinkMatch.Prefix"
+                        Icon="@Icons.Material.Filled.Cable"
+                        data-testid="nav-settings-comms">
+                Communication
+            </MudNavLink>
+            <MudNavLink Href="/settings/config"
+                        Match="NavLinkMatch.Prefix"
+                        Icon="@Icons.Material.Filled.Tune"
+                        data-testid="nav-settings-config">
+                Config
+            </MudNavLink>
+            <MudNavLink Href="/settings/logs"
+                        Match="NavLinkMatch.Prefix"
+                        Icon="@Icons.Material.Filled.EventNote"
+                        data-testid="nav-settings-logs">
+                Logs
+            </MudNavLink>
+        </MudNavGroup>
+    </div>
+
 </MudNavMenu>
+
+@code {
+    private bool _controlExpanded = true;
+    private bool _agentsExpanded = true;
+    private bool _settingsExpanded = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await NavStateService.InitAsync();
+        _controlExpanded = await NavStateService.IsExpandedAsync("control");
+        _agentsExpanded  = await NavStateService.IsExpandedAsync("agents");
+        _settingsExpanded = await NavStateService.IsExpandedAsync("settings");
+
+        // Auto-expand the group that owns the active page
+        var path = new Uri(Nav.Uri).AbsolutePath;
+        if (path.StartsWith("/control", StringComparison.OrdinalIgnoreCase))
+            _controlExpanded = true;
+        else if (path.StartsWith("/agents", StringComparison.OrdinalIgnoreCase))
+            _agentsExpanded = true;
+        else if (path.StartsWith("/settings", StringComparison.OrdinalIgnoreCase))
+            _settingsExpanded = true;
+    }
+
+    private async Task OnGroupToggle(string group, bool expanded)
+    {
+        await NavStateService.SetExpandedAsync(group, expanded);
+        switch (group)
+        {
+            case "control":  _controlExpanded  = expanded; break;
+            case "agents":   _agentsExpanded   = expanded; break;
+            case "settings": _settingsExpanded = expanded; break;
+        }
+    }
+}

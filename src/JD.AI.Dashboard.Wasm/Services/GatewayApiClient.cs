@@ -128,6 +128,24 @@ public sealed class GatewayApiClient(HttpClient http)
         response.EnsureSuccessStatusCode();
     }
 
+    public async Task<(bool Success, string Message)> TestChannelAsync(string channelType)
+    {
+        try
+        {
+            var response = await http.PostAsJsonAsync($"api/channels/{channelType}/test", new { });
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ChannelTestResult>();
+                return (result?.Success ?? true, result?.Message ?? "Connected");
+            }
+            return (false, $"HTTP {(int)response.StatusCode}");
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
     public async Task UpdateRoutingConfigAsync(RoutingConfigModel routing)
     {
         var response = await http.PutAsJsonAsync("api/gateway/config/routing", routing);
@@ -149,6 +167,35 @@ public sealed class GatewayApiClient(HttpClient http)
 
     public Task SyncOpenClawAsync() =>
         SendWithoutContentAsync(HttpMethod.Post, "api/gateway/openclaw/agents/sync");
+
+    public async Task<AgentDetailInfo?> GetAgentDetailAsync(string id)
+        => await http.GetFromJsonAsync<AgentDetailInfo>($"api/v1/agents/{Uri.EscapeDataString(id)}");
+
+    public async Task SetDefaultAgentAsync(string id)
+    {
+        var response = await http.PostAsync(
+            new Uri($"api/v1/agents/{Uri.EscapeDataString(id)}/default", UriKind.Relative), null);
+        response.EnsureSuccessStatusCode();
+    }
+
+    // Skills
+    public async Task<SkillInfo[]> GetSkillsAsync()
+        => await http.GetFromJsonAsync<SkillInfo[]>("api/v1/skills") ?? [];
+
+    public async Task ToggleSkillAsync(string id, bool enabled)
+    {
+        var action = enabled ? "enable" : "disable";
+        var response = await http.PostAsync(
+            new Uri($"api/v1/skills/{Uri.EscapeDataString(id)}/{action}", UriKind.Relative), null);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task UpdateSkillConfigAsync(string id, Dictionary<string, string> config)
+    {
+        var response = await http.PutAsJsonAsync(
+            new Uri($"api/v1/skills/{Uri.EscapeDataString(id)}/config", UriKind.Relative), config);
+        response.EnsureSuccessStatusCode();
+    }
 
     // Plugins
     public async Task<PluginInfo[]> GetPluginsAsync()
@@ -279,6 +326,31 @@ public sealed class GatewayApiClient(HttpClient http)
             },
             _ => "info",
         };
+
+    // Config
+    public Task<ConfigSchema?> GetConfigSchemaAsync() =>
+        http.GetFromJsonAsync<ConfigSchema>("api/config/schema");
+
+    public Task<System.Text.Json.JsonDocument?> GetCurrentConfigAsync() =>
+        http.GetFromJsonAsync<System.Text.Json.JsonDocument>("api/config/current");
+
+    public async Task SaveConfigAsync(object config)
+    {
+        var response = await http.PostAsJsonAsync("api/config/save", config);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task ApplyConfigAsync(object config)
+    {
+        var response = await http.PostAsJsonAsync("api/config/apply", config);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task ResetConfigAsync()
+    {
+        var response = await http.PostAsync(new Uri("api/config/reset", UriKind.Relative), null);
+        response.EnsureSuccessStatusCode();
+    }
 
     private async Task SendWithoutContentAsync(HttpMethod method, string relativeUri)
     {

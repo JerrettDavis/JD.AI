@@ -117,7 +117,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/Dashboard/ChatPage.feature.ndjson", 6);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/Dashboard/ChatPage.feature.ndjson", 7);
         }
         
         async global::System.Threading.Tasks.Task global::Xunit.IAsyncLifetime.InitializeAsync()
@@ -229,8 +229,8 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         await testRunner.AndAsync("the empty state should display \"Start a conversation\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 24
-        await testRunner.AndAsync("the empty state should display \"Select a channel and session above, or start a ne" +
-                        "w conversation.\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+        await testRunner.AndAsync("the empty state should display \"Type a message below to chat with the selected ag" +
+                        "ent.\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -315,6 +315,57 @@ namespace JD.AI.Specs.UI.Features.Dashboard
 #line hidden
 #line 38
         await testRunner.ThenAsync("the browser page title should be \"Chat — JD.AI\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [global::Xunit.SkippableFactAttribute(DisplayName="Cancel button appears during streaming and stops response")]
+        [global::Xunit.TraitAttribute("FeatureTitle", "Chat Page")]
+        [global::Xunit.TraitAttribute("Description", "Cancel button appears during streaming and stops response")]
+        [global::Xunit.TraitAttribute("Category", "requires-agents")]
+        public async global::System.Threading.Tasks.Task CancelButtonAppearsDuringStreamingAndStopsResponse()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "requires-agents"};
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            string pickleIndex = "4";
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Cancel button appears during streaming and stops response", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
+            string[] tagsOfRule = ((string[])(null));
+            global::Reqnroll.RuleInfo ruleInfo = null;
+#line 41
+    this.ScenarioInitialize(scenarioInfo, ruleInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                await testRunner.SkipScenarioAsync();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 7
+    await this.FeatureBackgroundAsync();
+#line hidden
+#line 42
+        await testRunner.GivenAsync("an agent is selected", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 43
+        await testRunner.WhenAsync("I type \"Tell me a long story\" in the message input", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 44
+        await testRunner.AndAsync("I send the message", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 45
+        await testRunner.ThenAsync("a streaming cancel button should be visible", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 46
+        await testRunner.WhenAsync("I click the streaming cancel button", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 47
+        await testRunner.ThenAsync("the streaming cancel button should disappear", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 48
+        await testRunner.AndAsync("the message input should be enabled", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();

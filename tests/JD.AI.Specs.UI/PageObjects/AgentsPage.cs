@@ -42,6 +42,15 @@ public sealed class AgentsPage : BasePage
     public ILocator CancelDeletionButton => Page.Locator(".mud-dialog >> button:has-text('Cancel')");
     public ILocator ConfirmationDialogText => Page.Locator(".mud-dialog .mud-dialog-content");
 
+    // ── Detail panel (#473) ──
+    public ILocator AgentDetailPanel => Page.Locator("[data-testid='agent-detail-panel']");
+    public ILocator DetailCloseButton => Page.Locator("[data-testid='detail-close-button']");
+    public ILocator OverviewTab => Page.Locator("[data-testid='overview-tab']");
+    public ILocator ToolsTab => Page.Locator("[data-testid='tools-tab']");
+    public ILocator SkillsTab => Page.Locator("[data-testid='skills-tab']");
+    public ILocator CopyIdButton => Page.Locator("[data-testid='copy-id-button']");
+    public ILocator SetDefaultButton => Page.Locator("[data-testid='set-default-button']");
+
     // ── Status indicators on agent cards ──
     public ILocator AgentStatusChips => Page.Locator("[data-testid='agent-status']");
 

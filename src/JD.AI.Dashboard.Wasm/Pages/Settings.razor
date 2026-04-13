@@ -13,39 +13,48 @@
 
 @if (_loading)
 {
-    <MudPaper Elevation="0" Class="pa-4">
-        <MudSkeleton Width="400px" Height="40px" Class="mb-4" />
-        <MudSkeleton Width="100%" Height="200px" Class="mb-3" />
-        <MudSkeleton Width="100%" Height="200px" />
-    </MudPaper>
+    <LoadingSkeleton SkeletonType="panel" />
 }
 else if (_config is null)
 {
-    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" data-testid="settings-error">
-        Unable to load gateway configuration. Is the gateway running?
-    </MudAlert>
+    <div data-testid="settings-error">
+        <GatewayErrorBoundary HasError="true"
+                              Message="Unable to load gateway configuration. Is the gateway running?"
+                              OnRetry="LoadAsync" />
+    </div>
 }
 else
 {
-    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4" Class="jd-settings-tabs" data-testid="settings-tabs">
-        <MudTabPanel Text="Server" Icon="@Icons.Material.Filled.Dns" ToolTip="Network, auth, and rate-limit settings">
-            <SettingsServerTab Config="_config.Server" Auth="_config.Auth" RateLimit="_config.RateLimit" Api="Api" />
+    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true"
+             PanelClass="pa-4" Class="jd-settings-tabs"
+             data-testid="settings-tabs">
+
+        <MudTabPanel Text="AI &amp; Agents" Icon="@Icons.Material.Filled.SmartToy"
+                     ToolTip="AI providers and agent definitions"
+                     data-testid="tab-ai-agents">
+            <SettingsAiAgentsTab Providers="_config.Providers"
+                                 Agents="_config.Agents"
+                                 Api="Api" />
         </MudTabPanel>
-        <MudTabPanel Text="Providers" Icon="@Icons.Material.Filled.Hub" ToolTip="AI model provider configuration">
-            <SettingsProvidersTab Providers="_config.Providers" Api="Api" />
+
+        <MudTabPanel Text="Communication" Icon="@Icons.Material.Filled.Cable"
+                     ToolTip="Messaging channel configuration"
+                     data-testid="tab-communication">
+            <SettingsCommunicationTab Channels="_config.Channels" Api="Api" />
         </MudTabPanel>
-        <MudTabPanel Text="Agents" Icon="@Icons.Material.Filled.SmartToy" ToolTip="Agent definitions and auto-spawn settings">
-            <SettingsAgentsTab Agents="_config.Agents" AvailableProviders="_config.Providers" Api="Api" />
+
+        <MudTabPanel Text="Config" Icon="@Icons.Material.Filled.Tune"
+                     ToolTip="Full gateway configuration editor"
+                     data-testid="tab-config">
+            <SettingsConfigTab Api="Api" />
         </MudTabPanel>
-        <MudTabPanel Text="Channels" Icon="@Icons.Material.Filled.Cable" ToolTip="Messaging channel connections">
-            <SettingsChannelsTab Channels="_config.Channels" Api="Api" />
+
+        <MudTabPanel Text="Logs" Icon="@Icons.Material.Filled.EventNote"
+                     ToolTip="Audit log viewer"
+                     data-testid="tab-logs">
+            <SettingsLogsTab Api="Api" />
         </MudTabPanel>
-        <MudTabPanel Text="Routing" Icon="@Icons.Material.Filled.AltRoute" ToolTip="Channel-to-agent routing rules">
-            <SettingsRoutingTab Routing="_config.Routing" AvailableAgents="_config.Agents" AvailableChannels="_config.Channels" Api="Api" />
-        </MudTabPanel>
-        <MudTabPanel Text="OpenClaw" Icon="@Icons.Material.Filled.Cloud" ToolTip="OpenClaw bridge integration">
-            <SettingsOpenClawTab OpenClaw="_config.OpenClaw" Api="Api" />
-        </MudTabPanel>
+
     </MudTabs>
 }
 

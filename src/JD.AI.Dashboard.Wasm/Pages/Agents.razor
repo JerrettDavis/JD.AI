@@ -3,6 +3,7 @@
 @inject SignalRService SignalR
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject IJSRuntime JS
 @implements IDisposable
 
 <PageTitle>Agents — JD.AI</PageTitle>
@@ -10,64 +11,130 @@
 <div class="jd-page-header">
     <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
         <MudText data-testid="page-title" Typo="Typo.h4">Agents</MudText>
-        <MudStack Row="true" Spacing="2">
-            <MudButton data-testid="spawn-agent-button" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-                       StartIcon="@Icons.Material.Filled.Add" OnClick="SpawnAgentAsync">Spawn Agent</MudButton>
-            <MudIconButton data-testid="refresh-button" Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Size="Size.Small" />
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            @if (_agents is { Length: > 0 })
+            {
+                <MudSelect data-testid="agent-selector"
+                           T="string"
+                           Value="@_selectedId"
+                           ValueChanged="SelectAgent"
+                           Label="Select Agent"
+                           Variant="Variant.Outlined"
+                           Dense="true"
+                           Style="min-width:240px"
+                           AnchorOrigin="Origin.BottomLeft">
+                    @foreach (var agent in _agents)
+                    {
+                        <MudSelectItem Value="@agent.Id">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.Circle"
+                                         Size="Size.Small"
+                                         Style="@($"font-size:10px;color:{AgentStatusColor(agent.Status)}")" />
+                                <span>@agent.Id</span>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@agent.Provider</MudText>
+                            </MudStack>
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            }
+            <MudIconButton data-testid="copy-id-button"
+                           Icon="@Icons.Material.Filled.ContentCopy"
+                           Disabled="@(_selectedId is null)"
+                           OnClick="CopyIdAsync"
+                           Size="Size.Small" Title="Copy ID" />
+            <MudIconButton data-testid="set-default-button"
+                           Icon="@Icons.Material.Filled.Star"
+                           Disabled="@(_selectedId is null)"
+                           OnClick="SetDefaultAsync"
+                           Size="Size.Small" Title="Set Default" />
+            <MudButton data-testid="spawn-agent-button" Variant="Variant.Filled"
+                       Color="Color.Primary" Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="SpawnAgentAsync">Spawn Agent</MudButton>
+            <MudIconButton data-testid="refresh-button"
+                           Icon="@Icons.Material.Filled.Refresh"
+                           OnClick="LoadAsync" Size="Size.Small" />
         </MudStack>
     </MudStack>
 </div>
 
-@if (_loading)
-{
-    <MudPaper Elevation="0">
-        @for (var i = 0; i < 5; i++)
+<MudStack Row="true" Spacing="0" Style="min-height:0;flex:1">
+    <div style="flex:1;min-width:0">
+        @if (_loading)
         {
-            <div class="jd-skeleton-row">
-                <MudSkeleton Width="140px" Height="14px" />
-                <MudSkeleton Width="80px" Height="14px" />
-                <MudSkeleton Width="180px" Height="14px" />
-                <MudSkeleton Width="40px" Height="14px" />
-                <MudSkeleton Width="120px" Height="14px" />
-                <MudSpacer />
-                <MudSkeleton SkeletonType="SkeletonType.Circle" Width="28px" Height="28px" />
-            </div>
+            <LoadingSkeleton SkeletonType="rows" Rows="5" />
         }
-    </MudPaper>
-}
-else if (_agents is null || _agents.Length == 0)
-{
-    <MudPaper data-testid="agents-empty" Class="pa-6" Elevation="0">
-        <MudStack AlignItems="AlignItems.Center" Spacing="2">
-            <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Large" Color="Color.Default" Style="opacity:0.3" />
-            <MudText Color="Color.Secondary">No active agents. Spawn one to get started.</MudText>
-        </MudStack>
-    </MudPaper>
-}
-else
-{
-    <MudPaper Elevation="0">
-        <MudDataGrid data-testid="agents-grid" Items="@_agents" Dense="true" Hover="true">
-            <Columns>
-                <PropertyColumn Property="x => x.Id" Title="ID" />
-                <PropertyColumn Property="x => x.Provider" Title="Provider" />
-                <PropertyColumn Property="x => x.Model" Title="Model" />
-                <PropertyColumn Property="x => x.TurnCount" Title="Turns" />
-                <PropertyColumn Property="x => x.CreatedAt" Title="Created" Format="g" />
-                <TemplateColumn Title="" CellClass="d-flex justify-end">
-                    <CellTemplate>
-                        <MudIconButton data-testid="delete-agent-button" Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
-                                       OnClick="@(() => DeleteAgentAsync(context.Item.Id))" />
-                    </CellTemplate>
-                </TemplateColumn>
-            </Columns>
-        </MudDataGrid>
-    </MudPaper>
-}
+        else if (_loadError)
+        {
+            <GatewayErrorBoundary HasError="true" OnRetry="LoadAsync" />
+        }
+        else if (_agents is null || _agents.Length == 0)
+        {
+            <MudPaper data-testid="agents-empty" Class="pa-6" Elevation="0">
+                <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Large"
+                             Color="Color.Default" Style="opacity:0.3" />
+                    <MudText Color="Color.Secondary">No active agents. Spawn one to get started.</MudText>
+                </MudStack>
+            </MudPaper>
+        }
+        else
+        {
+            <MudPaper Elevation="0">
+                <MudDataGrid data-testid="agents-grid" T="AgentInfo" Items="@_agents" Dense="true" Hover="true"
+                             RowClick="OnRowClick">
+                    <Columns>
+                        <TemplateColumn Title="" CellStyle="width:28px;padding-right:0">
+                            <CellTemplate>
+                                <MudIcon Icon="@Icons.Material.Filled.Circle"
+                                         Size="Size.Small"
+                                         data-testid="@($"agent-status-{context.Item.Id}")"
+                                         Style="@($"font-size:10px;color:{AgentStatusColor(context.Item.Status)}")"
+                                         Title="@context.Item.Status.ToString()" />
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="ID">
+                            <CellTemplate>
+                                <span data-testid="@($"agent-row-{context.Item.Id}")"
+                                      style="cursor:pointer">
+                                    @context.Item.Id
+                                </span>
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <PropertyColumn Property="x => x.Provider" Title="Provider" />
+                        <PropertyColumn Property="x => x.Model" Title="Model" />
+                        <PropertyColumn Property="x => x.TurnCount" Title="Turns" />
+                        <PropertyColumn Property="x => x.CreatedAt" Title="Created" Format="g" />
+                        <TemplateColumn Title="" CellClass="d-flex justify-end">
+                            <CellTemplate>
+                                <MudIconButton data-testid="delete-agent-button"
+                                               Icon="@Icons.Material.Filled.Delete"
+                                               Color="Color.Error" Size="Size.Small"
+                                               OnClick="@(() => DeleteAgentAsync(context.Item.Id))" />
+                            </CellTemplate>
+                        </TemplateColumn>
+                    </Columns>
+                </MudDataGrid>
+            </MudPaper>
+        }
+    </div>
+
+    @if (_selectedId is not null)
+    {
+        <MudPaper data-testid="agent-detail-panel" Elevation="1"
+                  Style="width:420px;min-width:320px;border-left:1px solid var(--mud-palette-divider)">
+            <AgentDetailPanel AgentId="@_selectedId"
+                              Api="Api"
+                              OnClose="@(() => { _selectedId = null; StateHasChanged(); })" />
+        </MudPaper>
+    }
+</MudStack>
 
 @code {
     private AgentInfo[]? _agents;
     private bool _loading = true;
+    private bool _loadError;
+    private string? _selectedId;
     private EventHandler<ActivityEventArgs>? _activityHandler;
 
     protected override async Task OnInitializedAsync()
@@ -93,9 +160,52 @@ else
     private async Task LoadAsync()
     {
         _loading = true;
+        _loadError = false;
         try { _agents = await Api.GetAgentsAsync(); }
-        catch { _agents = null; }
+        catch
+        {
+            _agents = null;
+            _loadError = true;
+        }
         _loading = false;
+    }
+
+    private void OnRowClick(DataGridRowClickEventArgs<AgentInfo> args)
+    {
+        _selectedId = args.Item.Id;
+        StateHasChanged();
+    }
+
+    private void SelectAgent(string? id)
+    {
+        _selectedId = id;
+        StateHasChanged();
+    }
+
+    private static string AgentStatusColor(AgentStatus status) => status switch
+    {
+        AgentStatus.Active   => "#4caf50", // green
+        AgentStatus.Inactive => "#9e9e9e", // gray
+        AgentStatus.Error    => "#f44336", // red
+        _                    => "#9e9e9e",
+    };
+
+    private async Task CopyIdAsync()
+    {
+        if (_selectedId is null) return;
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", _selectedId);
+        Snackbar.Add("Agent ID copied", Severity.Info);
+    }
+
+    private async Task SetDefaultAsync()
+    {
+        if (_selectedId is null) return;
+        try
+        {
+            await Api.SetDefaultAgentAsync(_selectedId);
+            Snackbar.Add($"Agent '{_selectedId}' set as default", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add($"Failed: {ex.Message}", Severity.Error); }
     }
 
     private async Task SpawnAgentAsync()
@@ -117,6 +227,7 @@ else
             {
                 await Api.DeleteAgentAsync(id);
                 Snackbar.Add($"Agent '{id}' stopped", Severity.Success);
+                if (_selectedId == id) _selectedId = null;
                 await LoadAsync();
             }
             catch (Exception ex) { Snackbar.Add($"Failed: {ex.Message}", Severity.Error); }

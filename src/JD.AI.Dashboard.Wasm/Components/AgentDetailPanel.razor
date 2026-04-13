@@ -1,0 +1,166 @@
+@* src/JD.AI.Dashboard.Wasm/Components/AgentDetailPanel.razor *@
+@inject ISnackbar Snackbar
+
+@if (_loading)
+{
+    <MudStack Class="pa-4" Spacing="2">
+        <MudSkeleton Width="60%" Height="20px" />
+        <MudSkeleton Width="40%" Height="14px" />
+        <MudSkeleton Width="80%" Height="14px" />
+    </MudStack>
+}
+else if (_detail is null)
+{
+    <MudStack Class="pa-4" AlignItems="AlignItems.Center" Spacing="2">
+        <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Error" />
+        <MudText Color="Color.Error">Failed to load agent details</MudText>
+    </MudStack>
+}
+else
+{
+    <MudStack Spacing="0">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center"
+                  Class="pa-3" Style="border-bottom:1px solid var(--mud-palette-divider)">
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.subtitle1" Style="font-weight:600">@_detail.Id</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@_detail.Provider / @_detail.Model</MudText>
+            </MudStack>
+            <MudIconButton data-testid="detail-close-button"
+                           Icon="@Icons.Material.Filled.Close"
+                           Size="Size.Small" OnClick="@(() => OnClose.InvokeAsync())" />
+        </MudStack>
+
+        <MudTabs Elevation="0" ApplyEffectsToContainer="true" PanelClass="pa-3">
+            <MudTabPanel Text="Overview" Icon="@Icons.Material.Filled.Info">
+                <div data-testid="overview-tab">
+                    <MudStack Spacing="3">
+                        <MudField Label="ID" Variant="Variant.Outlined">@_detail.Id</MudField>
+                        <MudField Label="Provider" Variant="Variant.Outlined">@_detail.Provider</MudField>
+                        <MudField Label="Model" Variant="Variant.Outlined">@_detail.Model</MudField>
+                        @if (_detail.IsDefault)
+                        {
+                            <MudChip T="string" Color="Color.Warning" Size="Size.Small">Default Agent</MudChip>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(_detail.SystemPrompt))
+                        {
+                            <MudField Label="System Prompt" Variant="Variant.Outlined"
+                                      data-testid="overview-system-prompt">
+                                <pre style="white-space:pre-wrap;font-size:0.78rem;margin:0">@_detail.SystemPrompt</pre>
+                            </MudField>
+                        }
+                    </MudStack>
+                </div>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Tools" Icon="@Icons.Material.Filled.Build">
+                <div data-testid="tools-tab">
+                    @if (_detail.Tools.Length == 0)
+                    {
+                        <MudText Color="Color.Secondary" Typo="Typo.body2">No tools configured.</MudText>
+                    }
+                    else
+                    {
+                        <MudList T="string" Dense="true">
+                            @foreach (var tool in _detail.Tools)
+                            {
+                                <MudListItem data-testid="@($"tool-item-{tool.Name}")">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                        <MudIcon Icon="@(tool.IsAllowed
+                                            ? Icons.Material.Filled.Check
+                                            : Icons.Material.Filled.Block)"
+                                                 Color="@(tool.IsAllowed ? Color.Success : Color.Error)"
+                                                 Size="Size.Small" />
+                                        <MudStack Spacing="0">
+                                            <MudText Typo="Typo.body2" Style="font-weight:500">@tool.Name</MudText>
+                                            @if (!string.IsNullOrWhiteSpace(tool.Description))
+                                            {
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">@tool.Description</MudText>
+                                            }
+                                        </MudStack>
+                                    </MudStack>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    }
+                </div>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Skills" Icon="@Icons.Material.Filled.Extension">
+                <div data-testid="skills-tab">
+                    @if (_detail.AssignedSkills.Length == 0)
+                    {
+                        <MudText Color="Color.Secondary" Typo="Typo.body2">No skills assigned to this agent.</MudText>
+                    }
+                    else
+                    {
+                        <MudList T="string" Dense="true">
+                            @foreach (var skill in _detail.AssignedSkills)
+                            {
+                                <MudListItem data-testid="@($"skill-item-{skill.Id}")">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                        <MudText Style="font-size:1.2rem">@skill.Emoji</MudText>
+                                        <MudStack Spacing="0" Style="flex:1">
+                                            <MudText Typo="Typo.body2" Style="font-weight:500">@skill.Name</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@skill.Category</MudText>
+                                        </MudStack>
+                                        <MudChip T="string" Size="Size.Small"
+                                                 Color="@SkillStatusColor(skill.Status)"
+                                                 Variant="Variant.Text">
+                                            @skill.Status.ToString()
+                                        </MudChip>
+                                        <MudSwitch data-testid="@($"skill-toggle-{skill.Id}")"
+                                                   Value="@skill.Enabled"
+                                                   ValueChanged="@((bool v) => ToggleSkillAsync(skill.Id, v))"
+                                                   Color="Color.Primary"
+                                                   Size="Size.Small" />
+                                    </MudStack>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    }
+                </div>
+            </MudTabPanel>
+        </MudTabs>
+    </MudStack>
+}
+
+@code {
+    [Parameter, EditorRequired] public string AgentId { get; set; } = "";
+    [Parameter, EditorRequired] public GatewayApiClient Api { get; set; } = null!;
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private AgentDetailInfo? _detail;
+    private bool _loading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        try { _detail = await Api.GetAgentDetailAsync(AgentId); }
+        catch { _detail = null; }
+        _loading = false;
+    }
+
+    private async Task ToggleSkillAsync(string skillId, bool enabled)
+    {
+        try
+        {
+            await Api.ToggleSkillAsync(skillId, enabled);
+            Snackbar.Add($"Skill '{skillId}' {(enabled ? "enabled" : "disabled")}", Severity.Success);
+            // Refresh detail to reflect new state
+            _loading = true;
+            try { _detail = await Api.GetAgentDetailAsync(AgentId); }
+            catch { /* keep existing detail */ }
+            _loading = false;
+            StateHasChanged();
+        }
+        catch (Exception ex) { Snackbar.Add($"Failed: {ex.Message}", Severity.Error); }
+    }
+
+    private static Color SkillStatusColor(SkillStatus status) => status switch
+    {
+        SkillStatus.Ready => Color.Success,
+        SkillStatus.NeedsSetup => Color.Warning,
+        SkillStatus.Disabled => Color.Default,
+        _ => Color.Default,
+    };
+}
