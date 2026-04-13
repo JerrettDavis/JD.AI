@@ -15,15 +15,15 @@ public sealed class ThemeService(IJSRuntime js)
         var raw = await js.InvokeAsync<string?>("localStorage.getItem", "jd-theme");
         Mode = raw switch
         {
-            "light"  => ThemeMode.Light,
-            "dark"   => ThemeMode.Dark,
-            _        => ThemeMode.System,
+            "light" => ThemeMode.Light,
+            "dark" => ThemeMode.Dark,
+            _ => ThemeMode.System,
         };
         IsDarkMode = Mode switch
         {
-            ThemeMode.Dark  => true,
+            ThemeMode.Dark => true,
             ThemeMode.Light => false,
-            _               => await js.InvokeAsync<bool>("jdMatchesDark"),
+            _ => await js.InvokeAsync<bool>("jdMatchesDark"),
         };
     }
 
@@ -32,15 +32,15 @@ public sealed class ThemeService(IJSRuntime js)
         Mode = mode;
         IsDarkMode = mode switch
         {
-            ThemeMode.Dark  => true,
+            ThemeMode.Dark => true,
             ThemeMode.Light => false,
-            _               => await js.InvokeAsync<bool>("jdMatchesDark"),
+            _ => await js.InvokeAsync<bool>("jdMatchesDark"),
         };
         var value = mode switch
         {
             ThemeMode.Light => "light",
-            ThemeMode.Dark  => "dark",
-            _               => "system",
+            ThemeMode.Dark => "dark",
+            _ => "system",
         };
         await js.InvokeVoidAsync("localStorage.setItem", "jd-theme", value);
         OnChanged?.Invoke(this, EventArgs.Empty);

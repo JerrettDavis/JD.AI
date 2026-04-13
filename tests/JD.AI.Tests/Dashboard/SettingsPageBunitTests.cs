@@ -1,7 +1,7 @@
 using Bunit;
 using JD.AI.Dashboard.Wasm.Pages;
-using Microsoft.Extensions.DependencyInjection;
 using JD.AI.Dashboard.Wasm.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace JD.AI.Tests.Dashboard;
 

@@ -1,9 +1,9 @@
+using System.Text.Json;
 using FluentAssertions;
 using JD.AI.Channels.OpenClaw;
 using JD.AI.Channels.OpenClaw.Routing;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
-using System.Text.Json;
 
 namespace JD.AI.Tests.Channels.OpenClaw;
 
@@ -64,7 +64,7 @@ public sealed class OpenClawModeHandlerTests
         var handler = new PassthroughModeHandler(logger);
 
         var processorCalled = false;
-        async Task<string?> FakeProcessor(string _sessionKey, string _content) { processorCalled = true; return ""; }
+        async Task<string?> FakeProcessor(string sessionKey, string content) { processorCalled = true; return ""; }
 
         var evt = new OpenClawEvent
         {
@@ -92,7 +92,7 @@ public sealed class OpenClawModeHandlerTests
         var handler = new InterceptModeHandler(logger);
 
         var processorCalled = false;
-        async Task<string?> FakeProcessor(string _sessionKey2, string _content2) { processorCalled = true; return "response"; }
+        async Task<string?> FakeProcessor(string sessionKey2, string content2) { processorCalled = true; return "response"; }
 
         var evt = new OpenClawEvent
         {
@@ -126,7 +126,7 @@ public sealed class OpenClawModeHandlerTests
         var logger = Substitute.For<ILogger<InterceptModeHandler>>();
         var handler = new InterceptModeHandler(logger);
 
-        async Task<string?> FakeProcessor(string _sessionKey3, string _content3) => "";
+        async Task<string?> FakeProcessor(string sessionKey3, string content3) => "";
 
         var evt = new OpenClawEvent
         {
@@ -243,7 +243,7 @@ public sealed class OpenClawModeHandlerTests
         var handler = new SidecarModeHandler(logger);
 
         var processorCalled = false;
-        async Task<string?> FakeProcessor(string _sessionKey2, string _content2) { processorCalled = true; return "response"; }
+        async Task<string?> FakeProcessor(string sessionKey2, string content2) { processorCalled = true; return "response"; }
 
         var evt = new OpenClawEvent
         {
@@ -310,7 +310,7 @@ public sealed class OpenClawModeHandlerTests
         var handler = new SidecarModeHandler(logger);
 
         var processorCalled = false;
-        async Task<string?> FakeProcessor(string _sessionKey2, string _content2) { processorCalled = true; return "response"; }
+        async Task<string?> FakeProcessor(string sessionKey2, string content2) { processorCalled = true; return "response"; }
 
         var evt = new OpenClawEvent
         {
@@ -347,7 +347,7 @@ public sealed class OpenClawModeHandlerTests
         var handler = new ProxyModeHandler(logger);
 
         var processorCalled = false;
-        async Task<string?> FakeProcessor(string _sessionKey4, string _content4) { processorCalled = true; return "proxy response"; }
+        async Task<string?> FakeProcessor(string sessionKey4, string content4) { processorCalled = true; return "proxy response"; }
 
         var evt = new OpenClawEvent
         {
@@ -381,7 +381,7 @@ public sealed class OpenClawModeHandlerTests
         var logger = Substitute.For<ILogger<ProxyModeHandler>>();
         var handler = new ProxyModeHandler(logger);
 
-        async Task<string?> FakeProcessor(string _sessionKey3, string _content3) => null;
+        async Task<string?> FakeProcessor(string sessionKey3, string content3) => null;
 
         var evt = new OpenClawEvent
         {

@@ -1,7 +1,7 @@
 using System.Net;
+using FluentAssertions;
 using JD.AI.Dashboard.Wasm.Models;
 using JD.AI.Dashboard.Wasm.Services;
-using FluentAssertions;
 
 namespace JD.AI.Tests.Dashboard;
 
