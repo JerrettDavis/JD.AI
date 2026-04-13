@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -201,7 +202,7 @@ public sealed class EncryptedFileStoreAdditionalTests : IDisposable
         var firstKey = keys[0];
 
         firstKey.TryGetProperty("CreatedAtUtc", out var createdAt).Should().BeTrue();
-        DateTimeOffset.Parse(createdAt.GetString()!).Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(5));
+        DateTimeOffset.Parse(createdAt.GetString()!, CultureInfo.InvariantCulture).Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(5));
     }
 
     // ── TryUnprotectEnvelopeV2 ─────────────────────────────────────────────
@@ -239,7 +240,7 @@ public sealed class EncryptedFileStoreAdditionalTests : IDisposable
         var mapPath = Path.Combine(_fixture.DirectoryPath, "keymap.json");
         var payloadPath = Path.Combine(_fixture.DirectoryPath, $"{hash}.enc");
 
-        await File.WriteAllTextAsync(mapPath, JsonSerializer.Serialize(new Dictionary<string, string>
+        await File.WriteAllTextAsync(mapPath, JsonSerializer.Serialize(new Dictionary<string, string>(StringComparer.Ordinal)
         {
             [Key] = hash,
         }));
@@ -265,7 +266,7 @@ public sealed class EncryptedFileStoreAdditionalTests : IDisposable
         var mapPath = Path.Combine(_fixture.DirectoryPath, "keymap.json");
         var payloadPath = Path.Combine(_fixture.DirectoryPath, $"{hash}.enc");
 
-        await File.WriteAllTextAsync(mapPath, JsonSerializer.Serialize(new Dictionary<string, string>
+        await File.WriteAllTextAsync(mapPath, JsonSerializer.Serialize(new Dictionary<string, string>(StringComparer.Ordinal)
         {
             [Key] = hash,
         }));

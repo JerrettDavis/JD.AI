@@ -26,8 +26,8 @@ namespace JD.AI.Specs.Features.Core.Memory
         private static string[] featureTags = new string[] {
                 "memory"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Memory", "Vector Store", "  As a memory subsystem\r\n  I need vector storage and similarity search\r\n  So that" +
-                " I can store and retrieve embeddings efficiently", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Memory", "Vector Store", "  As a memory subsystem\n  I need vector storage and similarity search\n  So that I" +
+                " can store and retrieve embeddings efficiently", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

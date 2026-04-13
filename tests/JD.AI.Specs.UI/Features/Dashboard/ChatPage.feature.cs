@@ -26,8 +26,8 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         private static string[] featureTags = new string[] {
                 "ui"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Chat Page", "    As a gateway operator\r\n    I want to interact with AI agents through a web ch" +
-                "at interface\r\n    So that I can test agent responses and have conversations", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Chat Page", "    As a gateway operator\n    I want to interact with AI agents through a web cha" +
+                "t interface\n    So that I can test agent responses and have conversations", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

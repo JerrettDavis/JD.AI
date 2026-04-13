@@ -123,7 +123,7 @@ public sealed class AuditControllerTests
     {
         var events = new GatewayEvent[]
         {
-            new GatewayEvent("test.event", null, DateTimeOffset.UtcNow) { Id = "event-1" },
+            new GatewayEvent("test.event", null!, DateTimeOffset.UtcNow) { Id = "event-1" },
         };
 
         _eventBus.GetEvents(Arg.Any<CancellationToken>()).Returns(Task.FromResult(events));

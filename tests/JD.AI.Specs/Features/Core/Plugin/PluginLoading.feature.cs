@@ -26,8 +26,8 @@ namespace JD.AI.Specs.Features.Core.Plugin
         private static string[] featureTags = new string[] {
                 "plugin"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Plugin", "Plugin Loading", "  As a platform\r\n  I need dynamic plugin loading\r\n  So that extensions can be add" +
-                "ed at runtime", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Plugin", "Plugin Loading", "  As a platform\n  I need dynamic plugin loading\n  So that extensions can be added" +
+                " at runtime", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

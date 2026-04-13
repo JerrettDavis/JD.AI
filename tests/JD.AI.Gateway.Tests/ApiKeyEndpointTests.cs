@@ -65,7 +65,7 @@ public sealed class ApiKeyEndpointTests : IClassFixture<GatewayTestFactory>
         var response = await _client.PostAsJsonAsync("/api/v1/gateway/apikeys", request);
         var created = await response.Content.ReadFromJsonAsync<CreateApiKeyResponse>();
 
-        created.Key.Should().NotBeNullOrEmpty();
+        created!.Key.Should().NotBeNullOrEmpty();
         created.Name.Should().Be(request.Name);
         created.Role.Should().Be("User");
         created.CreatedAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(5));
@@ -84,7 +84,7 @@ public sealed class ApiKeyEndpointTests : IClassFixture<GatewayTestFactory>
         var response = await _client.PostAsJsonAsync("/api/v1/gateway/apikeys", request);
         var created = await response.Content.ReadFromJsonAsync<CreateApiKeyResponse>();
 
-        created.ExpiresAt.Should().NotBeNull();
+        created!.ExpiresAt.Should().NotBeNull();
         var expectedExpiry = DateTimeOffset.UtcNow.AddDays(30);
         created.ExpiresAt.Should().BeCloseTo(expectedExpiry, TimeSpan.FromSeconds(5));
     }
@@ -101,7 +101,7 @@ public sealed class ApiKeyEndpointTests : IClassFixture<GatewayTestFactory>
         var response = await _client.PostAsJsonAsync("/api/v1/gateway/apikeys", request);
         var created = await response.Content.ReadFromJsonAsync<CreateApiKeyResponse>();
 
-        created.ExpiresAt.Should().BeNull();
+        created!.ExpiresAt.Should().BeNull();
     }
 
     [Fact]
@@ -144,7 +144,7 @@ public sealed class ApiKeyEndpointTests : IClassFixture<GatewayTestFactory>
         var response = await _client.PostAsJsonAsync("/api/v1/gateway/apikeys", request);
         var created = await response.Content.ReadFromJsonAsync<CreateApiKeyResponse>();
 
-        created.Role.Should().Be("User");
+        created!.Role.Should().Be("User");
     }
 
     // ── DELETE /api/v1/gateway/apikeys/{key} ───────────────────────────────
@@ -168,7 +168,7 @@ public sealed class ApiKeyEndpointTests : IClassFixture<GatewayTestFactory>
 
         var createResponse = await _client.PostAsJsonAsync("/api/v1/gateway/apikeys", createRequest);
         var created = await createResponse.Content.ReadFromJsonAsync<CreateApiKeyResponse>();
-        var keyValue = created.Key;
+        var keyValue = created!.Key;
 
         var revokeResponse = await _client.DeleteAsync($"/api/v1/gateway/apikeys/{keyValue}");
 
@@ -198,14 +198,14 @@ public sealed class ApiKeyEndpointTests : IClassFixture<GatewayTestFactory>
 
         var createResponse = await _client.PostAsJsonAsync("/api/v1/gateway/apikeys", createRequest);
         var created = await createResponse.Content.ReadFromJsonAsync<CreateApiKeyResponse>();
-        var oldKey = created.Key;
+        var oldKey = created!.Key;
 
         var rotateResponse = await _client.PostAsJsonAsync(
             $"/api/v1/gateway/apikeys/{oldKey}/rotate",
             new RotateApiKeyRequest { ExpiryDays = 60 });
         var rotated = await rotateResponse.Content.ReadFromJsonAsync<RotateApiKeyResponse>();
 
-        rotated.NewKey.Should().NotBeNullOrEmpty();
+        rotated!.NewKey.Should().NotBeNullOrEmpty();
         rotated.NewKey.Should().NotBe(oldKey);
         rotated.OldKey.Should().NotBeNullOrEmpty();
         rotated.RotatedAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(5));
@@ -223,7 +223,7 @@ public sealed class ApiKeyEndpointTests : IClassFixture<GatewayTestFactory>
 
         var createResponse = await _client.PostAsJsonAsync("/api/v1/gateway/apikeys", createRequest);
         var created = await createResponse.Content.ReadFromJsonAsync<CreateApiKeyResponse>();
-        var oldKey = created.Key;
+        var oldKey = created!.Key;
 
         var rotateResponse = await _client.PostAsJsonAsync(
             $"/api/v1/gateway/apikeys/{oldKey}/rotate",
@@ -244,7 +244,7 @@ public sealed class ApiKeyEndpointTests : IClassFixture<GatewayTestFactory>
 
         var createResponse = await _client.PostAsJsonAsync("/api/v1/gateway/apikeys", createRequest);
         var created = await createResponse.Content.ReadFromJsonAsync<CreateApiKeyResponse>();
-        var oldKey = created.Key;
+        var oldKey = created!.Key;
 
         var rotateResponse = await _client.PostAsJsonAsync(
             $"/api/v1/gateway/apikeys/{oldKey}/rotate",
@@ -276,7 +276,7 @@ public sealed class ApiKeyEndpointTests : IClassFixture<GatewayTestFactory>
 
         var createResponse = await _client.PostAsJsonAsync("/api/v1/gateway/apikeys", createRequest);
         var created = await createResponse.Content.ReadFromJsonAsync<CreateApiKeyResponse>();
-        var keyValue = created.Key;
+        var keyValue = created!.Key;
 
         var touchResponse = await _client.PostAsync($"/api/v1/gateway/apikeys/{keyValue}/touch", null);
 

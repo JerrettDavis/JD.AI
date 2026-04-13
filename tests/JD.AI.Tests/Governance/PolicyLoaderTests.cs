@@ -106,7 +106,7 @@ public sealed class PolicyLoaderTests : IDisposable
         var policies = PolicyLoader.Load(projectPath);
 
         // Assert
-        var projectPolicy = policies.First(p => p.Metadata.Name == "project-policy");
+        var projectPolicy = policies.First(p => string.Equals(p.Metadata.Name, "project-policy", StringComparison.Ordinal));
         projectPolicy.Metadata.Scope.Should().Be(PolicyScope.Project);
 
         DataDirectories.Reset();
@@ -128,7 +128,7 @@ public sealed class PolicyLoaderTests : IDisposable
             var policies = PolicyLoader.Load(projectPath: null);
 
             // Assert
-            var orgPolicy = policies.FirstOrDefault(p => p.Metadata.Name == "org-policy");
+            var orgPolicy = policies.FirstOrDefault(p => string.Equals(p.Metadata.Name, "org-policy", StringComparison.Ordinal));
             orgPolicy.Should().NotBeNull();
             orgPolicy!.Metadata.Scope.Should().Be(PolicyScope.Organization);
         }

@@ -26,8 +26,8 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         private static string[] featureTags = new string[] {
                 "ui"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Navigation Menu — Grouped Sidebar", "    As a gateway operator\r\n    I want a grouped sidebar with collapsible sections" +
-                "\r\n    So that I can quickly navigate to relevant pages", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Navigation Menu — Grouped Sidebar", "    As a gateway operator\n    I want a grouped sidebar with collapsible sections\n" +
+                "    So that I can quickly navigate to relevant pages", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

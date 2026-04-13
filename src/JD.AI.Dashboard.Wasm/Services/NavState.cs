@@ -12,7 +12,7 @@ public sealed class NavState(IJSRuntime js)
         foreach (var group in Groups)
         {
             var raw = await js.InvokeAsync<string?>("localStorage.getItem", $"jd-nav-{group}");
-            _state[group] = raw is null || raw == "true";
+            _state[group] = raw is null || string.Equals(raw, "true", StringComparison.Ordinal);
         }
     }
 

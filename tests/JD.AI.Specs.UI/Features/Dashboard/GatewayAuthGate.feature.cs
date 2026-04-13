@@ -26,8 +26,8 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         private static string[] featureTags = new string[] {
                 "ui"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Gateway Auth Gate", "    As a gateway operator\r\n    I want to see a connection form when the gateway i" +
-                "s unreachable\r\n    So that I can enter my credentials and connect", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Gateway Auth Gate", "    As a gateway operator\n    I want to see a connection form when the gateway is" +
+                " unreachable\n    So that I can enter my credentials and connect", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

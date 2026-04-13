@@ -27,7 +27,7 @@ public sealed class GatewayErrorBoundaryBunitTests : DashboardBunitTestContext
     {
         var cut = RenderWithMudProviders<GatewayErrorBoundary>(p => p
             .Add(c => c.HasError, false)
-            .Add<RenderFragment>(c => c.ChildContent, builder =>
+            .Add<RenderFragment>(c => c.ChildContent!, builder =>
             {
                 builder.AddMarkupContent(0, "<span data-testid='child'>ok</span>");
             }));

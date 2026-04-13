@@ -190,7 +190,7 @@ public sealed class GatewayApiClient(HttpClient http)
         response.EnsureSuccessStatusCode();
     }
 
-    public async Task UpdateSkillConfigAsync(string id, Dictionary<string, string> config)
+    public async Task UpdateSkillConfigAsync(string id, IDictionary<string, string> config)
     {
         var response = await http.PutAsJsonAsync(
             new Uri($"api/v1/skills/{Uri.EscapeDataString(id)}/config", UriKind.Relative), config);

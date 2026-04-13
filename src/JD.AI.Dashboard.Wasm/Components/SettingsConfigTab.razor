@@ -323,9 +323,9 @@
                 foreach (var ev in field.EnumValues!)
                 {
                     var currentEnum = ev;
-                    innerBuilder.OpenComponent<MudSelectItem<string>>(enumIndex * 3);
-                    innerBuilder.AddAttribute(enumIndex * 3 + 1, "Value", currentEnum);
-                    innerBuilder.AddContent(enumIndex * 3 + 2, currentEnum);
+                    innerBuilder.OpenComponent<MudSelectItem<string>>(0);
+                    innerBuilder.AddAttribute(1, "Value", currentEnum);
+                    innerBuilder.AddContent(2, currentEnum);
                     innerBuilder.CloseComponent();
                     enumIndex++;
                 }

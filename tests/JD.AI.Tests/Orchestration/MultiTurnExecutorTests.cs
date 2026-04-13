@@ -166,7 +166,7 @@ public sealed class MultiTurnExecutorTests
         var config = CreateConfig();
 
         var cts = new CancellationTokenSource();
-        cts.Cancel();
+        await cts.CancelAsync();
 
         // Act
         var result = await executor.ExecuteAsync(config, session, teamContext: null, ct: cts.Token);

@@ -10,6 +10,7 @@ namespace JD.AI.Tests.Workflows;
 
 public sealed class WorkflowGeneratorAdditionalTests
 {
+    private static readonly string[] ExpectedTags = ["tag1", "tag2", "tag3"];
     private static Kernel CreateMockKernel(string chatResponse = "mocked response")
     {
         var chatService = Substitute.For<IChatCompletionService>();
@@ -107,7 +108,7 @@ public sealed class WorkflowGeneratorAdditionalTests
             ],
         };
 
-        var availableTools = new HashSet<string> { "other.tool" };
+        var availableTools = new HashSet<string>(StringComparer.Ordinal) { "other.tool" };
         var result = generator.DryRun(workflow, availableTools);
 
         result.Should().NotBeNull();
@@ -187,7 +188,7 @@ public sealed class WorkflowGeneratorAdditionalTests
 
         var composite = generator.Compose("composite", workflows);
 
-        composite.Tags.Should().Contain(new[] { "tag1", "tag2", "tag3" });
+        composite.Tags.Should().Contain(ExpectedTags);
     }
 
     [Fact]
@@ -343,7 +344,7 @@ public sealed class WorkflowGeneratorAdditionalTests
             """);
 
         var generator = new WorkflowGenerator();
-        var tools = new HashSet<string> { "tool1", "tool2" };
+        var tools = new HashSet<string>(StringComparer.Ordinal) { "tool1", "tool2" };
 
         var result = await generator.GenerateAsync(
             "test",
