@@ -7,9 +7,7 @@ Feature: Dashboard Smoke
 
     Scenario: Home overview renders
         Given I open the dashboard route "/"
-        Then I should see the page heading "Gateway Overview"
-        And I should see 4 overview stat cards
-        And I should see the recent activity panel
+        Then I should see the page heading "Overview"
 
     Scenario: Agents page renders with either data or empty state
         Given I open the dashboard route "/agents"

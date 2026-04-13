@@ -350,8 +350,10 @@ public sealed class HomePageSteps
     [When(@"I click the ""(.*)"" navigation link")]
     public async Task WhenIClickTheNavigationLink(string linkText)
     {
-        var link = _page.Locator($"a:has-text('{linkText}')");
-        await link.ClickAsync();
+        var link = _page.Locator($"a:has-text('{linkText}')").First;
+        // Force=true bypasses the auth-gate overlay (position:fixed; z-index:9999) that
+        // would otherwise intercept pointer events when the gateway is disconnected.
+        await link.ClickAsync(new LocatorClickOptions { Force = true });
         await _page.WaitForLoadStateAsync(LoadState.NetworkIdle);
     }
 

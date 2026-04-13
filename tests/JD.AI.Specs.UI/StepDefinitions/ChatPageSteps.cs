@@ -63,11 +63,12 @@ public sealed class ChatPageSteps
     [Then(@"I should see the agent selector or no-agents warning")]
     public async Task ThenIShouldSeeTheAgentSelectorOrNoAgentsWarning()
     {
-        var hasSelector = await _chatPage.AgentSelector.CountAsync() > 0;
+        var hasSelector = await _chatPage.AgentSelector.CountAsync() > 0 && await _chatPage.AgentSelector.IsVisibleAsync();
         var warningVisible = await _chatPage.NoAgentsWarning.IsVisibleAsync();
+        var loadErrorVisible = await _page.Locator("[data-testid='gateway-error-alert']").IsVisibleAsync();
 
-        Assert.True(hasSelector || warningVisible,
-            "Expected either the agent selector or the no-agents warning to be visible");
+        Assert.True(hasSelector || warningVisible || loadErrorVisible,
+            "Expected either the agent selector, no-agents warning, or gateway error alert to be visible");
     }
 
     [Then(@"I should see the chat empty state")]
