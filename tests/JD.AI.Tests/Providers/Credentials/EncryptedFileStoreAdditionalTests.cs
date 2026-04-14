@@ -134,8 +134,9 @@ public sealed class EncryptedFileStoreAdditionalTests : IDisposable
         var keyringJson = await File.ReadAllTextAsync(keyringPath);
         var keyring = JsonSerializer.Deserialize<JsonElement>(keyringJson);
 
-        keyring.TryGetProperty("ActiveKeyId", out var activeKeyId).Should().BeTrue();
-        keyring.TryGetProperty("Keys", out var keys).Should().BeTrue();
+        keyring.TryGetProperty("activeKeyId", out var activeKeyId).Should().BeTrue();
+        activeKeyId.GetString().Should().NotBeNullOrWhiteSpace();
+        keyring.TryGetProperty("keys", out var keys).Should().BeTrue();
         keys.GetArrayLength().Should().BeGreaterThan(0);
     }
 
@@ -154,7 +155,7 @@ public sealed class EncryptedFileStoreAdditionalTests : IDisposable
 
         var keyringPath = Path.Combine(_fixture.DirectoryPath, "keyring.json");
         var keyringJson = await File.ReadAllTextAsync(keyringPath);
-        var keyring = JsonSerializer.Deserialize<dynamic>(keyringJson);
+        _ = JsonSerializer.Deserialize<JsonElement>(keyringJson);
 
         // Both calls should have created unique keys
         // This is verified by the fact that we can read both keys back
@@ -175,11 +176,11 @@ public sealed class EncryptedFileStoreAdditionalTests : IDisposable
         var keyringPath = Path.Combine(_fixture.DirectoryPath, "keyring.json");
         var content = await File.ReadAllTextAsync(keyringPath);
         var doc = JsonDocument.Parse(content);
-        var keys = doc.RootElement.GetProperty("Keys");
+        var keys = doc.RootElement.GetProperty("keys");
 
         keys.GetArrayLength().Should().BeGreaterThan(0);
         var firstKey = keys[0];
-        firstKey.TryGetProperty("KeyMaterialBase64", out var material).Should().BeTrue();
+        firstKey.TryGetProperty("keyMaterialBase64", out var material).Should().BeTrue();
 
         var act = () => Convert.FromBase64String(material.GetString()!);
         act.Should().NotThrow();
@@ -198,10 +199,10 @@ public sealed class EncryptedFileStoreAdditionalTests : IDisposable
         var keyringPath = Path.Combine(_fixture.DirectoryPath, "keyring.json");
         var content = await File.ReadAllTextAsync(keyringPath);
         var doc = JsonDocument.Parse(content);
-        var keys = doc.RootElement.GetProperty("Keys");
+        var keys = doc.RootElement.GetProperty("keys");
         var firstKey = keys[0];
 
-        firstKey.TryGetProperty("CreatedAtUtc", out var createdAt).Should().BeTrue();
+        firstKey.TryGetProperty("createdAtUtc", out var createdAt).Should().BeTrue();
         DateTimeOffset.Parse(createdAt.GetString()!, CultureInfo.InvariantCulture).Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(5));
     }
 
@@ -226,7 +227,7 @@ public sealed class EncryptedFileStoreAdditionalTests : IDisposable
     }
 
     [Fact]
-    public async Task TryUnprotectEnvelopeV2_WithCorruptedData_Throws()
+    public async Task TryUnprotectEnvelopeV2_WithCorruptedData_ReturnsNull()
     {
         if (OperatingSystem.IsWindows())
         {
@@ -246,9 +247,9 @@ public sealed class EncryptedFileStoreAdditionalTests : IDisposable
         }));
         await File.WriteAllBytesAsync(payloadPath, corruptedData);
 
-        var act = async () => await _store.GetAsync(Key);
+        var result = await _store.GetAsync(Key);
 
-        await act.Should().ThrowAsync<Exception>();
+        result.Should().BeNull();
     }
 
     [Fact]
@@ -386,7 +387,7 @@ public sealed class EncryptedFileStoreAdditionalTests : IDisposable
         var keyringPath = Path.Combine(_fixture.DirectoryPath, "keyring.json");
         var content = await File.ReadAllTextAsync(keyringPath);
         var doc = JsonDocument.Parse(content);
-        var keys = doc.RootElement.GetProperty("Keys");
+        var keys = doc.RootElement.GetProperty("keys");
 
         // Should have at least 2 keys (old + new)
         keys.GetArrayLength().Should().BeGreaterThanOrEqualTo(2);
@@ -406,9 +407,9 @@ public sealed class EncryptedFileStoreAdditionalTests : IDisposable
         var keyringPath = Path.Combine(_fixture.DirectoryPath, "keyring.json");
         var content = await File.ReadAllTextAsync(keyringPath);
         var doc = JsonDocument.Parse(content);
-        var keys = doc.RootElement.GetProperty("Keys");
+        var keys = doc.RootElement.GetProperty("keys");
         var oldKey = keys[0];
 
-        oldKey.TryGetProperty("RetiredAtUtc", out _).Should().BeTrue();
+        oldKey.TryGetProperty("retiredAtUtc", out _).Should().BeTrue();
     }
 }
