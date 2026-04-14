@@ -1,6 +1,12 @@
 @page "/settings"
+@page "/settings/ai"
+@page "/settings/comms"
+@page "/settings/communication"
+@page "/settings/config"
+@page "/settings/logs"
 @inject GatewayApiClient Api
 @inject ISnackbar Snackbar
+@inject NavigationManager Nav
 
 <PageTitle>Settings — JD.AI</PageTitle>
 
@@ -26,6 +32,7 @@ else if (_config is null)
 else
 {
     <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true"
+             @bind-ActivePanelIndex="_activeTabIndex"
              PanelClass="pa-4" Class="jd-settings-tabs"
              data-testid="settings-tabs">
 
@@ -61,8 +68,12 @@ else
 @code {
     private GatewayConfigModel? _config;
     private bool _loading = true;
+    private int _activeTabIndex;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    protected override void OnParametersSet() =>
+        _activeTabIndex = ActiveTabIndexFromRoute();
 
     private async Task LoadAsync()
     {
@@ -70,5 +81,27 @@ else
         try { _config = await Api.GetConfigAsync(); }
         catch { _config = null; }
         _loading = false;
+    }
+
+    private int ActiveTabIndexFromRoute()
+    {
+        var path = new Uri(Nav.Uri).AbsolutePath;
+        if (path.StartsWith("/settings/comms", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/settings/communication", StringComparison.OrdinalIgnoreCase))
+        {
+            return 1;
+        }
+
+        if (path.StartsWith("/settings/config", StringComparison.OrdinalIgnoreCase))
+        {
+            return 2;
+        }
+
+        if (path.StartsWith("/settings/logs", StringComparison.OrdinalIgnoreCase))
+        {
+            return 3;
+        }
+
+        return 0;
     }
 }
