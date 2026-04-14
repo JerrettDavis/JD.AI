@@ -350,11 +350,26 @@ public sealed class HomePageSteps
     [When(@"I click the ""(.*)"" navigation link")]
     public async Task WhenIClickTheNavigationLink(string linkText)
     {
-        var link = _page.Locator($"a:has-text('{linkText}')").First;
-        // Force=true bypasses the auth-gate overlay (position:fixed; z-index:9999) that
-        // would otherwise intercept pointer events when the gateway is disconnected.
-        await link.ClickAsync(new LocatorClickOptions { Force = true });
-        await _page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        var testId = linkText switch
+        {
+            "Chat" => "nav-chat",
+            "Overview" => "nav-control-overview",
+            "Agents" => "nav-agents",
+            "Skills" => "nav-skills",
+            "AI & Agents" => "nav-settings-ai",
+            "Communication" => "nav-settings-comms",
+            "Config" => "nav-settings-config",
+            "Logs" => "nav-settings-logs",
+            _ => null,
+        };
+
+        var link = testId is null
+            ? _page.Locator($"[data-testid='nav-menu'] a:has-text('{linkText}')").First
+            : _page.Locator($"[data-testid='{testId}']").First;
+
+        await Expect(link).ToBeVisibleAsync();
+        await link.DispatchEventAsync("click");
+        await _page.WaitForTimeoutAsync(300);
     }
 
     [Then(@"I should be on the ""(.*)"" page")]
