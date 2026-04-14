@@ -195,6 +195,9 @@
                     "boolean" => fieldEl.GetBoolean(),
                     "integer" => (double)fieldEl.GetInt32(),
                     "number" => fieldEl.GetDouble(),
+                    "array" => fieldEl.ValueKind == JsonValueKind.Array
+                        ? fieldEl.EnumerateArray().Select(ArrayElementToString).ToArray()
+                        : [],
                     _ => fieldEl.GetString()
                 };
             }
@@ -351,6 +354,21 @@
             builder.AddAttribute(4, "Lines", 4);
             builder.CloseComponent();
         }
+        else if (field.Type == "array")
+        {
+            var arrayText = ArrayTextFromValue(currentVal);
+            var capturedFieldKey = field.Key;
+            builder.OpenComponent<MudTextField<string>>(0);
+            builder.AddAttribute(1, "Label", field.Label);
+            builder.AddAttribute(2, "Value", arrayText);
+            builder.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<string>(
+                this,
+                v => SetChange(capturedFieldKey, ParseArrayText(v))));
+            builder.AddAttribute(4, "Lines", 4);
+            builder.AddAttribute(5, "HelperText", "Enter one item per line.");
+            builder.AddAttribute(6, "data-testid", $"config-array-editor-{capturedFieldKey}");
+            builder.CloseComponent();
+        }
         else if (field.Sensitive)
         {
             // Sensitive text field: mask unless revealed
@@ -379,4 +397,31 @@
             builder.CloseComponent();
         }
     };
+
+    private static string ArrayElementToString(JsonElement element) =>
+        element.ValueKind switch
+        {
+            JsonValueKind.String => element.GetString() ?? string.Empty,
+            JsonValueKind.Number => element.GetRawText(),
+            JsonValueKind.True => "true",
+            JsonValueKind.False => "false",
+            JsonValueKind.Null => string.Empty,
+            _ => element.GetRawText()
+        };
+
+    private static string ArrayTextFromValue(object? value) =>
+        value switch
+        {
+            string[] values => string.Join(Environment.NewLine, values),
+            IEnumerable<string> values => string.Join(Environment.NewLine, values),
+            null => string.Empty,
+            _ => value.ToString() ?? string.Empty
+        };
+
+    private static string[] ParseArrayText(string? value) =>
+        (value ?? string.Empty)
+            .Split(["\r\n", "\n"], StringSplitOptions.None)
+            .Select(v => v.Trim())
+            .Where(v => v.Length > 0)
+            .ToArray();
 }

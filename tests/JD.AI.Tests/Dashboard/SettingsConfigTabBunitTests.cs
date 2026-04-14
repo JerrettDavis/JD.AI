@@ -25,7 +25,8 @@ public class SettingsConfigTabBunitTests : DashboardBunitTestContext
                 {
                     new { key = "autoUpdateEnabled", label = "Auto Update Enabled", description = "Enable automatic updates", type = "boolean", category = (string?)null, enumValues = (string[]?)null, defaultValue = false, sensitive = false },
                     new { key = "updateChannel", label = "Update Channel", description = "Which channel to use", type = "enum", category = (string?)null, enumValues = new[] { "stable", "beta", "dev" }, defaultValue = "stable", sensitive = false },
-                    new { key = "checkIntervalHours", label = "Check Interval Hours", description = "How often to check", type = "integer", category = (string?)null, enumValues = (string[]?)null, defaultValue = 1, sensitive = false }
+                    new { key = "checkIntervalHours", label = "Check Interval Hours", description = "How often to check", type = "integer", category = (string?)null, enumValues = (string[]?)null, defaultValue = 1, sensitive = false },
+                    new { key = "allowedHosts", label = "Allowed Hosts", description = "Hosts allowed to connect", type = "array", category = (string?)null, enumValues = (string[]?)null, defaultValue = Array.Empty<string>(), sensitive = false }
                 }
             }
         }
@@ -37,7 +38,8 @@ public class SettingsConfigTabBunitTests : DashboardBunitTestContext
         {
             autoUpdateEnabled = false,
             updateChannel = "stable",
-            checkIntervalHours = 1
+            checkIntervalHours = 1,
+            allowedHosts = new[] { "localhost", "127.0.0.1" }
         }
     });
 
@@ -97,6 +99,9 @@ public class SettingsConfigTabBunitTests : DashboardBunitTestContext
 
         var checkIntervalField = tab.Find("[data-testid=\"config-field-checkIntervalHours\"]");
         Assert.NotNull(checkIntervalField);
+
+        var allowedHostsField = tab.Find("[data-testid=\"config-field-allowedHosts\"]");
+        Assert.NotNull(allowedHostsField);
     }
 
     [Fact]
@@ -157,6 +162,28 @@ public class SettingsConfigTabBunitTests : DashboardBunitTestContext
         var intField = tab.Find("[data-testid=\"config-field-checkIntervalHours\"]");
         var input = intField.QuerySelector("input");
         Assert.NotNull(input);
+    }
+
+    [Fact]
+    public async Task ConfigTab_ArrayField_RendersMultilineEditor()
+    {
+        var api = CreateMockApiClient();
+        var component = RenderWithMudProviders<SettingsConfigTab>(p => p.Add(x => x.Api, api));
+
+        await Task.Delay(100);
+        component.Render();
+
+        var tab = component.FindComponent<SettingsConfigTab>();
+        var sectionItem = tab.Find("[data-testid=\"config-sidebar-item-updates\"]");
+        await sectionItem.ClickAsync();
+
+        component.Render();
+
+        var field = tab.Find("[data-testid=\"config-field-allowedHosts\"]");
+        var editor = field.QuerySelector("textarea");
+        Assert.NotNull(editor);
+        Assert.Contains("localhost", editor.TextContent);
+        Assert.Contains("127.0.0.1", editor.TextContent);
     }
 
     [Fact]

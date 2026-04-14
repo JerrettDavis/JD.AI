@@ -52,7 +52,8 @@
     else
     {
         <MudPaper Elevation="0">
-            <MudDataGrid Items="@_events" Dense="true" Hover="true" SortMode="SortMode.Multiple"
+            <MudDataGrid T="AuditEvent" Items="@_events" Dense="true" Hover="true" SortMode="SortMode.Multiple"
+                         RowClick="@((DataGridRowClickEventArgs<AuditEvent> args) => OnRowClick(args))"
                          data-testid="logs-grid">
                 <Columns>
                     <PropertyColumn Property="x => x.Timestamp" Title="Timestamp" Format="g" />
@@ -68,7 +69,34 @@
                     <PropertyColumn Property="x => x.Source" Title="Source" />
                     <PropertyColumn Property="x => x.EventType" Title="Event" />
                     <PropertyColumn Property="x => x.Message" Title="Message" />
+                    <TemplateColumn Title="" CellClass="d-flex justify-end">
+                        <CellTemplate>
+                            <MudIconButton
+                                Icon="@(_expandedRowId == context.Item.Id
+                                    ? Icons.Material.Filled.ExpandLess
+                                    : Icons.Material.Filled.ExpandMore)"
+                                Size="Size.Small"
+                                OnClick="@(() => ToggleExpand(context.Item.Id))"
+                                data-testid="@($"log-row-expand-{context.Item.Id}")" />
+                        </CellTemplate>
+                    </TemplateColumn>
                 </Columns>
+                <ChildRowContent>
+                    @if (_expandedRowId == context.Item.Id)
+                    {
+                        <MudPaper Class="pa-4 ma-2" Elevation="0" data-testid="@($"log-row-detail-{context.Item.Id}")">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                                <MudText Typo="Typo.subtitle2">Event Detail - @context.Item.EventType</MudText>
+                                <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                               Size="Size.Small"
+                                               OnClick="@(() => _expandedRowId = null)" />
+                            </MudStack>
+                            <MudText Style="white-space:pre-wrap;font-family:monospace;font-size:0.82rem;">
+                                @FormatEventDetail(context.Item)
+                            </MudText>
+                        </MudPaper>
+                    }
+                </ChildRowContent>
             </MudDataGrid>
         </MudPaper>
     }
@@ -82,6 +110,7 @@
     private bool _loadError;
     private string? _severityFilter;
     private string? _searchText;
+    private string? _expandedRowId;
 
     protected override async Task OnInitializedAsync()
     {
@@ -127,4 +156,42 @@
         "info" => Color.Info,
         _ => Color.Default
     };
+
+    private void ToggleExpand(string id) =>
+        _expandedRowId = _expandedRowId == id ? null : id;
+
+    private void OnRowClick(DataGridRowClickEventArgs<AuditEvent> args) =>
+        ToggleExpand(args.Item.Id);
+
+    private static string FormatEventDetail(AuditEvent evt)
+    {
+        object? payload = evt.Payload;
+        if (!string.IsNullOrWhiteSpace(evt.Payload))
+        {
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(evt.Payload);
+                payload = doc.RootElement.Clone();
+            }
+            catch
+            {
+                payload = evt.Payload;
+            }
+        }
+
+        var detail = new
+        {
+            evt.Id,
+            evt.Timestamp,
+            evt.Level,
+            evt.Source,
+            evt.EventType,
+            evt.Message,
+            Payload = payload,
+        };
+
+        return System.Text.Json.JsonSerializer.Serialize(
+            detail,
+            new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+    }
 }
