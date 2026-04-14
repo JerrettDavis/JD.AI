@@ -5,6 +5,7 @@ using Bunit;
 using JD.AI.Dashboard.Wasm.Components;
 using JD.AI.Dashboard.Wasm.Models;
 using JD.AI.Dashboard.Wasm.Services;
+using Microsoft.AspNetCore.Components;
 using Xunit;
 
 namespace JD.AI.Tests.Dashboard;
@@ -83,7 +84,7 @@ public class SettingsConfigTabBunitTests : DashboardBunitTestContext
         var tab = component.FindComponent<SettingsConfigTab>();
         // Click on section
         var sectionItem = tab.Find("[data-testid=\"config-sidebar-item-updates\"]");
-        sectionItem.Click();
+        await sectionItem.ClickAsync();
 
         component.Render();
 
@@ -109,7 +110,7 @@ public class SettingsConfigTabBunitTests : DashboardBunitTestContext
 
         var tab = component.FindComponent<SettingsConfigTab>();
         var sectionItem = tab.Find("[data-testid=\"config-sidebar-item-updates\"]");
-        sectionItem.Click();
+        await sectionItem.ClickAsync();
 
         component.Render();
 
@@ -129,7 +130,7 @@ public class SettingsConfigTabBunitTests : DashboardBunitTestContext
 
         var tab = component.FindComponent<SettingsConfigTab>();
         var sectionItem = tab.Find("[data-testid=\"config-sidebar-item-updates\"]");
-        sectionItem.Click();
+        await sectionItem.ClickAsync();
 
         component.Render();
 
@@ -149,7 +150,7 @@ public class SettingsConfigTabBunitTests : DashboardBunitTestContext
 
         var tab = component.FindComponent<SettingsConfigTab>();
         var sectionItem = tab.Find("[data-testid=\"config-sidebar-item-updates\"]");
-        sectionItem.Click();
+        await sectionItem.ClickAsync();
 
         component.Render();
 
@@ -169,7 +170,7 @@ public class SettingsConfigTabBunitTests : DashboardBunitTestContext
 
         var tab = component.FindComponent<SettingsConfigTab>();
         var rawModeButton = tab.Find("[data-testid=\"mode-toggle-raw\"]");
-        rawModeButton.Click();
+        await rawModeButton.ClickAsync();
 
         component.Render();
 
@@ -188,7 +189,7 @@ public class SettingsConfigTabBunitTests : DashboardBunitTestContext
 
         var tab = component.FindComponent<SettingsConfigTab>();
         var sectionItem = tab.Find("[data-testid=\"config-sidebar-item-updates\"]");
-        sectionItem.Click();
+        await sectionItem.ClickAsync();
 
         component.Render();
 
@@ -196,7 +197,7 @@ public class SettingsConfigTabBunitTests : DashboardBunitTestContext
         var checkbox = boolField.QuerySelector("input[type=\"checkbox\"]");
         Assert.NotNull(checkbox);
 
-        checkbox.Change(true);
+        await checkbox.ChangeAsync(new ChangeEventArgs { Value = true });
         component.Render();
 
         var badge = tab.Find("[data-testid=\"changes-badge\"]");
@@ -214,18 +215,18 @@ public class SettingsConfigTabBunitTests : DashboardBunitTestContext
 
         var tab = component.FindComponent<SettingsConfigTab>();
         var sectionItem = tab.Find("[data-testid=\"config-sidebar-item-updates\"]");
-        sectionItem.Click();
+        await sectionItem.ClickAsync();
 
         component.Render();
 
         var boolField = tab.Find("[data-testid=\"config-field-autoUpdateEnabled\"]");
         var checkbox = boolField.QuerySelector("input[type=\"checkbox\"]");
-        checkbox.Change(true);
+        await checkbox!.ChangeAsync(new ChangeEventArgs { Value = true });
 
         component.Render();
 
         var resetButton = tab.Find("[data-testid=\"reset-button\"]");
-        resetButton.Click();
+        await resetButton.ClickAsync();
 
         component.Render();
 

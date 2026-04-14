@@ -10,13 +10,13 @@ public sealed class SettingsCommunicationTabBunitTests : DashboardBunitTestConte
     private static IList<ChannelConfigModel> SampleChannels =>
     [
         new() { Type = "discord", Name = "Discord", Enabled = true,
-                AutoConnect = true, Settings = new Dictionary<string, string>
+                AutoConnect = true, Settings = new Dictionary<string, string>(StringComparer.Ordinal)
                 {
                     ["botToken"] = "tok-secret",
                     ["guildId"] = "123456789"
                 }},
         new() { Type = "slack", Name = "Slack", Enabled = false,
-                AutoConnect = false, Settings = new Dictionary<string, string>() }
+                AutoConnect = false, Settings = new Dictionary<string, string>(StringComparer.Ordinal) }
     ];
 
     [Fact]

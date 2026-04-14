@@ -29,6 +29,16 @@ public abstract class DashboardBunitTestContext : BunitContext, IAsyncLifetime
         return new GatewayApiClient(http);
     }
 
+    protected GatewayApiClient CreateAsyncApiClient(Func<HttpRequestMessage, Task<HttpResponseMessage>> responder)
+    {
+        var http = new HttpClient(new AsyncDashboardStubHandler(responder))
+        {
+            BaseAddress = new Uri("http://localhost/"),
+        };
+
+        return new GatewayApiClient(http);
+    }
+
     protected IRenderedComponent<MudProvidersHost> RenderWithMudProviders<TComponent>(Action<ComponentParameterCollectionBuilder<TComponent>>? parameters = null)
         where TComponent : IComponent
         => Render<MudProvidersHost>(host => host.AddChildContent<TComponent>(parameters ?? (_ => { })));
@@ -47,6 +57,12 @@ public abstract class DashboardBunitTestContext : BunitContext, IAsyncLifetime
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
             Task.FromResult(responder(request));
+    }
+
+    protected sealed class AsyncDashboardStubHandler(Func<HttpRequestMessage, Task<HttpResponseMessage>> responder) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            responder(request);
     }
 
     protected sealed class MudProvidersHost : ComponentBase

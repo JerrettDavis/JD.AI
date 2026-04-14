@@ -28,9 +28,9 @@ namespace JD.AI.Specs.Features.Core.Provider
                 "core",
                 "provider"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Provider", "Provider Registry", "    As the provider management system\r\n    I want to register providers, build ke" +
-                "rnels, and manage model selection\r\n    So that the agent can interact with multi" +
-                "ple AI backends", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Provider", "Provider Registry", "    As the provider management system\n    I want to register providers, build ker" +
+                "nels, and manage model selection\n    So that the agent can interact with multipl" +
+                "e AI backends", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

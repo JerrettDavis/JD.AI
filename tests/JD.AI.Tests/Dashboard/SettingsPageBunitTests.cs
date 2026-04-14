@@ -1,7 +1,7 @@
 using Bunit;
 using JD.AI.Dashboard.Wasm.Pages;
-using Microsoft.Extensions.DependencyInjection;
 using JD.AI.Dashboard.Wasm.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace JD.AI.Tests.Dashboard;
 
@@ -116,7 +116,7 @@ public sealed class SettingsPageBunitTests : DashboardBunitTestContext
     {
         // Api that never completes
         var tcs = new TaskCompletionSource<HttpResponseMessage>();
-        var api = CreateApiClient(_ => tcs.Task.GetAwaiter().GetResult());
+        var api = CreateAsyncApiClient(_ => tcs.Task);
         Services.AddSingleton(api);
 
         // Render without awaiting load completion

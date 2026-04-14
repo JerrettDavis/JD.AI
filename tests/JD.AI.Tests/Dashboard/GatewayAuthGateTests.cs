@@ -59,7 +59,7 @@ public sealed class GatewayAuthGateTests : DashboardBunitTestContext
     {
         JSInterop.Setup<string?>("localStorage.getItem", _ => true).SetResult(null);
         JSInterop.Setup<string?>("localStorage.getItem",
-            inv => (string)inv.Arguments[0]! == "jd-gateway-url")
+            inv => string.Equals((string)inv.Arguments[0]!, "jd-gateway-url", StringComparison.Ordinal))
             .SetResult("ws://192.168.1.10:18789");
 
         var signalR = Substitute.For<ISignalRService>();

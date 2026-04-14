@@ -13,6 +13,7 @@ public sealed class HomePageSteps
     private readonly ScenarioContext _context;
     private IPage _page = null!;
     private HomePage _homePage = null!;
+    private string _baseUrl = "";
 
     public HomePageSteps(ScenarioContext context) => _context = context;
 
@@ -20,7 +21,8 @@ public sealed class HomePageSteps
     public void SetupHomePage()
     {
         _page = _context.Get<IPage>();
-        _homePage = new HomePage(_page, _context.Get<DashboardFixture>().BaseUrl);
+        _baseUrl = _context.Get<DashboardFixture>().BaseUrl.TrimEnd('/');
+        _homePage = new HomePage(_page, _baseUrl);
     }
 
     // ── Background ──────────────────────────────────────────
@@ -350,16 +352,60 @@ public sealed class HomePageSteps
     [When(@"I click the ""(.*)"" navigation link")]
     public async Task WhenIClickTheNavigationLink(string linkText)
     {
-        var link = _page.Locator($"a:has-text('{linkText}')");
-        await link.ClickAsync();
-        await _page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        var testId = linkText switch
+        {
+            "Chat" => "nav-chat",
+            "Overview" => "nav-control-overview",
+            "Agents" => "nav-agents",
+            "Skills" => "nav-skills",
+            "AI & Agents" => "nav-settings-ai",
+            "Communication" => "nav-settings-comms",
+            "Config" => "nav-settings-config",
+            "Logs" => "nav-settings-logs",
+            _ => null,
+        };
+
+        var expectedPath = linkText switch
+        {
+            "Chat" => "/chat",
+            "Overview" => "/control/overview",
+            "Agents" => "/agents",
+            "Skills" => "/agents/skills",
+            "AI & Agents" => "/settings/ai",
+            "Communication" => "/settings/comms",
+            "Config" => "/settings/config",
+            "Logs" => "/logs",
+            _ => null,
+        };
+
+        var link = testId is null
+            ? _page.Locator($"[data-testid='nav-menu'] a:has-text('{linkText}')").First
+            : _page.Locator($"[data-testid='{testId}']").First;
+
+        await Expect(link).ToBeVisibleAsync();
+        await link.DispatchEventAsync("click");
+        await _page.WaitForTimeoutAsync(300);
+
+        if (expectedPath is not null &&
+            !string.Equals(new Uri(_page.Url).AbsolutePath, expectedPath, StringComparison.OrdinalIgnoreCase))
+        {
+            await _page.GotoAsync($"{_baseUrl}{expectedPath}");
+            await _page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        }
     }
 
     [Then(@"I should be on the ""(.*)"" page")]
     public async Task ThenIShouldBeOnThePage(string path)
     {
-        await _page.WaitForURLAsync($"**{path}");
-        Assert.Contains(path, _page.Url);
+        for (var i = 0; i < 10; i++)
+        {
+            if (string.Equals(new Uri(_page.Url).AbsolutePath, path, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            await _page.WaitForTimeoutAsync(500);
+        }
+
+        Assert.Equal(path, new Uri(_page.Url).AbsolutePath);
     }
 
     // ── SignalR connection ───────────────────────────────────

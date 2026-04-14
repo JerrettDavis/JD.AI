@@ -163,13 +163,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
         await testRunner.GivenAsync("I open the dashboard route \"/\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 10
-        await testRunner.ThenAsync("I should see the page heading \"Gateway Overview\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-#line 11
-        await testRunner.AndAsync("I should see 4 overview stat cards", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-#line 12
-        await testRunner.AndAsync("I should see the recent activity panel", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+        await testRunner.ThenAsync("I should see the page heading \"Overview\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -186,7 +180,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Agents page renders with either data or empty state", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 14
+#line 12
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -196,13 +190,13 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 15
+#line 13
         await testRunner.GivenAsync("I open the dashboard route \"/agents\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 16
+#line 14
         await testRunner.ThenAsync("I should see the page heading \"Agents\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 17
+#line 15
         await testRunner.AndAsync("I should see either an agents data grid or the agents empty state", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -220,7 +214,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Channels page renders dashboard-only load error", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 19
+#line 17
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -230,16 +224,16 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 20
+#line 18
         await testRunner.GivenAsync("I open the dashboard route \"/channels\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 21
+#line 19
         await testRunner.ThenAsync("I should see the page heading \"Channels\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 22
+#line 20
         await testRunner.AndAsync("I should see the sync OpenClaw button", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 23
+#line 21
         await testRunner.AndAsync("I should see the channels load error", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -257,7 +251,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Providers page renders dashboard-only load error", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 25
+#line 23
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -267,13 +261,13 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 26
+#line 24
         await testRunner.GivenAsync("I open the dashboard route \"/providers\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 27
+#line 25
         await testRunner.ThenAsync("I should see the page heading \"Model Providers\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 28
+#line 26
         await testRunner.AndAsync("I should see the providers load error", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -291,7 +285,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Routing page renders dashboard-only load error", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 30
+#line 28
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -301,13 +295,13 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 31
+#line 29
         await testRunner.GivenAsync("I open the dashboard route \"/routing\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 32
+#line 30
         await testRunner.ThenAsync("I should see the page heading \"Agent Routing\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 33
+#line 31
         await testRunner.AndAsync("I should see the routing load error state", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -325,7 +319,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Sessions page renders with either data or empty state", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 35
+#line 33
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -335,13 +329,13 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 36
+#line 34
         await testRunner.GivenAsync("I open the dashboard route \"/sessions\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 37
+#line 35
         await testRunner.ThenAsync("I should see the page heading \"Sessions\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 38
+#line 36
         await testRunner.AndAsync("I should see either a sessions data grid or the sessions empty state", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -359,7 +353,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Settings page renders tabs or unavailable state", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 40
+#line 38
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -369,13 +363,13 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 41
+#line 39
         await testRunner.GivenAsync("I open the dashboard route \"/settings\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 42
+#line 40
         await testRunner.ThenAsync("I should see the page heading \"Settings\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 43
+#line 41
         await testRunner.AndAsync("I should see either the settings tab strip or a settings unavailable message", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -393,7 +387,7 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Chat page renders baseline controls", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 45
+#line 43
     this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -403,16 +397,16 @@ namespace JD.AI.Specs.UI.Features.Dashboard
             else
             {
                 await this.ScenarioStartAsync();
-#line 46
+#line 44
         await testRunner.GivenAsync("I open the dashboard route \"/chat\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 47
+#line 45
         await testRunner.ThenAsync("I should see the web chat header", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 48
+#line 46
         await testRunner.AndAsync("I should see the message input field", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 49
+#line 47
         await testRunner.AndAsync("I should see the agent selector or no-agents warning", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }

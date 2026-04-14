@@ -105,6 +105,38 @@ public sealed class SharedSteps
         await Expect(skeletonRows).ToHaveCountAsync(count);
     }
 
+    // ── Generic text assertions ───────────────────────────────────
+
+    [Then(@"I should see the text ""(.*)""")]
+    public async Task ThenIShouldSeeTheText(string text)
+    {
+        var locator = _page.Locator($"text={text}").First;
+        await Expect(locator).ToBeVisibleAsync();
+    }
+
+    // ── Generic element assertions ─────────────────────────────────
+
+    [Then(@"I should see element ""(.*)""")]
+    public async Task ThenIShouldSeeElement(string selector)
+    {
+        var locator = _page.Locator(selector).First;
+        await Expect(locator).ToBeVisibleAsync();
+    }
+
+    // ── Generic navigation ──────────────────────────────────────────
+
+    [Given(@"I navigate to ""(.*)""")]
+    public async Task GivenINavigateTo(string route)
+    {
+        var baseUrl = _context.Get<DashboardFixture>().BaseUrl.TrimEnd('/');
+        var url = route.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+            ? route
+            : $"{baseUrl}{route}";
+        await _page.GotoAsync(url);
+        await _page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        await _page.WaitForTimeoutAsync(500);
+    }
+
     // ── Generic tab clicks ──────────────────────────────────────
 
     [When(@"I click the ""(.*)"" tab")]

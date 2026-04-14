@@ -353,7 +353,7 @@ app.MapPluginEndpoints();
 app.MapMemoryEndpoints();
 app.MapRoutingEndpoints();
 app.MapGatewayConfigEndpoints();
-// app.MapApiKeyEndpoints(); // Enabled by PR #426
+app.MapApiKeyEndpoints();
 app.MapAuditEndpoints();
 app.MapWorkflowEndpoints();
 

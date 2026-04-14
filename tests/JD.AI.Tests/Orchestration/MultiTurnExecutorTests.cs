@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using FluentAssertions;
 using JD.AI.Core.Agents;
 using JD.AI.Core.Agents.Orchestration;
@@ -7,7 +8,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using NSubstitute;
-using System.Runtime.CompilerServices;
 using Xunit;
 
 namespace JD.AI.Tests.Orchestration;
@@ -166,7 +166,7 @@ public sealed class MultiTurnExecutorTests
         var config = CreateConfig();
 
         var cts = new CancellationTokenSource();
-        cts.Cancel();
+        await cts.CancelAsync();
 
         // Act
         var result = await executor.ExecuteAsync(config, session, teamContext: null, ct: cts.Token);

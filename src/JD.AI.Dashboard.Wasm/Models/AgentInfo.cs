@@ -66,7 +66,7 @@ public record SkillInfo
     public SkillStatus Status { get; init; } = SkillStatus.Ready;
     public bool Enabled { get; init; }
     public string? StatusReason { get; init; }
-    public Dictionary<string, string> Config { get; init; } = [];
+    public IDictionary<string, string> Config { get; init; } = new Dictionary<string, string>();
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter))]

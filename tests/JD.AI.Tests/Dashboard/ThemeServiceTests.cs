@@ -62,11 +62,11 @@ public sealed class ThemeServiceTests : BunitContext
         await svc.SetModeAsync(ThemeMode.Dark);
 
         var setItemInvocations = JSInterop.Invocations
-            .Where(i => i.Identifier == "localStorage.setItem")
+            .Where(i => string.Equals(i.Identifier, "localStorage.setItem", StringComparison.Ordinal))
             .ToList();
         Assert.Contains(setItemInvocations, i =>
-            (string)i.Arguments[0]! == "jd-theme" &&
-            (string)i.Arguments[1]! == "dark");
+            string.Equals((string)i.Arguments[0]!, "jd-theme", StringComparison.Ordinal) &&
+            string.Equals((string)i.Arguments[1]!, "dark", StringComparison.Ordinal));
         Assert.True(svc.IsDarkMode);
     }
 

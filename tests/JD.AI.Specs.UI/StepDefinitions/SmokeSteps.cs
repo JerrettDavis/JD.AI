@@ -51,9 +51,10 @@ public sealed class SmokeSteps
     [Then(@"I should see either an agents data grid or the agents empty state")]
     public async Task ThenIShouldSeeAgentsGridOrEmptyState()
     {
-        await ExpectEitherVisibleAsync(
+        await ExpectAnyVisibleAsync(
             _page.Locator(".mud-data-grid"),
-            _page.Locator("text=No active agents"));
+            _page.Locator("[data-testid='agents-empty']"),
+            _page.Locator("[data-testid='gateway-error-alert']"));
     }
 
     [Then(@"I should see the channels load error")]

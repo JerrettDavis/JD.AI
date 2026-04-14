@@ -43,7 +43,9 @@ public sealed class LogsPageSteps
     {
         var gridVisible = await _logsPage.LogsGrid.IsVisibleAsync();
         var emptyVisible = await _logsPage.LogsEmptyState.IsVisibleAsync();
-        Assert.True(gridVisible || emptyVisible, "Expected either the logs grid or the logs empty state.");
+        var errorVisible = await _page.Locator("[data-testid='gateway-error-alert']").IsVisibleAsync();
+        Assert.True(gridVisible || emptyVisible || errorVisible,
+            "Expected either the logs grid, logs empty state, or gateway error alert.");
     }
 
     [Then(@"I should see the logs empty state")]

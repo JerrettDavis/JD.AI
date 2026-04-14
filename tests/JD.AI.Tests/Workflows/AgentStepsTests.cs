@@ -145,7 +145,7 @@ public sealed class InvokeToolStepTests
     [Fact]
     public void Constructor_WithArguments_StoresArguments()
     {
-        var args = new Dictionary<string, string> { { "key", "value" } };
+        var args = new Dictionary<string, string>(StringComparer.Ordinal) { { "key", "value" } };
         var step = new InvokeToolStep("invoke", "plugin", "function", args);
         step.Name.Should().Be("invoke");
     }

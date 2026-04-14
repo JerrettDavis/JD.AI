@@ -30,8 +30,8 @@ namespace JD.AI.Specs.Features.Core.Provider
                 "provider",
                 "credentials"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Provider", "Provider Credentials", "    As a user of the AI agent\r\n    I want to securely store and retrieve API cred" +
-                "entials\r\n    So that my keys are protected and persist between sessions", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Provider", "Provider Credentials", "    As a user of the AI agent\n    I want to securely store and retrieve API crede" +
+                "ntials\n    So that my keys are protected and persist between sessions", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

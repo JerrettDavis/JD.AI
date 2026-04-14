@@ -26,8 +26,8 @@ namespace JD.AI.Specs.Features.Core.Workflows
         private static string[] featureTags = new string[] {
                 "workflows"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Workflows", "Workflow Capture", "  As a platform\r\n  I need to capture workflow execution events\r\n  So that I can o" +
-                "bserve and replay workflow runs", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Workflows", "Workflow Capture", "  As a platform\n  I need to capture workflow execution events\n  So that I can obs" +
+                "erve and replay workflow runs", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

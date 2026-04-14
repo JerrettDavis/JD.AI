@@ -1,5 +1,5 @@
-using JD.AI.Dashboard.Wasm.Models;
 using FluentAssertions;
+using JD.AI.Dashboard.Wasm.Models;
 
 namespace JD.AI.Tests.Dashboard;
 

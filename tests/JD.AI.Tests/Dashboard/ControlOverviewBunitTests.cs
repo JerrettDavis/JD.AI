@@ -60,7 +60,7 @@ public sealed class ControlOverviewBunitTests : DashboardBunitTestContext
         RegisterServices();
         var cut = RenderWithMudProviders<ControlOverview>();
         cut.Find("[data-testid='page-subtitle']").TextContent.Trim()
-            .Should().Be("Status, entry points, health.");
+            .Should().Be("System health, gateway status, and live counters.");
     }
 
     // ── Snapshot cards ──────────────────────────────────────────
@@ -184,7 +184,8 @@ public sealed class ControlOverviewBunitTests : DashboardBunitTestContext
         Services.AddScoped<LocalStorageService>();
 
         var cut = RenderWithMudProviders<ControlOverview>();
-        cut.Find("[data-testid='snapshot-status']").TextContent.Should().Contain("Disconnected");
+        cut.WaitForAssertion(() =>
+            cut.Find("[data-testid='gateway-error-alert']").Should().NotBeNull());
     }
 
     // ── Operational counters ────────────────────────────────────
@@ -194,7 +195,8 @@ public sealed class ControlOverviewBunitTests : DashboardBunitTestContext
     {
         RegisterServices();
         var cut = RenderWithMudProviders<ControlOverview>();
-        cut.Find("[data-testid='counter-agents']").TextContent.Trim().Should().Be("1");
+        cut.WaitForAssertion(() =>
+            cut.Find("[data-testid='stat-agents']").TextContent.Trim().Should().Be("1"));
     }
 
     [Fact]
@@ -202,6 +204,7 @@ public sealed class ControlOverviewBunitTests : DashboardBunitTestContext
     {
         RegisterServices();
         var cut = RenderWithMudProviders<ControlOverview>();
-        cut.Find("[data-testid='counter-channels']").TextContent.Trim().Should().Be("1");
+        cut.WaitForAssertion(() =>
+            cut.Find("[data-testid='stat-channels']").TextContent.Trim().Should().Be("1"));
     }
 }

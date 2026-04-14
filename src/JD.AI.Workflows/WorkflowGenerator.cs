@@ -641,6 +641,9 @@ public sealed class WorkflowGenerator
 
     private static string DeriveWorkflowName(string description)
     {
+        if (string.IsNullOrWhiteSpace(description))
+            return "Untitled Workflow";
+
         var words = description.Split(' ', StringSplitOptions.RemoveEmptyEntries)
             .Take(5)
             .Select(w =>

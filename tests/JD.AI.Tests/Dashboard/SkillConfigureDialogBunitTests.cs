@@ -20,7 +20,7 @@ public sealed class SkillConfigureDialogBunitTests : DashboardBunitTestContext
         Category = "Development",
         Status = SkillStatus.NeedsSetup,
         Enabled = true,
-        Config = config ?? new() { ["GITHUB_TOKEN"] = "" },
+        Config = config ?? new(StringComparer.Ordinal) { ["GITHUB_TOKEN"] = "" },
     };
 
     [Fact]

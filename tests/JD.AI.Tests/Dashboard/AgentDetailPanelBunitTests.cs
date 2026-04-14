@@ -1,10 +1,10 @@
 using Bunit;
+using FluentAssertions;
 using JD.AI.Dashboard.Wasm.Components;
 using JD.AI.Dashboard.Wasm.Models;
 using JD.AI.Dashboard.Wasm.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
-using FluentAssertions;
 
 namespace JD.AI.Tests.Dashboard;
 

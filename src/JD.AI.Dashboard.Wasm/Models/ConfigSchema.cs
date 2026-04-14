@@ -5,7 +5,7 @@ namespace JD.AI.Dashboard.Wasm.Models;
 public sealed class ConfigSchema
 {
     [JsonPropertyName("sections")]
-    public List<ConfigSection> Sections { get; set; } = [];
+    public IList<ConfigSection> Sections { get; set; } = [];
 }
 
 public sealed class ConfigSection
@@ -20,7 +20,7 @@ public sealed class ConfigSection
     public string Category { get; set; } = string.Empty;
 
     [JsonPropertyName("fields")]
-    public List<ConfigField> Fields { get; set; } = [];
+    public IList<ConfigField> Fields { get; set; } = [];
 }
 
 public sealed class ConfigField
@@ -41,7 +41,7 @@ public sealed class ConfigField
     public string? Category { get; set; }
 
     [JsonPropertyName("enumValues")]
-    public List<string>? EnumValues { get; set; }
+    public IList<string>? EnumValues { get; set; }
 
     [JsonPropertyName("defaultValue")]
     public object? DefaultValue { get; set; }

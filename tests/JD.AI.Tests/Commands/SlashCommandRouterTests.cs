@@ -190,7 +190,7 @@ public sealed class SlashCommandRouterTests
         // Arrange
         var router = CreateRouter();
         var cts = new CancellationTokenSource();
-        cts.Cancel();
+        await cts.CancelAsync();
 
         // Act — /help is synchronous and doesn't check CT, so it completes normally.
         // Other commands that call async services may throw OperationCanceledException.

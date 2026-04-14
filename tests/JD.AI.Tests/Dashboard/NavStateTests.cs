@@ -39,9 +39,9 @@ public sealed class NavStateTests : BunitContext
         Assert.False(await svc.IsExpandedAsync("control"));
 
         var setItemInvocations = JSInterop.Invocations
-            .Where(i => i.Identifier == "localStorage.setItem")
+            .Where(i => string.Equals(i.Identifier, "localStorage.setItem", StringComparison.Ordinal))
             .ToList();
-        Assert.Contains(setItemInvocations, i => (string)i.Arguments[0]! == "jd-nav-control");
+        Assert.Contains(setItemInvocations, i => string.Equals((string)i.Arguments[0]!, "jd-nav-control", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public sealed class NavStateTests : BunitContext
     {
         JSInterop.Setup<string?>("localStorage.getItem", _ => true).SetResult(null);
         JSInterop.Setup<string?>("localStorage.getItem",
-            inv => (string)inv.Arguments[0]! == "jd-nav-agents")
+            inv => string.Equals((string)inv.Arguments[0]!, "jd-nav-agents", StringComparison.Ordinal))
             .SetResult("false");
 
         var svc = new NavState(Services.GetRequiredService<IJSRuntime>());

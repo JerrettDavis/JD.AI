@@ -17,7 +17,7 @@ public sealed class SkillsPage : BasePage
 
     // ── Page header ──
     public ILocator PageHeading => Page.Locator("[data-testid='page-title']");
-    public ILocator RefreshButton => Page.Locator("[data-testid='refresh-button']");
+    public new ILocator RefreshButton => Page.Locator("[data-testid='refresh-button']");
 
     // ── Status filter tabs ──
     public ILocator FilterAll => Page.Locator("[data-testid='filter-all']");

@@ -26,8 +26,8 @@ namespace JD.AI.Specs.Features.Core.Events
         private static string[] featureTags = new string[] {
                 "events"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Events", "Event Bus", "  As a platform\r\n  I need a publish/subscribe event bus\r\n  So that components can" +
-                " communicate through events", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Core/Events", "Event Bus", "  As a platform\n  I need a publish/subscribe event bus\n  So that components can c" +
+                "ommunicate through events", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
