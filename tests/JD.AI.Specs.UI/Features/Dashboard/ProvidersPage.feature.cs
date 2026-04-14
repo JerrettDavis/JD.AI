@@ -27,8 +27,8 @@ namespace JD.AI.Specs.UI.Features.Dashboard
                 "ignore",
                 "ui"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Providers Page", "    As a gateway operator\n    I want to view configured AI model providers\n    So" +
-                " that I can monitor provider availability and available models", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Providers Page", "    As a gateway operator\r\n    I want to view configured AI model providers\r\n    " +
+                "So that I can monitor provider availability and available models", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

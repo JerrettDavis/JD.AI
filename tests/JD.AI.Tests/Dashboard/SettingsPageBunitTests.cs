@@ -116,7 +116,7 @@ public sealed class SettingsPageBunitTests : DashboardBunitTestContext
     {
         // Api that never completes
         var tcs = new TaskCompletionSource<HttpResponseMessage>();
-        var api = CreateApiClient(_ => tcs.Task.GetAwaiter().GetResult());
+        var api = CreateAsyncApiClient(_ => tcs.Task);
         Services.AddSingleton(api);
 
         // Render without awaiting load completion

@@ -59,13 +59,14 @@ public sealed class AgentSessionAdditionalTests : IDisposable
     [Fact]
     public async Task CloseSessionAsync_EmitsAuditEvent()
     {
-        var auditService = Substitute.For<AuditService>();
+        var sink = new RecordingAuditSink();
+        var auditService = new AuditService([sink]);
         _session.AuditService = auditService;
         await _session.InitializePersistenceAsync(_tempDir.DirectoryPath);
 
         await _session.CloseSessionAsync();
 
-        await auditService.Received(1).EmitAsync(Arg.Is<AuditEvent>(e => e.Action == "session.close"));
+        sink.Events.Should().ContainSingle(e => e.Action == "session.close");
     }
 
     // ── ExportSessionAsync ─────────────────────────────────────────────────
@@ -266,5 +267,20 @@ public sealed class AgentSessionAdditionalTests : IDisposable
         _session.RecordFileTouch("/file3.txt", "delete");
 
         turn.FilesTouched.Should().HaveCount(3);
+    }
+
+    private sealed class RecordingAuditSink : IAuditSink
+    {
+        public string Name => "recording";
+
+        public List<AuditEvent> Events { get; } = [];
+
+        public Task WriteAsync(AuditEvent evt, CancellationToken ct = default)
+        {
+            Events.Add(evt);
+            return Task.CompletedTask;
+        }
+
+        public Task FlushAsync(CancellationToken ct = default) => Task.CompletedTask;
     }
 }

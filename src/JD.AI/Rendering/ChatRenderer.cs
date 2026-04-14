@@ -435,6 +435,12 @@ public static class ChatRenderer
     {
         AnsiConsole.Markup($"[aqua]📋 {Markup.Escape(message)}[/] [dim]([green]y[/]/[red]N[/])[/] ");
 
+        if (Console.IsInputRedirected)
+        {
+            AnsiConsole.MarkupLine("[red]n[/]");
+            return false;
+        }
+
         while (true)
         {
             var key = Console.ReadKey(intercept: true);

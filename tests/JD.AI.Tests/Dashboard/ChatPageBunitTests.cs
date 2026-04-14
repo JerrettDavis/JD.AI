@@ -24,7 +24,7 @@ public sealed class ChatPageBunitTests : DashboardBunitTestContext
     public void Chat_WhileAgentsLoading_ShowsAgentSelectorSkeleton()
     {
         var tcs = new TaskCompletionSource<HttpResponseMessage>();
-        var api = CreateApiClient(_ => tcs.Task.GetAwaiter().GetResult());
+        var api = CreateAsyncApiClient(_ => tcs.Task);
         Services.AddSingleton(api);
         Services.AddSingleton(new SignalRService("http://localhost"));
 

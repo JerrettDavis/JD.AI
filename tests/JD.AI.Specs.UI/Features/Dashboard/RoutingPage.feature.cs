@@ -27,8 +27,8 @@ namespace JD.AI.Specs.UI.Features.Dashboard
                 "ignore",
                 "ui"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Routing Page", "    As a gateway operator\n    I want to configure channel-to-agent routing rules\n" +
-                "    So that incoming messages are directed to the correct AI agents", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Routing Page", "    As a gateway operator\r\n    I want to configure channel-to-agent routing rules" +
+                "\r\n    So that incoming messages are directed to the correct AI agents", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         

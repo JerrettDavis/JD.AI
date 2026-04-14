@@ -27,8 +27,8 @@ namespace JD.AI.Specs.UI.Features.Dashboard
                 "ignore",
                 "ui"};
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Channels Page", "    As a gateway operator\n    I want to view and manage messaging channel connect" +
-                "ions\n    So that I can control which platforms my agents communicate through", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features/Dashboard", "Channels Page", "    As a gateway operator\r\n    I want to view and manage messaging channel connec" +
+                "tions\r\n    So that I can control which platforms my agents communicate through", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags, InitializeCucumberMessages());
         
         private global::Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
