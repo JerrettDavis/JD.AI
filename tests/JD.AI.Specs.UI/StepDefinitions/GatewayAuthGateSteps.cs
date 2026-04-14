@@ -75,7 +75,7 @@ public sealed class GatewayAuthGateSteps
     [Then(@"I should see a URL input prefilled with ""(.*)""")]
     public async Task ThenIShouldSeeAUrlInputPrefilledWith(string expectedValue)
     {
-        var input = _page.Locator("[data-testid='gateway-url-input'] input");
+        var input = _page.Locator("[data-testid='gateway-url-input'] input, input[data-testid='gateway-url-input']").First;
         await Expect(input).ToBeVisibleAsync();
         var value = await input.InputValueAsync();
         Xunit.Assert.Equal(expectedValue, value);
@@ -84,7 +84,7 @@ public sealed class GatewayAuthGateSteps
     [Then(@"the URL input should show ""(.*)""")]
     public async Task ThenTheUrlInputShouldShow(string expectedValue)
     {
-        var input = _page.Locator("[data-testid='gateway-url-input'] input");
+        var input = _page.Locator("[data-testid='gateway-url-input'] input, input[data-testid='gateway-url-input']").First;
         await Expect(input).ToBeVisibleAsync();
         var value = await input.InputValueAsync();
         Xunit.Assert.Equal(expectedValue, value);
@@ -101,7 +101,7 @@ public sealed class GatewayAuthGateSteps
     [When(@"I enter ""(.*)"" in the URL input")]
     public async Task WhenIEnterInTheUrlInput(string url)
     {
-        var input = _page.Locator("[data-testid='gateway-url-input'] input");
+        var input = _page.Locator("[data-testid='gateway-url-input'] input, input[data-testid='gateway-url-input']").First;
         await input.FillAsync(url);
     }
 
@@ -115,7 +115,7 @@ public sealed class GatewayAuthGateSteps
     [When(@"I click the Connect button with an invalid URL")]
     public async Task WhenIClickTheConnectButtonWithAnInvalidUrl()
     {
-        var input = _page.Locator("[data-testid='gateway-url-input'] input");
+        var input = _page.Locator("[data-testid='gateway-url-input'] input, input[data-testid='gateway-url-input']").First;
         await input.FillAsync("invalid-url");
         await _page.Locator("[data-testid='connect-button']").ClickAsync();
         await _page.WaitForTimeoutAsync(500);

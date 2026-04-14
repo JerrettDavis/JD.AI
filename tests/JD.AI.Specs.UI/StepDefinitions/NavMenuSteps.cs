@@ -24,14 +24,14 @@ public sealed class NavMenuSteps
 
     // ── Nav links ──────────────────────────────────────────────────────────
 
-    [Then(@"I should see a nav link labeled ""(.*)"" with href ""(.*)""")]
+    [Then(@"^I should see a nav link labeled ""(.*)"" with href ""(.*)""$")]
     public async Task ThenIShouldSeeANavLinkLabeledWithHref(string label, string href)
     {
         var link = _page.Locator($"[data-testid='nav-menu'] a[href='{href}']");
         await Expect(link.First).ToBeVisibleAsync();
     }
 
-    [Then(@"I should see a nav link labeled ""(.*)""")]
+    [Then(@"^I should see a nav link labeled ""(.*)""$")]
     public async Task ThenIShouldSeeANavLinkLabeled(string label)
     {
         var link = _page.Locator($"[data-testid='nav-menu'] a:has-text('{label}')").First;
@@ -71,7 +71,7 @@ public sealed class NavMenuSteps
         await Expect(childLinks.First).ToBeHiddenAsync();
     }
 
-    [Then(@"I should not see a nav link labeled ""(.*)""")]
+    [Then(@"^I should not see a nav link labeled ""(.*)""$")]
     public async Task ThenIShouldNotSeeANavLinkLabeled(string label)
     {
         var link = _page.Locator($"[data-testid='nav-menu'] a:has-text('{label}')").First;
