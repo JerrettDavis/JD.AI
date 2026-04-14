@@ -397,8 +397,15 @@ public sealed class HomePageSteps
     [Then(@"I should be on the ""(.*)"" page")]
     public async Task ThenIShouldBeOnThePage(string path)
     {
-        await Expect(_page).ToHaveURLAsync($"**{path}");
-        Assert.Contains(path, _page.Url);
+        for (var i = 0; i < 10; i++)
+        {
+            if (string.Equals(new Uri(_page.Url).AbsolutePath, path, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            await _page.WaitForTimeoutAsync(500);
+        }
+
+        Assert.Equal(path, new Uri(_page.Url).AbsolutePath);
     }
 
     // ── SignalR connection ───────────────────────────────────
