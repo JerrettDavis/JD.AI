@@ -360,7 +360,7 @@ public sealed class HomePageSteps
     [Then(@"I should be on the ""(.*)"" page")]
     public async Task ThenIShouldBeOnThePage(string path)
     {
-        await _page.WaitForURLAsync($"**{path}");
+        await Expect(_page).ToHaveURLAsync($"**{path}");
         Assert.Contains(path, _page.Url);
     }
 

@@ -31,7 +31,7 @@ public sealed class NavMenuSteps
         await Expect(link.First).ToBeVisibleAsync();
     }
 
-    [Then(@"^I should see a nav link labeled ""(.*)""$")]
+    [Then(@"I should see a nav link labeled ""([^""]*)""(?! with href)")]
     public async Task ThenIShouldSeeANavLinkLabeled(string label)
     {
         var link = _page.Locator($"[data-testid='nav-menu'] a:has-text('{label}')").First;
