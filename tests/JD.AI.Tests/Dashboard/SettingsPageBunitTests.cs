@@ -1,6 +1,7 @@
 using Bunit;
 using JD.AI.Dashboard.Wasm.Pages;
 using JD.AI.Dashboard.Wasm.Services;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace JD.AI.Tests.Dashboard;
@@ -148,6 +149,26 @@ public sealed class SettingsPageBunitTests : DashboardBunitTestContext
             var subTabs = cut.Find("[data-testid='ai-agents-subtabs']");
             Assert.Contains("Providers", subTabs.TextContent);
             Assert.Contains("Agents", subTabs.TextContent);
+        });
+    }
+
+    [Theory]
+    [InlineData("http://localhost/settings/ai", "AI & Agents")]
+    [InlineData("http://localhost/settings/comms", "Communication")]
+    [InlineData("http://localhost/settings/config", "Config")]
+    [InlineData("http://localhost/settings/logs", "Logs")]
+    public void Settings_RouteSpecificUrls_RenderSettingsShell(string route, string tabText)
+    {
+        var api = BuildFullConfigApiClient();
+        Services.AddSingleton(api);
+        Services.GetRequiredService<NavigationManager>().NavigateTo(route);
+
+        var cut = RenderWithMudProviders<Settings>();
+
+        cut.WaitForAssertion(() =>
+        {
+            var tabs = cut.Find("[data-testid='settings-tabs']");
+            Assert.Contains(tabText, tabs.TextContent);
         });
     }
 }
