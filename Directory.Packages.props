@@ -17,7 +17,7 @@
     <PackageVersion Include="YamlDotNet" Version="16.3.0" />
     <PackageVersion Include="JD.SemanticKernel.Extensions" Version="0.1.53" />
     <PackageVersion Include="JD.SemanticKernel.Extensions.Mcp" Version="0.1.41" />
-    <PackageVersion Include="JD.SemanticKernel.Connectors.ClaudeCode" Version="1.0.21" />
+    <PackageVersion Include="JD.SemanticKernel.Connectors.ClaudeCode" Version="1.0.23" />
     <PackageVersion Include="JD.SemanticKernel.Connectors.GitHubCopilot" Version="0.1.30" />
     <PackageVersion Include="JD.SemanticKernel.Connectors.OpenAICodex" Version="0.1.18" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.3" />
