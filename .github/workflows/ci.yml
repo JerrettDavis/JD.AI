@@ -284,7 +284,7 @@ jobs:
           fi
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ env.NBGV_NuGetPackageVersion }}
           name: Release v${{ env.NBGV_NuGetPackageVersion }}
@@ -356,7 +356,7 @@ jobs:
         run: tar -czf ./jdai-${{ matrix.rid }}.tar.gz -C ./publish .
 
       - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ needs.release.outputs.version }}
           files: |
