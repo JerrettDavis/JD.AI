@@ -254,6 +254,14 @@ internal static class WelcomeServiceStatusProbe
             try
             {
                 await process.WaitForExitAsync(linkedCts.Token).ConfigureAwait(false);
+                // WaitForExitAsync does not guarantee that the redirected stdout/stderr
+                // streams have been fully flushed into the reader tasks before it returns
+                // (unlike the synchronous WaitForExit() overload). Calling the no-arg
+                // synchronous overload here ensures all pending stream data is drained
+                // before we await the reader tasks, eliminating a race on Linux CI where
+                // the process exits and the async wait completes before the OS has
+                // delivered all buffered output to the pipe.
+                process.WaitForExit();
                 var output = await outputTask.ConfigureAwait(false);
                 var error = await errorTask.ConfigureAwait(false);
                 return (process.ExitCode, output, error, false);
