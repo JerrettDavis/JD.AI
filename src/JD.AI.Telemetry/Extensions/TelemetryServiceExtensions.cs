@@ -98,11 +98,13 @@ public static class TelemetryServiceExtensions
                 break;
 
             case "zipkin":
+#pragma warning disable CS0618 // OpenTelemetry deprecated Zipkin exporter; keep existing config support until migrated.
                 tracing.AddZipkinExporter(o =>
                 {
                     if (TryParseEndpoint(endpoint, out var uri))
                         o.Endpoint = uri;
                 });
+#pragma warning restore CS0618
                 break;
 
             default: // "console"
