@@ -19,7 +19,7 @@
     <PackageVersion Include="JD.SemanticKernel.Extensions.Mcp" Version="0.1.41" />
     <PackageVersion Include="JD.SemanticKernel.Connectors.ClaudeCode" Version="1.0.23" />
     <PackageVersion Include="JD.SemanticKernel.Connectors.GitHubCopilot" Version="0.1.30" />
-    <PackageVersion Include="JD.SemanticKernel.Connectors.OpenAICodex" Version="0.1.18" />
+    <PackageVersion Include="JD.SemanticKernel.Connectors.OpenAICodex" Version="0.1.21" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.3" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.6" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.6" />
