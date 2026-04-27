@@ -10,7 +10,7 @@ on:
       chat_model:
         description: 'Ollama chat model to use'
         required: false
-        default: 'qwen2.5:0.5b'
+        default: 'llama3.2:1b'
       embedding_model:
         description: 'Ollama embedding model to use'
         required: false
@@ -18,7 +18,7 @@ on:
 
 env:
   DOTNET_NOLOGO: true
-  OLLAMA_CHAT_MODEL: ${{ inputs.chat_model || 'qwen2.5:0.5b' }}
+  OLLAMA_CHAT_MODEL: ${{ inputs.chat_model || 'llama3.2:1b' }}
   OLLAMA_EMBEDDING_MODEL: ${{ inputs.embedding_model || 'all-minilm:22m' }}
   EXTENSIONS_INTEGRATION_TESTS: 'true'
   TUI_INTEGRATION_TESTS: 'true'
