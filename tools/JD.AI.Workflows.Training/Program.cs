@@ -49,6 +49,10 @@ public static class Program
             ? int.Parse(args[ollamaGenerateArgIdx + 1], System.Globalization.CultureInfo.InvariantCulture)
             : null;
         var ollamaValidate = args.Contains("--ollama-validate");
+        var ollamaModelArgIdx = Array.IndexOf(args, "--model");
+        var ollamaModel = ollamaModelArgIdx >= 0 && ollamaModelArgIdx + 1 < args.Length
+            ? args[ollamaModelArgIdx + 1]
+            : "qwen3.5:9b";
 
         if (benchmark)
         {
@@ -69,7 +73,7 @@ public static class Program
                 Directory.CreateDirectory(dir);
 
             List<TrainingDataGenerator.LabeledPrompt> generated = [];
-            using (var synthesizer = new AiTrainingDataSynthesizer(ollamaHost: ollamaHost))
+            using (var synthesizer = new AiTrainingDataSynthesizer(model: ollamaModel, ollamaHost: ollamaHost))
             {
                 await AnsiConsole.Progress()
                     .StartAsync(async ctx =>
@@ -106,7 +110,7 @@ public static class Program
             var prompts = TrainingDataGenerator.ReadCsv(dataPath);
 
             List<ValidationResult> discrepancies = [];
-            using (var synthesizer = new AiTrainingDataSynthesizer(ollamaHost: ollamaHost))
+            using (var synthesizer = new AiTrainingDataSynthesizer(model: ollamaModel, ollamaHost: ollamaHost))
             {
                 await AnsiConsole.Progress()
                     .StartAsync(async ctx =>

@@ -16,7 +16,7 @@ public sealed class OllamaClient : IDisposable
     public OllamaClient(string model, string baseUrl = "http://localhost:11434")
     {
         _model = model;
-        _http = new HttpClient { BaseAddress = new Uri(baseUrl), Timeout = TimeSpan.FromMinutes(5) };
+        _http = new HttpClient { BaseAddress = new Uri(baseUrl), Timeout = TimeSpan.FromMinutes(10) };
     }
 
     /// <summary>
