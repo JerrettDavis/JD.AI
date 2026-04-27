@@ -44,9 +44,83 @@ public static class Program
             ? args[outputArgIdx + 1]
             : "../../src/JD.AI.Workflows/Models/intent_classifier.zip";
 
+        var ollamaGenerateArgIdx = Array.IndexOf(args, "--ollama-generate");
+        int? ollamaGenerateCount = ollamaGenerateArgIdx >= 0 && ollamaGenerateArgIdx + 1 < args.Length
+            ? int.Parse(args[ollamaGenerateArgIdx + 1], System.Globalization.CultureInfo.InvariantCulture)
+            : null;
+        var ollamaValidate = args.Contains("--ollama-validate");
+
         if (benchmark)
         {
             RunBenchmark();
+            return 0;
+        }
+
+        // ── Ollama-synthesized training data generation ──────────────────
+        if (ollamaGenerateCount.HasValue)
+        {
+            var ollamaHost = Environment.GetEnvironmentVariable("OLLAMA_HOST") ?? "http://localhost:11434";
+            var dir = Path.GetDirectoryName(Path.GetFullPath(outputPath));
+            var jsonlPath = dir is not null
+                ? Path.Combine(dir, "ollama_training_data.jsonl")
+                : "ollama_training_data.jsonl";
+
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                Directory.CreateDirectory(dir);
+
+            List<TrainingDataGenerator.LabeledPrompt> generated = [];
+            using (var synthesizer = new AiTrainingDataSynthesizer(ollamaHost: ollamaHost))
+            {
+                await AnsiConsole.Progress()
+                    .StartAsync(async ctx =>
+                    {
+                        var task = ctx.AddTask("[green]Synthesizing training examples[/]",
+                            maxValue: ollamaGenerateCount.Value);
+                        generated = await synthesizer.GenerateAsync(
+                            ollamaGenerateCount.Value,
+                            (done, _) => task.Value = done);
+                    });
+            }
+
+            TrainingDataGenerator.WriteCsv(generated, jsonlPath);
+            AnsiConsole.MarkupLine($"[green]Synthesized {generated.Count} examples → {jsonlPath}[/]");
+            return 0;
+        }
+
+        // ── Ollama-based validation ──────────────────────────────────────
+        if (ollamaValidate)
+        {
+            if (dataPath is null)
+            {
+                AnsiConsole.MarkupLine("[red]--ollama-validate requires --data <path>[/]");
+                return 1;
+            }
+
+            if (!File.Exists(dataPath))
+            {
+                AnsiConsole.MarkupLine($"[red]Data file not found: {dataPath}[/]");
+                return 1;
+            }
+
+            var ollamaHost = Environment.GetEnvironmentVariable("OLLAMA_HOST") ?? "http://localhost:11434";
+            var prompts = TrainingDataGenerator.ReadCsv(dataPath);
+
+            List<ValidationResult> discrepancies = [];
+            using (var synthesizer = new AiTrainingDataSynthesizer(ollamaHost: ollamaHost))
+            {
+                await AnsiConsole.Progress()
+                    .StartAsync(async ctx =>
+                    {
+                        var task = ctx.AddTask("[green]Validating against Ollama[/]",
+                            maxValue: prompts.Count);
+                        discrepancies = await synthesizer.ValidateAsync(
+                            prompts,
+                            (done, _) => task.Value = done);
+                    });
+            }
+
+            await File.WriteAllTextAsync("validate_summary.txt", discrepancies.Count.ToString());
+            AnsiConsole.MarkupLine($"[cyan]Validation complete — {discrepancies.Count}/{prompts.Count} disagreements[/]");
             return 0;
         }
 

@@ -12,9 +12,9 @@ public sealed class AiTrainingDataSynthesizer : IDisposable
     private readonly string _model;
     private int _generated;
 
-    public AiTrainingDataSynthesizer(string model = "qwen3.5:9b")
+    public AiTrainingDataSynthesizer(string model = "qwen3.5:9b", string ollamaHost = "http://localhost:11434")
     {
-        _ollama = new OllamaClient(model);
+        _ollama = new OllamaClient(model, ollamaHost);
         _model = model;
     }
 
