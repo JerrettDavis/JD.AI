@@ -119,7 +119,7 @@ public static class Program
                     });
             }
 
-            await File.WriteAllTextAsync("validate_summary.txt", discrepancies.Count.ToString());
+            await File.WriteAllTextAsync("validate_summary.txt", $"{discrepancies.Count}");
             AnsiConsole.MarkupLine($"[cyan]Validation complete — {discrepancies.Count}/{prompts.Count} disagreements[/]");
             return 0;
         }
