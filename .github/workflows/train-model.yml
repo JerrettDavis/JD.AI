@@ -8,7 +8,7 @@ on:
       examples:
         description: "Number of AI-synthesized examples to generate (total after merge)"
         type: number
-        default: 150
+        default: 50
         required: false
       commit_model:
         description: "Commit the trained model back to the repository"
@@ -67,8 +67,8 @@ jobs:
           # Verify it's running
           curl -s http://localhost:11434/api/tags && echo "Ollama server is up"
 
-      - name: Pull qwen3.5:9b model
-        run: ollama pull qwen3.5:9b
+      - name: Pull llama3.2:1b model
+        run: ollama pull llama3.2:1b
 
       # ── Build training tool ─────────────────────────────────────────
       - name: Build training tool
@@ -84,7 +84,8 @@ jobs:
 
           dotnet run --project tools/JD.AI.Workflows.Training/JD.AI.Workflows.Training.csproj \
             --no-build --configuration Release -- \
-            --ollama-generate ${{ github.event.inputs.examples || 150 }} \
+            --ollama-generate ${{ github.event.inputs.examples || 50 }} \
+            --model llama3.2:1b \
             --output src/JD.AI.Workflows/Models/intent_classifier.zip
 
           echo "examples=$(cat src/JD.AI.Workflows/Models/ollama_training_data.jsonl | wc -l)" >> $GITHUB_OUTPUT
@@ -117,6 +118,7 @@ jobs:
           dotnet run --project tools/JD.AI.Workflows.Training/JD.AI.Workflows.Training.csproj \
             --no-build --configuration Release -- \
             --ollama-validate \
+            --model llama3.2:1b \
             --data src/JD.AI.Workflows/Models/ollama_training_data.jsonl
 
           # Fail if more than 15% disagreement with Ollama
@@ -147,7 +149,7 @@ jobs:
           else
             git commit -m "ci: retrain intent classifier model
 
-            Generated ${{ steps.generate.outputs.examples }} examples via qwen3.5:9b
+            Generated ${{ steps.generate.outputs.examples }} examples via llama3.2:1b
             Triggered by: ${{ github.event_name }}
             Workflow run: ${{ github.run_id }}"
             echo "no_changes=false" >> $GITHUB_OUTPUT
