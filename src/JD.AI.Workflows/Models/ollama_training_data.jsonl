@@ -1,30 +1,30 @@
 {"Prompt":"Write integration tests for the monitoring API","IsWorkflow":false}
-{"Prompt":"Archive old debugging logs to S3","IsWorkflow":false}
-{"Prompt":"Archive old npm logs to S3","IsWorkflow":false}
+{"Prompt":"Archive old debugging logs to S3","IsWorkflow":true}
+{"Prompt":"Archive old npm logs to S3","IsWorkflow":true}
 {"Prompt":"What would make python more maintainable?","IsWorkflow":false}
 {"Prompt":"Create a worktree for the python feature branch","IsWorkflow":false}
-{"Prompt":"Deploy database to the staging environment","IsWorkflow":true}
+{"Prompt":"Deploy database to the staging environment","IsWorkflow":false}
 {"Prompt":"Scale the git service to 3 replicas","IsWorkflow":false}
 {"Prompt":"Background: cloud has been causing issues since last week","IsWorkflow":false}
 {"Prompt":"Does cloud support WebSocket connections?","IsWorkflow":true}
 {"Prompt":"Add fuzzing tests for the database input handler","IsWorkflow":false}
 {"Prompt":"Seed the cloud database with test fixtures","IsWorkflow":false}
-{"Prompt":"How do I configure ci-cd authentication?","IsWorkflow":false}
+{"Prompt":"How do I configure ci-cd authentication?","IsWorkflow":true}
 {"Prompt":"Replace all TODO comments in the file-ops codebase with proper issues","IsWorkflow":false}
 {"Prompt":"What do you think about networking for this use case?","IsWorkflow":false}
-{"Prompt":"Write a Dockerfile for the monitoring service","IsWorkflow":false}
+{"Prompt":"Write a Dockerfile for the monitoring service","IsWorkflow":true}
 {"Prompt":"How can we improve the api developer experience?","IsWorkflow":false}
 {"Prompt":"What\u0027s new in the devops release notes?","IsWorkflow":false}
 {"Prompt":"Add a required reviewer to the shell PR pipeline","IsWorkflow":false}
 {"Prompt":"Write a Dockerfile for the database service","IsWorkflow":false}
-{"Prompt":"Background: docs has been causing issues since last week","IsWorkflow":false}
+{"Prompt":"Background: docs has been causing issues since last week","IsWorkflow":true}
 {"Prompt":"Revert the last commit that broke shell","IsWorkflow":false}
-{"Prompt":"Tag the release v1.14.0 for npm","IsWorkflow":true}
+{"Prompt":"Tag the release v1.14.0 for npm","IsWorkflow":false}
 {"Prompt":"What\u0027s new in the git release notes?","IsWorkflow":false}
 {"Prompt":"How would you design code-review from scratch?","IsWorkflow":false}
 {"Prompt":"What are the known limitations of monitoring?","IsWorkflow":false}
-{"Prompt":"What do you think about docker-compose for this use case?","IsWorkflow":false}
-{"Prompt":"Does devops support WebSocket connections?","IsWorkflow":false}
+{"Prompt":"What do you think about docker-compose for this use case?","IsWorkflow":true}
+{"Prompt":"Does devops support WebSocket connections?","IsWorkflow":true}
 {"Prompt":"Update the CHANGELOG for git","IsWorkflow":false}
 {"Prompt":"Background: database has been causing issues since last week","IsWorkflow":false}
 {"Prompt":"Create a PR that adds telemetry and add reviewers","IsWorkflow":false}
@@ -36,15 +36,15 @@
 {"Prompt":"Write integration tests for the shell API","IsWorkflow":false}
 {"Prompt":"Does debugging support WebSocket connections?","IsWorkflow":false}
 {"Prompt":"What patterns work best for docker-compose at scale?","IsWorkflow":false}
-{"Prompt":"Fix the formatting in all database source files","IsWorkflow":false}
+{"Prompt":"Fix the formatting in all database source files","IsWorkflow":true}
 {"Prompt":"Tag the release v1.1.0 for file-ops","IsWorkflow":false}
-{"Prompt":"Run a migration to add index on docs.events","IsWorkflow":true}
+{"Prompt":"Run a migration to add index on docs.events","IsWorkflow":false}
 {"Prompt":"Build and push the testing image to the registry","IsWorkflow":false}
 {"Prompt":"Write integration tests for the testing API","IsWorkflow":false}
 {"Prompt":"Audit the npm packages in cloud for vulnerabilities","IsWorkflow":false}
 {"Prompt":"Background: networking has been causing issues since last week","IsWorkflow":false}
 {"Prompt":"Prune all stopped containers and dangling images","IsWorkflow":false}
-{"Prompt":"Does code-review support WebSocket connections?","IsWorkflow":false}
+{"Prompt":"Does code-review support WebSocket connections?","IsWorkflow":true}
 {"Prompt":"Check the health of devops in production","IsWorkflow":false}
 {"Prompt":"Dump the database production DB to a file","IsWorkflow":true}
 {"Prompt":"Should we use git or stick with the current approach?","IsWorkflow":false}
