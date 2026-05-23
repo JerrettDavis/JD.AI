@@ -153,7 +153,7 @@ jobs:
 
       - name: Determine version (NBGV)
         id: nbgv
-        uses: dotnet/nbgv@071d632702496c9f570398fbf453c6545c2cf2f0 # node24 (unreleased past v0.5.1; pin SHA until v0.5.2 ships)
+        uses: dotnet/nbgv@81f7c98786b56d9fa30c96223e7147d9bb582ff7 # node24 (unreleased past v0.5.1; pin SHA until v0.5.2 ships)
         with:
           setAllVars: true
 
