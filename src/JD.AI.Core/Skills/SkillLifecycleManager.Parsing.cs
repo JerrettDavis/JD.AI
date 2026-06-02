@@ -7,7 +7,7 @@ namespace JD.AI.Core.Skills;
 
 public sealed partial class SkillLifecycleManager
 {
-    private static readonly HashSet<string> AllowedFrontmatterKeys = new(KeyComparer)
+    private static readonly HashSet<string> AllowedFrontmatterKeys = new(StringComparer.OrdinalIgnoreCase)
     {
         "name",
         "description",
@@ -21,7 +21,7 @@ public sealed partial class SkillLifecycleManager
         "allowed-tools",
     };
 
-    private static readonly HashSet<string> AllowedProviderMetadataKeys = new(KeyComparer)
+    private static readonly HashSet<string> AllowedProviderMetadataKeys = new(StringComparer.OrdinalIgnoreCase)
     {
         "always",
         "emoji",
@@ -33,7 +33,7 @@ public sealed partial class SkillLifecycleManager
         "install",
     };
 
-    private static readonly HashSet<string> AllowedRequiresKeys = new(KeyComparer)
+    private static readonly HashSet<string> AllowedRequiresKeys = new(StringComparer.OrdinalIgnoreCase)
     {
         "bins",
         "anyBins",
