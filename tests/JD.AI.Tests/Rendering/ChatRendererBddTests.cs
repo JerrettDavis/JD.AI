@@ -12,11 +12,10 @@ public sealed class ChatRendererBddTests : TinyBddXunitBase, IDisposable
 {
     public ChatRendererBddTests(ITestOutputHelper output) : base(output) { }
 
-    public new void Dispose()
+    public void Dispose()
     {
         ChatRenderer.ApplyTheme(TuiTheme.DefaultDark);
         ChatRenderer.SetOutputStyle(OutputStyle.Rich);
-        base.Dispose();
     }
 
     // ── FormatElapsedMetric tests ──────────────────────────────────────
