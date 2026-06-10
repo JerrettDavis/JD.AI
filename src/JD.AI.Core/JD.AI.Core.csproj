@@ -9,7 +9,8 @@
     <!-- NU5104: SK connectors for Google, Mistral, Amazon, HuggingFace are intentionally alpha/preview -->
     <!-- CA2227/CA1002/MA0016: YAML deserialization DTOs need settable collection properties -->
     <!-- CA1859: concrete type in private helper is fine -->
-    <NoWarn>$(NoWarn);NU5118;NU5100;NU5104;CA2227;CA1002;CA1859;MA0016</NoWarn>
+    <!-- CA1724: CircuitBreaker is an established JD.AI domain type -->
+    <NoWarn>$(NoWarn);NU5118;NU5100;NU5104;CA2227;CA1002;CA1859;CA1724;MA0016</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
