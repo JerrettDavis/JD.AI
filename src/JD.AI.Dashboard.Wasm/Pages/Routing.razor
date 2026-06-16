@@ -40,7 +40,7 @@ else
 {
     <MudPaper Elevation="0">
         <MudDataGrid Items="@_mappings" Dense="true" Hover="true" EditMode="DataGridEditMode.Cell"
-                     CommittedItemChanges="@(async (RoutingMapping m) => await OnMappingChanged(m))"
+                     CommittedItemChanges="OnMappingChanged"
                      data-testid="routing-grid">
             <Columns>
                 <PropertyColumn Property="x => x.ChannelType" Title="Channel" Editable="false">
@@ -112,17 +112,19 @@ else
         _loading = false;
     }
 
-    private async Task OnMappingChanged(RoutingMapping mapping)
+    private async Task<DataGridEditFormAction> OnMappingChanged(RoutingMapping mapping)
     {
         try
         {
             await Api.MapRoutingAsync(mapping.ChannelType, mapping.AgentId);
             Snackbar.Add($"Routing updated: {mapping.ChannelType} → {mapping.AgentId}", Severity.Success);
+            return DataGridEditFormAction.Close;
         }
         catch (Exception ex)
         {
             Snackbar.Add($"Failed: {ex.Message}", Severity.Error);
             await LoadAsync();
+            return DataGridEditFormAction.KeepOpen;
         }
     }
 
