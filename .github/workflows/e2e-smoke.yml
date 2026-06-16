@@ -73,7 +73,7 @@ jobs:
           --logger "trx;LogFileName=ui-smoke-results.trx"
 
       - name: Publish UI test results
-        uses: EnricoMi/publish-unit-test-result-action@v2
+        uses: EnricoMi/publish-unit-test-result-action@v2.23.0
         if: always()
         with:
           files: |
