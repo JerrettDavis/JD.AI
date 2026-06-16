@@ -211,11 +211,7 @@ public static class Program
 
         var model = pipeline.Fit(split.TrainSet);
 
-        // Evaluate
-        var metrics = ml.BinaryClassification.Evaluate(
-            model.Transform(split.TestSet), labelColumnName: nameof(PromptInput.IsWorkflow));
-
-        PrintMetrics(metrics);
+        PrintMetricsIfPossible(ml, model, split.TestSet);
 
         // Save
         var dir = Path.GetDirectoryName(outputPath);
@@ -241,8 +237,26 @@ public static class Program
                 maximumNumberOfIterations: 100));
 
         var model = pipeline.Fit(split.TrainSet);
+        PrintMetricsIfPossible(ml, model, split.TestSet);
+    }
+
+    private static void PrintMetricsIfPossible(MLContext ml, ITransformer model, IDataView testSet)
+    {
+        var labels = ml.Data
+            .CreateEnumerable<PromptInput>(testSet, reuseRowObject: false)
+            .Select(p => p.IsWorkflow)
+            .Distinct()
+            .Take(2)
+            .Count();
+
+        if (labels < 2)
+        {
+            AnsiConsole.MarkupLine("[yellow]Skipping metrics: test split contains only one class.[/]");
+            return;
+        }
+
         var metrics = ml.BinaryClassification.Evaluate(
-            model.Transform(split.TestSet), labelColumnName: nameof(PromptInput.IsWorkflow));
+            model.Transform(testSet), labelColumnName: nameof(PromptInput.IsWorkflow));
 
         PrintMetrics(metrics);
     }
