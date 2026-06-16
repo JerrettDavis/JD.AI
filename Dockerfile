@@ -2,7 +2,7 @@
 # Root Dockerfile — builds JD.AI.Daemon (default workload).
 # For other targets see deploy/docker/Dockerfile.gateway and deploy/docker/Dockerfile.tui.
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.301 AS build
 WORKDIR /src
 COPY . .
 RUN dotnet restore src/JD.AI.Daemon/JD.AI.Daemon.csproj
@@ -12,7 +12,7 @@ RUN dotnet publish src/JD.AI.Daemon/JD.AI.Daemon.csproj \
     --no-restore \
     /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.9 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
 EXPOSE 15790
