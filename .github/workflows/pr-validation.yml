@@ -37,7 +37,7 @@ jobs:
 
       - name: Determine version (NBGV)
         id: nbgv
-        uses: dotnet/nbgv@81f7c98786b56d9fa30c96223e7147d9bb582ff7 # node24 (unreleased past v0.5.1; pin SHA until v0.5.2 ships)
+        uses: dotnet/nbgv@fbf134967b62979a9fd274dce17e13682def693e # node24 (unreleased past v0.5.1; pin SHA until v0.5.2 ships)
         with:
           setAllVars: true
 
@@ -168,7 +168,7 @@ jobs:
           echo "$CHANGED_TESTS"
 
       - name: Publish test results
-        uses: EnricoMi/publish-unit-test-result-action@v2
+        uses: EnricoMi/publish-unit-test-result-action@v2.23.0
         if: always()
         with:
           files: |
