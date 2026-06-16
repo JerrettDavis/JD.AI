@@ -127,13 +127,17 @@ public sealed class RoutingPageBunitTests : DashboardBunitTestContext
         cut.WaitForAssertion(() => Assert.NotNull(cut.Find("[data-testid='routing-grid']")));
 
         var grid = cut.FindComponent<MudDataGrid<RoutingMapping>>();
+        var gridInstance = grid.Instance
+            ?? throw new Xunit.Sdk.XunitException("Routing grid instance was not rendered.");
+        var commitChanges = gridInstance.CommittedItemChanges
+            ?? throw new Xunit.Sdk.XunitException("Routing grid commit handler was not bound.");
         var updated = new RoutingMapping
         {
             ChannelType = "discord",
             AgentId = "jdai-default",
         };
 
-        await cut.InvokeAsync(() => grid.Instance.CommittedItemChanges.InvokeAsync(updated));
+        _ = await commitChanges(updated);
 
         cut.WaitForAssertion(() => Assert.Contains("Routing updated: discord → jdai-default", cut.Markup));
     }
@@ -167,13 +171,17 @@ public sealed class RoutingPageBunitTests : DashboardBunitTestContext
         cut.WaitForAssertion(() => Assert.NotNull(cut.Find("[data-testid='routing-grid']")));
 
         var grid = cut.FindComponent<MudDataGrid<RoutingMapping>>();
+        var gridInstance = grid.Instance
+            ?? throw new Xunit.Sdk.XunitException("Routing grid instance was not rendered.");
+        var commitChanges = gridInstance.CommittedItemChanges
+            ?? throw new Xunit.Sdk.XunitException("Routing grid commit handler was not bound.");
         var updated = new RoutingMapping
         {
             ChannelType = "discord",
             AgentId = "jdai-default",
         };
 
-        await cut.InvokeAsync(() => grid.Instance.CommittedItemChanges.InvokeAsync(updated));
+        _ = await commitChanges(updated);
 
         cut.WaitForAssertion(() =>
         {

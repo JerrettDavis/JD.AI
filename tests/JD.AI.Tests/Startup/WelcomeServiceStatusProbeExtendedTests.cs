@@ -365,17 +365,26 @@ public sealed class WelcomeServiceStatusProbeExtendedTests
     [Fact]
     public async Task RunCommandAsync_WhenCommandSucceeds_CapturesExitCodeOutputAndError()
     {
-        var scriptPath = WriteTempPowerShellScript(
-            """
-            Write-Output 'hello'
-            [Console]::Error.WriteLine('oops')
-            """);
+        string? scriptPath = null;
+        var fileName = "/bin/sh";
+        var arguments = "-c \"printf '%s\\n' hello; printf '%s\\n' oops >&2\"";
+
+        if (OperatingSystem.IsWindows())
+        {
+            scriptPath = WriteTempPowerShellScript(
+                """
+                Write-Output 'hello'
+                [Console]::Error.WriteLine('oops')
+                """);
+            fileName = "pwsh";
+            arguments = $"-NoLogo -NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"";
+        }
 
         try
         {
             var result = await InvokeRunCommandAsync(
-                "pwsh",
-                $"-NoLogo -NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                fileName,
+                arguments,
                 TimeSpan.FromSeconds(2),
                 CancellationToken.None);
 
@@ -386,7 +395,10 @@ public sealed class WelcomeServiceStatusProbeExtendedTests
         }
         finally
         {
-            File.Delete(scriptPath);
+            if (scriptPath is not null)
+            {
+                File.Delete(scriptPath);
+            }
         }
     }
 
