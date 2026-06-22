@@ -39,25 +39,5 @@
     <PackageReference Include="Meziantou.Analyzer" PrivateAssets="all" />
   </ItemGroup>
 
-  <!--
-    NuGet audit suppressions.
-
-    GHSA-2m69-gcr7-jv3q (NU1903): high-severity advisory against the native
-    SQLitePCLRaw.lib.e_sqlite3 <= 2.1.11, pulled in transitively via
-    Microsoft.Data.Sqlite / Microsoft.EntityFrameworkCore.Sqlite 10.0.9. The
-    underlying SQLite CVE (CVE-2025-6965) is fixed in SQLite 3.50.2, but the
-    SQLitePCLRaw wrapper packages have not yet shipped a patched release, so
-    there is no version to bump to. Because the repo treats warnings as errors
-    under CI (TreatWarningsAsErrors when CI=true), this otherwise-warning breaks
-    dotnet restore and fails every CI workflow.
-
-    Scoped to this single advisory only - all other NuGet audit warnings remain
-    errors. Remove once a patched SQLitePCLRaw.lib.e_sqlite3 (> 2.1.11) ships
-    and the SQLite package versions are bumped to consume it.
-  -->
-  <ItemGroup>
-    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-2m69-gcr7-jv3q" />
-  </ItemGroup>
-
 
 </Project>
