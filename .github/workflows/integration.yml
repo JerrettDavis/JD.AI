@@ -39,7 +39,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -110,7 +110,7 @@ jobs:
           RunConfiguration.TestSessionTimeout=600000
 
       - name: Publish test results
-        uses: EnricoMi/publish-unit-test-result-action@v2.23.0
+        uses: EnricoMi/publish-unit-test-result-action@v2.24.0
         if: always()
         with:
           files: |
