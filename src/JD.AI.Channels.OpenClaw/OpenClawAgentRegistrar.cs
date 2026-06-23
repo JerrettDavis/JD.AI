@@ -140,11 +140,11 @@ public sealed class OpenClawAgentRegistrar
                     successfulIds.Add(agent.Id);
                     _logger.LogInformation(
                         "Prepared JD.AI agent '{Id}' ({Name}) for registration",
-                        agent.Id, agent.Name);
+                        SanitizeLogValue(agent.Id), SanitizeLogValue(agent.Name));
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to prepare agent '{Id}'", agent.Id);
+                    _logger.LogError(ex, "Failed to prepare agent '{Id}'", SanitizeLogValue(agent.Id));
                 }
             }
 
@@ -645,7 +645,7 @@ public sealed class OpenClawAgentRegistrar
             if (string.Equals(list[i]?["id"]?.GetValue<string>(), agent.Id, StringComparison.Ordinal))
             {
                 list[i] = entry; // Atomic replace — no window where entry is missing
-                _logger.LogDebug("Replaced existing agent '{Id}' in OpenClaw", agent.Id);
+                _logger.LogDebug("Replaced existing agent '{Id}' in OpenClaw", SanitizeLogValue(agent.Id));
                 return;
             }
         }
@@ -676,5 +676,16 @@ public sealed class OpenClawAgentRegistrar
                 """;
             File.WriteAllText(agentsMdPath, agentsMd);
         }
+
+    /// <summary>
+    /// Strips CR, LF, and other control characters from a value before it is written
+    /// to a log sink to prevent log-injection (CWE-117 / cs/log-forging).
+    /// </summary>
+    private static string SanitizeLogValue(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return string.Empty;
+
+        return value.Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ");
     }
 }

@@ -48,3 +48,6 @@ docs/demo/publish/
 
 ## Worktrees
 .worktrees/
+
+## Node.js
+node_modules/
