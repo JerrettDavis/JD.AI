@@ -677,6 +677,8 @@ public sealed class OpenClawAgentRegistrar
             File.WriteAllText(agentsMdPath, agentsMd);
         }
 
+    }
+
     /// <summary>
     /// Strips CR, LF, and other control characters from a value before it is written
     /// to a log sink to prevent log-injection (CWE-117 / cs/log-forging).
