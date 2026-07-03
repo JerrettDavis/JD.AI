@@ -39,6 +39,9 @@ updates:
       nuget-dependencies:
         patterns:
           - "*"
+    ignore:
+      - dependency-name: "SixLabors.ImageSharp"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "npm"
     directories:
