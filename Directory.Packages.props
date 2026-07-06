@@ -5,7 +5,7 @@
   <!-- Build infrastructure -->
   <ItemGroup>
     <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
-    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.117" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.119" />
     <PackageVersion Include="Microsoft.SemanticKernel.Abstractions" Version="1.77.0" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.300" />
     <PackageVersion Include="Nerdbank.GitVersioning" Version="3.10.85" />
@@ -32,7 +32,7 @@
     <PackageVersion Include="Microsoft.SemanticKernel.Connectors.MistralAI" Version="1.72.0-alpha" />
     <PackageVersion Include="Microsoft.SemanticKernel.Connectors.Amazon" Version="1.72.0-alpha" />
     <PackageVersion Include="Microsoft.SemanticKernel.Connectors.HuggingFace" Version="1.72.0-preview" />
-    <PackageVersion Include="Spectre.Console" Version="0.57.1" />
+    <PackageVersion Include="Spectre.Console" Version="0.57.2" />
     <PackageVersion Include="WorkflowFramework" Version="1.0.4" />
     <PackageVersion Include="HtmlAgilityPack" Version="1.12.4" />
     <PackageVersion Include="UglyToad.PdfPig" Version="1.7.0-custom-5" />
@@ -43,7 +43,7 @@
   </ItemGroup>
   <!-- Distributed infrastructure -->
   <ItemGroup>
-    <PackageVersion Include="AWSSDK.SecretsManager" Version="4.0.100" />
+    <PackageVersion Include="AWSSDK.SecretsManager" Version="4.0.100.2" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
     <PackageVersion Include="Azure.Security.KeyVault.Secrets" Version="4.11.0" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
