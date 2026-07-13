@@ -122,7 +122,7 @@ jobs:
 
       - name: Add coverage summary to PR
         if: always() && github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@v3.0.4
+        uses: marocchino/sticky-pull-request-comment@v3.0.5
         with:
           recreate: true
           message: |
@@ -153,7 +153,7 @@ jobs:
 
       - name: Determine version (NBGV)
         id: nbgv
-        uses: dotnet/nbgv@305c840d64f86cec5a7727df1c19b3282d468220 # node24 (unreleased past v0.5.1; pin SHA until v0.5.2 ships)
+        uses: dotnet/nbgv@293b36ef77470c667752f376b0515d02a92ba66c # node24 (unreleased past v0.5.1; pin SHA until v0.5.2 ships)
         with:
           setAllVars: true
 
