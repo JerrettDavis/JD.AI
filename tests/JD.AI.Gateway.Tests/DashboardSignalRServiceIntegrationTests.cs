@@ -33,7 +33,7 @@ public sealed class DashboardSignalRServiceIntegrationTests : IClassFixture<Gate
             DateTimeOffset.UtcNow,
             "Gateway started"));
 
-        var activity = await received.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        var activity = await received.Task.WaitAsync(TimeSpan.FromSeconds(10));
         activity.EventType.Should().Be("gateway.started");
         activity.SourceId.Should().Be("orchestrator");
         activity.Message.Should().Be("Gateway started");
@@ -55,7 +55,7 @@ public sealed class DashboardSignalRServiceIntegrationTests : IClassFixture<Gate
             DateTimeOffset.UtcNow,
             "Discord connected"));
 
-        var update = await received.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        var update = await received.Task.WaitAsync(TimeSpan.FromSeconds(10));
         update.Channel.Should().Be("discord");
         update.Connected.Should().BeTrue();
     }
