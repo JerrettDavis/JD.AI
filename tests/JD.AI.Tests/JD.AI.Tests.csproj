@@ -31,6 +31,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Direct reference to pin the transitive AngleSharp version pulled in by bunit above the
+         known-vulnerable 1.4.0 (NU1902, GHSA-pgww-w46g-26qg). -->
+    <PackageReference Include="AngleSharp" />
     <PackageReference Include="bunit" />
     <PackageReference Include="coverlet.collector" PrivateAssets="all" />
     <PackageReference Include="Spectre.Console" />

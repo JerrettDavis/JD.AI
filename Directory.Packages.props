@@ -4,6 +4,9 @@
   </PropertyGroup>
   <!-- Build infrastructure -->
   <ItemGroup>
+    <!-- Pin transitively-referenced AngleSharp (pulled in by bunit) above 1.4.0, which has a known
+         moderate-severity mXSS vulnerability (GHSA-pgww-w46g-26qg), fixed in 1.5.0. -->
+    <PackageVersion Include="AngleSharp" Version="1.5.0" />
     <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.20.2" />
     <PackageVersion Include="Meziantou.Analyzer" Version="3.0.123" />
     <PackageVersion Include="Microsoft.SemanticKernel.Abstractions" Version="1.78.0" />
