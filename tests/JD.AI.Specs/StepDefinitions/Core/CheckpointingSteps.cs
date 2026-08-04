@@ -176,7 +176,7 @@ public sealed class CheckpointingSteps
         Directory.Exists(checkpointRoot).Should().BeTrue();
         var cpDirs = Directory.GetDirectories(checkpointRoot);
         cpDirs.Should().NotBeEmpty();
-        var latestCp = cpDirs.OrderDescending().First();
+        var latestCp = cpDirs.OrderDescending(StringComparer.Ordinal).First();
         File.Exists(Path.Combine(latestCp, "Program.cs")).Should().BeTrue();
     }
 

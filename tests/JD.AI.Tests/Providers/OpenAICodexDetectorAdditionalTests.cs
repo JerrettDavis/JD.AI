@@ -378,7 +378,7 @@ public sealed class OpenAICodexDetectorAdditionalTests : IDisposable
         var c = OpenAICodexDetector.ComputeCodexKeyringAccountKey(@"/home/bob/.codex");
 
         Assert.Equal(a, b);
-        Assert.NotEqual(a, c);
+        Assert.NotEqual(a, c, StringComparer.Ordinal);
     }
 
     [Fact]

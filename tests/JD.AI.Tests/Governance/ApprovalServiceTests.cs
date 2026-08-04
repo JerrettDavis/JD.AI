@@ -190,8 +190,8 @@ public sealed class ApprovalServiceTests
             MakeDoc(new PolicySpec { Tools = new ToolPolicy { RequireApprovalFor = ["tool_b"] } }),
         };
         var resolved = PolicyResolver.Resolve(docs);
-        Assert.Contains("tool_a", resolved.Tools?.RequireApprovalFor ?? []);
-        Assert.Contains("tool_b", resolved.Tools?.RequireApprovalFor ?? []);
+        Assert.Contains("tool_a", resolved.Tools?.RequireApprovalFor ?? [], StringComparer.Ordinal);
+        Assert.Contains("tool_b", resolved.Tools?.RequireApprovalFor ?? [], StringComparer.Ordinal);
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────

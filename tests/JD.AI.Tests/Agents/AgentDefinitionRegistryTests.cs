@@ -106,8 +106,8 @@ public sealed class AgentDefinitionRegistryTests : IDisposable
         Assert.NotNull(def);
         Assert.Equal("PR Reviewer", def.DisplayName);
         Assert.Equal("1.2", def.Version);
-        Assert.Contains("code-review", def.Tags);
-        Assert.Contains("pr-workflow", def.Workflows);
+        Assert.Contains("code-review", def.Tags, StringComparer.Ordinal);
+        Assert.Contains("pr-workflow", def.Workflows, StringComparer.Ordinal);
     }
 
     [Fact]

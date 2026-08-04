@@ -105,7 +105,7 @@ public sealed class AwsSecretsManagerCredentialStoreAdditionalTests
         // Test prefix concatenation via GetAsync returning expected secretId
         var client = Substitute.For<IAmazonSecretsManager>();
         client.GetSecretValueAsync(
-                Arg.Is<GetSecretValueRequest>(r => string.Equals(r.SecretId, "prefix/mykey", StringComparison.Ordinal)),
+                Arg.Is<GetSecretValueRequest>(r => string.Equals(r!.SecretId, "prefix/mykey", StringComparison.Ordinal)),
                 Arg.Any<CancellationToken>())
             .Returns(new GetSecretValueResponse { SecretString = "found" });
 

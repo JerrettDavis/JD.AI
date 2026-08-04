@@ -66,7 +66,7 @@ public sealed class SettingsLogsTabBunitTests : DashboardBunitTestContext
         cut.WaitForAssertion(() =>
         {
             var chip = cut.Find("[data-testid='log-level-chip-evt-1']");
-            Assert.Contains("mud-chip-color-error", chip.ClassList);
+            Assert.Contains("mud-chip-color-error", chip.ClassList, StringComparer.Ordinal);
         });
     }
 

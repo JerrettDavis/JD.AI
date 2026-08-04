@@ -147,15 +147,15 @@ public sealed class InstructionsLoaderTests : IDisposable
 
         var chain = InstructionsLoader.GetDirectoryChain(nested);
 
-        Assert.Contains(_tempDir, chain);
-        Assert.DoesNotContain(Directory.GetParent(_tempDir)?.FullName ?? "", chain);
+        Assert.Contains(_tempDir, chain, StringComparer.Ordinal);
+        Assert.DoesNotContain(Directory.GetParent(_tempDir)?.FullName ?? "", chain, StringComparer.Ordinal);
     }
 
     [Fact]
     public void GetDirectoryChain_IncludesStartDir()
     {
         var chain = InstructionsLoader.GetDirectoryChain(_tempDir);
-        Assert.Contains(_tempDir, chain);
+        Assert.Contains(_tempDir, chain, StringComparer.Ordinal);
     }
 
     [Fact]

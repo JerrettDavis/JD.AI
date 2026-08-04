@@ -192,7 +192,7 @@ public sealed class PolicyRbacTests
 
         Assert.Equal("alice", ctx.UserId);
         Assert.Equal("developer", ctx.RoleName);
-        Assert.Contains("engineering", ctx.Groups!);
+        Assert.Contains("engineering", ctx.Groups!, StringComparer.Ordinal);
     }
 
     // ── PolicyResolver merges RolePolicy ─────────────────────────────────────
@@ -234,7 +234,7 @@ public sealed class PolicyRbacTests
 
         Assert.NotNull(resolved.Roles);
         Assert.True(resolved.Roles!.Definitions.TryGetValue("developer", out var def));
-        Assert.Contains("ReadFile", def!.AllowTools);
-        Assert.Contains("WriteFile", def.AllowTools);
+        Assert.Contains("ReadFile", def!.AllowTools, StringComparer.Ordinal);
+        Assert.Contains("WriteFile", def.AllowTools, StringComparer.Ordinal);
     }
 }

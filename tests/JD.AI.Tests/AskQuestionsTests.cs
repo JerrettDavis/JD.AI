@@ -26,7 +26,7 @@ public sealed class AskQuestionsTests
         var a = new AskQuestionsRequest();
         var b = new AskQuestionsRequest();
 
-        Assert.NotEqual(a.Id, b.Id);
+        Assert.NotEqual(a.Id, b.Id, StringComparer.Ordinal);
     }
 
     [Fact]

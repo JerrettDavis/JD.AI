@@ -109,12 +109,12 @@ public sealed class BridgeCommandServiceTests
 
         var (prefixes, contains) = BridgeCommandService.BuildManagedSessionFilters(config);
 
-        Assert.Contains("agent:jdai-", prefixes);
-        Assert.Contains("agent:jdai-default:", prefixes);
-        Assert.Contains("g-agent-", contains);
-        Assert.Contains("jdai-default", contains);
-        Assert.Contains("signal:g-agent-", contains);
-        Assert.Contains("discord:g-agent-", contains);
+        Assert.Contains("agent:jdai-", prefixes, StringComparer.Ordinal);
+        Assert.Contains("agent:jdai-default:", prefixes, StringComparer.Ordinal);
+        Assert.Contains("g-agent-", contains, StringComparer.Ordinal);
+        Assert.Contains("jdai-default", contains, StringComparer.Ordinal);
+        Assert.Contains("signal:g-agent-", contains, StringComparer.Ordinal);
+        Assert.Contains("discord:g-agent-", contains, StringComparer.Ordinal);
     }
 
     [Fact]

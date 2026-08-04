@@ -31,7 +31,7 @@ public sealed class MemoryToolsTests
 
         await _memory.Received(1).StoreAsync(
             "text",
-            Arg.Is<IDictionary<string, string>>(d => d.ContainsKey("category") && d["category"] == "decision"),
+            Arg.Is<IDictionary<string, string>>(d => d!.ContainsKey("category") && d["category"] == "decision"),
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }

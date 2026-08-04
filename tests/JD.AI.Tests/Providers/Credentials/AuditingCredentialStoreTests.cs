@@ -22,7 +22,7 @@ public class AuditingCredentialStoreTests
         await store.GetAsync("key");
 
         await audit.Received(1).WriteAsync(
-            Arg.Is<AuditEvent>(e => e.Action == "secret.read" && e.Resource == "key"),
+            Arg.Is<AuditEvent>(e => e!.Action == "secret.read" && e.Resource == "key"),
             Arg.Any<CancellationToken>());
     }
 
@@ -39,7 +39,7 @@ public class AuditingCredentialStoreTests
         await store.SetAsync("key", "secret-value");
 
         await audit.Received(1).WriteAsync(
-            Arg.Is<AuditEvent>(e => e.Action == "secret.write"),
+            Arg.Is<AuditEvent>(e => e!.Action == "secret.write"),
             Arg.Any<CancellationToken>());
     }
 
@@ -56,7 +56,7 @@ public class AuditingCredentialStoreTests
         await store.RemoveAsync("key");
 
         await audit.Received(1).WriteAsync(
-            Arg.Is<AuditEvent>(e => e.Action == "secret.delete"),
+            Arg.Is<AuditEvent>(e => e!.Action == "secret.delete"),
             Arg.Any<CancellationToken>());
     }
 

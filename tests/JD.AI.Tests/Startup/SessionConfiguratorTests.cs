@@ -319,7 +319,7 @@ public sealed class SessionConfiguratorTests
 
             Assert.Equal(sourceSession.SessionInfo.Id, setup.Session.SessionInfo!.Id);
             Assert.NotNull(forkedSession);
-            Assert.NotEqual(sourceSession.SessionInfo.Id, forkedSession!.Id);
+            Assert.NotEqual(sourceSession.SessionInfo.Id, forkedSession!.Id, StringComparer.Ordinal);
             Assert.Equal(sourceSession.SessionInfo.MessageCount, forkedSession.MessageCount);
             Assert.Equal(sourceSession.SessionInfo.Turns.Count, forkedSession.Turns.Count);
             Assert.Equal("fork me", forkedSession.Turns[^1].Content);

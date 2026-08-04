@@ -73,6 +73,6 @@ public class CommandContextTests
         };
 
         Assert.Equal(3, param.Choices.Count);
-        Assert.Contains("green", param.Choices);
+        Assert.Contains("green", param.Choices, StringComparer.Ordinal);
     }
 }

@@ -113,7 +113,7 @@ public sealed class AuditServiceTests
         await service.EmitAsync(evt);
 
         await sink.Received(1).WriteAsync(Arg.Is<AuditEvent>(e =>
-            e.PolicyResult == PolicyDecision.Deny &&
+            e!.PolicyResult == PolicyDecision.Deny &&
             e.Severity == AuditSeverity.Warning), default);
     }
 

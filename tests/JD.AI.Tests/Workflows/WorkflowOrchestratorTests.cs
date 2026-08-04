@@ -315,7 +315,7 @@ public sealed class WorkflowOrchestratorTests
 
         await observer.Received(1).IngestRunAsync(
             definition,
-            Arg.Is<WorkflowBridgeResult>(r => r.Success),
+            Arg.Is<WorkflowBridgeResult>(r => r!.Success),
             Arg.Any<CancellationToken>());
     }
 
@@ -349,7 +349,7 @@ public sealed class WorkflowOrchestratorTests
 
         await observer.Received(1).IngestRunAsync(
             definition,
-            Arg.Is<WorkflowBridgeResult>(r => !r.Success),
+            Arg.Is<WorkflowBridgeResult>(r => !r!.Success),
             Arg.Any<CancellationToken>());
     }
 
@@ -383,7 +383,7 @@ public sealed class WorkflowOrchestratorTests
         result.Outcome.Should().Be(WorkflowOutcome.ExecutionFailed);
         await observer.Received(1).IngestRunAsync(
             definition,
-            Arg.Is<WorkflowBridgeResult>(r => !r.Success),
+            Arg.Is<WorkflowBridgeResult>(r => !r!.Success),
             Arg.Any<CancellationToken>());
     }
 

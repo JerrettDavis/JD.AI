@@ -32,10 +32,10 @@ public sealed class CompliancePresetTests
     public void AvailablePresets_ContainsAllFour()
     {
         var presets = CompliancePresetLoader.AvailablePresets;
-        Assert.Contains("jdai/compliance/soc2", presets);
-        Assert.Contains("jdai/compliance/gdpr", presets);
-        Assert.Contains("jdai/compliance/hipaa", presets);
-        Assert.Contains("jdai/compliance/pci-dss", presets);
+        Assert.Contains("jdai/compliance/soc2", presets, StringComparer.Ordinal);
+        Assert.Contains("jdai/compliance/gdpr", presets, StringComparer.Ordinal);
+        Assert.Contains("jdai/compliance/hipaa", presets, StringComparer.Ordinal);
+        Assert.Contains("jdai/compliance/pci-dss", presets, StringComparer.Ordinal);
     }
 
     // ── PolicyResolver preset expansion ───────────────────────────────────
@@ -201,8 +201,8 @@ public sealed class CompliancePresetTests
 
         var resolved = PolicyResolver.Resolve([doc1, doc2]);
         var names = resolved.Data?.Classifications.Select(c => c.Name).ToList() ?? [];
-        Assert.Contains("SSN", names);
-        Assert.Contains("PAN", names);
+        Assert.Contains("SSN", names, StringComparer.Ordinal);
+        Assert.Contains("PAN", names, StringComparer.Ordinal);
     }
 
     [Fact]

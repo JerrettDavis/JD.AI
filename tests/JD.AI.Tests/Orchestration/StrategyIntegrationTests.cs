@@ -52,6 +52,7 @@ public class StrategyIntegrationTests
             .Returns(callInfo =>
             {
                 var config = callInfo.Arg<SubagentConfig>();
+                Assert.NotNull(config);
                 return Task.FromResult(MakeResult(config.Name, $"output-of-{config.Name}"));
             });
 
@@ -99,6 +100,7 @@ public class StrategyIntegrationTests
             .Returns(callInfo =>
             {
                 var config = callInfo.Arg<SubagentConfig>();
+                Assert.NotNull(config);
                 return Task.FromResult(MakeResult(config.Name, $"findings-from-{config.Name}"));
             });
 
@@ -141,6 +143,7 @@ public class StrategyIntegrationTests
             .Returns(callInfo =>
             {
                 var config = callInfo.Arg<SubagentConfig>();
+                Assert.NotNull(config);
                 return Task.FromResult(MakeResult(config.Name, $"argument-by-{config.Name}"));
             });
 
@@ -179,6 +182,7 @@ public class StrategyIntegrationTests
             .Returns(callInfo =>
             {
                 var config = callInfo.Arg<SubagentConfig>();
+                Assert.NotNull(config);
                 var output = config.Name.StartsWith("supervisor", StringComparison.Ordinal)
                     ? "APPROVED: All work looks great, well done!"
                     : $"completed-{config.Name}";
