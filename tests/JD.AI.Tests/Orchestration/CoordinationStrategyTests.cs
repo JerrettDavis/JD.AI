@@ -45,7 +45,9 @@ public sealed class VotingStrategyTests
                 Arg.Any<TeamContext>(), Arg.Any<Action<SubagentProgress>>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
-                var name = callInfo.Arg<SubagentConfig>().Name;
+                var config = callInfo.Arg<SubagentConfig>();
+                Assert.NotNull(config);
+                var name = config.Name;
                 return new AgentResult
                 {
                     AgentName = name,
@@ -60,10 +62,10 @@ public sealed class VotingStrategyTests
         Assert.Equal("voting", result.Strategy);
         // 3 agents + 1 aggregator = 4 results
         Assert.Equal(4, result.AgentResults.Count);
-        Assert.Contains("reviewer-1", result.AgentResults.Keys);
-        Assert.Contains("reviewer-2", result.AgentResults.Keys);
-        Assert.Contains("reviewer-3", result.AgentResults.Keys);
-        Assert.Contains("vote-aggregator", result.AgentResults.Keys);
+        Assert.Contains("reviewer-1", result.AgentResults.Keys, StringComparer.Ordinal);
+        Assert.Contains("reviewer-2", result.AgentResults.Keys, StringComparer.Ordinal);
+        Assert.Contains("reviewer-3", result.AgentResults.Keys, StringComparer.Ordinal);
+        Assert.Contains("vote-aggregator", result.AgentResults.Keys, StringComparer.Ordinal);
     }
 
     [Fact]
@@ -82,7 +84,9 @@ public sealed class VotingStrategyTests
                 Arg.Any<TeamContext>(), Arg.Any<Action<SubagentProgress>>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
-                var name = callInfo.Arg<SubagentConfig>().Name;
+                var config = callInfo.Arg<SubagentConfig>();
+                Assert.NotNull(config);
+                var name = config.Name;
                 return new AgentResult
                 {
                     AgentName = name,
@@ -113,7 +117,9 @@ public sealed class VotingStrategyTests
                 Arg.Any<TeamContext>(), Arg.Any<Action<SubagentProgress>>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
-                var name = callInfo.Arg<SubagentConfig>().Name;
+                var config = callInfo.Arg<SubagentConfig>();
+                Assert.NotNull(config);
+                var name = config.Name;
                 return new AgentResult
                 {
                     AgentName = name,
@@ -181,7 +187,9 @@ public sealed class RelayStrategyTests
                 Arg.Any<TeamContext>(), Arg.Any<Action<SubagentProgress>>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
-                var name = callInfo.Arg<SubagentConfig>().Name;
+                var config = callInfo.Arg<SubagentConfig>();
+                Assert.NotNull(config);
+                var name = config.Name;
                 callOrder.Add(name);
                 return new AgentResult
                 {
@@ -221,7 +229,9 @@ public sealed class RelayStrategyTests
             .Returns(callInfo =>
             {
                 callCount++;
-                var name = callInfo.Arg<SubagentConfig>().Name;
+                var config = callInfo.Arg<SubagentConfig>();
+                Assert.NotNull(config);
+                var name = config.Name;
                 var output = callCount == 2 ? "[NO_CHANGES]" : $"Improved by {name}";
                 return new AgentResult
                 {
@@ -236,7 +246,7 @@ public sealed class RelayStrategyTests
         // Should have stopped after agent 2 returned [NO_CHANGES]
         Assert.Equal(2, callCount);
         Assert.Equal(2, result.AgentResults.Count);
-        Assert.DoesNotContain("third", result.AgentResults.Keys);
+        Assert.DoesNotContain("third", result.AgentResults.Keys, StringComparer.Ordinal);
     }
 
     [Fact]
@@ -302,7 +312,9 @@ public sealed class MapReduceStrategyTests
                 Arg.Any<TeamContext>(), Arg.Any<Action<SubagentProgress>>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
-                var name = callInfo.Arg<SubagentConfig>().Name;
+                var config = callInfo.Arg<SubagentConfig>();
+                Assert.NotNull(config);
+                var name = config.Name;
                 return new AgentResult
                 {
                     AgentName = name,
@@ -316,9 +328,9 @@ public sealed class MapReduceStrategyTests
         Assert.True(result.Success);
         Assert.Equal("map-reduce", result.Strategy);
         Assert.Equal(3, result.AgentResults.Count);
-        Assert.Contains("mapper-1", result.AgentResults.Keys);
-        Assert.Contains("mapper-2", result.AgentResults.Keys);
-        Assert.Contains("reducer", result.AgentResults.Keys);
+        Assert.Contains("mapper-1", result.AgentResults.Keys, StringComparer.Ordinal);
+        Assert.Contains("mapper-2", result.AgentResults.Keys, StringComparer.Ordinal);
+        Assert.Contains("reducer", result.AgentResults.Keys, StringComparer.Ordinal);
     }
 
     [Fact]
@@ -376,7 +388,9 @@ public sealed class MapReduceStrategyTests
                 Arg.Any<TeamContext>(), Arg.Any<Action<SubagentProgress>>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
-                var name = callInfo.Arg<SubagentConfig>().Name;
+                var config = callInfo.Arg<SubagentConfig>();
+                Assert.NotNull(config);
+                var name = config.Name;
                 return new AgentResult
                 {
                     AgentName = name,
@@ -434,7 +448,9 @@ public sealed class BlackboardStrategyTests
                 Arg.Any<TeamContext>(), Arg.Any<Action<SubagentProgress>>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
-                var name = callInfo.Arg<SubagentConfig>().Name;
+                var config = callInfo.Arg<SubagentConfig>();
+                Assert.NotNull(config);
+                var name = config.Name;
                 return new AgentResult
                 {
                     AgentName = name,
@@ -541,7 +557,9 @@ public sealed class PipelineStrategyTests
                 Arg.Any<TeamContext>(), Arg.Any<Action<SubagentProgress>>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
-                var name = callInfo.Arg<SubagentConfig>().Name;
+                var config = callInfo.Arg<SubagentConfig>();
+                Assert.NotNull(config);
+                var name = config.Name;
                 return new AgentResult
                 {
                     AgentName = name,
@@ -575,7 +593,9 @@ public sealed class PipelineStrategyTests
                 Arg.Any<TeamContext>(), Arg.Any<Action<SubagentProgress>>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
-                var name = callInfo.Arg<SubagentConfig>().Name;
+                var config = callInfo.Arg<SubagentConfig>();
+                Assert.NotNull(config);
+                var name = config.Name;
                 return new AgentResult
                 {
                     AgentName = name,

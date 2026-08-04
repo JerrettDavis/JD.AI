@@ -15,7 +15,7 @@ public sealed class SecretPatternLibraryTests
         _ = patternName; // used as test display name
         var redactor = new Core.Governance.DataRedactor(SecretPatternLibrary.All);
         var redacted = redactor.Redact($"My key is {secret} and more text");
-        Assert.NotEqual($"My key is {secret} and more text", redacted);
+        Assert.NotEqual($"My key is {secret} and more text", redacted, StringComparer.Ordinal);
     }
 
     [Fact]
@@ -23,7 +23,7 @@ public sealed class SecretPatternLibraryTests
 
     [Fact]
     public void HighConfidence_IsSubsetOfAll() =>
-        Assert.All(SecretPatternLibrary.HighConfidence, p => Assert.Contains(p, SecretPatternLibrary.All));
+        Assert.All(SecretPatternLibrary.HighConfidence, p => Assert.Contains(p, SecretPatternLibrary.All, StringComparer.Ordinal));
 
     [Fact]
     public void PlainText_IsNotRedacted()

@@ -42,7 +42,7 @@ public sealed class ToolHistoryActionServiceTests
             var profile = await store.GetToolPermissionProfileAsync(tempDirectory);
 
             Assert.Contains("Allowed", result);
-            Assert.Contains("run_command", profile.GlobalAllowed);
+            Assert.Contains("run_command", profile.GlobalAllowed, StringComparer.Ordinal);
             Assert.True(session.ToolPermissionProfile.IsExplicitlyAllowed("run_command"));
         }
         finally
@@ -68,7 +68,7 @@ public sealed class ToolHistoryActionServiceTests
             var profile = await store.GetToolPermissionProfileAsync(tempDirectory);
 
             Assert.Contains("Allowed", result);
-            Assert.Contains("read_file", profile.ProjectAllowed);
+            Assert.Contains("read_file", profile.ProjectAllowed, StringComparer.Ordinal);
             Assert.True(session.ToolPermissionProfile.IsExplicitlyAllowed("read_file"));
         }
         finally
@@ -94,7 +94,7 @@ public sealed class ToolHistoryActionServiceTests
             var profile = await store.GetToolPermissionProfileAsync(tempDirectory);
 
             Assert.Contains("Denied", result);
-            Assert.Contains("run_command", profile.GlobalDenied);
+            Assert.Contains("run_command", profile.GlobalDenied, StringComparer.Ordinal);
             Assert.True(session.ToolPermissionProfile.IsExplicitlyDenied("run_command"));
         }
         finally
@@ -120,7 +120,7 @@ public sealed class ToolHistoryActionServiceTests
             var profile = await store.GetToolPermissionProfileAsync(tempDirectory);
 
             Assert.Contains("Denied", result);
-            Assert.Contains("git_push", profile.ProjectDenied);
+            Assert.Contains("git_push", profile.ProjectDenied, StringComparer.Ordinal);
             Assert.True(session.ToolPermissionProfile.IsExplicitlyDenied("git_push"));
         }
         finally

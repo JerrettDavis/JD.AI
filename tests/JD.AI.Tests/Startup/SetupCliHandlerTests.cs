@@ -87,10 +87,10 @@ public sealed class SetupCliHandlerTests : IDisposable
 
         Assert.Equal(0, code);
         Assert.NotNull(receivedArgs);
-        Assert.Contains("--provider", receivedArgs!);
-        Assert.Contains("OpenAI Codex", receivedArgs!);
-        Assert.Contains("--model", receivedArgs!);
-        Assert.Contains("gpt-5.3-codex", receivedArgs!);
-        Assert.Contains("--skip-mcp", receivedArgs!);
+        Assert.Contains("--provider", receivedArgs!, StringComparer.Ordinal);
+        Assert.Contains("OpenAI Codex", receivedArgs!, StringComparer.Ordinal);
+        Assert.Contains("--model", receivedArgs!, StringComparer.Ordinal);
+        Assert.Contains("gpt-5.3-codex", receivedArgs!, StringComparer.Ordinal);
+        Assert.Contains("--skip-mcp", receivedArgs!, StringComparer.Ordinal);
     }
 }

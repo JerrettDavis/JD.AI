@@ -38,7 +38,7 @@ public sealed class TraceContextTests
         var childSpan = TraceContext.StartChildSpan();
         var childCtx = TraceContext.CurrentContext;
 
-        Assert.NotEqual(originalSpan, childSpan);
+        Assert.NotEqual(originalSpan, childSpan, StringComparer.Ordinal);
         Assert.NotSame(ctx, childCtx);
         Assert.Equal(childSpan, childCtx.SpanId);
         Assert.Equal(originalSpan, childCtx.ParentSpanId);

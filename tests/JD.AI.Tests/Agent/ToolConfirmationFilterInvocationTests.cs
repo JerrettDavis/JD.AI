@@ -298,7 +298,7 @@ public sealed class ToolConfirmationFilterInvocationTests
         output.ToolPromptCount.Should().Be(0);
         await session.EventBus.Received(1).PublishAsync(
             Arg.Is<JD.AI.Core.Events.GatewayEvent>(e =>
-                string.Equals(e.EventType, "tool.audit", StringComparison.Ordinal) &&
+                string.Equals(e!.EventType, "tool.audit", StringComparison.Ordinal) &&
                 string.Equals(e.SourceId, session.SessionInfo!.Id, StringComparison.Ordinal) &&
                 e.GetType() == typeof(JD.AI.Core.Events.ToolAuditEntry) &&
                 string.Equals(((JD.AI.Core.Events.ToolAuditEntry)e).Decision, "Allowed", StringComparison.Ordinal)),

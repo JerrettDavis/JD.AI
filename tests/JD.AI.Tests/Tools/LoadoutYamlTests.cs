@@ -127,8 +127,8 @@ public sealed class LoadoutYamlTests : IDisposable
         var yaml = ToolLoadoutYamlSerializer.Serialize(loadout);
         var result = ToolLoadoutYamlSerializer.Deserialize(yaml);
 
-        Assert.Contains("docker*", result.DiscoverablePatterns);
-        Assert.Contains("kube*", result.DiscoverablePatterns);
+        Assert.Contains("docker*", result.DiscoverablePatterns, StringComparer.Ordinal);
+        Assert.Contains("kube*", result.DiscoverablePatterns, StringComparer.Ordinal);
     }
 
     [Fact]
@@ -222,8 +222,8 @@ public sealed class LoadoutYamlTests : IDisposable
         var registry = new FileToolLoadoutRegistry([_tempDir]);
         var names = registry.GetAll().Select(l => l.Name).ToList();
 
-        Assert.Contains("a", names);
-        Assert.Contains("b", names);
+        Assert.Contains("a", names, StringComparer.Ordinal);
+        Assert.Contains("b", names, StringComparer.Ordinal);
     }
 
     [Fact]

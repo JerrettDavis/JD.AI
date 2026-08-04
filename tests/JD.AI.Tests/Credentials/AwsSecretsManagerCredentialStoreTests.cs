@@ -31,7 +31,7 @@ public sealed class AwsSecretsManagerCredentialStoreTests
     public async Task GetAsync_ReturnsValue_WhenSecretExists()
     {
         _client.GetSecretValueAsync(
-                   Arg.Is<GetSecretValueRequest>(r => r.SecretId == "jdai/mykey"),
+                   Arg.Is<GetSecretValueRequest>(r => r!.SecretId == "jdai/mykey"),
                    Arg.Any<CancellationToken>())
                .Returns(new GetSecretValueResponse { SecretString = "thevalue" });
 
@@ -55,14 +55,14 @@ public sealed class AwsSecretsManagerCredentialStoreTests
     public async Task SetAsync_CallsPutSecretValueAsync_WhenSecretExists()
     {
         _client.PutSecretValueAsync(
-                   Arg.Is<PutSecretValueRequest>(r => r.SecretId == "jdai/api-key" && r.SecretString == "val"),
+                   Arg.Is<PutSecretValueRequest>(r => r!.SecretId == "jdai/api-key" && r.SecretString == "val"),
                    Arg.Any<CancellationToken>())
                .Returns(new PutSecretValueResponse());
 
         await _sut.SetAsync("api-key", "val");
 
         await _client.Received(1).PutSecretValueAsync(
-            Arg.Is<PutSecretValueRequest>(r => r.SecretId == "jdai/api-key"),
+            Arg.Is<PutSecretValueRequest>(r => r!.SecretId == "jdai/api-key"),
             Arg.Any<CancellationToken>());
     }
 
@@ -77,7 +77,7 @@ public sealed class AwsSecretsManagerCredentialStoreTests
         await _sut.SetAsync("new-key", "value");
 
         await _client.Received(1).CreateSecretAsync(
-            Arg.Is<CreateSecretRequest>(r => r.Name == "jdai/new-key" && r.SecretString == "value"),
+            Arg.Is<CreateSecretRequest>(r => r!.Name == "jdai/new-key" && r.SecretString == "value"),
             Arg.Any<CancellationToken>());
     }
 
@@ -90,7 +90,7 @@ public sealed class AwsSecretsManagerCredentialStoreTests
         await _sut.RemoveAsync("mykey");
 
         await _client.Received(1).DeleteSecretAsync(
-            Arg.Is<DeleteSecretRequest>(r => r.SecretId == "jdai/mykey"),
+            Arg.Is<DeleteSecretRequest>(r => r!.SecretId == "jdai/mykey"),
             Arg.Any<CancellationToken>());
     }
 

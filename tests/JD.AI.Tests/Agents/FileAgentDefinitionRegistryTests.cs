@@ -327,9 +327,9 @@ public sealed class FileAgentDefinitionRegistryTests : IDisposable
     [Fact]
     public void All_ContainsAllThreeEnvironments()
     {
-        Assert.Contains(AgentEnvironments.Dev, AgentEnvironments.All);
-        Assert.Contains(AgentEnvironments.Staging, AgentEnvironments.All);
-        Assert.Contains(AgentEnvironments.Prod, AgentEnvironments.All);
+        Assert.Contains(AgentEnvironments.Dev, AgentEnvironments.All, StringComparer.Ordinal);
+        Assert.Contains(AgentEnvironments.Staging, AgentEnvironments.All, StringComparer.Ordinal);
+        Assert.Contains(AgentEnvironments.Prod, AgentEnvironments.All, StringComparer.Ordinal);
     }
 
     // ── IAgentDefinitionRegistry sync interface (memory cache) ────────────

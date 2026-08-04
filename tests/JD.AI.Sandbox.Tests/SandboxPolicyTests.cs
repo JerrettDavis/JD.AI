@@ -44,8 +44,8 @@ public class SandboxPolicyTests
         };
 
         Assert.Equal(2, policy.AllowedPaths.Count);
-        Assert.Contains("/tmp/sandbox", policy.AllowedPaths);
-        Assert.Contains("/var/data", policy.AllowedPaths);
+        Assert.Contains("/tmp/sandbox", policy.AllowedPaths, StringComparer.Ordinal);
+        Assert.Contains("/var/data", policy.AllowedPaths, StringComparer.Ordinal);
     }
 
     [Fact]

@@ -64,6 +64,6 @@ public sealed class PromptSafetyCheckerTests
 
         Assert.True(safe.IsSafe);
         Assert.False(unsafe_.IsSafe);
-        Assert.Contains("NoSwearing", unsafe_.Violations);
+        Assert.Contains("NoSwearing", unsafe_.Violations, StringComparer.Ordinal);
     }
 }

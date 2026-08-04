@@ -105,7 +105,7 @@ public sealed class ProviderOrchestratorSelectionTests
 
         Assert.Equal("ollama-chat", decision.SelectedModel?.Id);
         Assert.NotNull(decision.FallbackModelIds);
-        Assert.Contains("claude-sonnet", decision.FallbackModelIds!);
+        Assert.Contains("claude-sonnet", decision.FallbackModelIds!, StringComparer.Ordinal);
     }
 
 

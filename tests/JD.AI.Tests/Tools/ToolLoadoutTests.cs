@@ -169,8 +169,8 @@ public sealed class ToolLoadoutTests
             .AddDiscoverable("kube*")
             .Build();
 
-        Assert.Contains("docker*", loadout.DiscoverablePatterns);
-        Assert.Contains("kube*", loadout.DiscoverablePatterns);
+        Assert.Contains("docker*", loadout.DiscoverablePatterns, StringComparer.Ordinal);
+        Assert.Contains("kube*", loadout.DiscoverablePatterns, StringComparer.Ordinal);
     }
 
     [Fact]
@@ -200,7 +200,7 @@ public sealed class ToolLoadoutTests
         Assert.Equal("minimal", loadout.ParentLoadoutName);
         Assert.Contains("think", loadout.DefaultPlugins);
         Assert.Contains(ToolCategory.Git, loadout.IncludedCategories);
-        Assert.Contains("docker*", loadout.DiscoverablePatterns);
+        Assert.Contains("docker*", loadout.DiscoverablePatterns, StringComparer.Ordinal);
         Assert.Contains("tailscale", loadout.DisabledPlugins);
     }
 

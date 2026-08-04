@@ -332,6 +332,7 @@ public sealed class InMemoryWorkerServiceTests
             .Returns(ci =>
             {
                 var item = ci.Arg<WorkflowWorkItem>();
+                item.Should().NotBeNull();
                 processed.Add(item.WorkflowName);
                 return Task.FromResult(WorkItemResult.Success);
             });

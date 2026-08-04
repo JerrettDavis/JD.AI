@@ -41,7 +41,7 @@ public sealed class WorkflowGeneratorTests
     {
         var wf = _generator.Generate("Run the test suite");
 
-        Assert.Contains("testing", wf.Tags);
+        Assert.Contains("testing", wf.Tags, StringComparer.Ordinal);
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public sealed class WorkflowGeneratorTests
     {
         var wf = _generator.Generate("Review the PR changes");
 
-        Assert.Contains("code-review", wf.Tags);
+        Assert.Contains("code-review", wf.Tags, StringComparer.Ordinal);
     }
 
     [Fact]
@@ -210,8 +210,8 @@ public sealed class WorkflowGeneratorTests
 
         var composite = _generator.Compose("ci-cd", [wf1, wf2]);
 
-        Assert.Contains("testing", composite.Tags);
-        Assert.Contains("deployment", composite.Tags);
+        Assert.Contains("testing", composite.Tags, StringComparer.Ordinal);
+        Assert.Contains("deployment", composite.Tags, StringComparer.Ordinal);
     }
 
     [Fact]

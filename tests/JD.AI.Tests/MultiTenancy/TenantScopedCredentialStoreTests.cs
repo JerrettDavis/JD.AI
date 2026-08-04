@@ -55,8 +55,8 @@ public sealed class TenantScopedCredentialStoreTests
         var keys = await sut.ListKeysAsync(string.Empty);
 
         Assert.Equal(2, keys.Count);
-        Assert.Contains("openai-key", keys);
-        Assert.Contains("github-token", keys);
+        Assert.Contains("openai-key", keys, StringComparer.Ordinal);
+        Assert.Contains("github-token", keys, StringComparer.Ordinal);
     }
 
     [Fact]

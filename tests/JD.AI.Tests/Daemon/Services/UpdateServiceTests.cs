@@ -142,7 +142,7 @@ public sealed class UpdateServiceTests
         await svc.ApplyUpdateAsync();
 
         await events.Received().PublishAsync(
-            Arg.Is<GatewayEvent>(e => e.EventType == "gateway.update.draining"),
+            Arg.Is<GatewayEvent>(e => e!.EventType == "gateway.update.draining"),
             Arg.Any<CancellationToken>());
     }
 
@@ -156,7 +156,7 @@ public sealed class UpdateServiceTests
         await svc.ApplyUpdateAsync();
 
         await events.Received().PublishAsync(
-            Arg.Is<GatewayEvent>(e => e.EventType == "gateway.update.applying"),
+            Arg.Is<GatewayEvent>(e => e!.EventType == "gateway.update.applying"),
             Arg.Any<CancellationToken>());
     }
 
@@ -174,7 +174,7 @@ public sealed class UpdateServiceTests
 
         var events = Substitute.For<IEventBus>();
         events.PublishAsync(
-                Arg.Is<GatewayEvent>(e => e.EventType == "gateway.update.draining"),
+                Arg.Is<GatewayEvent>(e => e!.EventType == "gateway.update.draining"),
                 Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
@@ -211,7 +211,7 @@ public sealed class UpdateServiceTests
 
         // The draining event should have been published (we used the primed update, not a fresh check)
         await events.Received().PublishAsync(
-            Arg.Is<GatewayEvent>(e => e.EventType == "gateway.update.draining"),
+            Arg.Is<GatewayEvent>(e => e!.EventType == "gateway.update.draining"),
             Arg.Any<CancellationToken>());
     }
 
@@ -278,7 +278,7 @@ public sealed class UpdateServiceTests
 
         // At least the "draining" event should have been published
         await events.Received().PublishAsync(
-            Arg.Is<GatewayEvent>(e => e.EventType == "gateway.update.draining"),
+            Arg.Is<GatewayEvent>(e => e!.EventType == "gateway.update.draining"),
             Arg.Any<CancellationToken>());
     }
 

@@ -25,6 +25,6 @@ public class ProjectHasherTests
     {
         var h1 = ProjectHasher.Hash("/path/a");
         var h2 = ProjectHasher.Hash("/path/b");
-        Assert.NotEqual(h1, h2);
+        Assert.NotEqual(h1, h2, StringComparer.Ordinal);
     }
 }

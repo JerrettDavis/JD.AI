@@ -321,6 +321,7 @@ public sealed class MultiTurnExecutorTests
             .Returns(callInfo =>
             {
                 var history = callInfo.Arg<ChatHistory>();
+                history.Should().NotBeNull();
                 historyCaptures.Add(new ChatHistory(history)); // Capture the state
                 var ct = callInfo.Arg<CancellationToken>();
 

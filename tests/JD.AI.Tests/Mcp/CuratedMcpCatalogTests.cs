@@ -145,7 +145,7 @@ public sealed class CuratedMcpCatalogTests
         var entry = CuratedMcpCatalog.All.First(e => string.Equals(e.Id, "azure-devops", StringComparison.Ordinal));
 
         Assert.NotNull(entry.DefaultArgs);
-        Assert.Contains("{organization}", entry.DefaultArgs);
+        Assert.Contains("{organization}", entry.DefaultArgs, StringComparer.Ordinal);
     }
 
     [Fact]
@@ -184,7 +184,7 @@ public sealed class CuratedMcpCatalogTests
 
         Assert.Equal(CuratedMcpTransport.Stdio, entry.Transport);
         Assert.Equal("uvx", entry.Command);
-        Assert.Contains("windows-mcp", entry.DefaultArgs!);
+        Assert.Contains("windows-mcp", entry.DefaultArgs!, StringComparer.Ordinal);
     }
 
     // ── CuratedMcpEntry record equality ──────────────────────────────────────

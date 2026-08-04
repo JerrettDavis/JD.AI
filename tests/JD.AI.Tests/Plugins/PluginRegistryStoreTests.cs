@@ -33,7 +33,7 @@ public sealed class PluginRegistryStoreTests
             Assert.Single(list);
             Assert.Equal("Sample Plugin", found!.Name);
             Assert.Equal("acme", found.Publisher);
-            Assert.Contains("service:*", found.Permissions);
+            Assert.Contains("service:*", found.Permissions, StringComparer.Ordinal);
 
             var removed = await store.RemoveAsync("sample.plugin");
             var empty = await store.ListAsync();

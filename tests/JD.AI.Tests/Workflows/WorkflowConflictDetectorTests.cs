@@ -162,7 +162,8 @@ public sealed class WorkflowConflictDetectorTests
 
         Assert.NotEqual(
             WorkflowConflictDetector.ComputeHash(wf1),
-            WorkflowConflictDetector.ComputeHash(wf2));
+            WorkflowConflictDetector.ComputeHash(wf2),
+            StringComparer.Ordinal);
     }
 
     [Fact]

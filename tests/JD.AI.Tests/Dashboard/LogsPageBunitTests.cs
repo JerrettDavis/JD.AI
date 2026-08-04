@@ -168,7 +168,7 @@ public sealed class LogsPageBunitTests : DashboardBunitTestContext
         cut.WaitForAssertion(() =>
         {
             var chip = cut.Find("[data-testid='log-level-chip-evt-1']");
-            Assert.Contains("mud-chip-color-error", chip.ClassList);
+            Assert.Contains("mud-chip-color-error", chip.ClassList, StringComparer.Ordinal);
         });
     }
 
@@ -185,7 +185,7 @@ public sealed class LogsPageBunitTests : DashboardBunitTestContext
         cut.WaitForAssertion(() =>
         {
             var chip = cut.Find("[data-testid='log-level-chip-evt-2']");
-            Assert.Contains("mud-chip-color-info", chip.ClassList);
+            Assert.Contains("mud-chip-color-info", chip.ClassList, StringComparer.Ordinal);
         });
     }
 

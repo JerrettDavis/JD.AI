@@ -86,7 +86,7 @@ public sealed class GatewayAuthGateTests : DashboardBunitTestContext
         await cut.Find("[data-testid='connect-button']").ClickAsync(new());
 
         await signalR.Received().ConnectAsync(
-            Arg.Is<string>(s => s.StartsWith("ws://")),
+            Arg.Is<string>(s => s!.StartsWith("ws://")),
             Arg.Any<string?>());
     }
 }

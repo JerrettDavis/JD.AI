@@ -110,7 +110,7 @@ public sealed class ToolExecutionPermissionEvaluatorTests
         result.Decision.Should().Be(ToolExecutionGateDecision.AllowWithoutPrompt);
         _ = mockBus.Received(1).PublishAsync(
             Arg.Is<GatewayEvent>(e =>
-                e.EventType == "tool.audit" &&
+                e!.EventType == "tool.audit" &&
                 e.SourceId == "sess-123"),
             Arg.Any<CancellationToken>());
     }
@@ -159,7 +159,7 @@ public sealed class ToolExecutionPermissionEvaluatorTests
 
         await mockBus.Received(1).PublishAsync(
             Arg.Is<GatewayEvent>(e =>
-                e.EventType == "tool.audit" &&
+                e!.EventType == "tool.audit" &&
                 e.SourceId == "sess-456"),
             Arg.Any<CancellationToken>());
     }

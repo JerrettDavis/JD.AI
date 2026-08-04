@@ -50,7 +50,7 @@ public class AuditIntegrationTests
 
         await sink.Received(1).WriteAsync(
             Arg.Is<AuditEvent>(e =>
-                e.PolicyResult == PolicyDecision.Deny &&
+                e!.PolicyResult == PolicyDecision.Deny &&
                 e.Severity == AuditSeverity.Warning),
             Arg.Any<CancellationToken>());
     }
@@ -84,10 +84,10 @@ public class AuditIntegrationTests
 
         await sink.Received(2).WriteAsync(Arg.Any<AuditEvent>(), Arg.Any<CancellationToken>());
         await sink.Received(1).WriteAsync(
-            Arg.Is<AuditEvent>(e => e.Action == "session.create"),
+            Arg.Is<AuditEvent>(e => e!.Action == "session.create"),
             Arg.Any<CancellationToken>());
         await sink.Received(1).WriteAsync(
-            Arg.Is<AuditEvent>(e => e.Action == "session.close"),
+            Arg.Is<AuditEvent>(e => e!.Action == "session.close"),
             Arg.Any<CancellationToken>());
     }
 

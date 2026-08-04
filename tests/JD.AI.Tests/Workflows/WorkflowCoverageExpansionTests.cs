@@ -168,7 +168,7 @@ public sealed class WorkflowVersioningTests
     public void TryParse_WithPreReleaseAndBuild()
     {
         Assert.True(WorkflowSemVersion.TryParse("2.1.0-beta.2+sha.abc", out var v));
-        Assert.Contains("beta", v.PreRelease);
+        Assert.Contains("beta", v.PreRelease, StringComparer.Ordinal);
         Assert.Equal("sha.abc", v.BuildMetadata);
     }
 

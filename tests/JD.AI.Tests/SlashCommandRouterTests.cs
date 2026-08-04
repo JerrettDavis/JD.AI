@@ -315,8 +315,8 @@ public sealed class SlashCommandRouterTests : IClassFixture<TempDirectoryFixture
         Assert.NotNull(result);
         var events = await sink.QueryAsync(new AuditQuery { Limit = 20 });
         var actions = events.Events.Select(e => e.Action).ToList();
-        Assert.Contains("model.switch.requested", actions);
-        Assert.Contains("model.switch.applied", actions);
+        Assert.Contains("model.switch.requested", actions, StringComparer.Ordinal);
+        Assert.Contains("model.switch.applied", actions, StringComparer.Ordinal);
     }
 
     [Fact]
@@ -594,7 +594,7 @@ public sealed class SlashCommandRouterTests : IClassFixture<TempDirectoryFixture
 
             Assert.NotNull(result);
             Assert.Contains("Allowed", result);
-            Assert.Contains("run_command", profile.GlobalAllowed);
+            Assert.Contains("run_command", profile.GlobalAllowed, StringComparer.Ordinal);
             Assert.True(_session.ToolPermissionProfile.IsExplicitlyAllowed("run_command"));
         }
         finally
@@ -622,7 +622,7 @@ public sealed class SlashCommandRouterTests : IClassFixture<TempDirectoryFixture
 
             Assert.NotNull(result);
             Assert.Contains("Denied", result);
-            Assert.Contains("git_push", profile.ProjectDenied);
+            Assert.Contains("git_push", profile.ProjectDenied, StringComparer.Ordinal);
             Assert.True(_session.ToolPermissionProfile.IsExplicitlyDenied("git_push"));
         }
         finally
