@@ -6,9 +6,9 @@
   <ItemGroup>
     <!-- Pin transitively-referenced AngleSharp (pulled in by bunit) above 1.4.0, which has a known
          moderate-severity mXSS vulnerability (GHSA-pgww-w46g-26qg), fixed in 1.5.0. -->
-    <PackageVersion Include="AngleSharp" Version="1.8.2" />
+    <PackageVersion Include="AngleSharp" Version="1.8.3" />
     <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.21.0" />
-    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.290" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.292" />
     <PackageVersion Include="Microsoft.SemanticKernel.Abstractions" Version="1.80.1" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.401" />
     <PackageVersion Include="Nerdbank.GitVersioning" Version="3.10.94" />
@@ -20,9 +20,9 @@
     <PackageVersion Include="YamlDotNet" Version="18.1.0" />
     <PackageVersion Include="JD.SemanticKernel.Extensions" Version="0.1.132" />
     <PackageVersion Include="JD.SemanticKernel.Extensions.Mcp" Version="0.1.132" />
-    <PackageVersion Include="JD.SemanticKernel.Connectors.ClaudeCode" Version="1.0.63" />
+    <PackageVersion Include="JD.SemanticKernel.Connectors.ClaudeCode" Version="1.0.64" />
     <PackageVersion Include="JD.SemanticKernel.Connectors.GitHubCopilot" Version="0.1.92" />
-    <PackageVersion Include="JD.SemanticKernel.Connectors.OpenAICodex" Version="0.1.60" />
+    <PackageVersion Include="JD.SemanticKernel.Connectors.OpenAICodex" Version="0.1.61" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.12" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
@@ -46,9 +46,9 @@
   </ItemGroup>
   <!-- Distributed infrastructure -->
   <ItemGroup>
-    <PackageVersion Include="AWSSDK.SecretsManager" Version="4.0.100.14" />
+    <PackageVersion Include="AWSSDK.SecretsManager" Version="4.0.100.15" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
-    <PackageVersion Include="Azure.Security.KeyVault.Secrets" Version="4.11.1" />
+    <PackageVersion Include="Azure.Security.KeyVault.Secrets" Version="4.11.2" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
     <PackageVersion Include="StackExchange.Redis" Version="3.3.1" />
   </ItemGroup>
@@ -74,7 +74,7 @@
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.12" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.12" />
     <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.12" />
-    <PackageVersion Include="MudBlazor" Version="9.10.0" />
+    <PackageVersion Include="MudBlazor" Version="9.11.0" />
   </ItemGroup>
   <!-- Channel adapters -->
   <ItemGroup>
@@ -95,13 +95,13 @@
   <!-- Testing -->
   <ItemGroup>
     <PackageVersion Include="bunit" Version="2.11.3" />
-    <PackageVersion Include="coverlet.collector" Version="10.0.1" />
+    <PackageVersion Include="coverlet.collector" Version="10.1.0" />
     <PackageVersion Include="FluentAssertions" Version="8.11.0" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.12" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
     <PackageVersion Include="NSubstitute" Version="6.2.0" />
-    <PackageVersion Include="TinyBDD.Xunit" Version="0.19.42" />
+    <PackageVersion Include="TinyBDD.Xunit" Version="0.19.43" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
     <PackageVersion Include="Xunit.SkippableFact" Version="1.5.85" />
