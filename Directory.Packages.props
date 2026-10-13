@@ -39,7 +39,7 @@
     <PackageVersion Include="WorkflowFramework" Version="1.0.13" />
     <PackageVersion Include="HtmlAgilityPack" Version="1.13.0" />
     <PackageVersion Include="UglyToad.PdfPig" Version="1.7.0-custom-5" />
-    <PackageVersion Include="SixLabors.ImageSharp" Version="3.2.0" />
+    <PackageVersion Include="SixLabors.ImageSharp" Version="4.1.3" />
     <PackageVersion Include="LLamaSharp" Version="0.27.0" />
     <PackageVersion Include="LLamaSharp.Backend.Cpu" Version="0.27.0" />
     <PackageVersion Include="SSH.NET" Version="2026.0.0" />
