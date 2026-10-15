@@ -25,6 +25,7 @@
     <PackageReference Include="JD.SemanticKernel.Connectors.ClaudeCode" />
     <PackageReference Include="JD.SemanticKernel.Connectors.GitHubCopilot" />
     <PackageReference Include="JD.SemanticKernel.Connectors.OpenAICodex" />
+    <PackageReference Include="Magick.NET-Q8-AnyCPU" />
     <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
@@ -39,7 +40,6 @@
     <PackageReference Include="YamlDotNet" />
     <PackageReference Include="HtmlAgilityPack" />
     <PackageReference Include="UglyToad.PdfPig" />
-    <PackageReference Include="SixLabors.ImageSharp" />
     <PackageReference Include="LLamaSharp" />
     <PackageReference Include="LLamaSharp.Backend.Cpu" />
     <PackageReference Include="SSH.NET" />
