@@ -1,7 +1,6 @@
 using FluentAssertions;
+using ImageMagick;
 using JD.AI.Core.Tools;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
 
 namespace JD.AI.Tests;
 
@@ -24,8 +23,8 @@ public sealed class MultimodalToolsTests : IDisposable
     private string CreateTestImage(int width = 100, int height = 50, string name = "test.png")
     {
         var path = Path.Combine(_tempDir, name);
-        using var img = new Image<Rgba32>(width, height);
-        img.SaveAsPng(path);
+        using var img = new MagickImage(MagickColors.Transparent, (uint)width, (uint)height);
+        img.Write(path, MagickFormat.Png);
         return path;
     }
 

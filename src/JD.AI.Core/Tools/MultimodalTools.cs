@@ -2,11 +2,10 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
+using ImageMagick;
 using JD.AI.Core.Attributes;
 using JD.AI.Core.Infrastructure;
 using Microsoft.SemanticKernel;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
 using UglyToad.PdfPig;
 
 namespace JD.AI.Core.Tools;
@@ -160,15 +159,15 @@ public sealed class MultimodalTools
             return BuildSvgInfo(path, fi);
         }
 
-        using var image = Image.Load(path);
+        using var image = new MagickImage(path);
         var sb = new StringBuilder();
         sb.AppendLine(CultureInfo.InvariantCulture, $"## Image Analysis: {fi.Name}");
         sb.AppendLine(CultureInfo.InvariantCulture, $"- **Dimensions**: {image.Width} × {image.Height} px");
-        sb.AppendLine(CultureInfo.InvariantCulture, $"- **Format**: {image.Metadata.DecodedImageFormat?.Name ?? ext}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"- **Format**: {image.Format.ToString().ToUpperInvariant()}");
         sb.AppendLine(CultureInfo.InvariantCulture, $"- **File size**: {FormatBytes(fi.Length)}");
-        sb.AppendLine(CultureInfo.InvariantCulture, $"- **Pixel type**: {image.PixelType.BitsPerPixel} bpp");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"- **Pixel type**: {image.Depth * image.ChannelCount} bpp");
 
-        if (image.Metadata.ExifProfile is { } exif)
+        if (image.GetExifProfile() is { } exif)
         {
             sb.AppendLine("- **EXIF data**: Present");
             foreach (var tag in exif.Values.Take(10))
@@ -188,12 +187,12 @@ public sealed class MultimodalTools
                 var ratio = Math.Min((double)maxDimension / image.Width, (double)maxDimension / image.Height);
                 var newWidth = (int)(image.Width * ratio);
                 var newHeight = (int)(image.Height * ratio);
-                image.Mutate(ctx => ctx.Resize(newWidth, newHeight));
+                image.Resize((uint)newWidth, (uint)newHeight);
                 sb.AppendLine(CultureInfo.InvariantCulture, $"- **Resized for vision**: {newWidth} × {newHeight} px");
             }
 
             using var ms = new MemoryStream();
-            image.SaveAsPng(ms);
+            image.Write(ms, MagickFormat.Png);
             var base64 = Convert.ToBase64String(ms.ToArray());
             sb.AppendLine();
             sb.AppendLine($"**Base64 PNG** ({FormatBytes(ms.Length)}):");

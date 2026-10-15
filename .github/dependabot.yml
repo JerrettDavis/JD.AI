@@ -40,8 +40,6 @@ updates:
         patterns:
           - "*"
     ignore:
-      - dependency-name: "SixLabors.ImageSharp"
-        update-types: ["version-update:semver-major"]
       # Microsoft.OpenApi must stay on 2.x. The .NET 10 Microsoft.AspNetCore.OpenApi
       # (10.0.9) XML-comment source generator emits `IOpenApiMediaType.Example = ...`,
       # which is writable in 2.x but read-only in 3.x, causing CS0200 build failures.

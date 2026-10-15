@@ -36,12 +36,12 @@
     <PackageReference Include="AngleSharp" />
     <PackageReference Include="bunit" />
     <PackageReference Include="coverlet.collector" PrivateAssets="all" />
+    <PackageReference Include="Magick.NET-Q8-AnyCPU" />
     <PackageReference Include="Spectre.Console" />
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="NSubstitute" />
-    <PackageReference Include="SixLabors.ImageSharp" />
     <PackageReference Include="WorkflowFramework" />
     <PackageReference Include="TinyBDD.Xunit" />
     <PackageReference Include="xunit" />
