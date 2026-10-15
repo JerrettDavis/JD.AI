@@ -2,9 +2,9 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
+using ImageMagick;
 using JD.AI.Core.Attributes;
 using JD.AI.Core.Infrastructure;
-using ImageMagick;
 using Microsoft.SemanticKernel;
 using UglyToad.PdfPig;
 
