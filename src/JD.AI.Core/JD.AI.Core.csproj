@@ -39,7 +39,9 @@
     <PackageReference Include="YamlDotNet" />
     <PackageReference Include="HtmlAgilityPack" />
     <PackageReference Include="UglyToad.PdfPig" />
-    <PackageReference Include="SixLabors.ImageSharp" />
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
+    <PackageReference Include="MetadataExtractor" />
     <PackageReference Include="LLamaSharp" />
     <PackageReference Include="LLamaSharp.Backend.Cpu" />
     <PackageReference Include="SSH.NET" />

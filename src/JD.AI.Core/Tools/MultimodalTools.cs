@@ -4,9 +4,9 @@ using System.Net.Http.Headers;
 using System.Text;
 using JD.AI.Core.Attributes;
 using JD.AI.Core.Infrastructure;
+using MetadataExtractor;
 using Microsoft.SemanticKernel;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
+using SkiaSharp;
 using UglyToad.PdfPig;
 
 namespace JD.AI.Core.Tools;
@@ -160,47 +160,90 @@ public sealed class MultimodalTools
             return BuildSvgInfo(path, fi);
         }
 
-        using var image = Image.Load(path);
+        using var codec = CreateCodec(path);
+        if (codec is null)
+            return OutputFormatter.Error($"Unable to decode image: {fi.Name}");
+
+        using var image = SKBitmap.Decode(codec);
+        if (image is null)
+            return OutputFormatter.Error($"Unable to decode image: {fi.Name}");
+
         var sb = new StringBuilder();
         sb.AppendLine(CultureInfo.InvariantCulture, $"## Image Analysis: {fi.Name}");
         sb.AppendLine(CultureInfo.InvariantCulture, $"- **Dimensions**: {image.Width} × {image.Height} px");
-        sb.AppendLine(CultureInfo.InvariantCulture, $"- **Format**: {image.Metadata.DecodedImageFormat?.Name ?? ext}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"- **Format**: {codec.EncodedFormat.ToString().ToUpperInvariant()}");
         sb.AppendLine(CultureInfo.InvariantCulture, $"- **File size**: {FormatBytes(fi.Length)}");
-        sb.AppendLine(CultureInfo.InvariantCulture, $"- **Pixel type**: {image.PixelType.BitsPerPixel} bpp");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"- **Pixel type**: {image.BytesPerPixel * 8} bpp");
 
-        if (image.Metadata.ExifProfile is { } exif)
-        {
-            sb.AppendLine("- **EXIF data**: Present");
-            foreach (var tag in exif.Values.Take(10))
-            {
-                sb.AppendLine(CultureInfo.InvariantCulture, $"  - {tag.Tag}: {tag.GetValue()}");
-            }
-
-            if (exif.Values.Count > 10)
-                sb.AppendLine(CultureInfo.InvariantCulture, $"  - ... and {exif.Values.Count - 10} more tags");
-        }
+        AppendExif(sb, path);
 
         if (includeData)
         {
-            // Resize if needed and encode as base64
-            if (maxDimension > 0 && (image.Width > maxDimension || image.Height > maxDimension))
+            var output = image;
+            SKBitmap? resized = null;
+            try
             {
-                var ratio = Math.Min((double)maxDimension / image.Width, (double)maxDimension / image.Height);
-                var newWidth = (int)(image.Width * ratio);
-                var newHeight = (int)(image.Height * ratio);
-                image.Mutate(ctx => ctx.Resize(newWidth, newHeight));
-                sb.AppendLine(CultureInfo.InvariantCulture, $"- **Resized for vision**: {newWidth} × {newHeight} px");
-            }
+                // Resize if needed and encode as base64
+                if (maxDimension > 0 && (image.Width > maxDimension || image.Height > maxDimension))
+                {
+                    var ratio = Math.Min((double)maxDimension / image.Width, (double)maxDimension / image.Height);
+                    var newWidth = Math.Max(1, (int)(image.Width * ratio));
+                    var newHeight = Math.Max(1, (int)(image.Height * ratio));
+                    resized = image.Resize(new SKImageInfo(newWidth, newHeight), new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear));
+                    if (resized is null)
+                        return OutputFormatter.Error($"Unable to resize image: {fi.Name}");
+                    output = resized;
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"- **Resized for vision**: {newWidth} × {newHeight} px");
+                }
 
-            using var ms = new MemoryStream();
-            image.SaveAsPng(ms);
-            var base64 = Convert.ToBase64String(ms.ToArray());
-            sb.AppendLine();
-            sb.AppendLine($"**Base64 PNG** ({FormatBytes(ms.Length)}):");
-            sb.AppendLine($"```\ndata:image/png;base64,{base64}\n```");
+                using var skImage = SKImage.FromBitmap(output);
+                using var data = skImage.Encode(SKEncodedImageFormat.Png, 100);
+                var bytes = data.ToArray();
+                var base64 = Convert.ToBase64String(bytes);
+                sb.AppendLine();
+                sb.AppendLine($"**Base64 PNG** ({FormatBytes(bytes.Length)}):");
+                sb.AppendLine($"```\ndata:image/png;base64,{base64}\n```");
+            }
+            finally
+            {
+                resized?.Dispose();
+            }
         }
 
         return sb.ToString();
+    }
+
+    // SKCodec.Create returns null for undecodable files; wrapped so the nullable contract is explicit.
+    private static SKCodec? CreateCodec(string path) => SKCodec.Create(path);
+
+    private static void AppendExif(StringBuilder sb, string path)
+    {
+        try
+        {
+            var tags = ImageMetadataReader.ReadMetadata(path)
+                .Where(d => d.Name.Contains("Exif", StringComparison.OrdinalIgnoreCase))
+                .SelectMany(d => d.Tags)
+                .ToList();
+            if (tags.Count == 0)
+                return;
+
+            sb.AppendLine("- **EXIF data**: Present");
+            foreach (var tag in tags.Take(10))
+            {
+                sb.AppendLine(CultureInfo.InvariantCulture, $"  - {tag.Name}: {tag.Description}");
+            }
+
+            if (tags.Count > 10)
+                sb.AppendLine(CultureInfo.InvariantCulture, $"  - ... and {tags.Count - 10} more tags");
+        }
+        catch (ImageProcessingException)
+        {
+            // No readable metadata; EXIF is optional.
+        }
+        catch (IOException)
+        {
+            // Metadata unreadable; EXIF is optional.
+        }
     }
 
     private static async Task<string> AnalyzeRemoteImageAsync(Uri uri, bool includeData, int maxDimension)

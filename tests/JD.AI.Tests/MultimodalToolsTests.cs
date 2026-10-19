@@ -1,7 +1,6 @@
 using FluentAssertions;
 using JD.AI.Core.Tools;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using SkiaSharp;
 
 namespace JD.AI.Tests;
 
@@ -24,8 +23,11 @@ public sealed class MultimodalToolsTests : IDisposable
     private string CreateTestImage(int width = 100, int height = 50, string name = "test.png")
     {
         var path = Path.Combine(_tempDir, name);
-        using var img = new Image<Rgba32>(width, height);
-        img.SaveAsPng(path);
+        using var bmp = new SKBitmap(width, height);
+        bmp.Erase(SKColors.CornflowerBlue);
+        using var img = SKImage.FromBitmap(bmp);
+        using var data = img.Encode(SKEncodedImageFormat.Png, 100);
+        File.WriteAllBytes(path, data.ToArray());
         return path;
     }
 
