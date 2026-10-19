@@ -4,8 +4,8 @@ using System.Net.Http.Headers;
 using System.Text;
 using JD.AI.Core.Attributes;
 using JD.AI.Core.Infrastructure;
-using Microsoft.SemanticKernel;
 using MetadataExtractor;
+using Microsoft.SemanticKernel;
 using SkiaSharp;
 using UglyToad.PdfPig;
 
