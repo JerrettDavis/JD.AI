@@ -160,7 +160,7 @@ public sealed class MultimodalTools
             return BuildSvgInfo(path, fi);
         }
 
-        using var codec = SKCodec.Create(path);
+        using var codec = CreateCodec(path);
         if (codec is null)
             return OutputFormatter.Error($"Unable to decode image: {fi.Name}");
 
@@ -212,6 +212,9 @@ public sealed class MultimodalTools
 
         return sb.ToString();
     }
+
+    // SKCodec.Create returns null for undecodable files; wrapped so the nullable contract is explicit.
+    private static SKCodec? CreateCodec(string path) => SKCodec.Create(path);
 
     private static void AppendExif(StringBuilder sb, string path)
     {
