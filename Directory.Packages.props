@@ -10,13 +10,13 @@
     <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.21.0" />
     <PackageVersion Include="Meziantou.Analyzer" Version="3.0.305" />
     <PackageVersion Include="Microsoft.SemanticKernel.Abstractions" Version="1.81.0" />
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.401" />
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.402" />
     <PackageVersion Include="Nerdbank.GitVersioning" Version="3.10.94" />
   </ItemGroup>
   <!-- Application -->
   <ItemGroup>
-    <PackageVersion Include="Microsoft.ML" Version="5.0.0" />
-    <PackageVersion Include="Markdig" Version="1.4.0" />
+    <PackageVersion Include="Microsoft.ML" Version="5.0.1" />
+    <PackageVersion Include="Markdig" Version="1.4.1" />
     <PackageVersion Include="YamlDotNet" Version="18.1.0" />
     <PackageVersion Include="JD.SemanticKernel.Extensions" Version="0.1.132" />
     <PackageVersion Include="JD.SemanticKernel.Extensions.Mcp" Version="0.1.132" />
@@ -37,13 +37,13 @@
     <PackageVersion Include="Microsoft.SemanticKernel.Connectors.HuggingFace" Version="1.72.0-preview" />
     <PackageVersion Include="Spectre.Console" Version="0.57.2" />
     <PackageVersion Include="WorkflowFramework" Version="1.0.13" />
-    <PackageVersion Include="HtmlAgilityPack" Version="1.13.0" />
+    <PackageVersion Include="HtmlAgilityPack" Version="1.13.1" />
     <PackageVersion Include="UglyToad.PdfPig" Version="1.7.0-custom-5" />
     <PackageVersion Include="SkiaSharp" Version="4.153.1" />
     <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.153.1" />
     <PackageVersion Include="MetadataExtractor" Version="2.9.3" />
-    <PackageVersion Include="LLamaSharp" Version="0.27.0" />
-    <PackageVersion Include="LLamaSharp.Backend.Cpu" Version="0.27.0" />
+    <PackageVersion Include="LLamaSharp" Version="0.30.0" />
+    <PackageVersion Include="LLamaSharp.Backend.Cpu" Version="0.30.0" />
     <PackageVersion Include="SSH.NET" Version="2026.0.0" />
   </ItemGroup>
   <!-- Distributed infrastructure -->
@@ -62,12 +62,12 @@
   </ItemGroup>
   <!-- Telemetry (OpenTelemetry) -->
   <ItemGroup>
-    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.19.1" />
-    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.19.1" />
-    <PackageVersion Include="OpenTelemetry.Exporter.Console" Version="1.19.1" />
-    <PackageVersion Include="OpenTelemetry.Exporter.Zipkin" Version="1.19.1" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.19.0" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.19.0" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.20.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.20.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.Console" Version="1.20.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.Zipkin" Version="1.20.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.20.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.20.0" />
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.13" />
   </ItemGroup>
   <!-- Dashboard (Blazor WASM) -->
@@ -92,7 +92,7 @@
   <ItemGroup>
     <PackageVersion Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.13" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Systemd" Version="10.0.13" />
-    <PackageVersion Include="System.CommandLine" Version="2.0.12" />
+    <PackageVersion Include="System.CommandLine" Version="2.0.13" />
   </ItemGroup>
   <!-- Testing -->
   <ItemGroup>
@@ -101,9 +101,9 @@
     <PackageVersion Include="FluentAssertions" Version="8.11.0" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.13" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageVersion Include="NSubstitute" Version="6.2.0" />
-    <PackageVersion Include="TinyBDD.Xunit" Version="0.19.43" />
+    <PackageVersion Include="TinyBDD.Xunit" Version="0.19.44" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
     <PackageVersion Include="Xunit.SkippableFact" Version="1.5.85" />
