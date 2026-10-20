@@ -86,7 +86,16 @@ public sealed class QueueDecoratorAndAdminCommandTests : IDisposable
         Assert.Equal(1, subscriberOneCalls);
         Assert.Equal(1, subscriberTwoCalls);
 
+        // The drain loop marks the entry completed after the handlers return, so poll
+        // instead of asserting immediately (avoids a race with the background drain).
+        var deadline = DateTime.UtcNow.AddSeconds(5);
         var stats = await buffer.GetStatsAsync();
+        while (stats.Completed < 1 && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(20);
+            stats = await buffer.GetStatsAsync();
+        }
+
         Assert.Equal(1, stats.Completed);
         Assert.Equal(1, stats.Total);
     }
