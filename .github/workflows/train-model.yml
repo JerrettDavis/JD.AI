@@ -155,13 +155,20 @@ jobs:
             echo "no_changes=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Push model commit
-        if: github.event.inputs.commit_model != 'false'
+      - name: Push model branch and open PR
+        if: github.event.inputs.commit_model != 'false' && steps.commit.outputs.no_changes != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          if [[ "${{ steps.commit.outputs.no_changes }}" != "true" ]]; then
-            git push
-            echo "::notice::Model committed and pushed"
-          fi
+          # main is protected: push to a branch and open a PR instead
+          BRANCH="ci/retrain-intent-classifier-${{ github.run_id }}"
+          git push origin "HEAD:refs/heads/${BRANCH}"
+          gh pr create             --base "${{ github.event.repository.default_branch }}"             --head "${BRANCH}"             --title "ci: retrain intent classifier model"             --body "Automated retrain of the intent classifier model.
+
+          - Examples generated: ${{ steps.generate.outputs.examples }}
+          - Triggered by: ${{ github.event_name }}
+          - Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "::notice::Model pushed to ${BRANCH} and PR opened"
 
       # ── Upload model as artifact (always) ─────────────────────────
       - name: Upload model artifact
