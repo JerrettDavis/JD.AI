@@ -8,4 +8,15 @@
     <Exec Command="dotnet husky install" StandardOutputImportance="Low" />
   </Target>
 
+  <!-- SkiaSharp ships native symbols (~68 MB) and rarely-used RIDs; trim them from published/packed
+       output so tool/host packages stay under the NuGet.org 250 MB package size limit. -->
+  <Target Name="TrimSkiaSharpNativeAssets" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <_SkiaTrim Include="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(RelativePath)').Contains('libSkiaSharp')) AND ('%(Extension)' == '.pdb' OR $([System.String]::Copy('%(RelativePath)').Contains('linux-bionic')) OR $([System.String]::Copy('%(RelativePath)').Contains('riscv64')) OR $([System.String]::Copy('%(RelativePath)').Contains('loongarch64')) OR $([System.String]::Copy('%(RelativePath)').Contains('linux-x86')) OR $([System.String]::Copy('%(RelativePath)').Contains('linux-arm/native')) OR $([System.String]::Copy('%(RelativePath)').Contains('linux-arm
+ative')) OR $([System.String]::Copy('%(RelativePath)').Contains('linux-musl-arm/native')) OR $([System.String]::Copy('%(RelativePath)').Contains('linux-musl-arm
+ative')))" />
+      <ResolvedFileToPublish Remove="@(_SkiaTrim)" />
+    </ItemGroup>
+  </Target>
+
 </Project>
