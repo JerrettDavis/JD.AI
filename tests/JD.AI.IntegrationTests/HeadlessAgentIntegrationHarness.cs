@@ -29,6 +29,9 @@ internal sealed class HeadlessAgentIntegrationHarness : IDisposable
         IProviderDetector detector,
         ProviderModelInfo model)
     {
+        // Smoke tests request short answers and small tool payloads. Bound generation so
+        // a CPU-only Ollama runner cannot spend the whole test session on one reply.
+        model = model with { MaxOutputTokens = Math.Min(model.MaxOutputTokens, 256) };
         var kernel = detector.BuildKernel(model);
         var registry = new ProviderRegistry([detector]);
         var session = new AgentSession(registry, kernel, model);
