@@ -9,6 +9,7 @@ public sealed class RuntimeConstantsLiteralGuardTests
         var sourceRoot = Path.Combine(repoRoot, "src");
         var sourceFiles = Directory.GetFiles(sourceRoot, "*.cs", SearchOption.AllDirectories)
             .Select(path => Path.GetRelativePath(repoRoot, path).Replace('\\', '/'))
+            .Where(path => !path.Split('/').Any(segment => segment is "bin" or "obj"))
             .ToArray();
 
         var rules = new[]
